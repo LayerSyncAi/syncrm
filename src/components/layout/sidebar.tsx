@@ -9,6 +9,7 @@ import {
   ChevronRight,
   LayoutDashboard,
   UserCog,
+  Users,
   Waypoints,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -16,6 +17,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { label: "Dashboard", href: "/app/dashboard", icon: LayoutDashboard },
   { label: "Leads", href: "/app/leads", icon: Waypoints },
+  { label: "Contacts", href: "/app/contacts", icon: Users },
   { label: "Properties", href: "/app/properties", icon: Building2 },
   { label: "Tasks", href: "/app/tasks", icon: ClipboardList },
 ];

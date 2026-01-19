@@ -29,6 +29,8 @@ export function LeadDetail() {
             </div>
             <div className="flex flex-wrap gap-4 text-sm text-text-muted">
               <span>Owner: Tafadzwa Gondo</span>
+              <span>Contact: Kudzai Moyo</span>
+              <span>Property: Borrowdale Villa</span>
               <span>Created: Mar 12, 2025</span>
             </div>
           </div>

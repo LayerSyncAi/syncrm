@@ -14,22 +14,25 @@ export const stageSummary = [
 export const leads = [
   {
     id: "lead-1",
-    name: "Kudzai Moyo",
-    phone: "+263 77 123 4567",
+    contactId: "contact-1",
+    propertyId: "property-1",
+    ownerId: "user-2",
     stage: "Prospect",
     updated: "Today, 10:12",
   },
   {
     id: "lead-2",
-    name: "Rudo Ncube",
-    phone: "+263 71 555 3388",
+    contactId: "contact-2",
+    propertyId: "property-2",
+    ownerId: "user-2",
     stage: "Viewing Scheduled",
     updated: "Yesterday, 16:20",
   },
   {
     id: "lead-3",
-    name: "Tinashe Chirwa",
-    phone: "+263 77 222 9911",
+    contactId: "contact-3",
+    propertyId: "property-1",
+    ownerId: "user-1",
     stage: "Negotiation",
     updated: "Mar 12, 09:12",
   },
@@ -57,6 +60,30 @@ export const properties = [
     location: "Avondale, Harare",
     area: "120",
     status: "Under Offer",
+  },
+];
+
+export const contacts = [
+  {
+    id: "contact-1",
+    name: "Kudzai Moyo",
+    phone: "+263 77 123 4567",
+    email: "kudzai@email.com",
+    ownerId: "user-2",
+  },
+  {
+    id: "contact-2",
+    name: "Rudo Ncube",
+    phone: "+263 71 555 3388",
+    email: "rudo@email.com",
+    ownerId: "user-2",
+  },
+  {
+    id: "contact-3",
+    name: "Tinashe Chirwa",
+    phone: "+263 77 222 9911",
+    email: "tinashe@email.com",
+    ownerId: "user-1",
   },
 ];
 
