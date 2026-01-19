@@ -75,6 +75,7 @@ export default function PropertiesPage() {
             <TableHead>Location</TableHead>
             <TableHead className="text-right">Area (m²)</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead className="text-right">Action</TableHead>
           </tr>
         </thead>
         <tbody>
@@ -88,6 +89,11 @@ export default function PropertiesPage() {
               <TableCell>{property.location}</TableCell>
               <TableCell className="text-right">{property.area}</TableCell>
               <TableCell>{property.status}</TableCell>
+              <TableCell className="text-right">
+                <Button variant="secondary" className="h-9 px-3">
+                  View
+                </Button>
+              </TableCell>
             </TableRow>
           ))}
         </tbody>
