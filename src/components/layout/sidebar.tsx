@@ -77,6 +77,7 @@ export function Sidebar({ isAdmin, collapsed, onToggle }: SidebarProps) {
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = pathname.startsWith(item.href);
+          const itemTextClass = active ? "text-[#eca400]" : "text-[#fcfcfc]";
           return (
             <Link
               key={item.href}
@@ -84,13 +85,12 @@ export function Sidebar({ isAdmin, collapsed, onToggle }: SidebarProps) {
               className={cn(
                 "flex h-10 items-center gap-3 rounded-[10px] px-3 text-sm font-medium transition duration-150",
                 collapsed ? "justify-center" : "justify-start",
-                active
-                  ? "bg-white/10 text-[#eca400]"
-                  : "text-[#fcfcfc] hover:bg-white/10"
+                active ? "bg-white/10" : "hover:bg-white/10",
+                itemTextClass
               )}
             >
-              <Icon className="h-[18px] w-[18px]" />
-              {!collapsed ? <span>{item.label}</span> : null}
+              <Icon className={cn("h-[18px] w-[18px]", itemTextClass)} />
+              {!collapsed ? <span className={itemTextClass}>{item.label}</span> : null}
             </Link>
           );
         })}
@@ -105,6 +105,7 @@ export function Sidebar({ isAdmin, collapsed, onToggle }: SidebarProps) {
           {adminItems.map((item) => {
             const Icon = item.icon;
             const active = pathname.startsWith(item.href);
+            const itemTextClass = active ? "text-[#eca400]" : "text-[#fcfcfc]";
             return (
               <Link
                 key={item.href}
@@ -112,13 +113,12 @@ export function Sidebar({ isAdmin, collapsed, onToggle }: SidebarProps) {
                 className={cn(
                   "flex h-10 items-center gap-3 rounded-[10px] px-3 text-sm font-medium transition duration-150",
                   collapsed ? "justify-center" : "justify-start",
-                  active
-                    ? "bg-white/10 text-[#eca400]"
-                    : "text-[#fcfcfc] hover:bg-white/10"
+                  active ? "bg-white/10" : "hover:bg-white/10",
+                  itemTextClass
                 )}
               >
-                <Icon className="h-[18px] w-[18px]" />
-                {!collapsed ? <span>{item.label}</span> : null}
+                <Icon className={cn("h-[18px] w-[18px]", itemTextClass)} />
+                {!collapsed ? <span className={itemTextClass}>{item.label}</span> : null}
               </Link>
             );
           })}
