@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { RightDrawer } from "@/components/common/right-drawer";
+import { contacts, leads, properties, users } from "@/lib/mock-data";
 
 const tabs = ["Timeline", "Matched Properties", "Notes"] as const;
 
@@ -17,6 +19,12 @@ export function LeadDetail() {
     "Timeline"
   );
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [contactDetailsOpen, setContactDetailsOpen] = useState(false);
+  const [propertyDetailsOpen, setPropertyDetailsOpen] = useState(false);
+  const lead = leads[0];
+  const contact = contacts.find((item) => item.id === lead?.contactId);
+  const property = properties.find((item) => item.id === lead?.propertyId);
+  const owner = users.find((item) => item.id === lead?.ownerId);
 
   return (
     <div className="space-y-6">
@@ -24,14 +32,32 @@ export function LeadDetail() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="space-y-2">
             <div className="flex items-center gap-3">
-              <h2 className="text-lg font-semibold">Kudzai Moyo</h2>
+              <h2 className="text-lg font-semibold">
+                {contact?.name ?? "Lead"}
+              </h2>
               <Badge className="bg-success/10 text-success">Open</Badge>
             </div>
             <div className="flex flex-wrap gap-4 text-sm text-text-muted">
-              <span>Owner: Tafadzwa Gondo</span>
-              <span>Contact: Kudzai Moyo</span>
-              <span>Property: Borrowdale Villa</span>
+              <span>Owner: {owner?.name ?? "Unassigned"}</span>
+              <span>Contact: {contact?.name ?? "Unknown"}</span>
+              <span>Property: {property?.title ?? "Not linked"}</span>
               <span>Created: Mar 12, 2025</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="secondary"
+                className="h-9 px-3 text-xs"
+                onClick={() => setContactDetailsOpen(true)}
+              >
+                View contact details
+              </Button>
+              <Button
+                variant="secondary"
+                className="h-9 px-3 text-xs"
+                onClick={() => setPropertyDetailsOpen(true)}
+              >
+                View property details
+              </Button>
             </div>
           </div>
           <div className="min-w-[200px]">
@@ -225,6 +251,86 @@ export function LeadDetail() {
           </div>
         </div>
       </RightDrawer>
+
+      <Modal
+        open={contactDetailsOpen}
+        title={contact ? `Contact: ${contact.name}` : "Contact details"}
+        description="Review the contact details linked to this lead."
+        onClose={() => setContactDetailsOpen(false)}
+        footer={
+          <div className="flex justify-end">
+            <Button onClick={() => setContactDetailsOpen(false)}>Close</Button>
+          </div>
+        }
+      >
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label>Name</Label>
+            <Input value={contact?.name ?? ""} readOnly />
+          </div>
+          <div className="space-y-2">
+            <Label>Phone</Label>
+            <Input value={contact?.phone ?? ""} readOnly />
+          </div>
+          <div className="space-y-2">
+            <Label>Email</Label>
+            <Input value={contact?.email ?? ""} readOnly />
+          </div>
+          <div className="space-y-2">
+            <Label>Owner</Label>
+            <Input value={owner?.name ?? "Unassigned"} readOnly />
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={propertyDetailsOpen}
+        title={
+          property ? `Property: ${property.title}` : "Property details"
+        }
+        description="Review the property details linked to this lead."
+        onClose={() => setPropertyDetailsOpen(false)}
+        footer={
+          <div className="flex justify-end">
+            <Button onClick={() => setPropertyDetailsOpen(false)}>Close</Button>
+          </div>
+        }
+      >
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2 md:col-span-2">
+            <Label>Title</Label>
+            <Input value={property?.title ?? ""} readOnly />
+          </div>
+          <div className="space-y-2">
+            <Label>Type</Label>
+            <Input value={property?.type ?? ""} readOnly />
+          </div>
+          <div className="space-y-2">
+            <Label>Listing</Label>
+            <Input value={property?.listing ?? ""} readOnly />
+          </div>
+          <div className="space-y-2">
+            <Label>Price</Label>
+            <Input value={property?.price ?? ""} readOnly />
+          </div>
+          <div className="space-y-2">
+            <Label>Currency</Label>
+            <Input value={property?.currency ?? ""} readOnly />
+          </div>
+          <div className="space-y-2 md:col-span-2">
+            <Label>Location</Label>
+            <Input value={property?.location ?? ""} readOnly />
+          </div>
+          <div className="space-y-2">
+            <Label>Area (m²)</Label>
+            <Input value={property?.area ?? ""} readOnly />
+          </div>
+          <div className="space-y-2">
+            <Label>Status</Label>
+            <Input value={property?.status ?? ""} readOnly />
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
