@@ -37,10 +37,18 @@ export function Sidebar({ isAdmin, collapsed, onToggle }: SidebarProps) {
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 flex h-screen flex-col bg-[#2a5925] px-3 py-4 text-[#fcfcfc] transition-[width] duration-200",
+        "fixed left-0 top-0 flex h-screen flex-col bg-[#2a5925] px-3 py-4 text-[#fcfcfc] transition-[width] duration-200 relative",
         collapsed ? "w-[var(--sidebar-width-collapsed)]" : "w-[var(--sidebar-width)]"
       )}
     >
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        className="absolute -right-4 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-[#2a5925] text-[#fcfcfc] shadow-sm transition hover:bg-white/10"
+      >
+        {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+      </button>
       <div className="mb-6 flex items-center justify-between px-2">
         <div
           className={cn(
@@ -50,28 +58,6 @@ export function Sidebar({ isAdmin, collapsed, onToggle }: SidebarProps) {
         >
           {collapsed ? "S" : "SynCRM"}
         </div>
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className={cn(
-            "ml-2 flex h-9 w-9 items-center justify-center rounded-full border border-white/20 text-[#fcfcfc] transition hover:bg-white/10",
-            collapsed ? "ml-0" : "hidden"
-          )}
-        >
-          <ChevronRight className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className={cn(
-            "ml-2 flex h-9 w-9 items-center justify-center rounded-full border border-white/20 text-[#fcfcfc] transition hover:bg-white/10",
-            collapsed ? "hidden" : "flex"
-          )}
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </button>
       </div>
       <nav className="flex-1 space-y-1">
         {navItems.map((item) => {
