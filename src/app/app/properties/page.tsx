@@ -173,6 +173,13 @@ export default function PropertiesPage() {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {properties.map((property) => (
             <Card key={property.id} className="flex h-full flex-col">
+              <div className="aspect-[4/3] w-full overflow-hidden rounded-[12px] border border-border-strong bg-muted">
+                <img
+                  src={property.images[0]}
+                  alt={`${property.title} cover`}
+                  className="h-full w-full object-cover"
+                />
+              </div>
               <CardHeader className="space-y-3">
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -233,114 +240,133 @@ export default function PropertiesPage() {
           </div>
         }
       >
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2 md:col-span-2">
-            <Label>Title</Label>
-            <Input
-              value={propertyDraft.title}
-              onChange={(event) =>
-                setPropertyDraft((prev) => ({
-                  ...prev,
-                  title: event.target.value,
-                }))
-              }
-            />
+        <div className="space-y-6">
+          <div className="space-y-3">
+            <Label>Images</Label>
+            <div className="grid gap-3 md:grid-cols-3">
+              {(selectedProperty?.images ?? []).map((image, index) => (
+                <div
+                  key={`${selectedProperty?.id ?? "property"}-image-${index}`}
+                  className="aspect-[4/3] w-full overflow-hidden rounded-[10px] border border-border-strong bg-muted"
+                >
+                  <img
+                    src={image}
+                    alt={`${selectedProperty?.title ?? "Property"} image ${index + 1}`}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label>Type</Label>
-            <Select
-              value={propertyDraft.type}
-              onChange={(event) =>
-                setPropertyDraft((prev) => ({
-                  ...prev,
-                  type: event.target.value,
-                }))
-              }
-            >
-              <option value="House">House</option>
-              <option value="Apartment">Apartment</option>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Listing</Label>
-            <Select
-              value={propertyDraft.listing}
-              onChange={(event) =>
-                setPropertyDraft((prev) => ({
-                  ...prev,
-                  listing: event.target.value,
-                }))
-              }
-            >
-              <option value="Sale">Sale</option>
-              <option value="Rent">Rent</option>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Price</Label>
-            <Input
-              value={propertyDraft.price}
-              onChange={(event) =>
-                setPropertyDraft((prev) => ({
-                  ...prev,
-                  price: event.target.value,
-                }))
-              }
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Currency</Label>
-            <Select
-              value={propertyDraft.currency}
-              onChange={(event) =>
-                setPropertyDraft((prev) => ({
-                  ...prev,
-                  currency: event.target.value,
-                }))
-              }
-            >
-              <option value="USD">USD</option>
-              <option value="ZWL">ZWL</option>
-            </Select>
-          </div>
-          <div className="space-y-2 md:col-span-2">
-            <Label>Location</Label>
-            <Input
-              value={propertyDraft.location}
-              onChange={(event) =>
-                setPropertyDraft((prev) => ({
-                  ...prev,
-                  location: event.target.value,
-                }))
-              }
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Area (m²)</Label>
-            <Input
-              value={propertyDraft.area}
-              onChange={(event) =>
-                setPropertyDraft((prev) => ({
-                  ...prev,
-                  area: event.target.value,
-                }))
-              }
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Status</Label>
-            <Select
-              value={propertyDraft.status}
-              onChange={(event) =>
-                setPropertyDraft((prev) => ({
-                  ...prev,
-                  status: event.target.value,
-                }))
-              }
-            >
-              <option value="Available">Available</option>
-              <option value="Under Offer">Under Offer</option>
-            </Select>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2 md:col-span-2">
+              <Label>Title</Label>
+              <Input
+                value={propertyDraft.title}
+                onChange={(event) =>
+                  setPropertyDraft((prev) => ({
+                    ...prev,
+                    title: event.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Type</Label>
+              <Select
+                value={propertyDraft.type}
+                onChange={(event) =>
+                  setPropertyDraft((prev) => ({
+                    ...prev,
+                    type: event.target.value,
+                  }))
+                }
+              >
+                <option value="House">House</option>
+                <option value="Apartment">Apartment</option>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Listing</Label>
+              <Select
+                value={propertyDraft.listing}
+                onChange={(event) =>
+                  setPropertyDraft((prev) => ({
+                    ...prev,
+                    listing: event.target.value,
+                  }))
+                }
+              >
+                <option value="Sale">Sale</option>
+                <option value="Rent">Rent</option>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Price</Label>
+              <Input
+                value={propertyDraft.price}
+                onChange={(event) =>
+                  setPropertyDraft((prev) => ({
+                    ...prev,
+                    price: event.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Currency</Label>
+              <Select
+                value={propertyDraft.currency}
+                onChange={(event) =>
+                  setPropertyDraft((prev) => ({
+                    ...prev,
+                    currency: event.target.value,
+                  }))
+                }
+              >
+                <option value="USD">USD</option>
+                <option value="ZWL">ZWL</option>
+              </Select>
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label>Location</Label>
+              <Input
+                value={propertyDraft.location}
+                onChange={(event) =>
+                  setPropertyDraft((prev) => ({
+                    ...prev,
+                    location: event.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Area (m²)</Label>
+              <Input
+                value={propertyDraft.area}
+                onChange={(event) =>
+                  setPropertyDraft((prev) => ({
+                    ...prev,
+                    area: event.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select
+                value={propertyDraft.status}
+                onChange={(event) =>
+                  setPropertyDraft((prev) => ({
+                    ...prev,
+                    status: event.target.value,
+                  }))
+                }
+              >
+                <option value="Available">Available</option>
+                <option value="Under Offer">Under Offer</option>
+              </Select>
+            </div>
           </div>
         </div>
       </Modal>
