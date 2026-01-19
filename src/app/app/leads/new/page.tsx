@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { contacts, properties } from "@/lib/mock-data";
 
 export default function NewLeadPage() {
   return (
@@ -17,16 +18,24 @@ export default function NewLeadPage() {
       <Card className="p-5">
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <Label>Full name</Label>
-            <Input placeholder="Client name" />
+            <Label>Contact</Label>
+            <Select>
+              {contacts.map((contact) => (
+                <option key={contact.id} value={contact.id}>
+                  {contact.name}
+                </option>
+              ))}
+            </Select>
           </div>
           <div className="space-y-2">
-            <Label>Phone</Label>
-            <Input placeholder="+263" />
-          </div>
-          <div className="space-y-2">
-            <Label>Email (optional)</Label>
-            <Input placeholder="name@email.com" />
+            <Label>Property</Label>
+            <Select>
+              {properties.map((property) => (
+                <option key={property.id} value={property.id}>
+                  {property.title}
+                </option>
+              ))}
+            </Select>
           </div>
           <div className="space-y-2">
             <Label>Interest type</Label>

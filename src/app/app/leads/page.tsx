@@ -4,16 +4,25 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Table, TableCell, TableHead, TableRow } from "@/components/ui/table";
-import { currentUser, leads, users } from "@/lib/mock-data";
+import { contacts, currentUser, leads, properties, users } from "@/lib/mock-data";
 
 export default function LeadsPage() {
+  const contactMap = new Map(contacts.map((contact) => [contact.id, contact]));
+  const propertyMap = new Map(
+    properties.map((property) => [property.id, property])
+  );
+  const userMap = new Map(users.map((user) => [user.id, user]));
+  const visibleLeads =
+    currentUser.role === "admin"
+      ? leads
+      : leads.filter((lead) => lead.ownerId === currentUser.id);
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold">Leads</h2>
           <p className="text-sm text-text-muted">
-            Contact book and pipeline overview.
+            Leads link a contact to the property they are interested in.
           </p>
         </div>
         <Link href="/app/leads/new">
@@ -64,25 +73,43 @@ export default function LeadsPage() {
       <Table>
         <thead>
           <tr>
-            <TableHead>Name</TableHead>
-            <TableHead>Phone</TableHead>
+            <TableHead>Contact</TableHead>
+            <TableHead>Property</TableHead>
             <TableHead>Stage</TableHead>
+            <TableHead>Owner</TableHead>
             <TableHead>Updated</TableHead>
           </tr>
         </thead>
         <tbody>
-          {leads.map((lead) => (
+          {visibleLeads.map((lead) => {
+            const contact = contactMap.get(lead.contactId);
+            const property = propertyMap.get(lead.propertyId);
+            const owner = userMap.get(lead.ownerId);
+            return (
             <TableRow key={lead.id} className="cursor-pointer">
               <TableCell>
                 <Link href={`/app/leads/${lead.id}`} className="font-medium">
-                  {lead.name}
+                  {contact?.name ?? "Unknown contact"}
                 </Link>
+                <p className="text-xs text-text-muted">
+                  {contact?.phone ?? "No phone on file"}
+                </p>
               </TableCell>
-              <TableCell>{lead.phone}</TableCell>
+              <TableCell>
+                <p className="font-medium">
+                  {property?.title ?? "Unknown property"}
+                </p>
+                <p className="text-xs text-text-muted">
+                  {property?.location ?? "No location"} ·{" "}
+                  {property?.listing ?? "Listing"}
+                </p>
+              </TableCell>
               <TableCell>{lead.stage}</TableCell>
+              <TableCell>{owner?.name ?? "Unassigned"}</TableCell>
               <TableCell>{lead.updated}</TableCell>
             </TableRow>
-          ))}
+            );
+          })}
         </tbody>
       </Table>
     </div>
