@@ -38,6 +38,7 @@ export function Sidebar({ isAdmin, collapsed, onToggle }: SidebarProps) {
     <aside
       className={cn(
         "fixed left-0 top-0 flex h-screen flex-col bg-[#2a5925] px-3 py-4 text-[#fcfcfc] transition-[width] duration-200",
+        "relative",
         collapsed ? "w-[var(--sidebar-width-collapsed)]" : "w-[var(--sidebar-width)]"
       )}
     >
@@ -56,23 +57,22 @@ export function Sidebar({ isAdmin, collapsed, onToggle }: SidebarProps) {
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           className={cn(
             "ml-2 flex h-9 w-9 items-center justify-center rounded-full border border-white/20 text-[#fcfcfc] transition hover:bg-white/10",
-            collapsed ? "ml-0" : "hidden"
-          )}
-        >
-          <ChevronRight className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className={cn(
-            "ml-2 flex h-9 w-9 items-center justify-center rounded-full border border-white/20 text-[#fcfcfc] transition hover:bg-white/10",
             collapsed ? "hidden" : "flex"
           )}
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
       </div>
+      {collapsed ? (
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-label="Expand sidebar"
+          className="absolute right-[-18px] top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-[#2a5925] text-[#fcfcfc] shadow-lg transition hover:bg-white/10"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      ) : null}
       <nav className="flex-1 space-y-1">
         {navItems.map((item) => {
           const Icon = item.icon;
