@@ -1,9 +1,22 @@
+"use client";
+
+import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { Table, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { contacts, currentUser, users } from "@/lib/mock-data";
+
+const emptyContactDraft = {
+  name: "",
+  phone: "",
+  email: "",
+  ownerId: "",
+};
+
+type Contact = (typeof contacts)[number];
 
 export default function ContactsPage() {
   const userMap = new Map(users.map((user) => [user.id, user]));
@@ -11,6 +24,31 @@ export default function ContactsPage() {
     currentUser.role === "admin"
       ? contacts
       : contacts.filter((contact) => contact.ownerId === currentUser.id);
+
+  const [selectedContact, setSelectedContact] = React.useState<Contact | null>(
+    null
+  );
+  const [contactDraft, setContactDraft] = React.useState(emptyContactDraft);
+
+  React.useEffect(() => {
+    if (selectedContact) {
+      setContactDraft({
+        name: selectedContact.name,
+        phone: selectedContact.phone,
+        email: selectedContact.email,
+        ownerId: selectedContact.ownerId,
+      });
+    }
+  }, [selectedContact]);
+
+  const closeModal = () => {
+    setSelectedContact(null);
+    setContactDraft(emptyContactDraft);
+  };
+
+  const handleSave = () => {
+    closeModal();
+  };
 
   return (
     <div className="space-y-6">
@@ -73,7 +111,11 @@ export default function ContactsPage() {
               <TableCell>{contact.email}</TableCell>
               <TableCell>{userMap.get(contact.ownerId)?.name ?? "Unassigned"}</TableCell>
               <TableCell className="text-right">
-                <Button variant="secondary" className="h-9 px-3">
+                <Button
+                  variant="secondary"
+                  className="h-9 px-3"
+                  onClick={() => setSelectedContact(contact)}
+                >
                   View
                 </Button>
               </TableCell>
@@ -81,6 +123,79 @@ export default function ContactsPage() {
           ))}
         </tbody>
       </Table>
+
+      <Modal
+        open={Boolean(selectedContact)}
+        title={selectedContact ? `Contact: ${selectedContact.name}` : "Contact"}
+        description="Review details and make edits before saving."
+        onClose={closeModal}
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={closeModal}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave}>Save changes</Button>
+          </div>
+        }
+      >
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label>Name</Label>
+            <Input
+              value={contactDraft.name}
+              onChange={(event) =>
+                setContactDraft((prev) => ({
+                  ...prev,
+                  name: event.target.value,
+                }))
+              }
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Phone</Label>
+            <Input
+              value={contactDraft.phone}
+              onChange={(event) =>
+                setContactDraft((prev) => ({
+                  ...prev,
+                  phone: event.target.value,
+                }))
+              }
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Email</Label>
+            <Input
+              value={contactDraft.email}
+              onChange={(event) =>
+                setContactDraft((prev) => ({
+                  ...prev,
+                  email: event.target.value,
+                }))
+              }
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Owner</Label>
+            <Select
+              value={contactDraft.ownerId}
+              disabled={currentUser.role !== "admin"}
+              onChange={(event) =>
+                setContactDraft((prev) => ({
+                  ...prev,
+                  ownerId: event.target.value,
+                }))
+              }
+            >
+              {users.map((user) => (
+                <option key={user.id} value={user.id}>
+                  {user.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
