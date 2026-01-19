@@ -60,6 +60,7 @@ export default function ContactsPage() {
             <TableHead>Phone</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>Owner</TableHead>
+            <TableHead className="text-right">Action</TableHead>
           </tr>
         </thead>
         <tbody>
@@ -71,6 +72,11 @@ export default function ContactsPage() {
               <TableCell>{contact.phone}</TableCell>
               <TableCell>{contact.email}</TableCell>
               <TableCell>{userMap.get(contact.ownerId)?.name ?? "Unassigned"}</TableCell>
+              <TableCell className="text-right">
+                <Button variant="secondary" className="h-9 px-3">
+                  View
+                </Button>
+              </TableCell>
             </TableRow>
           ))}
         </tbody>
