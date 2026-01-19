@@ -49,6 +49,11 @@ export const properties = [
     location: "Borrowdale, Harare",
     area: "280",
     status: "Available",
+    images: [
+      "https://images.unsplash.com/photo-1502005229762-cf1b2da7c5d6?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1507089947368-19c1da9775ae?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1493809842364-78817add7ffb?auto=format&fit=crop&w=1200&q=80",
+    ],
   },
   {
     id: "property-2",
@@ -60,6 +65,11 @@ export const properties = [
     location: "Avondale, Harare",
     area: "120",
     status: "Under Offer",
+    images: [
+      "https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=1200&q=80",
+    ],
   },
 ];
 
