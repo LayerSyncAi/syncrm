@@ -16,6 +16,7 @@ export default function LeadsPage() {
     currentUser.role === "admin"
       ? leads
       : leads.filter((lead) => lead.ownerId === currentUser.id);
+  const stageOptions = ["Prospect", "Contacted", "Viewing Scheduled", "Negotiation"];
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -78,6 +79,7 @@ export default function LeadsPage() {
             <TableHead>Stage</TableHead>
             <TableHead>Owner</TableHead>
             <TableHead>Updated</TableHead>
+            <TableHead>Actions</TableHead>
           </tr>
         </thead>
         <tbody>
@@ -86,28 +88,47 @@ export default function LeadsPage() {
             const property = propertyMap.get(lead.propertyId);
             const owner = userMap.get(lead.ownerId);
             return (
-            <TableRow key={lead.id} className="cursor-pointer">
-              <TableCell>
-                <Link href={`/app/leads/${lead.id}`} className="font-medium">
-                  {contact?.name ?? "Unknown contact"}
-                </Link>
-                <p className="text-xs text-text-muted">
-                  {contact?.phone ?? "No phone on file"}
-                </p>
-              </TableCell>
-              <TableCell>
-                <p className="font-medium">
-                  {property?.title ?? "Unknown property"}
-                </p>
-                <p className="text-xs text-text-muted">
-                  {property?.location ?? "No location"} ·{" "}
-                  {property?.listing ?? "Listing"}
-                </p>
-              </TableCell>
-              <TableCell>{lead.stage}</TableCell>
-              <TableCell>{owner?.name ?? "Unassigned"}</TableCell>
-              <TableCell>{lead.updated}</TableCell>
-            </TableRow>
+              <TableRow key={lead.id}>
+                <TableCell>
+                  <Link href={`/app/leads/${lead.id}`} className="font-medium">
+                    {contact?.name ?? "Unknown contact"}
+                  </Link>
+                  <p className="text-xs text-text-muted">
+                    {contact?.phone ?? "No phone on file"}
+                  </p>
+                </TableCell>
+                <TableCell>
+                  <p className="font-medium">
+                    {property?.title ?? "Unknown property"}
+                  </p>
+                  <p className="text-xs text-text-muted">
+                    {property?.location ?? "No location"} ·{" "}
+                    {property?.listing ?? "Listing"}
+                  </p>
+                </TableCell>
+                <TableCell>
+                  <Select
+                    defaultValue={lead.stage}
+                    aria-label={`Update stage for ${contact?.name ?? "lead"}`}
+                    className="h-9"
+                  >
+                    {stageOptions.map((stage) => (
+                      <option key={stage} value={stage}>
+                        {stage}
+                      </option>
+                    ))}
+                  </Select>
+                </TableCell>
+                <TableCell>{owner?.name ?? "Unassigned"}</TableCell>
+                <TableCell>{lead.updated}</TableCell>
+                <TableCell>
+                  <Link href={`/app/leads/${lead.id}`}>
+                    <Button variant="secondary" className="h-9 px-3">
+                      View
+                    </Button>
+                  </Link>
+                </TableCell>
+              </TableRow>
             );
           })}
         </tbody>
