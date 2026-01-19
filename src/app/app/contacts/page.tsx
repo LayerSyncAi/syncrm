@@ -29,6 +29,7 @@ export default function ContactsPage() {
     null
   );
   const [contactDraft, setContactDraft] = React.useState(emptyContactDraft);
+  const [isCreating, setIsCreating] = React.useState(false);
 
   React.useEffect(() => {
     if (selectedContact) {
@@ -43,6 +44,7 @@ export default function ContactsPage() {
 
   const closeModal = () => {
     setSelectedContact(null);
+    setIsCreating(false);
     setContactDraft(emptyContactDraft);
   };
 
@@ -60,7 +62,15 @@ export default function ContactsPage() {
             leads.
           </p>
         </div>
-        <Button>+ New Contact</Button>
+        <Button
+          onClick={() => {
+            setSelectedContact(null);
+            setContactDraft(emptyContactDraft);
+            setIsCreating(true);
+          }}
+        >
+          + New Contact
+        </Button>
       </div>
 
       <div className="rounded-[12px] border border-border-strong bg-card-bg p-4">
@@ -125,16 +135,24 @@ export default function ContactsPage() {
       </Table>
 
       <Modal
-        open={Boolean(selectedContact)}
-        title={selectedContact ? `Contact: ${selectedContact.name}` : "Contact"}
-        description="Review details and make edits before saving."
+        open={Boolean(selectedContact) || isCreating}
+        title={
+          selectedContact ? `Contact: ${selectedContact.name}` : "New Contact"
+        }
+        description={
+          selectedContact
+            ? "Review details and make edits before saving."
+            : "Add details to create a new contact."
+        }
         onClose={closeModal}
         footer={
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={closeModal}>
               Cancel
             </Button>
-            <Button onClick={handleSave}>Save changes</Button>
+            <Button onClick={handleSave}>
+              {selectedContact ? "Save changes" : "Save contact"}
+            </Button>
           </div>
         }
       >
