@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Modal } from "@/components/ui/modal";
@@ -28,6 +29,7 @@ export default function PropertiesPage() {
     null
   );
   const [propertyDraft, setPropertyDraft] = React.useState(emptyPropertyDraft);
+  const [viewMode, setViewMode] = React.useState<"list" | "cards">("list");
 
   React.useEffect(() => {
     if (selectedProperty) {
@@ -62,11 +64,29 @@ export default function PropertiesPage() {
             Browse and match inventory across the pipeline.
           </p>
         </div>
-        {currentUser.role === "admin" ? (
-          <Link href="/app/properties/new">
-            <Button>+ New Property</Button>
-          </Link>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-1 rounded-[12px] border border-border-strong bg-card-bg p-1">
+            <Button
+              variant={viewMode === "list" ? "primary" : "ghost"}
+              className="h-8 px-3"
+              onClick={() => setViewMode("list")}
+            >
+              List
+            </Button>
+            <Button
+              variant={viewMode === "cards" ? "primary" : "ghost"}
+              className="h-8 px-3"
+              onClick={() => setViewMode("cards")}
+            >
+              Cards
+            </Button>
+          </div>
+          {currentUser.role === "admin" ? (
+            <Link href="/app/properties/new">
+              <Button>+ New Property</Button>
+            </Link>
+          ) : null}
+        </div>
       </div>
 
       <div className="rounded-[12px] border border-border-strong bg-card-bg p-4">
@@ -110,44 +130,92 @@ export default function PropertiesPage() {
         </div>
       </div>
 
-      <Table>
-        <thead>
-          <tr>
-            <TableHead>Title</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead>Listing</TableHead>
-            <TableHead>Price</TableHead>
-            <TableHead>Currency</TableHead>
-            <TableHead>Location</TableHead>
-            <TableHead className="text-right">Area (m²)</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="text-right">Action</TableHead>
-          </tr>
-        </thead>
-        <tbody>
+      {viewMode === "list" ? (
+        <Table>
+          <thead>
+            <tr>
+              <TableHead>Title</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Listing</TableHead>
+              <TableHead>Price</TableHead>
+              <TableHead>Currency</TableHead>
+              <TableHead>Location</TableHead>
+              <TableHead className="text-right">Area (m²)</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Action</TableHead>
+            </tr>
+          </thead>
+          <tbody>
+            {properties.map((property) => (
+              <TableRow key={property.id} className="cursor-pointer">
+                <TableCell className="font-medium">{property.title}</TableCell>
+                <TableCell>{property.type}</TableCell>
+                <TableCell>{property.listing}</TableCell>
+                <TableCell>{property.price}</TableCell>
+                <TableCell>{property.currency}</TableCell>
+                <TableCell>{property.location}</TableCell>
+                <TableCell className="text-right">{property.area}</TableCell>
+                <TableCell>{property.status}</TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    variant="secondary"
+                    className="h-9 px-3"
+                    onClick={() => setSelectedProperty(property)}
+                  >
+                    View
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </tbody>
+        </Table>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {properties.map((property) => (
-            <TableRow key={property.id} className="cursor-pointer">
-              <TableCell className="font-medium">{property.title}</TableCell>
-              <TableCell>{property.type}</TableCell>
-              <TableCell>{property.listing}</TableCell>
-              <TableCell>{property.price}</TableCell>
-              <TableCell>{property.currency}</TableCell>
-              <TableCell>{property.location}</TableCell>
-              <TableCell className="text-right">{property.area}</TableCell>
-              <TableCell>{property.status}</TableCell>
-              <TableCell className="text-right">
-                <Button
-                  variant="secondary"
-                  className="h-9 px-3"
-                  onClick={() => setSelectedProperty(property)}
-                >
-                  View
-                </Button>
-              </TableCell>
-            </TableRow>
+            <Card key={property.id} className="flex h-full flex-col">
+              <CardHeader className="space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs text-text-muted">
+                      {property.listing} • {property.type}
+                    </p>
+                    <h3 className="text-base font-semibold">
+                      {property.title}
+                    </h3>
+                  </div>
+                  <span className="rounded-full border border-border-strong px-2 py-1 text-xs text-text-muted">
+                    {property.status}
+                  </span>
+                </div>
+                <div className="text-sm font-medium">
+                  {property.price} {property.currency}
+                </div>
+              </CardHeader>
+              <CardContent className="flex flex-1 flex-col gap-3">
+                <div className="grid gap-2 text-sm text-text-muted">
+                  <div className="flex items-center justify-between gap-2 text-text">
+                    <span className="text-text-muted">Location</span>
+                    <span>{property.location}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 text-text">
+                    <span className="text-text-muted">Area</span>
+                    <span>{property.area} m²</span>
+                  </div>
+                </div>
+                <div className="mt-auto flex justify-end">
+                  <Button
+                    variant="secondary"
+                    className="h-9 px-3"
+                    onClick={() => setSelectedProperty(property)}
+                  >
+                    View
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           ))}
-        </tbody>
-      </Table>
+        </div>
+      )}
 
       <Modal
         open={Boolean(selectedProperty)}
