@@ -37,7 +37,7 @@ export function Sidebar({ isAdmin, collapsed, onToggle }: SidebarProps) {
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 flex h-screen flex-col bg-[#2a5925] px-3 py-4 text-[#fcfcfc] transition-[width] duration-200 relative",
+        "fixed left-0 top-0 flex h-screen flex-col bg-[#2a5925] px-3 py-4 text-[#fcfcfc] transition-[width] duration-200",
         collapsed ? "w-[var(--sidebar-width-collapsed)]" : "w-[var(--sidebar-width)]"
       )}
     >
