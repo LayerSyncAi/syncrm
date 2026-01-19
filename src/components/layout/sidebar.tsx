@@ -48,7 +48,7 @@ export function Sidebar({ isAdmin, collapsed, onToggle }: SidebarProps) {
             collapsed ? "w-full text-center" : "w-auto"
           )}
         >
-          {collapsed ? "SC" : "SynCRM"}
+          {collapsed ? "S" : "SynCRM"}
         </div>
         <button
           type="button"
