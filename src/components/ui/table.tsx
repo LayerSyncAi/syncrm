@@ -11,6 +11,20 @@ export function Table({
   );
 }
 
+export function TableHeader({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLTableSectionElement>) {
+  return <thead className={cn("[&_tr]:border-b", className)} {...props} />;
+}
+
+export function TableBody({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLTableSectionElement>) {
+  return <tbody className={cn("", className)} {...props} />;
+}
+
 export function TableHead({
   className,
   ...props

@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   LayoutDashboard,
+  Shield,
   UserCog,
   Users,
   Waypoints,
@@ -24,6 +25,7 @@ const navItems = [
 
 const adminItems = [
   { label: "Users", href: "/app/admin/users", icon: UserCog },
+  { label: "Roles", href: "/app/admin/roles", icon: Shield },
   { label: "Stages", href: "/app/admin/stages", icon: Waypoints },
 ];
 

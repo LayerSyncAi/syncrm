@@ -9,9 +9,13 @@
  */
 
 import type * as activities from "../activities.js";
+import type * as auth from "../auth.js";
+import type * as email from "../email.js";
 import type * as helpers from "../helpers.js";
+import type * as http from "../http.js";
 import type * as leads from "../leads.js";
 import type * as matches from "../matches.js";
+import type * as passwordReset from "../passwordReset.js";
 import type * as properties from "../properties.js";
 import type * as stages from "../stages.js";
 import type * as users from "../users.js";
@@ -24,9 +28,13 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   activities: typeof activities;
+  auth: typeof auth;
+  email: typeof email;
   helpers: typeof helpers;
+  http: typeof http;
   leads: typeof leads;
   matches: typeof matches;
+  passwordReset: typeof passwordReset;
   properties: typeof properties;
   stages: typeof stages;
   users: typeof users;

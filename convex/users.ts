@@ -1,11 +1,16 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { getCurrentUser, requireAdmin } from "./helpers";
+import { getCurrentUser, requireAdmin, getCurrentUserOptional } from "./helpers";
 
 export const getMe = query({
   handler: async (ctx) => {
-    const user = await getCurrentUser(ctx);
-    return user;
+    return getCurrentUserOptional(ctx);
+  },
+});
+
+export const getMeRequired = query({
+  handler: async (ctx) => {
+    return getCurrentUser(ctx);
   },
 });
 
@@ -55,5 +60,54 @@ export const adminSetUserActive = mutation({
       isActive: args.isActive,
       updatedAt: Date.now(),
     });
+  },
+});
+
+// Admin function to change user role
+export const adminSetUserRole = mutation({
+  args: {
+    userId: v.id("users"),
+    role: v.union(v.literal("admin"), v.literal("agent")),
+  },
+  handler: async (ctx, args) => {
+    const currentAdmin = await requireAdmin(ctx);
+
+    const targetUser = await ctx.db.get(args.userId);
+    if (!targetUser) {
+      throw new Error("User not found");
+    }
+
+    // Prevent demoting self if last admin
+    if (
+      currentAdmin._id === args.userId &&
+      args.role === "agent" &&
+      targetUser.role === "admin"
+    ) {
+      // Count admins
+      const allUsers = await ctx.db.query("users").collect();
+      const adminCount = allUsers.filter(
+        (u) => u.role === "admin" && u.isActive
+      ).length;
+
+      if (adminCount <= 1) {
+        throw new Error(
+          "Cannot remove admin role. You are the last admin. Promote another user first."
+        );
+      }
+    }
+
+    await ctx.db.patch(args.userId, {
+      role: args.role,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+// Get count of active admins
+export const getAdminCount = query({
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    const allUsers = await ctx.db.query("users").collect();
+    return allUsers.filter((u) => u.role === "admin" && u.isActive).length;
   },
 });
