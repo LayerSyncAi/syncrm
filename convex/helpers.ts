@@ -1,5 +1,5 @@
 import { ConvexError } from "convex/values";
-import { QueryCtx, MutationCtx } from "convex/server";
+import { QueryCtx, MutationCtx } from "./_generated/server";
 
 export async function getCurrentUser(
   ctx: QueryCtx | MutationCtx

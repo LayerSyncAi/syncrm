@@ -1,4 +1,4 @@
-import { mutation, query } from "convex/server";
+import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getCurrentUser } from "./helpers";
 
@@ -65,9 +65,14 @@ export const listUpcomingForMe = query({
     return ctx.db
       .query("activities")
       .withIndex("by_assignee_status", (q) =>
-        q.eq("assignedToUserId", user._id).eq("completedAt", undefined)
+        q.eq("assignedToUserId", user._id)
       )
-      .filter((q) => q.neq(q.field("scheduledAt"), undefined))
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("completedAt"), undefined),
+          q.neq(q.field("scheduledAt"), undefined)
+        )
+      )
       .collect();
   },
 });
