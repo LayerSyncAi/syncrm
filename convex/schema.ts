@@ -1,15 +1,32 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { authTables } from "@convex-dev/auth/server";
 
 export default defineSchema({
+  ...authTables,
   users: defineTable({
-    email: v.string(),
-    fullName: v.string(),
+    // Convex Auth fields
+    name: v.optional(v.string()),
+    image: v.optional(v.string()),
+    email: v.optional(v.string()),
+    emailVerificationTime: v.optional(v.number()),
+    isAnonymous: v.optional(v.boolean()),
+    // Custom fields
+    fullName: v.optional(v.string()),
     role: v.union(v.literal("admin"), v.literal("agent")),
     isActive: v.boolean(),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_email", ["email"]),
+  passwordResetTokens: defineTable({
+    userId: v.id("users"),
+    tokenHash: v.string(),
+    expiresAt: v.number(),
+    usedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_token_hash", ["tokenHash"])
+    .index("by_user", ["userId"]),
   pipelineStages: defineTable({
     name: v.string(),
     order: v.number(),

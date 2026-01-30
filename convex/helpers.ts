@@ -1,9 +1,22 @@
 import { ConvexError } from "convex/values";
 import { QueryCtx, MutationCtx } from "./_generated/server";
 
-export async function getCurrentUser(
-  ctx: QueryCtx | MutationCtx
-) {
+export async function getCurrentUserOptional(ctx: QueryCtx | MutationCtx) {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity?.email) {
+    return null;
+  }
+  const user = await ctx.db
+    .query("users")
+    .withIndex("by_email", (q) => q.eq("email", identity.email!))
+    .unique();
+  if (!user || !user.isActive) {
+    return null;
+  }
+  return user;
+}
+
+export async function getCurrentUser(ctx: QueryCtx | MutationCtx) {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity?.email) {
     throw new ConvexError("Unauthorized");
