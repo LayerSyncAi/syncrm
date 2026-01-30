@@ -192,13 +192,16 @@ export const resetPasswordInternal = internalMutation({
   },
 });
 
+// Type for password reset operation results
+type ResetPasswordResult = { success: boolean; error?: string };
+
 // Reset password action
 export const resetPassword = action({
   args: {
     token: v.string(),
     newPassword: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<ResetPasswordResult> => {
     if (args.newPassword.length < 8) {
       return { success: false, error: "Password must be at least 8 characters" };
     }
@@ -207,10 +210,13 @@ export const resetPassword = action({
     const newPasswordHash = await hashPassword(args.newPassword);
 
     // Update password in database
-    const result = await ctx.runMutation(internal.passwordReset.resetPasswordInternal, {
-      token: args.token,
-      newPasswordHash,
-    });
+    const result: ResetPasswordResult = await ctx.runMutation(
+      internal.passwordReset.resetPasswordInternal,
+      {
+        token: args.token,
+        newPasswordHash,
+      }
+    );
 
     return result;
   },
