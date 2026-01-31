@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
@@ -11,6 +11,13 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { user, isLoading, isAuthenticated } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+
+  // Redirect to login if not authenticated - must be in useEffect to avoid setState during render
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.replace("/login");
+    }
+  }, [isLoading, isAuthenticated, router]);
 
   // Show loading state while checking authentication
   if (isLoading) {
@@ -24,12 +31,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     );
   }
 
-  // Redirect to login if not authenticated
+  // Show loading while redirect is in progress
   if (!isAuthenticated || !user) {
-    // Use client-side redirect
-    if (typeof window !== "undefined") {
-      router.push("/login");
-    }
     return (
       <div className="min-h-screen bg-content-bg flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
