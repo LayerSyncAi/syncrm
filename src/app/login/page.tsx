@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, FormEvent, useEffect, useRef } from "react";
+import { useState, FormEvent, useEffect } from "react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -15,7 +15,9 @@ type AuthMode = "signIn" | "signUp";
 export default function LoginPage() {
   const router = useRouter();
   const { signIn } = useAuthActions();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  // Middleware redirects authenticated users, so if we get here we're not authenticated
+  // We still check isLoading to show proper loading state during initial auth check
+  const { isLoading: authLoading, isSessionAuthenticated } = useAuth();
 
   const [mode, setMode] = useState<AuthMode>("signIn");
   const [email, setEmail] = useState("");
@@ -24,23 +26,16 @@ export default function LoginPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isRedirecting, setIsRedirecting] = useState(false);
-  const hasRedirected = useRef(false);
 
-  // Redirect to app if already authenticated
-  // This handles both:
-  // 1. User lands on login page while already authenticated
-  // 2. User just signed in and auth state updated
+  // Debug logging
   useEffect(() => {
-    if (isAuthenticated && !authLoading && !hasRedirected.current) {
-      if (process.env.NODE_ENV === "development") {
-        console.log("[LoginPage] Redirecting to dashboard - user is authenticated");
-      }
-      hasRedirected.current = true;
-      setIsRedirecting(true);
-      router.replace("/app/dashboard");
+    if (process.env.NODE_ENV === "development") {
+      console.log("[LoginPage] Auth state:", {
+        authLoading,
+        isSessionAuthenticated,
+      });
     }
-  }, [isAuthenticated, authLoading, router]);
+  }, [authLoading, isSessionAuthenticated]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -79,18 +74,15 @@ export default function LoginPage() {
         console.log("[LoginPage] Calling signIn with flow:", mode);
       }
 
-      // Call Convex Auth signIn
-      const result = await signIn("password", formData);
+      // Call Convex Auth signIn - this sets the auth cookie via the middleware integration
+      await signIn("password", formData);
 
       if (process.env.NODE_ENV === "development") {
-        console.log("[LoginPage] signIn completed successfully", { result });
+        console.log("[LoginPage] signIn completed successfully");
         console.log("[LoginPage] Navigating to /app/dashboard");
       }
 
-      // Navigate immediately after signIn succeeds
-      // The dashboard page's auth guard will handle waiting for full auth state
-      setIsRedirecting(true);
-      hasRedirected.current = true;
+      // Navigate to dashboard - middleware will allow access since we're now authenticated
       router.replace("/app/dashboard");
 
       // Keep isSubmitting true during redirect to prevent flash of form
@@ -124,24 +116,13 @@ export default function LoginPage() {
   };
 
   // Show loading while checking initial auth state
+  // Middleware handles redirecting authenticated users, but we show loading during the check
   if (authLoading) {
     return (
       <main className="min-h-screen bg-content-bg flex items-center justify-center px-6">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
-          <p className="text-sm text-text-muted">Checking authentication...</p>
-        </div>
-      </main>
-    );
-  }
-
-  // Show loading while redirect is in progress (user is authenticated)
-  if (isAuthenticated || isRedirecting) {
-    return (
-      <main className="min-h-screen bg-content-bg flex items-center justify-center px-6">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
-          <p className="text-sm text-text-muted">Redirecting to dashboard...</p>
+          <p className="text-sm text-text-muted">Loading...</p>
         </div>
       </main>
     );

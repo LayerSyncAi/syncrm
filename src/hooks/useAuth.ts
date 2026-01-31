@@ -18,12 +18,18 @@ export function useAuth() {
     isAuthLoading || !isSessionAuthenticated ? "skip" : undefined
   );
 
-  // Combined loading state: auth session loading OR user data loading
+  // User data is loading if session is authenticated but user query hasn't resolved
   const isUserLoading = isSessionAuthenticated && user === undefined;
+
+  // Combined loading state: auth session loading OR user data loading
+  // This ensures we wait for both the session AND user data before making auth decisions
   const isLoading = isAuthLoading || isUserLoading;
 
-  // User is authenticated if session is authenticated AND user data is loaded
-  // This ensures we have both the session token and the user record
+  // Authentication is determined by the session state from useConvexAuth
+  // The middleware validates the session, so if isSessionAuthenticated is true,
+  // the user is authenticated (even if user data query is still loading)
+  // We only require user data to be loaded for the final isAuthenticated state
+  // to ensure the UI has the user data it needs
   const isAuthenticated = isSessionAuthenticated && user !== null && user !== undefined;
 
   // Track previous state for change detection in debug logging
@@ -59,6 +65,8 @@ export function useAuth() {
     user,
     isLoading,
     isAuthenticated,
+    // Also expose the raw session auth state for components that need it
+    isSessionAuthenticated,
     signIn,
     signOut,
   };
