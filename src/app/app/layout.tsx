@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
@@ -11,13 +11,32 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { user, isLoading, isAuthenticated } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+  const hasRedirected = useRef(false);
 
   // Redirect to login if not authenticated - must be in useEffect to avoid setState during render
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    // Only redirect if:
+    // 1. Not currently loading
+    // 2. Not authenticated
+    // 3. Haven't already initiated a redirect
+    if (!isLoading && !isAuthenticated && !hasRedirected.current) {
+      if (process.env.NODE_ENV === "development") {
+        console.log("[AppLayout] Redirecting to login - not authenticated");
+      }
+      hasRedirected.current = true;
+      setIsRedirecting(true);
       router.replace("/login");
     }
   }, [isLoading, isAuthenticated, router]);
+
+  // Reset redirect state if user becomes authenticated
+  useEffect(() => {
+    if (isAuthenticated && hasRedirected.current) {
+      hasRedirected.current = false;
+      setIsRedirecting(false);
+    }
+  }, [isAuthenticated]);
 
   // Show loading state while checking authentication
   if (isLoading) {
@@ -25,14 +44,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <div className="min-h-screen bg-content-bg flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
-          <p className="text-sm text-text-muted">Loading...</p>
+          <p className="text-sm text-text-muted">Checking authentication...</p>
         </div>
       </div>
     );
   }
 
   // Show loading while redirect is in progress
-  if (!isAuthenticated || !user) {
+  if (!isAuthenticated || !user || isRedirecting) {
     return (
       <div className="min-h-screen bg-content-bg flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">

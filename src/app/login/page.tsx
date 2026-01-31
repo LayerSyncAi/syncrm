@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, FormEvent, useEffect } from "react";
+import { useState, FormEvent, useEffect, useRef } from "react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -23,35 +23,45 @@ export default function LoginPage() {
   const [name, setName] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+  const hasRedirected = useRef(false);
 
   // Redirect to app if already authenticated
+  // This handles both:
+  // 1. User lands on login page while already authenticated
+  // 2. User just signed in and auth state updated
   useEffect(() => {
-    if (isAuthenticated && !authLoading) {
-      router.push("/app/dashboard");
+    if (isAuthenticated && !authLoading && !hasRedirected.current) {
+      if (process.env.NODE_ENV === "development") {
+        console.log("[LoginPage] Redirecting to dashboard - user is authenticated");
+      }
+      hasRedirected.current = true;
+      setIsRedirecting(true);
+      router.replace("/app/dashboard");
     }
   }, [isAuthenticated, authLoading, router]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
-    setIsLoading(true);
+    setIsSubmitting(true);
 
     try {
       if (mode === "signUp") {
         if (password !== confirmPassword) {
           setError("Passwords do not match");
-          setIsLoading(false);
+          setIsSubmitting(false);
           return;
         }
         if (password.length < 8) {
           setError("Password must be at least 8 characters");
-          setIsLoading(false);
+          setIsSubmitting(false);
           return;
         }
         if (!name.trim()) {
           setError("Name is required");
-          setIsLoading(false);
+          setIsSubmitting(false);
           return;
         }
       }
@@ -64,8 +74,19 @@ export default function LoginPage() {
         formData.set("name", name);
       }
 
+      if (process.env.NODE_ENV === "development") {
+        console.log("[LoginPage] Calling signIn...");
+      }
+
       await signIn("password", formData);
-      router.push("/app/dashboard");
+
+      if (process.env.NODE_ENV === "development") {
+        console.log("[LoginPage] signIn completed - waiting for auth state update");
+      }
+
+      // Don't navigate here - let the useEffect handle redirect once isAuthenticated becomes true
+      // This avoids the race condition where we navigate before auth state is updated
+      // Keep isSubmitting true to show loading state until redirect happens
     } catch (err) {
       console.error("Auth error:", err);
       if (mode === "signIn") {
@@ -73,25 +94,31 @@ export default function LoginPage() {
       } else {
         setError("Could not create account. Email may already be in use.");
       }
-    } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
+    // Note: Don't reset isSubmitting in finally - we want to keep showing loading until redirect
   };
 
-  // Show loading while checking auth state
+  // Show loading while checking initial auth state
   if (authLoading) {
     return (
       <main className="min-h-screen bg-content-bg flex items-center justify-center px-6">
-        <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+          <p className="text-sm text-text-muted">Checking authentication...</p>
+        </div>
       </main>
     );
   }
 
-  // Don't show login form if already authenticated
-  if (isAuthenticated) {
+  // Show loading while redirect is in progress (user is authenticated)
+  if (isAuthenticated || isRedirecting) {
     return (
       <main className="min-h-screen bg-content-bg flex items-center justify-center px-6">
-        <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+          <p className="text-sm text-text-muted">Redirecting to dashboard...</p>
+        </div>
       </main>
     );
   }
@@ -127,7 +154,7 @@ export default function LoginPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
-                  disabled={isLoading}
+                  disabled={isSubmitting}
                 />
               </div>
             )}
@@ -141,7 +168,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                disabled={isLoading}
+                disabled={isSubmitting}
               />
             </div>
             <div className="space-y-2">
@@ -155,7 +182,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={8}
-                disabled={isLoading}
+                disabled={isSubmitting}
               />
             </div>
             {mode === "signUp" && (
@@ -170,7 +197,7 @@ export default function LoginPage() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                   minLength={8}
-                  disabled={isLoading}
+                  disabled={isSubmitting}
                 />
               </div>
             )}
@@ -190,7 +217,8 @@ export default function LoginPage() {
                       setMode("signUp");
                       setError(null);
                     }}
-                    className="text-primary-600 hover:underline"
+                    disabled={isSubmitting}
+                    className="text-primary-600 hover:underline disabled:opacity-50"
                   >
                     Create an account
                   </button>
@@ -208,15 +236,16 @@ export default function LoginPage() {
                     setMode("signIn");
                     setError(null);
                   }}
-                  className="text-primary-600 hover:underline"
+                  disabled={isSubmitting}
+                  className="text-primary-600 hover:underline disabled:opacity-50"
                 >
                   Already have an account? Sign in
                 </button>
               )}
             </div>
 
-            <Button className="w-full" type="submit" disabled={isLoading}>
-              {isLoading ? (
+            <Button className="w-full" type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   {mode === "signIn" ? "Signing in..." : "Creating account..."}
