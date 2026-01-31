@@ -48,6 +48,7 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
+      // Validation for signup mode
       if (mode === "signUp") {
         if (password !== confirmPassword) {
           setError("Passwords do not match");
@@ -75,28 +76,51 @@ export default function LoginPage() {
       }
 
       if (process.env.NODE_ENV === "development") {
-        console.log("[LoginPage] Calling signIn...");
+        console.log("[LoginPage] Calling signIn with flow:", mode);
       }
 
-      await signIn("password", formData);
+      // Call Convex Auth signIn
+      const result = await signIn("password", formData);
 
       if (process.env.NODE_ENV === "development") {
-        console.log("[LoginPage] signIn completed - waiting for auth state update");
+        console.log("[LoginPage] signIn completed successfully", { result });
+        console.log("[LoginPage] Navigating to /app/dashboard");
       }
 
-      // Don't navigate here - let the useEffect handle redirect once isAuthenticated becomes true
-      // This avoids the race condition where we navigate before auth state is updated
-      // Keep isSubmitting true to show loading state until redirect happens
+      // Navigate immediately after signIn succeeds
+      // The dashboard page's auth guard will handle waiting for full auth state
+      setIsRedirecting(true);
+      hasRedirected.current = true;
+      router.replace("/app/dashboard");
+
+      // Keep isSubmitting true during redirect to prevent flash of form
     } catch (err) {
-      console.error("Auth error:", err);
-      if (mode === "signIn") {
-        setError("Invalid email or password");
+      console.error("[LoginPage] Auth error:", err);
+
+      // Extract error message if available
+      let errorMessage: string;
+      if (err instanceof Error) {
+        // Check for specific Convex auth errors
+        const message = err.message.toLowerCase();
+        if (message.includes("invalid") || message.includes("password") || message.includes("credentials")) {
+          errorMessage = "Invalid email or password";
+        } else if (message.includes("exists") || message.includes("already")) {
+          errorMessage = "An account with this email already exists";
+        } else if (mode === "signIn") {
+          errorMessage = "Invalid email or password";
+        } else {
+          errorMessage = "Could not create account. Please try again.";
+        }
+      } else if (mode === "signIn") {
+        errorMessage = "Invalid email or password";
       } else {
-        setError("Could not create account. Email may already be in use.");
+        errorMessage = "Could not create account. Email may already be in use.";
       }
+
+      setError(errorMessage);
+      // Reset loading state on error so user can retry
       setIsSubmitting(false);
     }
-    // Note: Don't reset isSubmitting in finally - we want to keep showing loading until redirect
   };
 
   // Show loading while checking initial auth state

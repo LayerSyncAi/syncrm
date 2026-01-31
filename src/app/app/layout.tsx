@@ -14,6 +14,20 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const [isRedirecting, setIsRedirecting] = useState(false);
   const hasRedirected = useRef(false);
 
+  // Debug logging for auth state
+  useEffect(() => {
+    if (process.env.NODE_ENV === "development") {
+      console.log("[AppLayout] Auth state:", {
+        isLoading,
+        isAuthenticated,
+        hasUser: !!user,
+        userEmail: user?.email || null,
+        isRedirecting,
+        hasRedirected: hasRedirected.current,
+      });
+    }
+  }, [isLoading, isAuthenticated, user, isRedirecting]);
+
   // Redirect to login if not authenticated - must be in useEffect to avoid setState during render
   useEffect(() => {
     // Only redirect if:

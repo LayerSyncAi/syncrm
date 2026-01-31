@@ -2,6 +2,7 @@
 
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useQuery, useConvexAuth } from "convex/react";
+import { useRef, useEffect } from "react";
 import { api } from "../../convex/_generated/api";
 
 export function useAuth() {
@@ -25,16 +26,34 @@ export function useAuth() {
   // This ensures we have both the session token and the user record
   const isAuthenticated = isSessionAuthenticated && user !== null && user !== undefined;
 
-  // Debug logging (remove in production)
-  if (process.env.NODE_ENV === "development") {
-    console.log("[useAuth]", {
-      isAuthLoading,
-      isSessionAuthenticated,
-      userQueryResult: user === undefined ? "loading" : user === null ? "null" : "user",
-      isLoading,
-      isAuthenticated,
-    });
-  }
+  // Track previous state for change detection in debug logging
+  const prevState = useRef({ isAuthLoading, isSessionAuthenticated, user, isLoading, isAuthenticated });
+
+  // Debug logging - only log when state changes
+  useEffect(() => {
+    if (process.env.NODE_ENV === "development") {
+      const prev = prevState.current;
+      const stateChanged =
+        prev.isAuthLoading !== isAuthLoading ||
+        prev.isSessionAuthenticated !== isSessionAuthenticated ||
+        prev.user !== user ||
+        prev.isLoading !== isLoading ||
+        prev.isAuthenticated !== isAuthenticated;
+
+      if (stateChanged) {
+        console.log("[useAuth] State changed:", {
+          isAuthLoading,
+          isSessionAuthenticated,
+          userQueryResult: user === undefined ? "loading" : user === null ? "null" : "user",
+          userEmail: user?.email || null,
+          isUserLoading,
+          isLoading,
+          isAuthenticated,
+        });
+        prevState.current = { isAuthLoading, isSessionAuthenticated, user, isLoading, isAuthenticated };
+      }
+    }
+  }, [isAuthLoading, isSessionAuthenticated, user, isLoading, isAuthenticated, isUserLoading]);
 
   return {
     user,
