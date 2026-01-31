@@ -1,6 +1,7 @@
 "use client";
 
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,8 +10,10 @@ import { Loader2 } from "lucide-react";
 export default function AppLayout({ children }: { children: ReactNode }) {
   // Middleware handles auth redirects - if we get here, user is authenticated
   // We just need to wait for user data to load for the UI
-  const { user, isLoading, isAuthenticated, isSessionAuthenticated } = useAuth();
+  const { user, isLoading, isAuthenticated, isSessionAuthenticated, signOut } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+  const router = useRouter();
+  const hasHandledInvalidSession = useRef(false);
 
   // Debug logging for auth state
   useEffect(() => {
@@ -25,9 +28,26 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     }
   }, [isLoading, isAuthenticated, isSessionAuthenticated, user]);
 
+  // Handle invalid session state: session is authenticated but no user record exists
+  // This can happen if user was deleted from DB but session token still exists
+  // Sign out to clear the broken session and redirect to login
+  useEffect(() => {
+    if (
+      !isLoading &&
+      isSessionAuthenticated &&
+      !user &&
+      !hasHandledInvalidSession.current
+    ) {
+      hasHandledInvalidSession.current = true;
+      console.log("[AppLayout] Invalid session state: session authenticated but no user record. Signing out.");
+      signOut().then(() => {
+        router.replace("/login");
+      });
+    }
+  }, [isLoading, isSessionAuthenticated, user, signOut, router]);
+
   // Show loading state while auth session or user data is loading
-  // Middleware ensures only authenticated users reach this layout,
-  // so we just need to wait for user data
+  // Also show loading during invalid session cleanup
   if (isLoading || !user) {
     return (
       <div className="min-h-screen bg-content-bg flex items-center justify-center">
