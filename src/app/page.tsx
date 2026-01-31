@@ -2,18 +2,25 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Loader2 } from "lucide-react";
 
 export default function Home() {
   const router = useRouter();
   const { isAuthenticated, isLoading } = useAuth();
+  const [isRedirecting, setIsRedirecting] = useState(false);
+  const hasRedirected = useRef(false);
 
   // Redirect authenticated users to dashboard
   useEffect(() => {
-    if (isAuthenticated && !isLoading) {
-      router.push("/app/dashboard");
+    if (isAuthenticated && !isLoading && !hasRedirected.current) {
+      if (process.env.NODE_ENV === "development") {
+        console.log("[HomePage] Redirecting to dashboard - user is authenticated");
+      }
+      hasRedirected.current = true;
+      setIsRedirecting(true);
+      router.replace("/app/dashboard");
     }
   }, [isAuthenticated, isLoading, router]);
 
@@ -21,16 +28,22 @@ export default function Home() {
   if (isLoading) {
     return (
       <main className="min-h-screen bg-content-bg flex items-center justify-center px-6">
-        <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+          <p className="text-sm text-text-muted">Checking authentication...</p>
+        </div>
       </main>
     );
   }
 
   // If authenticated, show loading while redirecting
-  if (isAuthenticated) {
+  if (isAuthenticated || isRedirecting) {
     return (
       <main className="min-h-screen bg-content-bg flex items-center justify-center px-6">
-        <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+          <p className="text-sm text-text-muted">Redirecting to dashboard...</p>
+        </div>
       </main>
     );
   }
