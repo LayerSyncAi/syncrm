@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
@@ -29,7 +29,14 @@ export default function AdminRolesPage() {
   const [updatingUserId, setUpdatingUserId] = useState<Id<"users"> | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Check if user is admin
+  // Redirect non-admin users - must be in useEffect to avoid setState during render
+  useEffect(() => {
+    if (!authLoading && (!user || user.role !== "admin")) {
+      router.replace("/app/dashboard");
+    }
+  }, [authLoading, user, router]);
+
+  // Show loading while checking auth
   if (authLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -38,8 +45,8 @@ export default function AdminRolesPage() {
     );
   }
 
+  // Show loading while redirect is in progress for non-admin users
   if (!user || user.role !== "admin") {
-    router.push("/app/dashboard");
     return (
       <div className="flex items-center justify-center py-12">
         <p className="text-text-muted">Access denied. Admins only.</p>
