@@ -1,13 +1,14 @@
 import { ConvexError } from "convex/values";
 import { QueryCtx, MutationCtx } from "./_generated/server";
-import { Id } from "./_generated/dataModel";
+import { getAuthUserId } from "@convex-dev/auth/server";
 
 /**
- * Get the current user from the authenticated session.
+ * Get the current user from the authenticated session using Convex Auth's getAuthUserId.
  *
- * In Convex Auth, when createOrUpdateUser returns a user ID, that ID is stored
- * in the authAccounts table. We look up the authAccount to get the userId,
- * then get the user.
+ * This is the correct way to get the current user in Convex Auth:
+ * 1. getAuthUserId returns the user ID that was returned from createOrUpdateUser
+ * 2. This ID is a document ID in our "users" table
+ * 3. We can directly fetch the user document with ctx.db.get(userId)
  *
  * Returns null if:
  * - No authenticated session
@@ -15,94 +16,38 @@ import { Id } from "./_generated/dataModel";
  * - User is not active
  */
 export async function getCurrentUserOptional(ctx: QueryCtx | MutationCtx) {
-  const identity = await ctx.auth.getUserIdentity();
+  // Use getAuthUserId from @convex-dev/auth/server - this is the canonical way
+  const userId = await getAuthUserId(ctx);
 
   // Debug logging in development
   const isDebug = process.env.NODE_ENV === "development" || process.env.CONVEX_DEBUG;
   if (isDebug) {
-    console.log("[getCurrentUserOptional] Identity:", {
-      hasIdentity: !!identity,
-      subject: identity?.subject,
-      tokenIdentifier: identity?.tokenIdentifier,
-      email: identity?.email,
-      issuer: identity?.issuer,
-    });
+    console.log("[getCurrentUserOptional] getAuthUserId returned:", userId);
   }
 
-  if (!identity) {
+  if (!userId) {
+    if (isDebug) {
+      console.log("[getCurrentUserOptional] No userId from getAuthUserId - user not authenticated");
+    }
     return null;
   }
 
-  let user = null;
-
-  // Strategy 1: Look up authAccount by providerAccountId
-  // The tokenIdentifier format is "<provider>|<providerAccountId>"
-  // For Password provider, providerAccountId is typically the email
-  const tokenParts = identity.tokenIdentifier.split("|");
-  const providerAccountId = tokenParts.length > 1 ? tokenParts.slice(1).join("|") : identity.tokenIdentifier;
+  // Fetch the user document directly by ID
+  // The userId from getAuthUserId is the same ID returned by createOrUpdateUser
+  const user = await ctx.db.get(userId);
 
   if (isDebug) {
-    console.log("[getCurrentUserOptional] Looking up authAccount with providerAccountId:", providerAccountId);
-  }
-
-  // Try to find the auth account by providerAccountId
-  let authAccount = await ctx.db
-    .query("authAccounts")
-    .filter((q) => q.eq(q.field("providerAccountId"), providerAccountId))
-    .first();
-
-  // If not found, try with email (for Password provider)
-  if (!authAccount && identity.email) {
-    authAccount = await ctx.db
-      .query("authAccounts")
-      .filter((q) => q.eq(q.field("providerAccountId"), identity.email))
-      .first();
-  }
-
-  if (authAccount?.userId) {
-    // Found the auth account, get the user by ID
-    user = await ctx.db.get(authAccount.userId as Id<"users">);
-    if (isDebug) {
-      console.log("[getCurrentUserOptional] Found user via authAccount:", {
-        authAccountId: authAccount._id,
-        userId: authAccount.userId,
-        userFound: !!user,
-        userEmail: user?.email,
-        userIsActive: user?.isActive,
-      });
-    }
-  }
-
-  // Strategy 2: Try to find user by email if we have one and didn't find via authAccount
-  if (!user && identity.email) {
-    user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
-      .unique();
-    if (isDebug) {
-      console.log("[getCurrentUserOptional] Fallback lookup by email:", {
-        email: identity.email,
-        userFound: !!user,
-        userIsActive: user?.isActive,
-      });
-    }
-  }
-
-  // Strategy 3: If we still have no user but identity is valid, scan authAccounts
-  // to find any account matching this session (expensive, but helps debug)
-  if (!user && isDebug) {
-    const allAccounts = await ctx.db.query("authAccounts").collect();
-    console.log("[getCurrentUserOptional] Debug - All authAccounts:", allAccounts.map(a => ({
-      id: a._id,
-      userId: a.userId,
-      provider: (a as Record<string, unknown>).provider,
-      providerAccountId: (a as Record<string, unknown>).providerAccountId,
-    })));
+    console.log("[getCurrentUserOptional] User lookup result:", {
+      userId,
+      userFound: !!user,
+      userEmail: user?.email,
+      userIsActive: user?.isActive,
+    });
   }
 
   if (!user) {
     if (isDebug) {
-      console.log("[getCurrentUserOptional] No user found for identity");
+      console.log("[getCurrentUserOptional] No user found for userId:", userId);
     }
     return null;
   }
@@ -121,14 +66,18 @@ export async function getCurrentUserOptional(ctx: QueryCtx | MutationCtx) {
  * Get the current user, throwing an error if not authenticated or not active.
  */
 export async function getCurrentUser(ctx: QueryCtx | MutationCtx) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) {
+  const userId = await getAuthUserId(ctx);
+  if (!userId) {
     throw new ConvexError("Unauthorized");
   }
 
-  const user = await getCurrentUserOptional(ctx);
+  const user = await ctx.db.get(userId);
   if (!user) {
-    throw new ConvexError("User not found or not active");
+    throw new ConvexError("User not found");
+  }
+
+  if (!user.isActive) {
+    throw new ConvexError("User account is not active");
   }
 
   return user;

@@ -1,7 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getCurrentUser, requireAdmin, getCurrentUserOptional } from "./helpers";
-import { Id } from "./_generated/dataModel";
+import { getAuthUserId } from "@convex-dev/auth/server";
 
 export const getMe = query({
   handler: async (ctx) => {
@@ -12,63 +12,17 @@ export const getMe = query({
 // Debug query to understand auth state - helps diagnose user lookup issues
 export const debugAuthState = query({
   handler: async (ctx) => {
+    // Use the canonical getAuthUserId from Convex Auth
+    const userId = await getAuthUserId(ctx);
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return {
-        hasIdentity: false,
-        identity: null,
-        authAccounts: [],
-        matchingUser: null,
-        allUsers: [],
-      };
+
+    // Get user if we have a userId
+    let user = null;
+    if (userId) {
+      user = await ctx.db.get(userId);
     }
 
-    // Get identity details
-    const identityInfo = {
-      subject: identity.subject,
-      tokenIdentifier: identity.tokenIdentifier,
-      email: identity.email,
-      issuer: identity.issuer,
-      name: identity.name,
-    };
-
-    // Get all auth accounts to see what's in the DB
-    const authAccounts = await ctx.db.query("authAccounts").collect();
-    const authAccountsInfo = authAccounts.map((a) => ({
-      id: a._id,
-      userId: a.userId,
-      provider: (a as Record<string, unknown>).provider,
-      providerAccountId: (a as Record<string, unknown>).providerAccountId,
-    }));
-
-    // Try to find matching authAccount
-    const tokenParts = identity.tokenIdentifier.split("|");
-    const providerAccountId = tokenParts.length > 1 ? tokenParts.slice(1).join("|") : identity.tokenIdentifier;
-
-    let matchingAccount = authAccounts.find(
-      (a) => (a as Record<string, unknown>).providerAccountId === providerAccountId
-    );
-    if (!matchingAccount && identity.email) {
-      matchingAccount = authAccounts.find(
-        (a) => (a as Record<string, unknown>).providerAccountId === identity.email
-      );
-    }
-
-    let matchingUser = null;
-    if (matchingAccount?.userId) {
-      matchingUser = await ctx.db.get(matchingAccount.userId as Id<"users">);
-    }
-
-    // Also try by email
-    let userByEmail = null;
-    if (identity.email) {
-      userByEmail = await ctx.db
-        .query("users")
-        .withIndex("by_email", (q) => q.eq("email", identity.email!))
-        .unique();
-    }
-
-    // Get all users for debugging
+    // Get all users for comparison
     const allUsers = await ctx.db.query("users").collect();
     const allUsersInfo = allUsers.map((u) => ({
       id: u._id,
@@ -78,23 +32,23 @@ export const debugAuthState = query({
     }));
 
     return {
-      hasIdentity: true,
-      identity: identityInfo,
-      authAccounts: authAccountsInfo,
-      matchingAccount: matchingAccount ? {
-        id: matchingAccount._id,
-        userId: matchingAccount.userId,
+      // The key info - what getAuthUserId returns
+      authUserId: userId,
+      userFound: !!user,
+      user: user ? {
+        id: user._id,
+        email: user.email,
+        isActive: user.isActive,
+        role: user.role,
       } : null,
-      matchingUser: matchingUser ? {
-        id: matchingUser._id,
-        email: matchingUser.email,
-        isActive: matchingUser.isActive,
+      // Identity info for comparison
+      identity: identity ? {
+        subject: identity.subject,
+        tokenIdentifier: identity.tokenIdentifier,
+        email: identity.email,
+        issuer: identity.issuer,
       } : null,
-      userByEmail: userByEmail ? {
-        id: userByEmail._id,
-        email: userByEmail.email,
-        isActive: userByEmail.isActive,
-      } : null,
+      // All users in DB
       allUsers: allUsersInfo,
     };
   },
