@@ -225,3 +225,89 @@ export const statsSummary = query({
     };
   },
 });
+
+export const dashboardStats = query({
+  args: { ownerUserId: v.optional(v.id("users")) },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    const leads = await ctx.db.query("leads").collect();
+    const stages = await ctx.db.query("pipelineStages").withIndex("by_order").collect();
+
+    // Filter leads based on user role
+    const scoped = leads.filter((lead) => {
+      if (user.role !== "admin") {
+        return lead.ownerUserId === user._id;
+      }
+      if (args.ownerUserId) {
+        return lead.ownerUserId === args.ownerUserId;
+      }
+      return true;
+    });
+
+    // Time calculations
+    const now = Date.now();
+    const oneWeekAgo = now - 7 * 24 * 60 * 60 * 1000;
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+    const startOfMonthMs = startOfMonth.getTime();
+
+    // Calculate stats
+    const newThisWeek = scoped.filter((lead) => lead.createdAt >= oneWeekAgo).length;
+    const openLeads = scoped.filter((lead) => !lead.closedAt).length;
+
+    // Get terminal stages to identify won/lost
+    const wonStage = stages.find((s) => s.terminalOutcome === "won");
+    const lostStage = stages.find((s) => s.terminalOutcome === "lost");
+
+    const wonThisMonth = scoped.filter((lead) =>
+      lead.closedAt &&
+      lead.closedAt >= startOfMonthMs &&
+      wonStage &&
+      lead.stageId === wonStage._id
+    ).length;
+
+    const lostThisMonth = scoped.filter((lead) =>
+      lead.closedAt &&
+      lead.closedAt >= startOfMonthMs &&
+      lostStage &&
+      lead.stageId === lostStage._id
+    ).length;
+
+    // Calculate stage breakdown (non-terminal stages only for pipeline view)
+    const nonTerminalStages = stages.filter((s) => !s.isTerminal);
+    const stageCounts = nonTerminalStages.map((stage) => {
+      const count = scoped.filter((lead) => lead.stageId === stage._id && !lead.closedAt).length;
+      return {
+        id: stage._id,
+        name: stage.name,
+        count,
+        order: stage.order,
+      };
+    });
+
+    // Calculate percentages based on total open leads
+    const totalOpenForStages = stageCounts.reduce((sum, s) => sum + s.count, 0);
+    const stageBreakdown = stageCounts.map((stage) => ({
+      ...stage,
+      percent: totalOpenForStages > 0 ? stage.count / totalOpenForStages : 0,
+    }));
+
+    // Calculate monthly progress (won / (won + lost) this month, or won / total closed)
+    const closedThisMonth = wonThisMonth + lostThisMonth;
+    const monthlyProgress = closedThisMonth > 0
+      ? Math.round((wonThisMonth / closedThisMonth) * 100)
+      : 0;
+
+    return {
+      stats: {
+        newThisWeek,
+        openLeads,
+        wonThisMonth,
+        lostThisMonth,
+      },
+      stageBreakdown,
+      monthlyProgress,
+    };
+  },
+});
