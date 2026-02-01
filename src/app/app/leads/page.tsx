@@ -1,29 +1,102 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "../../../../convex/_generated/api";
+import { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Table, TableCell, TableHead, TableRow } from "@/components/ui/table";
-import { contacts, currentUser, leads, properties, users } from "@/lib/mock-data";
+import { useRequireAuth } from "@/hooks/useAuth";
 
 export default function LeadsPage() {
-  const contactMap = new Map(contacts.map((contact) => [contact.id, contact]));
-  const propertyMap = new Map(
-    properties.map((property) => [property.id, property])
+  const { user, isLoading: authLoading, isAdmin } = useRequireAuth();
+
+  // Filter state
+  const [stageFilter, setStageFilter] = useState<string>("");
+  const [interestFilter, setInterestFilter] = useState<string>("");
+  const [areaFilter, setAreaFilter] = useState("");
+  const [searchFilter, setSearchFilter] = useState("");
+  const [ownerFilter, setOwnerFilter] = useState<string>("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [debouncedArea, setDebouncedArea] = useState("");
+
+  // Debounce search inputs
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchFilter), 300);
+    return () => clearTimeout(timer);
+  }, [searchFilter]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedArea(areaFilter), 300);
+    return () => clearTimeout(timer);
+  }, [areaFilter]);
+
+  // Queries
+  const stages = useQuery(api.stages.list);
+  const users = useQuery(
+    api.users.listActiveUsers,
+    isAdmin ? {} : "skip"
   );
-  const userMap = new Map(users.map((user) => [user.id, user]));
-  const visibleLeads =
-    currentUser.role === "admin"
-      ? leads
-      : leads.filter((lead) => lead.ownerId === currentUser.id);
-  const stageOptions = ["Prospect", "Contacted", "Viewing Scheduled", "Negotiation"];
+  const leads = useQuery(api.leads.list, {
+    stageId: stageFilter ? (stageFilter as Id<"pipelineStages">) : undefined,
+    interestType:
+      interestFilter === "rent" || interestFilter === "buy"
+        ? interestFilter
+        : undefined,
+    preferredAreaKeyword: debouncedArea || undefined,
+    q: debouncedSearch || undefined,
+    ownerUserId: ownerFilter ? (ownerFilter as Id<"users">) : undefined,
+  });
+
+  // Mutations
+  const moveStage = useMutation(api.leads.moveStage);
+
+  const handleStageChange = async (
+    leadId: Id<"leads">,
+    newStageId: Id<"pipelineStages">
+  ) => {
+    try {
+      await moveStage({ leadId, stageId: newStageId });
+    } catch (error) {
+      console.error("Failed to update stage:", error);
+    }
+  };
+
+  // Format date for display
+  const formatDate = (timestamp: number) => {
+    return new Date(timestamp).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  // Filter stages for dropdown (non-terminal for regular stage selection)
+  const nonTerminalStages = stages?.filter((s) => !s.isTerminal) ?? [];
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold">Leads</h2>
           <p className="text-sm text-text-muted">
-            Leads link a contact to the property they are interested in.
+            Manage your leads and track their progress through the pipeline.
           </p>
         </div>
         <Link href="/app/leads/new">
@@ -35,104 +108,151 @@ export default function LeadsPage() {
         <div className="grid gap-3 md:grid-cols-4 xl:grid-cols-5">
           <div className="space-y-2">
             <Label>Stage</Label>
-            <Select>
-              <option>All stages</option>
-              <option>Prospect</option>
-              <option>Contacted</option>
+            <Select
+              value={stageFilter}
+              onChange={(e) => setStageFilter(e.target.value)}
+            >
+              <option value="">All stages</option>
+              {stages?.map((stage) => (
+                <option key={stage._id} value={stage._id}>
+                  {stage.name}
+                </option>
+              ))}
             </Select>
           </div>
           <div className="space-y-2">
             <Label>Interest type</Label>
-            <Select>
-              <option>Rent / Buy</option>
-              <option>Rent</option>
-              <option>Buy</option>
+            <Select
+              value={interestFilter}
+              onChange={(e) => setInterestFilter(e.target.value)}
+            >
+              <option value="">Rent / Buy</option>
+              <option value="rent">Rent</option>
+              <option value="buy">Buy</option>
             </Select>
           </div>
           <div className="space-y-2">
             <Label>Location keyword</Label>
-            <Input placeholder="Avondale" />
+            <Input
+              placeholder="Avondale"
+              value={areaFilter}
+              onChange={(e) => setAreaFilter(e.target.value)}
+            />
           </div>
           <div className="space-y-2">
             <Label>Search</Label>
-            <Input placeholder="Name, phone" />
+            <Input
+              placeholder="Name, phone"
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+            />
           </div>
-          {currentUser.role === "admin" ? (
+          {isAdmin && (
             <div className="space-y-2">
               <Label>Owner</Label>
-              <Select>
-                <option>All owners</option>
-                {users.map((user) => (
-                  <option key={user.id}>{user.name}</option>
+              <Select
+                value={ownerFilter}
+                onChange={(e) => setOwnerFilter(e.target.value)}
+              >
+                <option value="">All owners</option>
+                {users?.map((u) => (
+                  <option key={u._id} value={u._id}>
+                    {u.name}
+                  </option>
                 ))}
               </Select>
             </div>
-          ) : null}
+          )}
         </div>
       </div>
 
-      <Table>
-        <thead>
-          <tr>
-            <TableHead>Contact</TableHead>
-            <TableHead>Property</TableHead>
-            <TableHead>Stage</TableHead>
-            <TableHead>Owner</TableHead>
-            <TableHead>Updated</TableHead>
-            <TableHead>Actions</TableHead>
-          </tr>
-        </thead>
-        <tbody>
-          {visibleLeads.map((lead) => {
-            const contact = contactMap.get(lead.contactId);
-            const property = propertyMap.get(lead.propertyId);
-            const owner = userMap.get(lead.ownerId);
-            return (
-              <TableRow key={lead.id}>
+      {leads === undefined ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+        </div>
+      ) : leads.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-text-muted">No leads found.</p>
+          <Link href="/app/leads/new">
+            <Button className="mt-4">Create your first lead</Button>
+          </Link>
+        </div>
+      ) : (
+        <Table>
+          <thead>
+            <tr>
+              <TableHead>Contact</TableHead>
+              <TableHead>Interest</TableHead>
+              <TableHead>Preferred Areas</TableHead>
+              <TableHead>Stage</TableHead>
+              <TableHead>Owner</TableHead>
+              <TableHead>Updated</TableHead>
+              <TableHead>Actions</TableHead>
+            </tr>
+          </thead>
+          <tbody>
+            {leads.map((lead) => (
+              <TableRow key={lead._id}>
                 <TableCell>
-                  <Link href={`/app/leads/${lead.id}`} className="font-medium">
-                    {contact?.name ?? "Unknown contact"}
+                  <Link
+                    href={`/app/leads/${lead._id}`}
+                    className="font-medium hover:text-primary"
+                  >
+                    {lead.fullName}
                   </Link>
-                  <p className="text-xs text-text-muted">
-                    {contact?.phone ?? "No phone on file"}
-                  </p>
+                  <p className="text-xs text-text-muted">{lead.phone}</p>
                 </TableCell>
                 <TableCell>
-                  <p className="font-medium">
-                    {property?.title ?? "Unknown property"}
-                  </p>
-                  <p className="text-xs text-text-muted">
-                    {property?.location ?? "No location"} ·{" "}
-                    {property?.listing ?? "Listing"}
+                  <span
+                    className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                      lead.interestType === "buy"
+                        ? "bg-primary/10 text-primary"
+                        : "bg-info/10 text-info"
+                    }`}
+                  >
+                    {lead.interestType === "buy" ? "Buy" : "Rent"}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <p className="text-sm text-text-muted max-w-[150px] truncate">
+                    {lead.preferredAreas.length > 0
+                      ? lead.preferredAreas.join(", ")
+                      : "None specified"}
                   </p>
                 </TableCell>
                 <TableCell>
                   <Select
-                    defaultValue={lead.stage}
-                    aria-label={`Update stage for ${contact?.name ?? "lead"}`}
+                    value={lead.stageId}
+                    onChange={(e) =>
+                      handleStageChange(
+                        lead._id,
+                        e.target.value as Id<"pipelineStages">
+                      )
+                    }
+                    aria-label={`Update stage for ${lead.fullName}`}
                     className="h-9"
                   >
-                    {stageOptions.map((stage) => (
-                      <option key={stage} value={stage}>
-                        {stage}
+                    {stages?.map((stage) => (
+                      <option key={stage._id} value={stage._id}>
+                        {stage.name}
                       </option>
                     ))}
                   </Select>
                 </TableCell>
-                <TableCell>{owner?.name ?? "Unassigned"}</TableCell>
-                <TableCell>{lead.updated}</TableCell>
+                <TableCell>{lead.ownerName}</TableCell>
+                <TableCell>{formatDate(lead.updatedAt)}</TableCell>
                 <TableCell>
-                  <Link href={`/app/leads/${lead.id}`}>
+                  <Link href={`/app/leads/${lead._id}`}>
                     <Button variant="secondary" className="h-9 px-3">
                       View
                     </Button>
                   </Link>
                 </TableCell>
               </TableRow>
-            );
-          })}
-        </tbody>
-      </Table>
+            ))}
+          </tbody>
+        </Table>
+      )}
     </div>
   );
 }

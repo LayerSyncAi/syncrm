@@ -16,6 +16,7 @@ const leadArgs = {
     v.literal("other")
   ),
   interestType: v.union(v.literal("rent"), v.literal("buy")),
+  budgetCurrency: v.optional(v.string()),
   budgetMin: v.optional(v.number()),
   budgetMax: v.optional(v.number()),
   preferredAreas: v.array(v.string()),
@@ -54,6 +55,7 @@ export const create = mutation({
       email: args.email,
       source: args.source,
       interestType: args.interestType,
+      budgetCurrency: args.budgetCurrency,
       budgetMin: args.budgetMin,
       budgetMax: args.budgetMax,
       preferredAreas: args.preferredAreas,
@@ -76,9 +78,15 @@ export const list = query({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
-    const query = ctx.db.query("leads");
-    const results = await query.collect();
-    return results.filter((lead) => {
+    const results = await ctx.db.query("leads").collect();
+
+    // Get all stages and users for joining
+    const stages = await ctx.db.query("pipelineStages").collect();
+    const users = await ctx.db.query("users").collect();
+    const stageMap = new Map(stages.map((s) => [s._id, s]));
+    const userMap = new Map(users.map((u) => [u._id, u]));
+
+    const filtered = results.filter((lead) => {
       if (user.role !== "admin" && lead.ownerUserId !== user._id) {
         return false;
       }
@@ -99,9 +107,26 @@ export const list = query({
       }
       if (args.q) {
         const search = args.q.toLowerCase();
-        if (!lead.fullName.toLowerCase().includes(search)) return false;
+        if (
+          !lead.fullName.toLowerCase().includes(search) &&
+          !lead.phone.includes(search)
+        ) {
+          return false;
+        }
       }
       return true;
+    });
+
+    // Enrich leads with owner and stage names
+    return filtered.map((lead) => {
+      const owner = userMap.get(lead.ownerUserId);
+      const stage = stageMap.get(lead.stageId);
+      return {
+        ...lead,
+        ownerName: owner?.fullName || owner?.name || owner?.email || "Unknown",
+        stageName: stage?.name || "Unknown",
+        stageOrder: stage?.order ?? 0,
+      };
     });
   },
 });

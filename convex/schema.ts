@@ -29,6 +29,8 @@ export default defineSchema({
     .index("by_user", ["userId"]),
   pipelineStages: defineTable({
     name: v.string(),
+    description: v.optional(v.string()),
+    action: v.optional(v.string()),
     order: v.number(),
     isTerminal: v.boolean(),
     terminalOutcome: v.union(
@@ -54,6 +56,7 @@ export default defineSchema({
       v.literal("other")
     ),
     interestType: v.union(v.literal("rent"), v.literal("buy")),
+    budgetCurrency: v.optional(v.string()),
     budgetMin: v.optional(v.number()),
     budgetMax: v.optional(v.number()),
     preferredAreas: v.array(v.string()),
@@ -132,4 +135,9 @@ export default defineSchema({
     "scheduledAt",
     "completedAt",
   ]),
+  locations: defineTable({
+    name: v.string(),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+  }).index("by_name", ["name"]),
 });

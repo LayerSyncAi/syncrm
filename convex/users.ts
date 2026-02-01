@@ -157,3 +157,33 @@ export const getAdminCount = query({
     return allUsers.filter((u) => u.role === "admin" && u.isActive).length;
   },
 });
+
+// List active users for dropdowns (admin only for now)
+export const listActiveUsers = query({
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    const allUsers = await ctx.db.query("users").collect();
+    return allUsers
+      .filter((u) => u.isActive)
+      .map((u) => ({
+        _id: u._id,
+        name: u.fullName || u.name || u.email || "Unknown",
+        email: u.email,
+        role: u.role,
+      }));
+  },
+});
+
+// List users for lead assignment (any authenticated user can see names)
+export const listForAssignment = query({
+  handler: async (ctx) => {
+    await getCurrentUser(ctx);
+    const allUsers = await ctx.db.query("users").collect();
+    return allUsers
+      .filter((u) => u.isActive)
+      .map((u) => ({
+        _id: u._id,
+        name: u.fullName || u.name || u.email || "Unknown",
+      }));
+  },
+});
