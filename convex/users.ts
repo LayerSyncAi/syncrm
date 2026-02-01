@@ -1,10 +1,56 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getCurrentUser, requireAdmin, getCurrentUserOptional } from "./helpers";
+import { getAuthUserId } from "@convex-dev/auth/server";
 
 export const getMe = query({
   handler: async (ctx) => {
     return getCurrentUserOptional(ctx);
+  },
+});
+
+// Debug query to understand auth state - helps diagnose user lookup issues
+export const debugAuthState = query({
+  handler: async (ctx) => {
+    // Use the canonical getAuthUserId from Convex Auth
+    const userId = await getAuthUserId(ctx);
+    const identity = await ctx.auth.getUserIdentity();
+
+    // Get user if we have a userId
+    let user = null;
+    if (userId) {
+      user = await ctx.db.get(userId);
+    }
+
+    // Get all users for comparison
+    const allUsers = await ctx.db.query("users").collect();
+    const allUsersInfo = allUsers.map((u) => ({
+      id: u._id,
+      email: u.email,
+      isActive: u.isActive,
+      role: u.role,
+    }));
+
+    return {
+      // The key info - what getAuthUserId returns
+      authUserId: userId,
+      userFound: !!user,
+      user: user ? {
+        id: user._id,
+        email: user.email,
+        isActive: user.isActive,
+        role: user.role,
+      } : null,
+      // Identity info for comparison
+      identity: identity ? {
+        subject: identity.subject,
+        tokenIdentifier: identity.tokenIdentifier,
+        email: identity.email,
+        issuer: identity.issuer,
+      } : null,
+      // All users in DB
+      allUsers: allUsersInfo,
+    };
   },
 });
 
