@@ -42,10 +42,31 @@ export const listForLead = query({
     const user = await getCurrentUser(ctx);
     const lead = await canAccessLead(ctx, args.leadId, user._id, user.role === "admin");
     if (!lead) throw new Error("Lead not found");
-    return ctx.db
+    const matches = await ctx.db
       .query("leadPropertyMatches")
       .withIndex("by_lead", (q) => q.eq("leadId", args.leadId))
       .collect();
+
+    // Enrich with property details
+    const enriched = await Promise.all(
+      matches.map(async (match) => {
+        const property = await ctx.db.get(match.propertyId);
+        return {
+          ...match,
+          property: property
+            ? {
+                _id: property._id,
+                title: property.title,
+                location: property.location,
+                listingType: property.listingType,
+                price: property.price,
+                currency: property.currency,
+              }
+            : null,
+        };
+      })
+    );
+    return enriched;
   },
 });
 

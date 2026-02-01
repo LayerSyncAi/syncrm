@@ -132,4 +132,9 @@ export default defineSchema({
     "scheduledAt",
     "completedAt",
   ]),
+  locations: defineTable({
+    name: v.string(),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+  }).index("by_name", ["name"]),
 });
