@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { useRequireAuth } from "@/hooks/useAuth";
 
 type Source =
@@ -24,25 +25,34 @@ type Source =
 
 type InterestType = "rent" | "buy";
 
+interface FieldState {
+  value: string;
+  touched: boolean;
+  error?: string;
+}
+
 export default function NewLeadPage() {
   const router = useRouter();
   const { user, isLoading: authLoading, isAdmin } = useRequireAuth();
 
-  // Form state
-  const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
+  // Form state with validation
+  const [fullName, setFullName] = useState<FieldState>({ value: "", touched: false });
+  const [phone, setPhone] = useState<FieldState>({ value: "", touched: false });
+  const [email, setEmail] = useState<FieldState>({ value: "", touched: false });
   const [source, setSource] = useState<Source>("walk_in");
   const [interestType, setInterestType] = useState<InterestType>("rent");
+  const [budgetCurrency, setBudgetCurrency] = useState("USD");
   const [budgetMin, setBudgetMin] = useState("");
   const [budgetMax, setBudgetMax] = useState("");
+  const [budgetMinTouched, setBudgetMinTouched] = useState(false);
+  const [budgetMaxTouched, setBudgetMaxTouched] = useState(false);
+  const [budgetError, setBudgetError] = useState<string | undefined>();
   const [preferredAreas, setPreferredAreas] = useState<string[]>([]);
-  const [areaInput, setAreaInput] = useState("");
   const [notes, setNotes] = useState("");
   const [selectedStage, setSelectedStage] = useState<string>("");
   const [selectedOwner, setSelectedOwner] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState("");
+  const [formError, setFormError] = useState("");
 
   // New location state
   const [newLocation, setNewLocation] = useState("");
@@ -76,12 +86,73 @@ export default function NewLeadPage() {
     }
   }, [stages, selectedStage]);
 
+  // Validate budget range
+  useEffect(() => {
+    if (budgetMin && budgetMax) {
+      const min = parseFloat(budgetMin);
+      const max = parseFloat(budgetMax);
+      if (!isNaN(min) && !isNaN(max) && min > max) {
+        setBudgetError("Minimum budget cannot exceed maximum budget");
+      } else {
+        setBudgetError(undefined);
+      }
+    } else {
+      setBudgetError(undefined);
+    }
+  }, [budgetMin, budgetMax]);
+
+  // Validation functions
+  const validateFullName = (value: string): string | undefined => {
+    if (!value.trim()) return "Full name is required";
+    if (value.trim().length < 2) return "Name must be at least 2 characters";
+    return undefined;
+  };
+
+  const validatePhone = (value: string): string | undefined => {
+    if (!value.trim()) return "Phone number is required";
+    const digits = value.replace(/\D/g, "");
+    if (digits.length < 7) return "Please enter a valid phone number";
+    return undefined;
+  };
+
+  const validateEmail = (value: string): string | undefined => {
+    if (!value.trim()) return undefined; // Email is optional
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(value)) return "Please enter a valid email address";
+    return undefined;
+  };
+
+  const handleFieldChange = (
+    field: "fullName" | "phone" | "email",
+    value: string,
+    validator: (value: string) => string | undefined
+  ) => {
+    const setter = field === "fullName" ? setFullName : field === "phone" ? setPhone : setEmail;
+    setter((prev) => ({
+      value,
+      touched: prev.touched,
+      error: prev.touched ? validator(value) : undefined,
+    }));
+  };
+
+  const handleFieldBlur = (
+    field: "fullName" | "phone" | "email",
+    validator: (value: string) => string | undefined
+  ) => {
+    const setter = field === "fullName" ? setFullName : field === "phone" ? setPhone : setEmail;
+    const state = field === "fullName" ? fullName : field === "phone" ? phone : email;
+    setter({
+      ...state,
+      touched: true,
+      error: validator(state.value),
+    });
+  };
+
   const handleAddArea = (area: string) => {
     const trimmed = area.trim();
     if (trimmed && !preferredAreas.includes(trimmed)) {
       setPreferredAreas([...preferredAreas, trimmed]);
     }
-    setAreaInput("");
   };
 
   const handleRemoveArea = (area: string) => {
@@ -93,41 +164,57 @@ export default function NewLeadPage() {
     setIsAddingLocation(true);
     try {
       await createLocation({ name: newLocation.trim() });
-      // Add to preferred areas
       handleAddArea(newLocation.trim());
       setNewLocation("");
-    } catch (err: any) {
-      setError(err.message || "Failed to add location");
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to add location";
+      setFormError(errorMessage);
     } finally {
       setIsAddingLocation(false);
     }
   };
 
+  const validateForm = (): boolean => {
+    // Trigger validation on all required fields
+    const fullNameError = validateFullName(fullName.value);
+    const phoneError = validatePhone(phone.value);
+    const emailError = validateEmail(email.value);
+
+    setFullName({ ...fullName, touched: true, error: fullNameError });
+    setPhone({ ...phone, touched: true, error: phoneError });
+    setEmail({ ...email, touched: true, error: emailError });
+    setBudgetMinTouched(true);
+    setBudgetMaxTouched(true);
+
+    if (fullNameError || phoneError || emailError || budgetError) {
+      return false;
+    }
+
+    if (!selectedStage) {
+      setFormError("Please select a stage");
+      return false;
+    }
+
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setFormError("");
 
-    if (!fullName.trim()) {
-      setError("Full name is required");
-      return;
-    }
-    if (!phone.trim()) {
-      setError("Phone number is required");
-      return;
-    }
-    if (!selectedStage) {
-      setError("Please select a stage");
+    if (!validateForm()) {
       return;
     }
 
     setIsSubmitting(true);
     try {
       await createLead({
-        fullName: fullName.trim(),
-        phone: phone.trim(),
-        email: email.trim() || undefined,
+        fullName: fullName.value.trim(),
+        phone: phone.value.trim(),
+        email: email.value.trim() || undefined,
         source,
         interestType,
+        budgetCurrency: budgetCurrency || undefined,
         budgetMin: budgetMin ? parseFloat(budgetMin) : undefined,
         budgetMax: budgetMax ? parseFloat(budgetMax) : undefined,
         preferredAreas,
@@ -139,8 +226,9 @@ export default function NewLeadPage() {
             : undefined,
       });
       router.push("/app/leads");
-    } catch (err: any) {
-      setError(err.message || "Failed to create lead");
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to create lead";
+      setFormError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -158,6 +246,9 @@ export default function NewLeadPage() {
     return null;
   }
 
+  // Get stage description for selected stage
+  const selectedStageData = stages?.find((s) => s._id === selectedStage);
+
   return (
     <div className="space-y-6">
       <div>
@@ -167,44 +258,70 @@ export default function NewLeadPage() {
         </p>
       </div>
 
-      {error && (
+      {formError && (
         <div className="rounded-lg bg-danger/10 p-4 text-danger text-sm">
-          {error}
+          {formError}
         </div>
       )}
 
       <form onSubmit={handleSubmit}>
         <Card className="p-5">
           <div className="grid gap-4 md:grid-cols-2">
+            {/* Full Name */}
             <div className="space-y-2">
-              <Label>Full Name *</Label>
+              <Label className="flex items-center gap-1">
+                Full Name <span className="text-danger">*</span>
+              </Label>
+              {fullName.touched && fullName.error && (
+                <p className="text-xs text-danger">{fullName.error}</p>
+              )}
               <Input
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
+                value={fullName.value}
+                onChange={(e) => handleFieldChange("fullName", e.target.value, validateFullName)}
+                onBlur={() => handleFieldBlur("fullName", validateFullName)}
                 placeholder="John Doe"
-                required
+                error={fullName.touched && !!fullName.error}
               />
             </div>
+
+            {/* Phone */}
             <div className="space-y-2">
-              <Label>Phone *</Label>
+              <Label className="flex items-center gap-1">
+                Phone <span className="text-danger">*</span>
+              </Label>
+              {phone.touched && phone.error && (
+                <p className="text-xs text-danger">{phone.error}</p>
+              )}
               <Input
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                value={phone.value}
+                onChange={(e) => handleFieldChange("phone", e.target.value, validatePhone)}
+                onBlur={() => handleFieldBlur("phone", validatePhone)}
                 placeholder="+263 77 123 4567"
-                required
+                error={phone.touched && !!phone.error}
               />
             </div>
+
+            {/* Email */}
             <div className="space-y-2">
               <Label>Email</Label>
+              {email.touched && email.error && (
+                <p className="text-xs text-danger">{email.error}</p>
+              )}
               <Input
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={email.value}
+                onChange={(e) => handleFieldChange("email", e.target.value, validateEmail)}
+                onBlur={() => handleFieldBlur("email", validateEmail)}
                 placeholder="john@example.com"
+                error={email.touched && !!email.error}
               />
             </div>
+
+            {/* Interest Type */}
             <div className="space-y-2">
-              <Label>Interest type *</Label>
+              <Label className="flex items-center gap-1">
+                Interest type <span className="text-danger">*</span>
+              </Label>
               <Select
                 value={interestType}
                 onChange={(e) => setInterestType(e.target.value as InterestType)}
@@ -213,26 +330,41 @@ export default function NewLeadPage() {
                 <option value="buy">Buy</option>
               </Select>
             </div>
+
+            {/* Budget Min */}
             <div className="space-y-2">
-              <Label>Budget min</Label>
-              <Input
-                type="number"
+              <Label>Budget Min</Label>
+              <CurrencyInput
                 value={budgetMin}
-                onChange={(e) => setBudgetMin(e.target.value)}
-                placeholder="$"
+                onChange={setBudgetMin}
+                onBlur={() => setBudgetMinTouched(true)}
+                currency={budgetCurrency}
+                onCurrencyChange={setBudgetCurrency}
+                placeholder="0.00"
+                touched={budgetMinTouched}
+                error={budgetError}
               />
             </div>
+
+            {/* Budget Max */}
             <div className="space-y-2">
-              <Label>Budget max</Label>
-              <Input
-                type="number"
+              <Label>Budget Max</Label>
+              <CurrencyInput
                 value={budgetMax}
-                onChange={(e) => setBudgetMax(e.target.value)}
-                placeholder="$"
+                onChange={setBudgetMax}
+                onBlur={() => setBudgetMaxTouched(true)}
+                currency={budgetCurrency}
+                onCurrencyChange={setBudgetCurrency}
+                placeholder="0.00"
+                touched={budgetMaxTouched}
               />
             </div>
+
+            {/* Source */}
             <div className="space-y-2">
-              <Label>Source *</Label>
+              <Label className="flex items-center gap-1">
+                Source <span className="text-danger">*</span>
+              </Label>
               <Select
                 value={source}
                 onChange={(e) => setSource(e.target.value as Source)}
@@ -246,8 +378,12 @@ export default function NewLeadPage() {
                 <option value="other">Other</option>
               </Select>
             </div>
+
+            {/* Initial Stage */}
             <div className="space-y-2">
-              <Label>Initial Stage *</Label>
+              <Label className="flex items-center gap-1">
+                Initial Stage <span className="text-danger">*</span>
+              </Label>
               <Select
                 value={selectedStage}
                 onChange={(e) => setSelectedStage(e.target.value)}
@@ -258,8 +394,14 @@ export default function NewLeadPage() {
                   </option>
                 ))}
               </Select>
+              {selectedStageData?.description && (
+                <p className="text-xs text-text-muted mt-1">
+                  {selectedStageData.description}
+                </p>
+              )}
             </div>
 
+            {/* Assign to (Admin only) */}
             {isAdmin && (
               <div className="space-y-2">
                 <Label>Assign to</Label>
@@ -277,14 +419,15 @@ export default function NewLeadPage() {
               </div>
             )}
 
+            {/* Preferred Areas */}
             <div className="space-y-2 md:col-span-2">
               <Label>Preferred Areas</Label>
               <div className="flex gap-2">
                 <Select
-                  value={areaInput}
                   onChange={(e) => {
                     if (e.target.value) {
                       handleAddArea(e.target.value);
+                      e.target.value = "";
                     }
                   }}
                   className="flex-1"
@@ -340,6 +483,7 @@ export default function NewLeadPage() {
               )}
             </div>
 
+            {/* Notes */}
             <div className="space-y-2 md:col-span-2">
               <Label>Notes</Label>
               <Textarea

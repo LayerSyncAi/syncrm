@@ -16,6 +16,7 @@ const leadArgs = {
     v.literal("other")
   ),
   interestType: v.union(v.literal("rent"), v.literal("buy")),
+  budgetCurrency: v.optional(v.string()),
   budgetMin: v.optional(v.number()),
   budgetMax: v.optional(v.number()),
   preferredAreas: v.array(v.string()),
@@ -54,6 +55,7 @@ export const create = mutation({
       email: args.email,
       source: args.source,
       interestType: args.interestType,
+      budgetCurrency: args.budgetCurrency,
       budgetMin: args.budgetMin,
       budgetMax: args.budgetMax,
       preferredAreas: args.preferredAreas,

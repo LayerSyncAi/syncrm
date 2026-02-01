@@ -619,13 +619,13 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
           {lead.budgetMin !== undefined && (
             <div className="space-y-2">
               <Label>Budget Min</Label>
-              <Input value={`$${lead.budgetMin.toLocaleString()}`} readOnly />
+              <Input value={`${lead.budgetCurrency || "USD"} ${lead.budgetMin.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} readOnly />
             </div>
           )}
           {lead.budgetMax !== undefined && (
             <div className="space-y-2">
               <Label>Budget Max</Label>
-              <Input value={`$${lead.budgetMax.toLocaleString()}`} readOnly />
+              <Input value={`${lead.budgetCurrency || "USD"} ${lead.budgetMax.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} readOnly />
             </div>
           )}
           <div className="space-y-2 md:col-span-2">
