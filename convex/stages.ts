@@ -5,64 +5,64 @@ import { requireAdmin } from "./helpers";
 const defaultStages = [
   {
     name: "New Lead",
-    description: "The lead just entered your system. No contact has been made yet.",
-    action: "Call, text, or email immediately. First response time matters.",
+    description: "Just entered system, no contact made",
+    action: "Call/text/email immediately",
     order: 1,
     isTerminal: false,
     terminalOutcome: null,
   },
   {
     name: "Contacted",
-    description: "You have reached out and had some form of communication, even if it was a voicemail.",
-    action: "Attempt further contact or set a short-term follow-up.",
+    description: "Had some communication",
+    action: "Attempt further contact",
     order: 2,
     isTerminal: false,
     terminalOutcome: null,
   },
   {
     name: "Qualified",
-    description: "The seller has motivation, a timeline, and realistic expectations. You now know this is worth pursuing.",
-    action: "Schedule an appointment or prepare to make an offer.",
+    description: "Has motivation, timeline, expectations",
+    action: "Schedule appointment or offer",
     order: 3,
     isTerminal: false,
     terminalOutcome: null,
   },
   {
     name: "Follow-Up",
-    description: "The lead is not ready but could convert with time. They are not cold, just not immediate.",
-    action: "Enroll in a drip campaign or set manual reminders.",
+    description: "Not ready but could convert",
+    action: "Drip campaign or reminders",
     order: 4,
     isTerminal: false,
     terminalOutcome: null,
   },
   {
     name: "Offer Made",
-    description: "An offer has been submitted, and you are waiting for a response or counter.",
-    action: "Track all communication and follow up aggressively.",
+    description: "Waiting for response/counter",
+    action: "Track and follow up",
     order: 5,
     isTerminal: false,
     terminalOutcome: null,
   },
   {
     name: "Under Contract",
-    description: "The seller accepted your offer. The property is in escrow or being prepared for assignment.",
-    action: "Coordinate with the title company or buyer rep.",
+    description: "Accepted, in escrow",
+    action: "Coordinate with title company",
     order: 6,
     isTerminal: false,
     terminalOutcome: null,
   },
   {
     name: "Closed",
-    description: "The deal is done. You received your assignment fee or resale proceeds.",
-    action: "Tag the lead as won. Request testimonials or referrals.",
+    description: "Deal done",
+    action: "Request testimonials",
     order: 7,
     isTerminal: true,
     terminalOutcome: "won" as const,
   },
   {
     name: "Lost",
-    description: "The lead did not convert. They chose another option or are no longer interested.",
-    action: "Log the reason and consider re-engaging in the future.",
+    description: "Did not convert",
+    action: "Log reason, consider re-engaging",
     order: 8,
     isTerminal: true,
     terminalOutcome: "lost" as const,
@@ -175,5 +175,26 @@ export const adminReorder = mutation({
     for (const [index, stageId] of args.orderedStageIds.entries()) {
       await ctx.db.patch(stageId, { order: index + 1, updatedAt: timestamp });
     }
+  },
+});
+
+export const adminDelete = mutation({
+  args: {
+    stageId: v.id("pipelineStages"),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
+    // Check if any leads are using this stage
+    const leadsWithStage = await ctx.db
+      .query("leads")
+      .withIndex("by_stage", (q) => q.eq("stageId", args.stageId))
+      .first();
+
+    if (leadsWithStage) {
+      throw new Error("Cannot delete stage: leads are still assigned to it");
+    }
+
+    await ctx.db.delete(args.stageId);
   },
 });
