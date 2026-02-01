@@ -14,6 +14,7 @@ import type * as email from "../email.js";
 import type * as helpers from "../helpers.js";
 import type * as http from "../http.js";
 import type * as leads from "../leads.js";
+import type * as locations from "../locations.js";
 import type * as matches from "../matches.js";
 import type * as passwordReset from "../passwordReset.js";
 import type * as properties from "../properties.js";
@@ -33,6 +34,7 @@ declare const fullApi: ApiFromModules<{
   helpers: typeof helpers;
   http: typeof http;
   leads: typeof leads;
+  locations: typeof locations;
   matches: typeof matches;
   passwordReset: typeof passwordReset;
   properties: typeof properties;
