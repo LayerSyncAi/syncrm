@@ -1,10 +1,102 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getCurrentUser, requireAdmin, getCurrentUserOptional } from "./helpers";
+import { Id } from "./_generated/dataModel";
 
 export const getMe = query({
   handler: async (ctx) => {
     return getCurrentUserOptional(ctx);
+  },
+});
+
+// Debug query to understand auth state - helps diagnose user lookup issues
+export const debugAuthState = query({
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return {
+        hasIdentity: false,
+        identity: null,
+        authAccounts: [],
+        matchingUser: null,
+        allUsers: [],
+      };
+    }
+
+    // Get identity details
+    const identityInfo = {
+      subject: identity.subject,
+      tokenIdentifier: identity.tokenIdentifier,
+      email: identity.email,
+      issuer: identity.issuer,
+      name: identity.name,
+    };
+
+    // Get all auth accounts to see what's in the DB
+    const authAccounts = await ctx.db.query("authAccounts").collect();
+    const authAccountsInfo = authAccounts.map((a) => ({
+      id: a._id,
+      userId: a.userId,
+      provider: (a as Record<string, unknown>).provider,
+      providerAccountId: (a as Record<string, unknown>).providerAccountId,
+    }));
+
+    // Try to find matching authAccount
+    const tokenParts = identity.tokenIdentifier.split("|");
+    const providerAccountId = tokenParts.length > 1 ? tokenParts.slice(1).join("|") : identity.tokenIdentifier;
+
+    let matchingAccount = authAccounts.find(
+      (a) => (a as Record<string, unknown>).providerAccountId === providerAccountId
+    );
+    if (!matchingAccount && identity.email) {
+      matchingAccount = authAccounts.find(
+        (a) => (a as Record<string, unknown>).providerAccountId === identity.email
+      );
+    }
+
+    let matchingUser = null;
+    if (matchingAccount?.userId) {
+      matchingUser = await ctx.db.get(matchingAccount.userId as Id<"users">);
+    }
+
+    // Also try by email
+    let userByEmail = null;
+    if (identity.email) {
+      userByEmail = await ctx.db
+        .query("users")
+        .withIndex("by_email", (q) => q.eq("email", identity.email!))
+        .unique();
+    }
+
+    // Get all users for debugging
+    const allUsers = await ctx.db.query("users").collect();
+    const allUsersInfo = allUsers.map((u) => ({
+      id: u._id,
+      email: u.email,
+      isActive: u.isActive,
+      role: u.role,
+    }));
+
+    return {
+      hasIdentity: true,
+      identity: identityInfo,
+      authAccounts: authAccountsInfo,
+      matchingAccount: matchingAccount ? {
+        id: matchingAccount._id,
+        userId: matchingAccount.userId,
+      } : null,
+      matchingUser: matchingUser ? {
+        id: matchingUser._id,
+        email: matchingUser.email,
+        isActive: matchingUser.isActive,
+      } : null,
+      userByEmail: userByEmail ? {
+        id: userByEmail._id,
+        email: userByEmail.email,
+        isActive: userByEmail.isActive,
+      } : null,
+      allUsers: allUsersInfo,
+    };
   },
 });
 
