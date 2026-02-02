@@ -46,6 +46,11 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
   const [activityScheduledAt, setActivityScheduledAt] = useState("");
   const [isSavingActivity, setIsSavingActivity] = useState(false);
 
+  // Complete activity modal state
+  const [completingActivityId, setCompletingActivityId] = useState<Id<"activities"> | null>(null);
+  const [completionNotes, setCompletionNotes] = useState("");
+  const [isMarkingComplete, setIsMarkingComplete] = useState(false);
+
   // Queries
   const leadData = useQuery(api.leads.getById, { leadId });
   const stages = useQuery(api.stages.list);
@@ -112,11 +117,29 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
     }
   };
 
-  const handleMarkComplete = async (activityId: Id<"activities">) => {
+  const handleOpenCompleteModal = (activityId: Id<"activities">) => {
+    setCompletingActivityId(activityId);
+    setCompletionNotes("");
+  };
+
+  const handleCloseCompleteModal = () => {
+    setCompletingActivityId(null);
+    setCompletionNotes("");
+  };
+
+  const handleMarkComplete = async () => {
+    if (!completingActivityId || !completionNotes.trim()) return;
+    setIsMarkingComplete(true);
     try {
-      await markActivityComplete({ activityId });
+      await markActivityComplete({
+        activityId: completingActivityId,
+        completionNotes: completionNotes.trim(),
+      });
+      handleCloseCompleteModal();
     } catch (error) {
       console.error("Failed to mark activity complete:", error);
+    } finally {
+      setIsMarkingComplete(false);
     }
   };
 
@@ -402,45 +425,52 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
                   >
                     <div className="flex items-center justify-between text-sm">
                       <span className="font-medium">{activity.title}</span>
-                      <Badge
-                        className={
-                          activity.completedAt
-                            ? "bg-success/10 text-success"
-                            : activity.scheduledAt
-                            ? "bg-warning/10 text-warning"
-                            : "bg-info/10 text-info"
-                        }
-                      >
-                        {activity.completedAt
-                          ? "Completed"
-                          : activity.scheduledAt
-                          ? "Scheduled"
-                          : "Logged"}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge className="bg-info/10 text-info capitalize">
+                          {activity.type}
+                        </Badge>
+                        <Badge
+                          className={
+                            activity.status === "completed"
+                              ? "bg-success/10 text-success"
+                              : "bg-warning/10 text-warning"
+                          }
+                        >
+                          {activity.status === "completed" ? "Completed" : "To Do"}
+                        </Badge>
+                      </div>
                     </div>
-                    <p className="mt-1 text-xs text-text-muted capitalize">
-                      {activity.type}
-                    </p>
                     {activity.description && (
                       <p className="mt-2 text-sm text-text-muted">
                         {activity.description}
                       </p>
                     )}
-                    <p className="mt-2 text-xs text-text-muted">
-                      {activity.scheduledAt
-                        ? formatDateTime(activity.scheduledAt)
-                        : formatDateTime(activity.createdAt)}
-                    </p>
-                    {!activity.completedAt && (
-                      <div className="mt-3 flex justify-end">
+                    {activity.status === "completed" && activity.completionNotes && (
+                      <div className="mt-3 rounded-md border border-success/20 bg-success/5 p-2">
+                        <p className="text-xs text-text-muted mb-1">Completion notes:</p>
+                        <p className="text-sm">{activity.completionNotes}</p>
+                      </div>
+                    )}
+                    <div className="mt-3 flex items-center justify-between">
+                      <p className="text-xs text-text-muted">
+                        {activity.scheduledAt
+                          ? `Scheduled: ${formatDateTime(activity.scheduledAt)}`
+                          : `Created: ${formatDateTime(activity.createdAt)}`}
+                        {activity.completedAt && (
+                          <span className="ml-2">
+                            · Completed: {formatDateTime(activity.completedAt)}
+                          </span>
+                        )}
+                      </p>
+                      {activity.status !== "completed" && (
                         <Button
                           variant="secondary"
-                          onClick={() => handleMarkComplete(activity._id)}
+                          onClick={() => handleOpenCompleteModal(activity._id)}
                         >
                           Mark complete
                         </Button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -634,6 +664,43 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
               value={lead.preferredAreas.length > 0 ? lead.preferredAreas.join(", ") : "None specified"}
               readOnly
             />
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={completingActivityId !== null}
+        title="Complete Activity"
+        description="Add notes about what transpired or the next steps"
+        onClose={handleCloseCompleteModal}
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={handleCloseCompleteModal}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleMarkComplete}
+              disabled={isMarkingComplete || !completionNotes.trim()}
+            >
+              {isMarkingComplete ? "Saving..." : "Mark Complete"}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>
+              Completion Notes <span className="text-danger">*</span>
+            </Label>
+            <Textarea
+              placeholder="Describe what happened or what the next steps are..."
+              value={completionNotes}
+              onChange={(e) => setCompletionNotes(e.target.value)}
+              className="min-h-[120px]"
+            />
+            <p className="text-xs text-text-muted">
+              These notes will be visible in the timeline and on the tasks page.
+            </p>
           </div>
         </div>
       </Modal>
