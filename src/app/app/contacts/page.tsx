@@ -29,14 +29,17 @@ type ContactWithOwners = {
   updatedAt: number;
 };
 
-const emptyContactDraft = {
-  name: "",
-  phone: "",
-  email: "",
-  company: "",
-  notes: "",
-  ownerUserIds: [] as Id<"users">[],
-};
+interface FieldState {
+  value: string;
+  touched: boolean;
+  error?: string;
+}
+
+const createEmptyFieldState = (value: string = ""): FieldState => ({
+  value,
+  touched: false,
+  error: undefined,
+});
 
 export default function ContactsPage() {
   const currentUser = useQuery(api.users.getMeRequired);
@@ -72,86 +75,139 @@ export default function ContactsPage() {
 
   // Modal state
   const [selectedContact, setSelectedContact] = React.useState<ContactWithOwners | null>(null);
-  const [contactDraft, setContactDraft] = React.useState(emptyContactDraft);
   const [isCreating, setIsCreating] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
   const [deleteTarget, setDeleteTarget] = React.useState<ContactWithOwners | null>(null);
+  const [formError, setFormError] = React.useState("");
 
-  // Validation state
-  const [errors, setErrors] = React.useState<Record<string, string>>({});
+  // Form state with validation
+  const [name, setName] = React.useState<FieldState>(createEmptyFieldState());
+  const [phone, setPhone] = React.useState<FieldState>(createEmptyFieldState());
+  const [email, setEmail] = React.useState<FieldState>(createEmptyFieldState());
+  const [company, setCompany] = React.useState("");
+  const [notes, setNotes] = React.useState("");
+  const [ownerUserIds, setOwnerUserIds] = React.useState<Id<"users">[]>([]);
 
   const isAdmin = currentUser?.role === "admin";
 
-  // Initialize draft when selecting a contact
+  // Validation functions
+  const validateName = (value: string): string | undefined => {
+    if (!value.trim()) return "Name is required";
+    if (value.trim().length < 2) return "Name must be at least 2 characters";
+    return undefined;
+  };
+
+  const validatePhone = (value: string): string | undefined => {
+    if (!value.trim()) return "Phone number is required";
+    const digits = value.replace(/\D/g, "");
+    if (digits.length < 7) return "Please enter a valid phone number";
+    return undefined;
+  };
+
+  const validateEmail = (value: string): string | undefined => {
+    if (!value.trim()) return undefined; // Email is optional
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(value)) return "Please enter a valid email address";
+    return undefined;
+  };
+
+  const handleFieldChange = (
+    field: "name" | "phone" | "email",
+    value: string,
+    validator: (value: string) => string | undefined
+  ) => {
+    const setter = field === "name" ? setName : field === "phone" ? setPhone : setEmail;
+    setter((prev) => ({
+      value,
+      touched: prev.touched,
+      error: prev.touched ? validator(value) : undefined,
+    }));
+  };
+
+  const handleFieldBlur = (
+    field: "name" | "phone" | "email",
+    validator: (value: string) => string | undefined
+  ) => {
+    const setter = field === "name" ? setName : field === "phone" ? setPhone : setEmail;
+    const state = field === "name" ? name : field === "phone" ? phone : email;
+    setter({
+      ...state,
+      touched: true,
+      error: validator(state.value),
+    });
+  };
+
+  // Initialize form when selecting a contact
   React.useEffect(() => {
     if (selectedContact) {
-      setContactDraft({
-        name: selectedContact.name,
-        phone: selectedContact.phone,
-        email: selectedContact.email || "",
-        company: selectedContact.company || "",
-        notes: selectedContact.notes || "",
-        ownerUserIds: selectedContact.ownerUserIds,
-      });
-      setErrors({});
+      setName(createEmptyFieldState(selectedContact.name));
+      setPhone(createEmptyFieldState(selectedContact.phone));
+      setEmail(createEmptyFieldState(selectedContact.email || ""));
+      setCompany(selectedContact.company || "");
+      setNotes(selectedContact.notes || "");
+      setOwnerUserIds(selectedContact.ownerUserIds);
+      setFormError("");
     }
   }, [selectedContact]);
+
+  const resetForm = () => {
+    setName(createEmptyFieldState());
+    setPhone(createEmptyFieldState());
+    setEmail(createEmptyFieldState());
+    setCompany("");
+    setNotes("");
+    setOwnerUserIds([]);
+    setFormError("");
+  };
 
   const closeModal = () => {
     setSelectedContact(null);
     setIsCreating(false);
-    setContactDraft(emptyContactDraft);
-    setErrors({});
+    resetForm();
   };
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
+  const validateForm = (): boolean => {
+    const nameError = validateName(name.value);
+    const phoneError = validatePhone(phone.value);
+    const emailError = validateEmail(email.value);
 
-    if (!contactDraft.name.trim()) {
-      newErrors.name = "Name is required";
-    }
+    setName((prev) => ({ ...prev, touched: true, error: nameError }));
+    setPhone((prev) => ({ ...prev, touched: true, error: phoneError }));
+    setEmail((prev) => ({ ...prev, touched: true, error: emailError }));
 
-    if (!contactDraft.phone.trim()) {
-      newErrors.phone = "Phone is required";
-    }
-
-    if (contactDraft.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactDraft.email)) {
-      newErrors.email = "Invalid email format";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return !nameError && !phoneError && !emailError;
   };
 
   const handleSave = async () => {
     if (!validateForm()) return;
 
     setIsSaving(true);
+    setFormError("");
     try {
       if (isCreating) {
         await createContact({
-          name: contactDraft.name.trim(),
-          phone: contactDraft.phone.trim(),
-          email: contactDraft.email.trim() || undefined,
-          company: contactDraft.company.trim() || undefined,
-          notes: contactDraft.notes.trim() || undefined,
-          ownerUserIds: contactDraft.ownerUserIds.length > 0 ? contactDraft.ownerUserIds : undefined,
+          name: name.value.trim(),
+          phone: phone.value.trim(),
+          email: email.value.trim() || undefined,
+          company: company.trim() || undefined,
+          notes: notes.trim() || undefined,
+          ownerUserIds: ownerUserIds.length > 0 ? ownerUserIds : undefined,
         });
       } else if (selectedContact) {
         await updateContact({
           contactId: selectedContact._id,
-          name: contactDraft.name.trim(),
-          phone: contactDraft.phone.trim(),
-          email: contactDraft.email.trim() || undefined,
-          company: contactDraft.company.trim() || undefined,
-          notes: contactDraft.notes.trim() || undefined,
-          ownerUserIds: contactDraft.ownerUserIds.length > 0 ? contactDraft.ownerUserIds : undefined,
+          name: name.value.trim(),
+          phone: phone.value.trim(),
+          email: email.value.trim() || undefined,
+          company: company.trim() || undefined,
+          notes: notes.trim() || undefined,
+          ownerUserIds: ownerUserIds.length > 0 ? ownerUserIds : undefined,
         });
       }
       closeModal();
     } catch (error) {
       console.error("Failed to save contact:", error);
-      setErrors({ submit: "Failed to save contact. Please try again." });
+      setFormError(error instanceof Error ? error.message : "Failed to save contact. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -168,14 +224,22 @@ export default function ContactsPage() {
   };
 
   const toggleOwner = (userId: Id<"users">) => {
-    setContactDraft((prev) => {
-      const current = prev.ownerUserIds;
+    setOwnerUserIds((current) => {
       if (current.includes(userId)) {
-        return { ...prev, ownerUserIds: current.filter((id) => id !== userId) };
+        return current.filter((id) => id !== userId);
       } else {
-        return { ...prev, ownerUserIds: [...current, userId] };
+        return [...current, userId];
       }
     });
+  };
+
+  const openCreateModal = () => {
+    setSelectedContact(null);
+    resetForm();
+    if (!isAdmin && currentUser) {
+      setOwnerUserIds([currentUser._id]);
+    }
+    setIsCreating(true);
   };
 
   // Loading state
@@ -192,8 +256,6 @@ export default function ContactsPage() {
     );
   }
 
-  const userMap = new Map(users.map((user) => [user._id, user]));
-
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -203,18 +265,7 @@ export default function ContactsPage() {
             Contacts are the people you engage, separate from property-specific leads.
           </p>
         </div>
-        <Button
-          onClick={() => {
-            setSelectedContact(null);
-            setContactDraft({
-              ...emptyContactDraft,
-              ownerUserIds: isAdmin ? [] : [currentUser._id],
-            });
-            setIsCreating(true);
-          }}
-        >
-          + New Contact
-        </Button>
+        <Button onClick={openCreateModal}>+ New Contact</Button>
       </div>
 
       <div className="rounded-[12px] border border-border-strong bg-card-bg p-4">
@@ -288,9 +339,9 @@ export default function ContactsPage() {
                 <TableCell>{contact.company || "-"}</TableCell>
                 <TableCell>
                   <div className="flex flex-wrap gap-1">
-                    {contact.ownerNames.slice(0, 2).map((name: string, i: number) => (
+                    {contact.ownerNames.slice(0, 2).map((ownerName: string, i: number) => (
                       <Badge key={i} variant="secondary" className="text-xs">
-                        {name}
+                        {ownerName}
                       </Badge>
                     ))}
                     {contact.ownerNames.length > 2 && (
@@ -348,65 +399,80 @@ export default function ContactsPage() {
         }
       >
         <div className="space-y-4">
-          {errors.submit && (
-            <div className="rounded-md bg-red-50 p-3 text-sm text-red-600">
-              {errors.submit}
+          {formError && (
+            <div className="rounded-lg bg-danger/10 p-4 text-danger text-sm">
+              {formError}
             </div>
           )}
 
           <div className="grid gap-4 md:grid-cols-2">
+            {/* Name */}
             <div className="space-y-2">
-              <Label>Name *</Label>
+              <Label className="flex items-center gap-1">
+                Name <span className="text-danger">*</span>
+              </Label>
+              {name.touched && name.error && (
+                <p className="text-xs text-danger">{name.error}</p>
+              )}
               <Input
-                value={contactDraft.name}
-                onChange={(e) =>
-                  setContactDraft((prev) => ({ ...prev, name: e.target.value }))
-                }
-                className={errors.name ? "border-red-500" : ""}
+                value={name.value}
+                onChange={(e) => handleFieldChange("name", e.target.value, validateName)}
+                onBlur={() => handleFieldBlur("name", validateName)}
+                placeholder="John Doe"
+                error={name.touched && !!name.error}
               />
-              {errors.name && <p className="text-xs text-red-500">{errors.name}</p>}
             </div>
+
+            {/* Phone */}
             <div className="space-y-2">
-              <Label>Phone *</Label>
+              <Label className="flex items-center gap-1">
+                Phone <span className="text-danger">*</span>
+              </Label>
+              {phone.touched && phone.error && (
+                <p className="text-xs text-danger">{phone.error}</p>
+              )}
               <Input
-                value={contactDraft.phone}
-                onChange={(e) =>
-                  setContactDraft((prev) => ({ ...prev, phone: e.target.value }))
-                }
-                className={errors.phone ? "border-red-500" : ""}
+                value={phone.value}
+                onChange={(e) => handleFieldChange("phone", e.target.value, validatePhone)}
+                onBlur={() => handleFieldBlur("phone", validatePhone)}
+                placeholder="+263 77 123 4567"
+                error={phone.touched && !!phone.error}
               />
-              {errors.phone && <p className="text-xs text-red-500">{errors.phone}</p>}
             </div>
+
+            {/* Email */}
             <div className="space-y-2">
               <Label>Email</Label>
+              {email.touched && email.error && (
+                <p className="text-xs text-danger">{email.error}</p>
+              )}
               <Input
                 type="email"
-                value={contactDraft.email}
-                onChange={(e) =>
-                  setContactDraft((prev) => ({ ...prev, email: e.target.value }))
-                }
-                className={errors.email ? "border-red-500" : ""}
+                value={email.value}
+                onChange={(e) => handleFieldChange("email", e.target.value, validateEmail)}
+                onBlur={() => handleFieldBlur("email", validateEmail)}
+                placeholder="john@example.com"
+                error={email.touched && !!email.error}
               />
-              {errors.email && <p className="text-xs text-red-500">{errors.email}</p>}
             </div>
+
+            {/* Company */}
             <div className="space-y-2">
               <Label>Company</Label>
               <Input
-                value={contactDraft.company}
-                onChange={(e) =>
-                  setContactDraft((prev) => ({ ...prev, company: e.target.value }))
-                }
+                value={company}
+                onChange={(e) => setCompany(e.target.value)}
+                placeholder="Company name"
               />
             </div>
           </div>
 
+          {/* Notes */}
           <div className="space-y-2">
             <Label>Notes</Label>
             <Textarea
-              value={contactDraft.notes}
-              onChange={(e) =>
-                setContactDraft((prev) => ({ ...prev, notes: e.target.value }))
-              }
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
               rows={3}
               placeholder="Add any notes about this contact..."
             />
@@ -419,7 +485,7 @@ export default function ContactsPage() {
               <div className="rounded-md border border-border-strong p-3">
                 <div className="flex flex-wrap gap-2">
                   {users.map((user) => {
-                    const isSelected = contactDraft.ownerUserIds.includes(user._id);
+                    const isSelected = ownerUserIds.includes(user._id);
                     return (
                       <button
                         key={user._id}
@@ -437,7 +503,7 @@ export default function ContactsPage() {
                     );
                   })}
                 </div>
-                {contactDraft.ownerUserIds.length === 0 && (
+                {ownerUserIds.length === 0 && (
                   <p className="mt-2 text-xs text-text-muted">
                     No owners selected. You will be assigned as the owner.
                   </p>
@@ -451,9 +517,9 @@ export default function ContactsPage() {
             <div className="space-y-2">
               <Label>Owners</Label>
               <div className="flex flex-wrap gap-1">
-                {selectedContact.ownerNames.map((name, i) => (
+                {selectedContact.ownerNames.map((ownerName, i) => (
                   <Badge key={i} variant="secondary">
-                    {name}
+                    {ownerName}
                   </Badge>
                 ))}
               </div>
