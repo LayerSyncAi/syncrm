@@ -100,6 +100,7 @@ export default defineSchema({
       v.literal("off_market")
     ),
     description: v.string(),
+    images: v.array(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

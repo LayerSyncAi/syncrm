@@ -83,9 +83,13 @@ export const create = mutation({
       v.literal("off_market")
     ),
     description: v.string(),
+    images: v.array(v.string()),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
+    if (args.images.length < 2) {
+      throw new Error("At least 2 property images are required");
+    }
     const timestamp = Date.now();
     return ctx.db.insert("properties", {
       ...args,
@@ -125,9 +129,13 @@ export const update = mutation({
       )
     ),
     description: v.optional(v.string()),
+    images: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
+    if (args.images !== undefined && args.images.length < 2) {
+      throw new Error("At least 2 property images are required");
+    }
     const updates: Record<string, unknown> = { updatedAt: Date.now() };
     for (const [key, value] of Object.entries(args)) {
       if (key === "propertyId") continue;
@@ -136,5 +144,25 @@ export const update = mutation({
       }
     }
     await ctx.db.patch(args.propertyId, updates);
+  },
+});
+
+export const remove = mutation({
+  args: {
+    propertyId: v.id("properties"),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    await ctx.db.delete(args.propertyId);
+  },
+});
+
+export const getById = query({
+  args: {
+    propertyId: v.id("properties"),
+  },
+  handler: async (ctx, args) => {
+    await getCurrentUser(ctx);
+    return ctx.db.get(args.propertyId);
   },
 });
