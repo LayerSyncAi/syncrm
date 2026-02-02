@@ -28,6 +28,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     }
   }, [isLoading, isAuthenticated, isSessionAuthenticated, user]);
 
+  // Redirect to login if not authenticated (must be in useEffect to avoid state update during render)
+  useEffect(() => {
+    if (!isLoading && !isSessionAuthenticated) {
+      console.log("[AppLayout] Not authenticated, redirecting to login");
+      router.replace("/login");
+    }
+  }, [isLoading, isSessionAuthenticated, router]);
+
   // Show loading state while auth session or user data is loading
   if (isLoading) {
     return (
@@ -79,10 +87,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     );
   }
 
-  // If not session authenticated and not loading, redirect to login
+  // If not session authenticated and not loading, show redirecting state
+  // (actual redirect happens in useEffect above)
   if (!isSessionAuthenticated) {
-    console.log("[AppLayout] Not authenticated, redirecting to login");
-    router.replace("/login");
     return (
       <div className="min-h-screen bg-content-bg flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">

@@ -132,14 +132,23 @@ export default defineSchema({
     description: v.string(),
     scheduledAt: v.optional(v.number()),
     completedAt: v.optional(v.number()),
+    // Task status: todo or completed
+    status: v.union(v.literal("todo"), v.literal("completed")),
+    // Notes explaining what happened or next steps when completed
+    completionNotes: v.optional(v.string()),
     assignedToUserId: v.id("users"),
     createdByUserId: v.id("users"),
     createdAt: v.number(),
-  }).index("by_assignee_status", [
-    "assignedToUserId",
-    "scheduledAt",
-    "completedAt",
-  ]),
+    updatedAt: v.optional(v.number()),
+  })
+    .index("by_assignee_status", [
+      "assignedToUserId",
+      "scheduledAt",
+      "completedAt",
+    ])
+    .index("by_status", ["status"])
+    .index("by_type", ["type"])
+    .index("by_lead", ["leadId"]),
   locations: defineTable({
     name: v.string(),
     createdByUserId: v.id("users"),
