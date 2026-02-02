@@ -42,6 +42,9 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_order", ["order"]),
   leads: defineTable({
+    // Link to contact - required for all leads
+    contactId: v.id("contacts"),
+    // Denormalized from contact for quick access
     fullName: v.string(),
     phone: v.string(),
     normalizedPhone: v.string(),
@@ -70,6 +73,7 @@ export default defineSchema({
   })
     .index("by_owner", ["ownerUserId"])
     .index("by_stage", ["stageId"])
+    .index("by_contact", ["contactId"])
     .index("by_normalized_phone", ["normalizedPhone"])
     .index("by_name", ["fullName"]),
   properties: defineTable({
@@ -140,4 +144,19 @@ export default defineSchema({
     createdByUserId: v.id("users"),
     createdAt: v.number(),
   }).index("by_name", ["name"]),
+  contacts: defineTable({
+    name: v.string(),
+    phone: v.string(),
+    normalizedPhone: v.string(),
+    email: v.optional(v.string()),
+    company: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    // Multiple owners can see this contact - agents only see contacts they own
+    ownerUserIds: v.array(v.id("users")),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_normalized_phone", ["normalizedPhone"])
+    .index("by_name", ["name"]),
 });

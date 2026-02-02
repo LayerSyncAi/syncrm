@@ -3,9 +3,7 @@ import { v } from "convex/values";
 import { getCurrentUser } from "./helpers";
 
 const leadArgs = {
-  fullName: v.string(),
-  phone: v.string(),
-  email: v.optional(v.string()),
+  contactId: v.id("contacts"),
   source: v.union(
     v.literal("walk_in"),
     v.literal("referral"),
@@ -44,15 +42,29 @@ export const create = mutation({
   args: leadArgs,
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
+
+    // Fetch the contact to get denormalized data
+    const contact = await ctx.db.get(args.contactId);
+    if (!contact) {
+      throw new Error("Contact not found");
+    }
+
+    // Check if user has access to the contact (must be an owner or admin)
+    if (user.role !== "admin" && !contact.ownerUserIds.includes(user._id)) {
+      throw new Error("You don't have access to this contact");
+    }
+
     const timestamp = Date.now();
     const ownerId = user.role === "admin" && args.ownerUserId
       ? args.ownerUserId
       : user._id;
+
     return ctx.db.insert("leads", {
-      fullName: args.fullName,
-      phone: args.phone,
-      normalizedPhone: normalizePhone(args.phone),
-      email: args.email,
+      contactId: args.contactId,
+      fullName: contact.name,
+      phone: contact.phone,
+      normalizedPhone: contact.normalizedPhone,
+      email: contact.email,
       source: args.source,
       interestType: args.interestType,
       budgetCurrency: args.budgetCurrency,
@@ -148,9 +160,7 @@ export const getById = query({
 export const update = mutation({
   args: {
     leadId: v.id("leads"),
-    fullName: v.optional(v.string()),
-    phone: v.optional(v.string()),
-    email: v.optional(v.string()),
+    // Contact info is managed through the contact, not the lead
     source: v.optional(
       v.union(
         v.literal("walk_in"),
@@ -163,6 +173,7 @@ export const update = mutation({
       )
     ),
     interestType: v.optional(v.union(v.literal("rent"), v.literal("buy"))),
+    budgetCurrency: v.optional(v.string()),
     budgetMin: v.optional(v.number()),
     budgetMax: v.optional(v.number()),
     preferredAreas: v.optional(v.array(v.string())),
@@ -174,14 +185,9 @@ export const update = mutation({
       throw new Error("Lead not found");
     }
     const updated: Record<string, unknown> = { updatedAt: Date.now() };
-    if (args.fullName) updated.fullName = args.fullName;
-    if (args.phone) {
-      updated.phone = args.phone;
-      updated.normalizedPhone = normalizePhone(args.phone);
-    }
-    if (args.email !== undefined) updated.email = args.email;
     if (args.source) updated.source = args.source;
     if (args.interestType) updated.interestType = args.interestType;
+    if (args.budgetCurrency !== undefined) updated.budgetCurrency = args.budgetCurrency;
     if (args.budgetMin !== undefined) updated.budgetMin = args.budgetMin;
     if (args.budgetMax !== undefined) updated.budgetMax = args.budgetMax;
     if (args.preferredAreas) updated.preferredAreas = args.preferredAreas;
