@@ -34,6 +34,7 @@ export default function NewPropertyPage() {
   const router = useRouter();
   const currentUser = useQuery(api.users.getMeRequired);
   const createProperty = useMutation(api.properties.create);
+  const locations = useQuery(api.locations.list);
 
   // Form state with validation
   const [title, setTitle] = React.useState<FieldState>(createEmptyFieldState());
@@ -41,7 +42,8 @@ export default function NewPropertyPage() {
   const [listingType, setListingType] = React.useState<ListingType>("sale");
   const [price, setPrice] = React.useState<FieldState>(createEmptyFieldState());
   const [currency, setCurrency] = React.useState("USD");
-  const [location, setLocation] = React.useState<FieldState>(createEmptyFieldState());
+  const [location, setLocation] = React.useState("");
+  const [locationError, setLocationError] = React.useState<string | undefined>();
   const [area, setArea] = React.useState<FieldState>(createEmptyFieldState());
   const [bedrooms, setBedrooms] = React.useState("");
   const [bathrooms, setBathrooms] = React.useState("");
@@ -70,7 +72,7 @@ export default function NewPropertyPage() {
   };
 
   const validateLocation = (value: string): string | undefined => {
-    if (!value.trim()) return "Location is required";
+    if (!value) return "Location is required";
     return undefined;
   };
 
@@ -92,14 +94,13 @@ export default function NewPropertyPage() {
   };
 
   const handleFieldChange = (
-    field: "title" | "price" | "location" | "area",
+    field: "title" | "price" | "area",
     value: string,
     validator: (value: string) => string | undefined
   ) => {
-    const setters: Record<"title" | "price" | "location" | "area", React.Dispatch<React.SetStateAction<FieldState>>> = {
+    const setters: Record<"title" | "price" | "area", React.Dispatch<React.SetStateAction<FieldState>>> = {
       title: setTitle,
       price: setPrice,
-      location: setLocation,
       area: setArea,
     };
     const setter = setters[field];
@@ -111,19 +112,17 @@ export default function NewPropertyPage() {
   };
 
   const handleFieldBlur = (
-    field: "title" | "price" | "location" | "area",
+    field: "title" | "price" | "area",
     validator: (value: string) => string | undefined
   ) => {
-    const setters: Record<"title" | "price" | "location" | "area", React.Dispatch<React.SetStateAction<FieldState>>> = {
+    const setters: Record<"title" | "price" | "area", React.Dispatch<React.SetStateAction<FieldState>>> = {
       title: setTitle,
       price: setPrice,
-      location: setLocation,
       area: setArea,
     };
-    const states: Record<"title" | "price" | "location" | "area", FieldState> = {
+    const states: Record<"title" | "price" | "area", FieldState> = {
       title,
       price,
-      location,
       area,
     };
     const setter = setters[field];
@@ -142,17 +141,17 @@ export default function NewPropertyPage() {
   const validateForm = (): boolean => {
     const titleError = validateTitle(title.value);
     const priceError = validatePrice(price.value);
-    const locationError = validateLocation(location.value);
+    const locError = validateLocation(location);
     const areaError = validateArea(area.value);
     const imgsError = validateImages(images);
 
     setTitle((prev) => ({ ...prev, touched: true, error: titleError }));
     setPrice((prev) => ({ ...prev, touched: true, error: priceError }));
-    setLocation((prev) => ({ ...prev, touched: true, error: locationError }));
+    setLocationError(locError);
     setArea((prev) => ({ ...prev, touched: true, error: areaError }));
     setImagesError(imgsError);
 
-    return !titleError && !priceError && !locationError && !areaError && !imgsError;
+    return !titleError && !priceError && !locError && !areaError && !imgsError;
   };
 
   const handleSave = async () => {
@@ -167,7 +166,7 @@ export default function NewPropertyPage() {
         listingType,
         price: parseFloat(parseCurrencyInput(price.value)),
         currency,
-        location: location.value.trim(),
+        location,
         area: parseFloat(area.value),
         bedrooms: bedrooms ? parseInt(bedrooms) : undefined,
         bathrooms: bathrooms ? parseInt(bathrooms) : undefined,
@@ -291,9 +290,6 @@ export default function NewPropertyPage() {
             <Label className="flex items-center gap-1">
               Price <span className="text-danger">*</span>
             </Label>
-            {price.touched && price.error && (
-              <p className="text-xs text-danger">{price.error}</p>
-            )}
             <CurrencyInput
               value={price.value}
               onChange={(val) => handleFieldChange("price", val, validatePrice)}
@@ -311,16 +307,23 @@ export default function NewPropertyPage() {
             <Label className="flex items-center gap-1">
               Location <span className="text-danger">*</span>
             </Label>
-            {location.touched && location.error && (
-              <p className="text-xs text-danger">{location.error}</p>
+            {locationError && (
+              <p className="text-xs text-danger">{locationError}</p>
             )}
-            <Input
-              value={location.value}
-              onChange={(e) => handleFieldChange("location", e.target.value, validateLocation)}
-              onBlur={() => handleFieldBlur("location", validateLocation)}
-              placeholder="e.g., Borrowdale, Harare"
-              error={location.touched && !!location.error}
-            />
+            <Select
+              value={location}
+              onChange={(e) => {
+                setLocation(e.target.value);
+                setLocationError(validateLocation(e.target.value));
+              }}
+            >
+              <option value="">Select a location...</option>
+              {locations?.map((loc) => (
+                <option key={loc._id} value={loc.name}>
+                  {loc.name}
+                </option>
+              ))}
+            </Select>
           </div>
 
           {/* Area */}
