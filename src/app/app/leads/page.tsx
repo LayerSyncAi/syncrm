@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Table, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { useRequireAuth } from "@/hooks/useAuth";
+import { BulkMatching } from "@/components/leads/bulk-matching";
 
 export default function LeadsPage() {
   const { user, isLoading: authLoading, isAdmin } = useRequireAuth();
@@ -23,6 +24,9 @@ export default function LeadsPage() {
   const [ownerFilter, setOwnerFilter] = useState<string>("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [debouncedArea, setDebouncedArea] = useState("");
+
+  // Bulk matching modal state
+  const [bulkMatchingOpen, setBulkMatchingOpen] = useState(false);
 
   // Debounce search inputs
   useEffect(() => {
@@ -99,9 +103,14 @@ export default function LeadsPage() {
             Manage your leads and track their progress through the pipeline.
           </p>
         </div>
-        <Link href="/app/leads/new">
-          <Button>+ New Lead</Button>
-        </Link>
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={() => setBulkMatchingOpen(true)}>
+            Bulk Match
+          </Button>
+          <Link href="/app/leads/new">
+            <Button>+ New Lead</Button>
+          </Link>
+        </div>
       </div>
 
       <div className="rounded-[12px] border border-border-strong bg-card-bg p-4">
@@ -253,6 +262,11 @@ export default function LeadsPage() {
           </tbody>
         </Table>
       )}
+
+      <BulkMatching
+        open={bulkMatchingOpen}
+        onClose={() => setBulkMatchingOpen(false)}
+      />
     </div>
   );
 }
