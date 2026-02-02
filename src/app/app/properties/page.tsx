@@ -16,6 +16,7 @@ import { Table, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { parseCurrencyInput } from "@/lib/currency";
 import { ConfirmDeleteDialog } from "@/components/common/confirm-delete-dialog";
+import { ImageUpload, ImageItem, serializeImages, deserializeImages } from "@/components/ui/image-upload";
 
 type PropertyType = "house" | "apartment" | "land" | "commercial" | "other";
 type ListingType = "rent" | "sale";
@@ -152,8 +153,7 @@ export default function PropertiesPage() {
   const [bathrooms, setBathrooms] = React.useState("");
   const [status, setStatus] = React.useState<PropertyStatus>("available");
   const [description, setDescription] = React.useState("");
-  const [images, setImages] = React.useState<string[]>([]);
-  const [newImageUrl, setNewImageUrl] = React.useState("");
+  const [images, setImages] = React.useState<ImageItem[]>([]);
   const [imagesError, setImagesError] = React.useState<string | undefined>();
 
   const isAdmin = currentUser?.role === "admin";
@@ -184,7 +184,7 @@ export default function PropertiesPage() {
     return undefined;
   };
 
-  const validateImages = (imgs: string[]): string | undefined => {
+  const validateImages = (imgs: ImageItem[]): string | undefined => {
     if (imgs.length < 2) return "At least 2 property images are required";
     return undefined;
   };
@@ -247,7 +247,7 @@ export default function PropertiesPage() {
       setBathrooms(selectedProperty.bathrooms?.toString() || "");
       setStatus(selectedProperty.status);
       setDescription(selectedProperty.description);
-      setImages(selectedProperty.images || []);
+      setImages(deserializeImages(selectedProperty.images || []));
       setImagesError(undefined);
       setFormError("");
     }
@@ -266,7 +266,6 @@ export default function PropertiesPage() {
     setStatus("available");
     setDescription("");
     setImages([]);
-    setNewImageUrl("");
     setImagesError(undefined);
     setFormError("");
   };
@@ -312,7 +311,7 @@ export default function PropertiesPage() {
         bathrooms: bathrooms ? parseInt(bathrooms) : undefined,
         status,
         description: description.trim(),
-        images,
+        images: serializeImages(images),
       });
       closeModal();
     } catch (error) {
@@ -333,19 +332,9 @@ export default function PropertiesPage() {
     }
   };
 
-  const handleAddImage = () => {
-    if (newImageUrl.trim()) {
-      const updatedImages = [...images, newImageUrl.trim()];
-      setImages(updatedImages);
-      setNewImageUrl("");
-      setImagesError(validateImages(updatedImages));
-    }
-  };
-
-  const handleRemoveImage = (index: number) => {
-    const updatedImages = images.filter((_, i) => i !== index);
-    setImages(updatedImages);
-    setImagesError(validateImages(updatedImages));
+  const handleImagesChange = (newImages: ImageItem[]) => {
+    setImages(newImages);
+    setImagesError(validateImages(newImages));
   };
 
   // Loading state
@@ -638,55 +627,18 @@ export default function PropertiesPage() {
           )}
 
           {/* Images Section */}
-          <div className="space-y-3">
+          <div className="space-y-2">
             <Label className="flex items-center gap-1">
               Images <span className="text-danger">*</span>
-              <span className="text-xs text-text-muted ml-2">(minimum 2 required)</span>
             </Label>
-            {imagesError && (
-              <p className="text-xs text-danger">{imagesError}</p>
-            )}
-            <div className="grid gap-3 md:grid-cols-3">
-              {images.map((image, index) => (
-                <div
-                  key={`image-${index}`}
-                  className="relative aspect-[4/3] w-full overflow-hidden rounded-[10px] border border-border-strong bg-muted group"
-                >
-                  <img
-                    src={image}
-                    alt={`Property image ${index + 1}`}
-                    className="h-full w-full object-cover"
-                  />
-                  {isAdmin && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveImage(index)}
-                      className="absolute top-2 right-2 h-6 w-6 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-            {isAdmin && (
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Enter image URL..."
-                  value={newImageUrl}
-                  onChange={(e) => setNewImageUrl(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleAddImage();
-                    }
-                  }}
-                />
-                <Button type="button" variant="secondary" onClick={handleAddImage}>
-                  Add
-                </Button>
-              </div>
-            )}
+            <ImageUpload
+              images={images}
+              onChange={handleImagesChange}
+              minImages={2}
+              maxImages={10}
+              disabled={!isAdmin}
+              error={imagesError}
+            />
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">

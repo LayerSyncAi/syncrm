@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useConvex } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
@@ -9,9 +9,8 @@ import { Button } from "./button";
 import { Input } from "./input";
 
 export interface ImageItem {
-  type: "storage" | "url";
-  value: string; // storage ID or URL
-  previewUrl?: string; // For storage images, the resolved URL
+  url: string; // The actual displayable URL
+  storageId?: string; // Optional: storage ID if uploaded via Convex
 }
 
 interface ImageUploadProps {
@@ -33,6 +32,7 @@ export function ImageUpload({
   error,
   className,
 }: ImageUploadProps) {
+  const convex = useConvex();
   const generateUploadUrl = useMutation(api.storage.generateUploadUrl);
 
   const [isUploading, setIsUploading] = React.useState(false);
@@ -87,13 +87,16 @@ export function ImageUpload({
 
         const { storageId } = await response.json();
 
-        // Create a local preview URL
+        // Get the permanent URL for this storage item
+        // We'll use a local blob URL for preview until the component re-renders
         const previewUrl = URL.createObjectURL(file);
 
+        // Fetch the actual Convex storage URL
+        const storageUrl = await fetchStorageUrl(storageId);
+
         newImages.push({
-          type: "storage",
-          value: storageId,
-          previewUrl,
+          url: storageUrl || previewUrl,
+          storageId,
         });
       }
 
@@ -109,6 +112,19 @@ export function ImageUpload({
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
+    }
+  };
+
+  // Helper to fetch storage URL using Convex client
+  const fetchStorageUrl = async (storageId: string): Promise<string | null> => {
+    try {
+      const url = await convex.query(api.storage.getUrl, {
+        storageId: storageId as Id<"_storage">
+      });
+      return url;
+    } catch (err) {
+      console.error("Failed to get storage URL:", err);
+      return null;
     }
   };
 
@@ -131,9 +147,7 @@ export function ImageUpload({
     onChange([
       ...images,
       {
-        type: "url",
-        value: urlInput.trim(),
-        previewUrl: urlInput.trim(),
+        url: urlInput.trim(),
       },
     ]);
     setUrlInput("");
@@ -146,12 +160,6 @@ export function ImageUpload({
     onChange(newImages);
   };
 
-  const getImageSrc = (image: ImageItem): string => {
-    if (image.previewUrl) return image.previewUrl;
-    if (image.type === "url") return image.value;
-    return ""; // Storage images need to resolve their URLs
-  };
-
   return (
     <div className={cn("space-y-3", className)}>
       {/* Image Grid */}
@@ -159,11 +167,11 @@ export function ImageUpload({
         <div className="grid gap-3 grid-cols-2 md:grid-cols-3">
           {images.map((image, index) => (
             <div
-              key={`image-${index}-${image.value}`}
+              key={`image-${index}-${image.url}`}
               className="relative aspect-[4/3] w-full overflow-hidden rounded-[10px] border border-border-strong bg-muted group"
             >
               <img
-                src={getImageSrc(image)}
+                src={image.url}
                 alt={`Property image ${index + 1}`}
                 className="h-full w-full object-cover"
                 onError={(e) => {
@@ -180,9 +188,11 @@ export function ImageUpload({
                   ×
                 </button>
               )}
-              <div className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/50 text-white text-xs">
-                {image.type === "storage" ? "Uploaded" : "URL"}
-              </div>
+              {image.storageId && (
+                <div className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/50 text-white text-xs">
+                  Uploaded
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -260,29 +270,15 @@ export function ImageUpload({
 
 /**
  * Helper to convert ImageItem array to string array for storage.
- * Storage IDs are prefixed with "storage:" to distinguish from URLs.
+ * We just store the URLs directly since we resolve them at upload time.
  */
 export function serializeImages(images: ImageItem[]): string[] {
-  return images.map((img) =>
-    img.type === "storage" ? `storage:${img.value}` : img.value
-  );
+  return images.map((img) => img.url);
 }
 
 /**
  * Helper to convert stored string array back to ImageItem array.
  */
 export function deserializeImages(stored: string[]): ImageItem[] {
-  return stored.map((value) => {
-    if (value.startsWith("storage:")) {
-      return {
-        type: "storage",
-        value: value.slice(8), // Remove "storage:" prefix
-      };
-    }
-    return {
-      type: "url",
-      value,
-      previewUrl: value,
-    };
-  });
+  return stored.map((url) => ({ url }));
 }
