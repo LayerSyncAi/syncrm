@@ -15,8 +15,10 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { RightDrawer } from "@/components/common/right-drawer";
 import { useRequireAuth } from "@/hooks/useAuth";
+import { PropertySuggestions } from "./property-suggestions";
+import { PropertyComparison } from "./property-comparison";
 
-const tabs = ["Timeline", "Matched Properties", "Notes"] as const;
+const tabs = ["Timeline", "Matched Properties", "Suggested", "Notes"] as const;
 
 interface LeadDetailProps {
   leadId: Id<"leads">;
@@ -50,6 +52,10 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
   const [completingActivityId, setCompletingActivityId] = useState<Id<"activities"> | null>(null);
   const [completionNotes, setCompletionNotes] = useState("");
   const [isMarkingComplete, setIsMarkingComplete] = useState(false);
+
+  // Property comparison state
+  const [comparisonOpen, setComparisonOpen] = useState(false);
+  const [comparisonPropertyIds, setComparisonPropertyIds] = useState<Id<"properties">[]>([]);
 
   // Queries
   const leadData = useQuery(api.leads.getById, { leadId });
@@ -167,6 +173,11 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
     } catch (error) {
       console.error("Failed to detach property:", error);
     }
+  };
+
+  const handleOpenComparison = (propertyIds: Id<"properties">[]) => {
+    setComparisonPropertyIds(propertyIds);
+    setComparisonOpen(true);
   };
 
   // Format date for display
@@ -527,6 +538,13 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
         </div>
       )}
 
+      {activeTab === "Suggested" && (
+        <PropertySuggestions
+          leadId={leadId}
+          onCompareSelect={handleOpenComparison}
+        />
+      )}
+
       {activeTab === "Notes" && (
         <Card className="p-5 space-y-3">
           <h3 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
@@ -704,6 +722,16 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
           </div>
         </div>
       </Modal>
+
+      <PropertyComparison
+        open={comparisonOpen}
+        onClose={() => {
+          setComparisonOpen(false);
+          setComparisonPropertyIds([]);
+        }}
+        propertyIds={comparisonPropertyIds}
+        leadId={leadId}
+      />
     </div>
   );
 }
