@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useCallback, lazy, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -15,14 +15,36 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { RightDrawer } from "@/components/common/right-drawer";
 import { useRequireAuth } from "@/hooks/useAuth";
-import { PropertySuggestions } from "./property-suggestions";
-import { PropertyComparison } from "./property-comparison";
+
+const PropertySuggestions = lazy(() =>
+  import("./property-suggestions").then((m) => ({ default: m.PropertySuggestions }))
+);
+const PropertyComparison = lazy(() =>
+  import("./property-comparison").then((m) => ({ default: m.PropertyComparison }))
+);
 
 const tabs = ["Timeline", "Matched Properties", "Suggested", "Notes"] as const;
 
 interface LeadDetailProps {
   leadId: Id<"leads">;
 }
+
+const formatDate = (timestamp: number) => {
+  return new Date(timestamp).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+};
+
+const formatDateTime = (timestamp: number) => {
+  return new Date(timestamp).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+};
 
 export function LeadDetail({ leadId }: LeadDetailProps) {
   const router = useRouter();
@@ -57,12 +79,13 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
   const [comparisonOpen, setComparisonOpen] = useState(false);
   const [comparisonPropertyIds, setComparisonPropertyIds] = useState<Id<"properties">[]>([]);
 
-  // Queries
+  // Queries - conditionally skip properties query when drawer is closed
   const leadData = useQuery(api.leads.getById, { leadId });
   const stages = useQuery(api.stages.list);
   const activities = useQuery(api.activities.listForLead, { leadId });
   const matches = useQuery(api.matches.listForLead, { leadId });
-  const properties = useQuery(api.properties.list, {});
+  // Only load all properties when the attach drawer is open (avoids loading entire property table)
+  const properties = useQuery(api.properties.list, drawerOpen ? {} : "skip");
 
   // Mutations
   const moveStage = useMutation(api.leads.moveStage);
@@ -78,7 +101,7 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
     setNotesInitialized(true);
   }
 
-  const handleStageChange = async (newStageId: Id<"pipelineStages">) => {
+  const handleStageChange = useCallback(async (newStageId: Id<"pipelineStages">) => {
     const stage = stages?.find((s) => s._id === newStageId);
     try {
       await moveStage({
@@ -89,9 +112,9 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
     } catch (error) {
       console.error("Failed to update stage:", error);
     }
-  };
+  }, [stages, moveStage, leadId, closeReason]);
 
-  const handleSaveNotes = async () => {
+  const handleSaveNotes = useCallback(async () => {
     setIsSavingNotes(true);
     try {
       await updateNotes({ leadId, notes });
@@ -100,9 +123,9 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
     } finally {
       setIsSavingNotes(false);
     }
-  };
+  }, [updateNotes, leadId, notes]);
 
-  const handleCreateActivity = async () => {
+  const handleCreateActivity = useCallback(async () => {
     if (!activityTitle.trim()) return;
     setIsSavingActivity(true);
     try {
@@ -121,19 +144,19 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
     } finally {
       setIsSavingActivity(false);
     }
-  };
+  }, [createActivity, leadId, activityType, activityTitle, activityDescription, activityScheduledAt]);
 
-  const handleOpenCompleteModal = (activityId: Id<"activities">) => {
+  const handleOpenCompleteModal = useCallback((activityId: Id<"activities">) => {
     setCompletingActivityId(activityId);
     setCompletionNotes("");
-  };
+  }, []);
 
-  const handleCloseCompleteModal = () => {
+  const handleCloseCompleteModal = useCallback(() => {
     setCompletingActivityId(null);
     setCompletionNotes("");
-  };
+  }, []);
 
-  const handleMarkComplete = async () => {
+  const handleMarkComplete = useCallback(async () => {
     if (!completingActivityId || !completionNotes.trim()) return;
     setIsMarkingComplete(true);
     try {
@@ -147,9 +170,9 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
     } finally {
       setIsMarkingComplete(false);
     }
-  };
+  }, [completingActivityId, completionNotes, markActivityComplete, handleCloseCompleteModal]);
 
-  const handleAttachProperty = async () => {
+  const handleAttachProperty = useCallback(async () => {
     if (!selectedPropertyId) return;
     setIsAttaching(true);
     try {
@@ -165,38 +188,20 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
     } finally {
       setIsAttaching(false);
     }
-  };
+  }, [selectedPropertyId, attachProperty, leadId, matchType]);
 
-  const handleDetachProperty = async (matchId: Id<"leadPropertyMatches">) => {
+  const handleDetachProperty = useCallback(async (matchId: Id<"leadPropertyMatches">) => {
     try {
       await detachProperty({ matchId });
     } catch (error) {
       console.error("Failed to detach property:", error);
     }
-  };
+  }, [detachProperty]);
 
-  const handleOpenComparison = (propertyIds: Id<"properties">[]) => {
+  const handleOpenComparison = useCallback((propertyIds: Id<"properties">[]) => {
     setComparisonPropertyIds(propertyIds);
     setComparisonOpen(true);
-  };
-
-  // Format date for display
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
-
-  const formatDateTime = (timestamp: number) => {
-    return new Date(timestamp).toLocaleString("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    });
-  };
+  }, []);
 
   if (authLoading) {
     return (
@@ -243,7 +248,7 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
     ? 100
     : Math.round((currentStageOrder / maxOrder) * 100);
 
-  // Filter properties for search
+  // Filter properties for search (only computed when drawer is open and properties are loaded)
   const filteredProperties = properties?.filter(
     (p) =>
       p.title.toLowerCase().includes(propertySearch.toLowerCase()) ||
@@ -539,10 +544,18 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
       )}
 
       {activeTab === "Suggested" && (
-        <PropertySuggestions
-          leadId={leadId}
-          onCompareSelect={handleOpenComparison}
-        />
+        <Suspense
+          fallback={
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+            </div>
+          }
+        >
+          <PropertySuggestions
+            leadId={leadId}
+            onCompareSelect={handleOpenComparison}
+          />
+        </Suspense>
       )}
 
       {activeTab === "Notes" && (
@@ -723,15 +736,19 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
         </div>
       </Modal>
 
-      <PropertyComparison
-        open={comparisonOpen}
-        onClose={() => {
-          setComparisonOpen(false);
-          setComparisonPropertyIds([]);
-        }}
-        propertyIds={comparisonPropertyIds}
-        leadId={leadId}
-      />
+      {comparisonOpen && (
+        <Suspense fallback={null}>
+          <PropertyComparison
+            open={comparisonOpen}
+            onClose={() => {
+              setComparisonOpen(false);
+              setComparisonPropertyIds([]);
+            }}
+            propertyIds={comparisonPropertyIds}
+            leadId={leadId}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

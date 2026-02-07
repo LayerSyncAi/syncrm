@@ -99,42 +99,71 @@ export const listAllTasks = query({
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
     const isAdmin = user.role === "admin";
+    const statusFilter = args.status && args.status !== "all" ? args.status : null;
+    const typeFilter = args.type && args.type !== "all" ? args.type : null;
 
-    // Get all activities
-    let activities = await ctx.db.query("activities").collect();
+    // Use the most selective index available
+    let activities;
 
-    // Filter by user access (agents only see their own)
     if (!isAdmin) {
-      activities = activities.filter(a => a.assignedToUserId === user._id);
+      // Non-admin: use assignee index (most selective - only their tasks)
+      activities = await ctx.db
+        .query("activities")
+        .withIndex("by_assignee_status", (q) => q.eq("assignedToUserId", user._id))
+        .collect();
+    } else if (statusFilter) {
+      // Admin with status filter: use status index
+      activities = await ctx.db
+        .query("activities")
+        .withIndex("by_status", (q) => q.eq("status", statusFilter))
+        .collect();
+    } else if (typeFilter) {
+      // Admin with type filter: use type index
+      activities = await ctx.db
+        .query("activities")
+        .withIndex("by_type", (q) => q.eq("type", typeFilter))
+        .collect();
+    } else {
+      activities = await ctx.db.query("activities").collect();
     }
 
-    // Filter by status
-    if (args.status && args.status !== "all") {
-      activities = activities.filter(a => a.status === args.status);
+    // Apply remaining filters in memory on the already-narrowed set
+    let filtered = activities;
+    if (statusFilter && !isAdmin) {
+      // Non-admin used assignee index - still need status filter
+      filtered = filtered.filter(a => a.status === statusFilter);
+    }
+    if (typeFilter && (!isAdmin || statusFilter)) {
+      // Need type filter if we didn't use type index
+      filtered = filtered.filter(a => a.type === typeFilter);
     }
 
-    // Filter by type
-    if (args.type && args.type !== "all") {
-      activities = activities.filter(a => a.type === args.type);
-    }
+    // Batch fetch leads and users instead of N+1 queries
+    const leadIds = [...new Set(filtered.map(a => a.leadId))];
+    const userIds = [...new Set(filtered.map(a => a.assignedToUserId))];
 
-    // Enrich with lead information
-    const enrichedActivities = await Promise.all(
-      activities.map(async (activity) => {
-        const lead = await ctx.db.get(activity.leadId);
-        const assignedTo = await ctx.db.get(activity.assignedToUserId);
-        return {
-          ...activity,
-          lead: lead ? { _id: lead._id, fullName: lead.fullName, phone: lead.phone } : null,
-          assignedTo: assignedTo ? {
-            _id: assignedTo._id,
-            fullName: assignedTo.fullName,
-            name: assignedTo.name,
-            email: assignedTo.email
-          } : null,
-        };
-      })
-    );
+    const [leadDocs, userDocs] = await Promise.all([
+      Promise.all(leadIds.map(id => ctx.db.get(id))),
+      Promise.all(userIds.map(id => ctx.db.get(id))),
+    ]);
+
+    const leadMap = new Map(leadDocs.filter(Boolean).map(l => [l!._id, l!]));
+    const userMap = new Map(userDocs.filter(Boolean).map(u => [u!._id, u!]));
+
+    const enrichedActivities = filtered.map((activity) => {
+      const lead = leadMap.get(activity.leadId);
+      const assignedTo = userMap.get(activity.assignedToUserId);
+      return {
+        ...activity,
+        lead: lead ? { _id: lead._id, fullName: lead.fullName, phone: lead.phone } : null,
+        assignedTo: assignedTo ? {
+          _id: assignedTo._id,
+          fullName: assignedTo.fullName,
+          name: assignedTo.name,
+          email: assignedTo.email
+        } : null,
+      };
+    });
 
     // Sort by scheduledAt (if exists) or createdAt descending
     return enrichedActivities.sort((a, b) => {
@@ -153,15 +182,17 @@ export const getById = query({
     const activity = await ctx.db.get(args.activityId);
     if (!activity) return null;
 
-    // Check access
-    const lead = await ctx.db.get(activity.leadId);
+    // Parallel fetch lead, assignedTo, createdBy
+    const [lead, assignedTo, createdBy] = await Promise.all([
+      ctx.db.get(activity.leadId),
+      ctx.db.get(activity.assignedToUserId),
+      ctx.db.get(activity.createdByUserId),
+    ]);
+
     if (!lead) return null;
     if (user.role !== "admin" && lead.ownerUserId !== user._id && activity.assignedToUserId !== user._id) {
       return null;
     }
-
-    const assignedTo = await ctx.db.get(activity.assignedToUserId);
-    const createdBy = await ctx.db.get(activity.createdByUserId);
 
     return {
       ...activity,

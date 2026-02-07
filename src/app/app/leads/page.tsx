@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
 import Link from "next/link";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
@@ -11,7 +11,10 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Table, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { useRequireAuth } from "@/hooks/useAuth";
-import { BulkMatching } from "@/components/leads/bulk-matching";
+
+const BulkMatching = lazy(() =>
+  import("@/components/leads/bulk-matching").then((m) => ({ default: m.BulkMatching }))
+);
 
 export default function LeadsPage() {
   const { user, isLoading: authLoading, isAdmin } = useRequireAuth();
@@ -263,10 +266,14 @@ export default function LeadsPage() {
         </Table>
       )}
 
-      <BulkMatching
-        open={bulkMatchingOpen}
-        onClose={() => setBulkMatchingOpen(false)}
-      />
+      {bulkMatchingOpen && (
+        <Suspense fallback={null}>
+          <BulkMatching
+            open={bulkMatchingOpen}
+            onClose={() => setBulkMatchingOpen(false)}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }
