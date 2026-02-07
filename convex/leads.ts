@@ -90,30 +90,50 @@ export const list = query({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
-    const results = await ctx.db.query("leads").collect();
+    const isAdmin = user.role === "admin";
 
-    // Get all stages and users for joining
-    const stages = await ctx.db.query("pipelineStages").collect();
-    const users = await ctx.db.query("users").collect();
-    const stageMap = new Map(stages.map((s) => [s._id, s]));
-    const userMap = new Map(users.map((u) => [u._id, u]));
+    // Use indexed queries instead of .collect() + filter
+    // Pick the most selective index based on available filters
+    let results;
 
+    if (!isAdmin) {
+      // Non-admin: always filter by owner using index (most selective)
+      results = await ctx.db
+        .query("leads")
+        .withIndex("by_owner", (q) => q.eq("ownerUserId", user._id))
+        .collect();
+    } else if (args.ownerUserId) {
+      // Admin filtering by specific owner
+      results = await ctx.db
+        .query("leads")
+        .withIndex("by_owner", (q) => q.eq("ownerUserId", args.ownerUserId!))
+        .collect();
+    } else if (args.stageId) {
+      // Admin filtering by stage
+      results = await ctx.db
+        .query("leads")
+        .withIndex("by_stage", (q) => q.eq("stageId", args.stageId!))
+        .collect();
+    } else {
+      // Admin with no indexed filter - collect all
+      results = await ctx.db.query("leads").collect();
+    }
+
+    // Apply remaining filters in memory (on the already-narrowed result set)
     const filtered = results.filter((lead) => {
-      if (user.role !== "admin" && lead.ownerUserId !== user._id) {
-        return false;
-      }
-      if (user.role === "admin" && args.ownerUserId && lead.ownerUserId !== args.ownerUserId) {
-        return false;
-      }
-      if (args.stageId && lead.stageId !== args.stageId) {
+      // Stage filter (skip if already applied via index)
+      if (args.stageId && !args.ownerUserId && isAdmin) {
+        // Already filtered by stage index
+      } else if (args.stageId && lead.stageId !== args.stageId) {
         return false;
       }
       if (args.interestType && lead.interestType !== args.interestType) {
         return false;
       }
       if (args.preferredAreaKeyword) {
+        const keyword = args.preferredAreaKeyword.toLowerCase();
         const match = lead.preferredAreas.some((area) =>
-          area.toLowerCase().includes(args.preferredAreaKeyword!.toLowerCase())
+          area.toLowerCase().includes(keyword)
         );
         if (!match) return false;
       }
@@ -129,7 +149,14 @@ export const list = query({
       return true;
     });
 
-    // Enrich leads with owner and stage names
+    // Batch fetch stages and users for enrichment (small tables)
+    const [stages, users] = await Promise.all([
+      ctx.db.query("pipelineStages").withIndex("by_order").collect(),
+      ctx.db.query("users").collect(),
+    ]);
+    const stageMap = new Map(stages.map((s) => [s._id, s]));
+    const userMap = new Map(users.map((u) => [u._id, u]));
+
     return filtered.map((lead) => {
       const owner = userMap.get(lead.ownerUserId);
       const stage = stageMap.get(lead.stageId);
@@ -151,8 +178,11 @@ export const getById = query({
     if (!lead) {
       return null;
     }
-    const stage = await ctx.db.get(lead.stageId);
-    const owner = await ctx.db.get(lead.ownerUserId);
+    // Parallel fetch stage and owner
+    const [stage, owner] = await Promise.all([
+      ctx.db.get(lead.stageId),
+      ctx.db.get(lead.ownerUserId),
+    ]);
     return { lead, stage, owner };
   },
 });
@@ -160,7 +190,6 @@ export const getById = query({
 export const update = mutation({
   args: {
     leadId: v.id("leads"),
-    // Contact info is managed through the contact, not the lead
     source: v.optional(
       v.union(
         v.literal("walk_in"),
@@ -239,16 +268,24 @@ export const statsSummary = query({
   args: { ownerUserId: v.optional(v.id("users")) },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
-    const leads = await ctx.db.query("leads").collect();
-    const scoped = leads.filter((lead) => {
-      if (user.role !== "admin") {
-        return lead.ownerUserId === user._id;
-      }
-      if (args.ownerUserId) {
-        return lead.ownerUserId === args.ownerUserId;
-      }
-      return true;
-    });
+    const isAdmin = user.role === "admin";
+
+    // Use indexed query for non-admin or when filtering by owner
+    let scoped;
+    if (!isAdmin) {
+      scoped = await ctx.db
+        .query("leads")
+        .withIndex("by_owner", (q) => q.eq("ownerUserId", user._id))
+        .collect();
+    } else if (args.ownerUserId) {
+      scoped = await ctx.db
+        .query("leads")
+        .withIndex("by_owner", (q) => q.eq("ownerUserId", args.ownerUserId!))
+        .collect();
+    } else {
+      scoped = await ctx.db.query("leads").collect();
+    }
+
     return {
       total: scoped.length,
       open: scoped.filter((lead) => !lead.closedAt).length,
@@ -261,19 +298,17 @@ export const dashboardStats = query({
   args: { ownerUserId: v.optional(v.id("users")) },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
-    const leads = await ctx.db.query("leads").collect();
-    const stages = await ctx.db.query("pipelineStages").withIndex("by_order").collect();
+    const isAdmin = user.role === "admin";
 
-    // Filter leads based on user role
-    const scoped = leads.filter((lead) => {
-      if (user.role !== "admin") {
-        return lead.ownerUserId === user._id;
-      }
-      if (args.ownerUserId) {
-        return lead.ownerUserId === args.ownerUserId;
-      }
-      return true;
-    });
+    // Use indexed query for non-admin or when filtering by owner
+    const [scoped, stages] = await Promise.all([
+      !isAdmin
+        ? ctx.db.query("leads").withIndex("by_owner", (q) => q.eq("ownerUserId", user._id)).collect()
+        : args.ownerUserId
+          ? ctx.db.query("leads").withIndex("by_owner", (q) => q.eq("ownerUserId", args.ownerUserId!)).collect()
+          : ctx.db.query("leads").collect(),
+      ctx.db.query("pipelineStages").withIndex("by_order").collect(),
+    ]);
 
     // Time calculations
     const now = Date.now();
@@ -283,48 +318,44 @@ export const dashboardStats = query({
     startOfMonth.setHours(0, 0, 0, 0);
     const startOfMonthMs = startOfMonth.getTime();
 
-    // Calculate stats
-    const newThisWeek = scoped.filter((lead) => lead.createdAt >= oneWeekAgo).length;
-    const openLeads = scoped.filter((lead) => !lead.closedAt).length;
-
     // Get terminal stages to identify won/lost
     const wonStage = stages.find((s) => s.terminalOutcome === "won");
     const lostStage = stages.find((s) => s.terminalOutcome === "lost");
 
-    const wonThisMonth = scoped.filter((lead) =>
-      lead.closedAt &&
-      lead.closedAt >= startOfMonthMs &&
-      wonStage &&
-      lead.stageId === wonStage._id
-    ).length;
+    // Single pass aggregation instead of multiple filter passes
+    let newThisWeek = 0;
+    let openLeads = 0;
+    let wonThisMonth = 0;
+    let lostThisMonth = 0;
+    const stageCountMap = new Map<string, number>();
 
-    const lostThisMonth = scoped.filter((lead) =>
-      lead.closedAt &&
-      lead.closedAt >= startOfMonthMs &&
-      lostStage &&
-      lead.stageId === lostStage._id
-    ).length;
+    for (const lead of scoped) {
+      if (lead.createdAt >= oneWeekAgo) newThisWeek++;
+      if (!lead.closedAt) {
+        openLeads++;
+        stageCountMap.set(lead.stageId, (stageCountMap.get(lead.stageId) ?? 0) + 1);
+      }
+      if (lead.closedAt && lead.closedAt >= startOfMonthMs) {
+        if (wonStage && lead.stageId === wonStage._id) wonThisMonth++;
+        if (lostStage && lead.stageId === lostStage._id) lostThisMonth++;
+      }
+    }
 
     // Calculate stage breakdown (non-terminal stages only for pipeline view)
     const nonTerminalStages = stages.filter((s) => !s.isTerminal);
-    const stageCounts = nonTerminalStages.map((stage) => {
-      const count = scoped.filter((lead) => lead.stageId === stage._id && !lead.closedAt).length;
+    const totalOpenForStages = openLeads;
+
+    const stageBreakdown = nonTerminalStages.map((stage) => {
+      const count = stageCountMap.get(stage._id) ?? 0;
       return {
         id: stage._id,
         name: stage.name,
         count,
         order: stage.order,
+        percent: totalOpenForStages > 0 ? count / totalOpenForStages : 0,
       };
     });
 
-    // Calculate percentages based on total open leads
-    const totalOpenForStages = stageCounts.reduce((sum, s) => sum + s.count, 0);
-    const stageBreakdown = stageCounts.map((stage) => ({
-      ...stage,
-      percent: totalOpenForStages > 0 ? stage.count / totalOpenForStages : 0,
-    }));
-
-    // Calculate monthly progress (won / (won + lost) this month, or won / total closed)
     const closedThisMonth = wonThisMonth + lostThisMonth;
     const monthlyProgress = closedThisMonth > 0
       ? Math.round((wonThisMonth / closedThisMonth) * 100)

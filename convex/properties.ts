@@ -30,18 +30,45 @@ export const list = query({
   },
   handler: async (ctx, args) => {
     await getCurrentUser(ctx);
-    const properties = await ctx.db.query("properties").collect();
+
+    // Use composite index by_filters when we have type/listingType/status filters
+    let properties;
+    if (args.type && args.listingType && args.status) {
+      properties = await ctx.db
+        .query("properties")
+        .withIndex("by_filters", (q) =>
+          q.eq("type", args.type!).eq("listingType", args.listingType!).eq("status", args.status!)
+        )
+        .collect();
+    } else if (args.type && args.listingType) {
+      properties = await ctx.db
+        .query("properties")
+        .withIndex("by_filters", (q) =>
+          q.eq("type", args.type!).eq("listingType", args.listingType!)
+        )
+        .collect();
+    } else if (args.type) {
+      properties = await ctx.db
+        .query("properties")
+        .withIndex("by_filters", (q) => q.eq("type", args.type!))
+        .collect();
+    } else {
+      properties = await ctx.db.query("properties").collect();
+    }
+
+    // Apply remaining filters in memory on the narrowed set
     return properties.filter((property) => {
       if (args.location && !property.location.toLowerCase().includes(args.location.toLowerCase())) {
         return false;
       }
-      if (args.type && property.type !== args.type) {
+      // Skip type/listingType/status if already filtered by index
+      if (args.listingType && !args.type && property.listingType !== args.listingType) {
         return false;
       }
-      if (args.listingType && property.listingType !== args.listingType) {
+      if (args.status && !(args.type && args.listingType && args.status) && property.status !== args.status) {
         return false;
       }
-      if (args.status && property.status !== args.status) {
+      if (args.status && args.type && !args.listingType && property.status !== args.status) {
         return false;
       }
       if (args.priceMin && property.price < args.priceMin) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback, useMemo, lazy, Suspense } from "react";
 import Link from "next/link";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
@@ -10,11 +10,34 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { Table, TableCell, TableHead, TableRow } from "@/components/ui/table";
-import { TaskDetailModal } from "@/components/tasks/task-detail-modal";
 import { useRequireAuth } from "@/hooks/useAuth";
+
+const TaskDetailModal = lazy(() =>
+  import("@/components/tasks/task-detail-modal").then((m) => ({ default: m.TaskDetailModal }))
+);
 
 type TaskStatus = "todo" | "completed" | "all";
 type ActivityType = "call" | "whatsapp" | "email" | "meeting" | "viewing" | "note" | "all";
+
+const formatDateTime = (timestamp: number) => {
+  return new Date(timestamp).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+};
+
+const activityTypeLabels: Record<string, string> = {
+  call: "Call",
+  whatsapp: "WhatsApp",
+  email: "Email",
+  meeting: "Meeting",
+  viewing: "Viewing",
+  note: "Note",
+};
+
+const getActivityTypeLabel = (type: string) => activityTypeLabels[type] || type;
 
 interface TaskActivity {
   _id: Id<"activities">;
@@ -46,36 +69,15 @@ export default function TasksPage() {
     type: typeFilter,
   });
 
-  const formatDateTime = (timestamp: number) => {
-    return new Date(timestamp).toLocaleString("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    });
-  };
-
-  const getActivityTypeLabel = (type: string) => {
-    const labels: Record<string, string> = {
-      call: "Call",
-      whatsapp: "WhatsApp",
-      email: "Email",
-      meeting: "Meeting",
-      viewing: "Viewing",
-      note: "Note",
-    };
-    return labels[type] || type;
-  };
-
-  const handleViewTask = (task: TaskActivity) => {
+  const handleViewTask = useCallback((task: TaskActivity) => {
     setSelectedTask(task);
     setModalOpen(true);
-  };
+  }, []);
 
-  const handleCloseModal = () => {
+  const handleCloseModal = useCallback(() => {
     setModalOpen(false);
     setSelectedTask(null);
-  };
+  }, []);
 
   if (authLoading) {
     return (
@@ -89,8 +91,16 @@ export default function TasksPage() {
     return null;
   }
 
-  const todoCount = tasks?.filter(t => t.status === "todo").length ?? 0;
-  const completedCount = tasks?.filter(t => t.status === "completed").length ?? 0;
+  const { todoCount, completedCount } = useMemo(() => {
+    if (!tasks) return { todoCount: 0, completedCount: 0 };
+    let todo = 0;
+    let completed = 0;
+    for (const t of tasks) {
+      if (t.status === "todo") todo++;
+      else if (t.status === "completed") completed++;
+    }
+    return { todoCount: todo, completedCount: completed };
+  }, [tasks]);
 
   return (
     <div className="space-y-6">
@@ -237,11 +247,15 @@ export default function TasksPage() {
         </Table>
       )}
 
-      <TaskDetailModal
-        open={modalOpen}
-        onClose={handleCloseModal}
-        task={selectedTask}
-      />
+      {modalOpen && (
+        <Suspense fallback={null}>
+          <TaskDetailModal
+            open={modalOpen}
+            onClose={handleCloseModal}
+            task={selectedTask}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

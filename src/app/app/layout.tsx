@@ -15,23 +15,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const router = useRouter();
 
-  // Debug logging for auth state
-  useEffect(() => {
-    if (process.env.NODE_ENV === "development") {
-      console.log("[AppLayout] Auth state:", {
-        isLoading,
-        isAuthenticated,
-        isSessionAuthenticated,
-        hasUser: !!user,
-        userEmail: user?.email || null,
-      });
-    }
-  }, [isLoading, isAuthenticated, isSessionAuthenticated, user]);
-
   // Redirect to login if not authenticated (must be in useEffect to avoid state update during render)
   useEffect(() => {
     if (!isLoading && !isSessionAuthenticated) {
-      console.log("[AppLayout] Not authenticated, redirecting to login");
       router.replace("/login");
     }
   }, [isLoading, isSessionAuthenticated, router]);
@@ -55,7 +41,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   // - The user lookup query failed
   // Show an error state with option to sign out, don't auto sign-out to avoid loops
   if (isSessionAuthenticated && !user) {
-    console.log("[AppLayout] Session authenticated but no user record found. Showing account issue screen.");
     return (
       <div className="min-h-screen bg-content-bg flex items-center justify-center">
         <div className="flex flex-col items-center gap-4 max-w-md text-center p-6">

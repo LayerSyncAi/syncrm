@@ -124,19 +124,27 @@ export const getById = query({
     );
     if (!contact) return null;
 
-    // Get owner details
-    const users = await ctx.db.query("users").collect();
-    const userMap = new Map(users.map((u) => [u._id, u]));
+    // Fetch only the specific users we need instead of all users
+    const ownerIds = contact.ownerUserIds;
+    const allIds = [...ownerIds];
+    if (!allIds.some(id => id === contact.createdByUserId)) {
+      allIds.push(contact.createdByUserId);
+    }
+    const userDocs = await Promise.all(allIds.map(id => ctx.db.get(id)));
+    const userMap: Map<string, { fullName?: string; name?: string; email?: string }> = new Map();
+    for (const u of userDocs) {
+      if (u) userMap.set(u._id as string, u as any);
+    }
 
-    const owners = contact.ownerUserIds.map((ownerId: Id<"users">) => {
-      const owner = userMap.get(ownerId);
+    const owners = ownerIds.map((ownerId: Id<"users">) => {
+      const owner = userMap.get(ownerId as string);
       return {
         _id: ownerId,
         name: owner?.fullName || owner?.name || owner?.email || "Unknown",
       };
     });
 
-    const createdBy = userMap.get(contact.createdByUserId);
+    const createdBy = userMap.get(contact.createdByUserId as string);
 
     return {
       ...contact,
