@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Modal } from "@/components/ui/modal";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { useRequireAuth } from "@/hooks/useAuth";
+import { DuplicateWarning } from "@/components/leads/duplicate-warning";
 
 type Source =
   | "walk_in"
@@ -554,6 +555,16 @@ export default function NewLeadPage() {
                       <p>{selectedContact.email || "-"}</p>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* Duplicate Detection Warning */}
+              {selectedContact && (
+                <div className="md:col-span-2">
+                  <DuplicateWarning
+                    email={selectedContact.email}
+                    phone={selectedContact.phone}
+                  />
                 </div>
               )}
 

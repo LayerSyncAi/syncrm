@@ -121,6 +121,8 @@ export const list = query({
 
     // Apply remaining filters in memory (on the already-narrowed result set)
     const filtered = results.filter((lead) => {
+      // Exclude archived leads
+      if (lead.isArchived) return false;
       // Stage filter (skip if already applied via index)
       if (args.stageId && !args.ownerUserId && isAdmin) {
         // Already filtered by stage index

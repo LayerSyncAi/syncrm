@@ -68,6 +68,12 @@ export default defineSchema({
     ownerUserId: v.id("users"),
     closedAt: v.optional(v.number()),
     closeReason: v.optional(v.string()),
+    // Scoring
+    score: v.optional(v.number()),
+    lastScoredAt: v.optional(v.number()),
+    // Merge / archive
+    isArchived: v.optional(v.boolean()),
+    mergedIntoLeadId: v.optional(v.id("leads")),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -75,7 +81,36 @@ export default defineSchema({
     .index("by_stage", ["stageId"])
     .index("by_contact", ["contactId"])
     .index("by_normalized_phone", ["normalizedPhone"])
-    .index("by_name", ["fullName"]),
+    .index("by_name", ["fullName"])
+    .index("by_email", ["email"]),
+  leadScoreConfig: defineTable({
+    criteria: v.array(
+      v.object({
+        key: v.string(),
+        label: v.string(),
+        type: v.union(v.literal("boolean"), v.literal("threshold")),
+        weight: v.number(),
+        enabled: v.boolean(),
+        threshold: v.optional(v.number()),
+      })
+    ),
+    updatedByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }),
+  mergeAudits: defineTable({
+    primaryLeadId: v.id("leads"),
+    mergedLeadIds: v.array(v.id("leads")),
+    fieldResolutions: v.array(
+      v.object({
+        field: v.string(),
+        chosenValue: v.string(),
+        sourceLeadId: v.id("leads"),
+      })
+    ),
+    mergedByUserId: v.id("users"),
+    mergedAt: v.number(),
+  }).index("by_primary", ["primaryLeadId"]),
   properties: defineTable({
     title: v.string(),
     type: v.union(
