@@ -62,9 +62,13 @@ export default function MergeLeadsPage() {
   const mergeLeads = useMutation(api.leadMerge.mergeLeads);
 
   // Fetch the selected leads for the merge UI
-  const selectedLeads = useQuery(
+  const selectedLeadsRaw = useQuery(
     api.leadMerge.getLeadsForMerge,
     selectedIds.length >= 2 ? { leadIds: selectedIds } : "skip"
+  );
+  const selectedLeads = useMemo(
+    () => selectedLeadsRaw?.filter((l): l is NonNullable<typeof l> => l !== null) ?? [],
+    [selectedLeadsRaw]
   );
 
   const filteredLeads = useMemo(() => {
@@ -253,7 +257,7 @@ export default function MergeLeadsPage() {
       )}
 
       {/* Step 2: Field Resolution */}
-      {step === "resolve" && selectedLeads && (
+      {step === "resolve" && selectedLeads.length > 0 && (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">

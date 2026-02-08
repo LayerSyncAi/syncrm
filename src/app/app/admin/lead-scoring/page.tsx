@@ -345,7 +345,7 @@ export default function LeadScoringPage() {
                     <p className="text-xs font-medium uppercase tracking-wide text-text-muted">
                       Score Breakdown
                     </p>
-                    {previewResult.breakdown.map((item) => (
+                    {previewResult.breakdown.map((item: { key: string; label: string; points: number; met: boolean }) => (
                       <div
                         key={item.key}
                         className="flex items-center justify-between rounded-[8px] border border-border px-3 py-2 text-sm"

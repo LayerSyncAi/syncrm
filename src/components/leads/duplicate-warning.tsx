@@ -43,7 +43,7 @@ export function DuplicateWarning({
             Possible duplicate{duplicates.length > 1 ? "s" : ""} detected
           </p>
           <div className="mt-2 space-y-2">
-            {duplicates.map((dup) => (
+            {duplicates.map((dup: { leadId: string; fullName: string; email: string | undefined; phone: string; reason: string }) => (
               <div
                 key={dup.leadId}
                 className="flex items-center justify-between gap-2 rounded-[8px] border border-amber-200 bg-white px-3 py-2"

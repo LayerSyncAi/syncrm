@@ -15,6 +15,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { RightDrawer } from "@/components/common/right-drawer";
 import { useRequireAuth } from "@/hooks/useAuth";
+import { DuplicateWarning } from "@/components/leads/duplicate-warning";
 
 const PropertySuggestions = lazy(() =>
   import("./property-suggestions").then((m) => ({ default: m.PropertySuggestions }))
@@ -371,6 +372,13 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
           )}
         </div>
       </Card>
+
+      {/* Duplicate Detection Warning */}
+      <DuplicateWarning
+        email={lead.email}
+        phone={lead.phone}
+        excludeLeadId={leadId}
+      />
 
       <div className="border-b border-border">
         <div className="flex gap-6">

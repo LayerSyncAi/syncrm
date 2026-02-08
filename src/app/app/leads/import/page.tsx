@@ -20,7 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { parseCSV, generateCSV, downloadBlob } from "@/lib/csv";
 import { Upload, AlertTriangle, CheckCircle, XCircle, FileDown } from "lucide-react";
 
-const LEAD_FIELDS = [
+const LEAD_FIELDS: Array<{ key: string; label: string; required?: boolean }> = [
   { key: "fullName", label: "Full Name", required: true },
   { key: "phone", label: "Phone", required: true },
   { key: "email", label: "Email" },
@@ -31,7 +31,7 @@ const LEAD_FIELDS = [
   { key: "budgetMax", label: "Budget Max" },
   { key: "preferredAreas", label: "Preferred Areas" },
   { key: "notes", label: "Notes" },
-] as const;
+];
 
 type ImportMode = "create_only" | "upsert" | "skip_duplicates";
 
@@ -398,7 +398,7 @@ export default function LeadImportPage() {
                 <TableBody>
                   {mappedPreviewRows.map((row, i) => {
                     const dup = duplicateResults?.find(
-                      (d) => d.rowIndex === i
+                      (d: DuplicateInfo) => d.rowIndex === i
                     );
                     return (
                       <TableRow key={i}>
@@ -438,7 +438,7 @@ export default function LeadImportPage() {
             </div>
             {duplicateResults && (
               <p className="mt-3 text-sm text-text-muted">
-                {duplicateResults.filter((d) => d.isDuplicate).length} potential
+                {duplicateResults.filter((d: DuplicateInfo) => d.isDuplicate).length} potential
                 duplicates found in preview.{" "}
                 {importMode === "skip_duplicates"
                   ? "They will be skipped."

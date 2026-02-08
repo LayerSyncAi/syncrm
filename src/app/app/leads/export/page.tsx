@@ -77,8 +77,8 @@ export default function LeadExportPage() {
       const headers = selectedFields.map(
         (k) => ALL_FIELDS.find((f) => f.key === k)?.label || k
       );
-      const rows = leads.map((lead) =>
-        selectedFields.map((k) => String((lead as any)[k] ?? ""))
+      const rows = leads.map((lead: Record<string, unknown>) =>
+        selectedFields.map((k) => String(lead[k] ?? ""))
       );
       const csv = generateCSV(headers, rows);
       downloadBlob(
@@ -98,8 +98,8 @@ export default function LeadExportPage() {
       const headers = selectedFields.map(
         (k) => ALL_FIELDS.find((f) => f.key === k)?.label || k
       );
-      const rows = leads.map((lead) =>
-        selectedFields.map((k) => (lead as any)[k] ?? "")
+      const rows = leads.map((lead: Record<string, unknown>) =>
+        selectedFields.map((k) => lead[k] ?? "")
       );
 
       const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
