@@ -264,6 +264,65 @@ export const updateNotes = mutation({
   },
 });
 
+// Create a lead and optionally attach properties in a single atomic operation
+export const createWithProperties = mutation({
+  args: {
+    ...leadArgs,
+    propertyIds: v.optional(v.array(v.id("properties"))),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+
+    const contact = await ctx.db.get(args.contactId);
+    if (!contact) {
+      throw new Error("Contact not found");
+    }
+    if (user.role !== "admin" && !contact.ownerUserIds.includes(user._id)) {
+      throw new Error("You don't have access to this contact");
+    }
+
+    const timestamp = Date.now();
+    const ownerId =
+      user.role === "admin" && args.ownerUserId ? args.ownerUserId : user._id;
+
+    const leadId = await ctx.db.insert("leads", {
+      contactId: args.contactId,
+      fullName: contact.name,
+      phone: contact.phone,
+      normalizedPhone: contact.normalizedPhone,
+      email: contact.email,
+      source: args.source,
+      interestType: args.interestType,
+      budgetCurrency: args.budgetCurrency,
+      budgetMin: args.budgetMin,
+      budgetMax: args.budgetMax,
+      preferredAreas: args.preferredAreas,
+      notes: args.notes,
+      stageId: args.stageId,
+      ownerUserId: ownerId,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    // Attach properties if provided
+    if (args.propertyIds && args.propertyIds.length > 0) {
+      for (const propertyId of args.propertyIds) {
+        const property = await ctx.db.get(propertyId);
+        if (!property) continue;
+        await ctx.db.insert("leadPropertyMatches", {
+          leadId,
+          propertyId,
+          matchType: "requested",
+          createdByUserId: user._id,
+          createdAt: timestamp,
+        });
+      }
+    }
+
+    return leadId;
+  },
+});
+
 export const statsSummary = query({
   args: { ownerUserId: v.optional(v.id("users")) },
   handler: async (ctx, args) => {
