@@ -8,8 +8,11 @@ import {
   ClipboardList,
   ChevronLeft,
   ChevronRight,
+  Download,
   LayoutDashboard,
   Shield,
+  Star,
+  Upload,
   UserCog,
   Users,
   Waypoints,
@@ -24,10 +27,16 @@ const navItems = [
   { label: "Tasks", href: "/app/tasks", icon: ClipboardList },
 ];
 
+const importExportItems = [
+  { label: "Lead Import", href: "/app/leads/import", icon: Upload },
+  { label: "Lead Export", href: "/app/leads/export", icon: Download },
+];
+
 const adminItems = [
   { label: "Users", href: "/app/admin/users", icon: UserCog },
   { label: "Roles", href: "/app/admin/roles", icon: Shield },
   { label: "Stages", href: "/app/admin/stages", icon: Waypoints },
+  { label: "Lead Scoring", href: "/app/admin/lead-scoring", icon: Star },
 ];
 
 interface SidebarProps {
@@ -86,6 +95,33 @@ export const Sidebar = memo(function Sidebar({ isAdmin, collapsed, onToggle }: S
           );
         })}
       </nav>
+      <div className="mt-4 space-y-1 border-t border-white/20 pt-4">
+        {!collapsed ? (
+          <p className="px-3 text-[11px] font-medium uppercase tracking-[0.14em] text-white/70">
+            Import / Export
+          </p>
+        ) : null}
+        {importExportItems.map((item) => {
+          const Icon = item.icon;
+          const active = pathname.startsWith(item.href);
+          const itemTextClass = active ? "text-[#eca400]" : "text-[#fcfcfc]";
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "flex h-10 items-center gap-3 rounded-[10px] px-3 text-sm font-medium transition duration-150",
+                collapsed ? "justify-center" : "justify-start",
+                active ? "bg-white/10" : "hover:bg-white/10",
+                itemTextClass
+              )}
+            >
+              <Icon className={cn("h-[18px] w-[18px]", itemTextClass)} />
+              {!collapsed ? <span className={itemTextClass}>{item.label}</span> : null}
+            </Link>
+          );
+        })}
+      </div>
       {isAdmin ? (
         <div className="mt-4 space-y-1 border-t border-white/20 pt-4">
           {!collapsed ? (

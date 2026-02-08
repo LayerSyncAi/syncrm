@@ -187,3 +187,20 @@ export const listForAssignment = query({
       }));
   },
 });
+
+// List all active users with full info (for export filters, etc.)
+export const listAll = query({
+  handler: async (ctx) => {
+    await getCurrentUser(ctx);
+    const allUsers = await ctx.db.query("users").collect();
+    return allUsers
+      .filter((u) => u.isActive)
+      .map((u) => ({
+        _id: u._id,
+        fullName: u.fullName,
+        name: u.name,
+        email: u.email,
+        role: u.role,
+      }));
+  },
+});
