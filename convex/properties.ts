@@ -184,6 +184,53 @@ export const remove = mutation({
   },
 });
 
+// Lightweight search for inline property picker (returns minimal fields)
+export const search = query({
+  args: {
+    q: v.optional(v.string()),
+    listingType: v.optional(v.union(v.literal("rent"), v.literal("sale"))),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    await getCurrentUser(ctx);
+
+    const allProperties = await ctx.db.query("properties").collect();
+    let properties = args.listingType
+      ? allProperties.filter((p) => p.listingType === args.listingType)
+      : allProperties;
+
+    // Filter by search query
+    if (args.q) {
+      const search = args.q.toLowerCase();
+      properties = properties.filter(
+        (p) =>
+          p.title.toLowerCase().includes(search) ||
+          p.location.toLowerCase().includes(search)
+      );
+    }
+
+    // Only return available / under_offer properties
+    properties = properties.filter(
+      (p) => p.status === "available" || p.status === "under_offer"
+    );
+
+    const limit = args.limit ?? 20;
+    return properties.slice(0, limit).map((p) => ({
+      _id: p._id,
+      title: p.title,
+      type: p.type,
+      listingType: p.listingType,
+      price: p.price,
+      currency: p.currency,
+      location: p.location,
+      bedrooms: p.bedrooms,
+      bathrooms: p.bathrooms,
+      area: p.area,
+      status: p.status,
+    }));
+  },
+});
+
 export const getById = query({
   args: {
     propertyId: v.id("properties"),

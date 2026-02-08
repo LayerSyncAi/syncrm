@@ -57,9 +57,9 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
   const [notesInitialized, setNotesInitialized] = useState(false);
   const [isSavingNotes, setIsSavingNotes] = useState(false);
 
-  // Property attachment state
-  const [selectedPropertyId, setSelectedPropertyId] = useState<string>("");
-  const [matchType, setMatchType] = useState<"suggested" | "requested" | "viewed" | "offered">("suggested");
+  // Property attachment state (multi-select)
+  const [selectedPropertyIds, setSelectedPropertyIds] = useState<Set<string>>(new Set());
+  const [matchType, setMatchType] = useState<"suggested" | "requested" | "viewed" | "offered">("requested");
   const [propertySearch, setPropertySearch] = useState("");
   const [isAttaching, setIsAttaching] = useState(false);
 
@@ -172,23 +172,37 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
     }
   }, [completingActivityId, completionNotes, markActivityComplete, handleCloseCompleteModal]);
 
-  const handleAttachProperty = useCallback(async () => {
-    if (!selectedPropertyId) return;
+  const handleAttachProperties = useCallback(async () => {
+    if (selectedPropertyIds.size === 0) return;
     setIsAttaching(true);
     try {
-      await attachProperty({
-        leadId,
-        propertyId: selectedPropertyId as Id<"properties">,
-        matchType,
-      });
+      for (const propertyId of selectedPropertyIds) {
+        await attachProperty({
+          leadId,
+          propertyId: propertyId as Id<"properties">,
+          matchType,
+        });
+      }
       setDrawerOpen(false);
-      setSelectedPropertyId("");
+      setSelectedPropertyIds(new Set());
     } catch (error) {
       console.error("Failed to attach property:", error);
     } finally {
       setIsAttaching(false);
     }
-  }, [selectedPropertyId, attachProperty, leadId, matchType]);
+  }, [selectedPropertyIds, attachProperty, leadId, matchType]);
+
+  const togglePropertySelection = useCallback((propertyId: string) => {
+    setSelectedPropertyIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(propertyId)) {
+        next.delete(propertyId);
+      } else {
+        next.add(propertyId);
+      }
+      return next;
+    });
+  }, []);
 
   const handleDetachProperty = useCallback(async (matchId: Id<"leadPropertyMatches">) => {
     try {
@@ -580,63 +594,78 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
       <RightDrawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        title="Attach property"
+        title="Attach properties"
         footer={
-          <div className="flex justify-end gap-2">
-            <Button variant="secondary" onClick={() => setDrawerOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleAttachProperty}
-              disabled={isAttaching || !selectedPropertyId}
-            >
-              {isAttaching ? "Attaching..." : "Attach"}
-            </Button>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs text-text-muted">
+              {selectedPropertyIds.size > 0
+                ? `${selectedPropertyIds.size} selected`
+                : "Select properties"}
+            </span>
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={() => setDrawerOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleAttachProperties}
+                disabled={isAttaching || selectedPropertyIds.size === 0}
+              >
+                {isAttaching
+                  ? "Attaching..."
+                  : `Attach${selectedPropertyIds.size > 0 ? ` (${selectedPropertyIds.size})` : ""}`}
+              </Button>
+            </div>
           </div>
         }
       >
         <div className="space-y-4">
           <Input
-            placeholder="Search property"
+            placeholder="Search by title or location..."
             value={propertySearch}
             onChange={(e) => setPropertySearch(e.target.value)}
           />
-          <div className="space-y-3 max-h-[300px] overflow-y-auto">
-            {filteredProperties?.filter((p) => !attachedPropertyIds.has(p._id)).map((property) => (
-              <label
-                key={property._id}
-                className="flex items-center justify-between rounded-[10px] border border-border-strong p-3 text-sm cursor-pointer hover:bg-card-bg/50"
-              >
-                <div>
-                  <p className="font-medium">{property.title}</p>
-                  <p className="text-xs text-text-muted">
-                    {property.listingType === "sale" ? "Sale" : "Rent"} · {property.location}
-                  </p>
-                </div>
-                <input
-                  type="radio"
-                  name="property"
-                  value={property._id}
-                  checked={selectedPropertyId === property._id}
-                  onChange={(e) => setSelectedPropertyId(e.target.value)}
-                />
-              </label>
-            ))}
-            {filteredProperties?.filter((p) => !attachedPropertyIds.has(p._id)).length === 0 && (
-              <p className="text-text-muted text-sm py-4">No properties available to attach.</p>
-            )}
-          </div>
           <div className="space-y-2">
             <Label>Match type</Label>
             <Select
               value={matchType}
               onChange={(e) => setMatchType(e.target.value as typeof matchType)}
             >
-              <option value="suggested">Suggested</option>
               <option value="requested">Requested</option>
+              <option value="suggested">Suggested</option>
               <option value="viewed">Viewed</option>
               <option value="offered">Offered</option>
             </Select>
+          </div>
+          <div className="space-y-2 max-h-[360px] overflow-y-auto">
+            {filteredProperties?.filter((p) => !attachedPropertyIds.has(p._id)).map((property) => {
+              const isSelected = selectedPropertyIds.has(property._id);
+              return (
+                <label
+                  key={property._id}
+                  className={`flex items-center gap-3 rounded-[10px] border p-3 text-sm cursor-pointer transition-colors ${
+                    isSelected
+                      ? "border-primary/40 bg-primary/5"
+                      : "border-border-strong hover:bg-card-bg/50"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => togglePropertySelection(property._id)}
+                    className="rounded border-border shrink-0"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium">{property.title}</p>
+                    <p className="text-xs text-text-muted">
+                      {property.listingType === "sale" ? "Sale" : "Rent"} &middot; {property.location}
+                    </p>
+                  </div>
+                </label>
+              );
+            })}
+            {filteredProperties?.filter((p) => !attachedPropertyIds.has(p._id)).length === 0 && (
+              <p className="text-text-muted text-sm py-4">No properties available to attach.</p>
+            )}
           </div>
         </div>
       </RightDrawer>

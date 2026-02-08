@@ -500,6 +500,13 @@ export default function PropertiesPage() {
                   <TableCell>{formatStatus(property.status)}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
+                      <Link
+                        href={`/app/leads/new?propertyId=${property._id}&interestType=${property.listingType === "sale" ? "buy" : "rent"}`}
+                      >
+                        <Button variant="secondary" className="h-9 px-3">
+                          + Lead
+                        </Button>
+                      </Link>
                       <Button
                         variant="secondary"
                         className="h-9 px-3"
@@ -579,6 +586,13 @@ export default function PropertiesPage() {
                     </div>
                   </div>
                   <div className="mt-auto flex justify-end gap-2">
+                    <Link
+                      href={`/app/leads/new?propertyId=${property._id}&interestType=${property.listingType === "sale" ? "buy" : "rent"}`}
+                    >
+                      <Button variant="secondary" className="h-9 px-3">
+                        + Lead
+                      </Button>
+                    </Link>
                     <Button
                       variant="secondary"
                       className="h-9 px-3"
