@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 interface TopbarProps {
   userName: string;
   userEmail?: string;
+  orgName?: string;
 }
 
 const titleMap: Record<string, string> = {
@@ -22,7 +23,7 @@ const titleMap: Record<string, string> = {
   "/app/admin/stages": "Stages",
 };
 
-export function Topbar({ userName, userEmail }: TopbarProps) {
+export function Topbar({ userName, userEmail, orgName }: TopbarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { signOut } = useAuthActions();
@@ -85,6 +86,9 @@ export function Topbar({ userName, userEmail }: TopbarProps) {
                 <p className="text-sm font-medium text-text">{userName}</p>
                 {userEmail && (
                   <p className="text-xs text-text-muted truncate">{userEmail}</p>
+                )}
+                {orgName && (
+                  <p className="text-xs text-text-dim truncate mt-0.5">{orgName}</p>
                 )}
               </div>
               <button

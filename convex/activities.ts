@@ -1,10 +1,12 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { getCurrentUser } from "./helpers";
+import { getCurrentUserWithOrg, assertOrgAccess } from "./helpers";
+import { Id } from "./_generated/dataModel";
 
-async function canAccessLead(ctx: any, leadId: any, userId: any, isAdmin: boolean) {
+async function canAccessLead(ctx: any, leadId: any, userId: any, isAdmin: boolean, userOrgId: Id<"organizations">) {
   const lead = await ctx.db.get(leadId);
   if (!lead) return null;
+  if (lead.orgId && lead.orgId !== userOrgId) return null;
   if (!isAdmin && lead.ownerUserId !== userId) {
     return null;
   }
@@ -28,8 +30,8 @@ export const createForLead = mutation({
     assignedToUserId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    const lead = await canAccessLead(ctx, args.leadId, user._id, user.role === "admin");
+    const user = await getCurrentUserWithOrg(ctx);
+    const lead = await canAccessLead(ctx, args.leadId, user._id, user.role === "admin", user.orgId);
     if (!lead) throw new Error("Lead not found");
     const assignedTo = args.assignedToUserId ?? lead.ownerUserId;
     return ctx.db.insert("activities", {
@@ -43,6 +45,7 @@ export const createForLead = mutation({
       completionNotes: undefined,
       assignedToUserId: assignedTo,
       createdByUserId: user._id,
+      orgId: user.orgId,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
@@ -52,21 +55,20 @@ export const createForLead = mutation({
 export const listForLead = query({
   args: { leadId: v.id("leads") },
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    const lead = await canAccessLead(ctx, args.leadId, user._id, user.role === "admin");
+    const user = await getCurrentUserWithOrg(ctx);
+    const lead = await canAccessLead(ctx, args.leadId, user._id, user.role === "admin", user.orgId);
     if (!lead) throw new Error("Lead not found");
     const activities = await ctx.db
       .query("activities")
       .withIndex("by_lead", (q) => q.eq("leadId", args.leadId))
       .collect();
-    // Sort by createdAt descending (most recent first)
     return activities.sort((a, b) => b.createdAt - a.createdAt);
   },
 });
 
 export const listUpcomingForMe = query({
   handler: async (ctx) => {
-    const user = await getCurrentUser(ctx);
+    const user = await getCurrentUserWithOrg(ctx);
     return ctx.db
       .query("activities")
       .withIndex("by_assignee_status", (q) =>
@@ -82,7 +84,6 @@ export const listUpcomingForMe = query({
   },
 });
 
-// List all tasks/activities with filters for the Tasks page
 export const listAllTasks = query({
   args: {
     status: v.optional(v.union(v.literal("todo"), v.literal("completed"), v.literal("all"))),
@@ -97,48 +98,32 @@ export const listAllTasks = query({
     )),
   },
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
+    const user = await getCurrentUserWithOrg(ctx);
     const isAdmin = user.role === "admin";
     const statusFilter = args.status && args.status !== "all" ? args.status : null;
     const typeFilter = args.type && args.type !== "all" ? args.type : null;
 
-    // Use the most selective index available
-    let activities;
+    // Scope by org
+    let activities = await ctx.db
+      .query("activities")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
 
+    // Non-admin: only their tasks
     if (!isAdmin) {
-      // Non-admin: use assignee index (most selective - only their tasks)
-      activities = await ctx.db
-        .query("activities")
-        .withIndex("by_assignee_status", (q) => q.eq("assignedToUserId", user._id))
-        .collect();
-    } else if (statusFilter) {
-      // Admin with status filter: use status index
-      activities = await ctx.db
-        .query("activities")
-        .withIndex("by_status", (q) => q.eq("status", statusFilter))
-        .collect();
-    } else if (typeFilter) {
-      // Admin with type filter: use type index
-      activities = await ctx.db
-        .query("activities")
-        .withIndex("by_type", (q) => q.eq("type", typeFilter))
-        .collect();
-    } else {
-      activities = await ctx.db.query("activities").collect();
+      activities = activities.filter(a => a.assignedToUserId === user._id);
     }
 
-    // Apply remaining filters in memory on the already-narrowed set
+    // Apply filters
     let filtered = activities;
-    if (statusFilter && !isAdmin) {
-      // Non-admin used assignee index - still need status filter
+    if (statusFilter) {
       filtered = filtered.filter(a => a.status === statusFilter);
     }
-    if (typeFilter && (!isAdmin || statusFilter)) {
-      // Need type filter if we didn't use type index
+    if (typeFilter) {
       filtered = filtered.filter(a => a.type === typeFilter);
     }
 
-    // Batch fetch leads and users instead of N+1 queries
+    // Batch fetch leads and users
     const leadIds = [...new Set(filtered.map(a => a.leadId))];
     const userIds = [...new Set(filtered.map(a => a.assignedToUserId))];
 
@@ -165,7 +150,6 @@ export const listAllTasks = query({
       };
     });
 
-    // Sort by scheduledAt (if exists) or createdAt descending
     return enrichedActivities.sort((a, b) => {
       const aDate = a.scheduledAt || a.createdAt;
       const bDate = b.scheduledAt || b.createdAt;
@@ -174,15 +158,14 @@ export const listAllTasks = query({
   },
 });
 
-// Get a single activity by ID with full details
 export const getById = query({
   args: { activityId: v.id("activities") },
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
+    const user = await getCurrentUserWithOrg(ctx);
     const activity = await ctx.db.get(args.activityId);
     if (!activity) return null;
+    if (activity.orgId && activity.orgId !== user.orgId) return null;
 
-    // Parallel fetch lead, assignedTo, createdBy
     const [lead, assignedTo, createdBy] = await Promise.all([
       ctx.db.get(activity.leadId),
       ctx.db.get(activity.assignedToUserId),
@@ -213,7 +196,6 @@ export const getById = query({
   },
 });
 
-// Update an activity
 export const update = mutation({
   args: {
     activityId: v.id("activities"),
@@ -230,11 +212,11 @@ export const update = mutation({
     )),
   },
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
+    const user = await getCurrentUserWithOrg(ctx);
     const activity = await ctx.db.get(args.activityId);
     if (!activity) throw new Error("Activity not found");
+    assertOrgAccess(activity, user.orgId);
 
-    // Check access
     if (user.role !== "admin" && activity.assignedToUserId !== user._id) {
       throw new Error("Not allowed");
     }
@@ -249,16 +231,16 @@ export const update = mutation({
   },
 });
 
-// Mark activity as complete with required completion notes
 export const markComplete = mutation({
   args: {
     activityId: v.id("activities"),
     completionNotes: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
+    const user = await getCurrentUserWithOrg(ctx);
     const activity = await ctx.db.get(args.activityId);
     if (!activity) throw new Error("Activity not found");
+    assertOrgAccess(activity, user.orgId);
     if (user.role !== "admin" && activity.assignedToUserId !== user._id) {
       throw new Error("Not allowed");
     }
@@ -274,13 +256,13 @@ export const markComplete = mutation({
   },
 });
 
-// Reopen a completed activity (change status back to todo)
 export const reopen = mutation({
   args: { activityId: v.id("activities") },
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
+    const user = await getCurrentUserWithOrg(ctx);
     const activity = await ctx.db.get(args.activityId);
     if (!activity) throw new Error("Activity not found");
+    assertOrgAccess(activity, user.orgId);
     if (user.role !== "admin" && activity.assignedToUserId !== user._id) {
       throw new Error("Not allowed");
     }
@@ -292,13 +274,13 @@ export const reopen = mutation({
   },
 });
 
-// Delete an activity
 export const remove = mutation({
   args: { activityId: v.id("activities") },
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
+    const user = await getCurrentUserWithOrg(ctx);
     const activity = await ctx.db.get(args.activityId);
     if (!activity) throw new Error("Activity not found");
+    assertOrgAccess(activity, user.orgId);
     if (user.role !== "admin" && activity.createdByUserId !== user._id) {
       throw new Error("Not allowed");
     }

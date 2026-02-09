@@ -1,21 +1,19 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { requireAdmin } from "./helpers";
+import { requireAdmin, assertOrgAccess } from "./helpers";
 import { Id } from "./_generated/dataModel";
 
-// Get leads by IDs for the merge UI
 export const getLeadsForMerge = query({
   args: {
     leadIds: v.array(v.id("leads")),
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const user = await requireAdmin(ctx);
     const leads = await Promise.all(args.leadIds.map((id) => ctx.db.get(id)));
-    return leads.filter(Boolean);
+    return leads.filter((l) => l !== null && (!l.orgId || l.orgId === user.orgId));
   },
 });
 
-// Merge leads: keep primary, archive others, move related objects
 export const mergeLeads = mutation({
   args: {
     primaryLeadId: v.id("leads"),
@@ -34,16 +32,16 @@ export const mergeLeads = mutation({
 
     const primaryLead = await ctx.db.get(args.primaryLeadId);
     if (!primaryLead) throw new Error("Primary lead not found");
+    assertOrgAccess(primaryLead, user.orgId);
 
-    // Validate all merged leads exist
     const mergedLeads: Array<{ _id: Id<"leads"> }> = [];
     for (const id of args.mergedLeadIds) {
       const lead = await ctx.db.get(id);
       if (!lead) throw new Error(`Merged lead ${id} not found`);
+      assertOrgAccess(lead, user.orgId);
       mergedLeads.push(lead);
     }
 
-    // Apply field resolutions to primary lead
     const updates: Record<string, any> = { updatedAt: timestamp };
     for (const resolution of args.fieldResolutions) {
       const field = resolution.field;
@@ -68,9 +66,7 @@ export const mergeLeads = mutation({
 
     await ctx.db.patch(args.primaryLeadId, updates);
 
-    // Move all related objects from merged leads to primary
     for (const mergedLead of mergedLeads) {
-      // Move activities
       const activities = await ctx.db
         .query("activities")
         .withIndex("by_lead", (q) => q.eq("leadId", mergedLead._id))
@@ -79,13 +75,11 @@ export const mergeLeads = mutation({
         await ctx.db.patch(activity._id, { leadId: args.primaryLeadId });
       }
 
-      // Move lead-property matches
       const matches = await ctx.db
         .query("leadPropertyMatches")
         .withIndex("by_lead", (q) => q.eq("leadId", mergedLead._id))
         .collect();
       for (const match of matches) {
-        // Check if primary already has this property match
         const existingMatches = await ctx.db
           .query("leadPropertyMatches")
           .withIndex("by_lead", (q) => q.eq("leadId", args.primaryLeadId))
@@ -100,7 +94,6 @@ export const mergeLeads = mutation({
         }
       }
 
-      // Archive the merged lead (soft delete)
       await ctx.db.patch(mergedLead._id, {
         isArchived: true,
         mergedIntoLeadId: args.primaryLeadId,
@@ -108,12 +101,12 @@ export const mergeLeads = mutation({
       });
     }
 
-    // Create merge audit trail
     await ctx.db.insert("mergeAudits", {
       primaryLeadId: args.primaryLeadId,
       mergedLeadIds: args.mergedLeadIds,
       fieldResolutions: args.fieldResolutions,
       mergedByUserId: user._id,
+      orgId: user.orgId,
       mergedAt: timestamp,
     });
 
@@ -121,18 +114,20 @@ export const mergeLeads = mutation({
   },
 });
 
-// Get merge history for a lead
 export const getMergeHistory = query({
   args: { leadId: v.id("leads") },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const user = await requireAdmin(ctx);
     const audits = await ctx.db
       .query("mergeAudits")
       .withIndex("by_primary", (q) => q.eq("primaryLeadId", args.leadId))
       .collect();
 
+    // Filter to only this org's audits
+    const orgAudits = audits.filter((a) => !a.orgId || a.orgId === user.orgId);
+
     const enriched = await Promise.all(
-      audits.map(async (audit) => {
+      orgAudits.map(async (audit) => {
         const mergedBy = await ctx.db.get(audit.mergedByUserId);
         return {
           ...audit,

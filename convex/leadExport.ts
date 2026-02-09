@@ -1,8 +1,7 @@
 import { query } from "./_generated/server";
 import { v } from "convex/values";
-import { getCurrentUser } from "./helpers";
+import { getCurrentUserWithOrg } from "./helpers";
 
-// Query leads for export with filters
 export const getLeadsForExport = query({
   args: {
     stageId: v.optional(v.id("pipelineStages")),
@@ -12,36 +11,24 @@ export const getLeadsForExport = query({
     fields: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
+    const user = await getCurrentUserWithOrg(ctx);
     const isAdmin = user.role === "admin";
 
-    let results;
+    // Always scope by org
+    let results = await ctx.db
+      .query("leads")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
+
     if (!isAdmin) {
-      results = await ctx.db
-        .query("leads")
-        .withIndex("by_owner", (q) => q.eq("ownerUserId", user._id))
-        .collect();
+      results = results.filter((l) => l.ownerUserId === user._id);
     } else if (args.ownerUserId) {
-      results = await ctx.db
-        .query("leads")
-        .withIndex("by_owner", (q) => q.eq("ownerUserId", args.ownerUserId!))
-        .collect();
-    } else if (args.stageId) {
-      results = await ctx.db
-        .query("leads")
-        .withIndex("by_stage", (q) => q.eq("stageId", args.stageId!))
-        .collect();
-    } else {
-      results = await ctx.db.query("leads").collect();
+      results = results.filter((l) => l.ownerUserId === args.ownerUserId);
     }
 
-    // Filter out archived
     let filtered = results.filter((l) => !l.isArchived);
 
-    // Apply remaining filters
-    if (args.stageId && !(!isAdmin || args.ownerUserId)) {
-      // Already filtered by index
-    } else if (args.stageId) {
+    if (args.stageId) {
       filtered = filtered.filter((l) => l.stageId === args.stageId);
     }
 
@@ -52,10 +39,9 @@ export const getLeadsForExport = query({
       filtered = filtered.filter((l) => l.createdAt <= args.dateTo!);
     }
 
-    // Batch fetch stages and users for enrichment
     const [stages, users] = await Promise.all([
-      ctx.db.query("pipelineStages").withIndex("by_order").collect(),
-      ctx.db.query("users").collect(),
+      ctx.db.query("pipelineStages").withIndex("by_org", (q) => q.eq("orgId", user.orgId)).collect(),
+      ctx.db.query("users").withIndex("by_org", (q) => q.eq("orgId", user.orgId)).collect(),
     ]);
     const stageMap = new Map(stages.map((s) => [s._id, s]));
     const userMap = new Map(users.map((u) => [u._id, u]));

@@ -4,6 +4,7 @@ import { useAuthActions } from "@convex-dev/auth/react";
 import { useQuery, useConvexAuth } from "convex/react";
 import { useRef, useEffect } from "react";
 import { api } from "../../convex/_generated/api";
+import { Id } from "../../convex/_generated/dataModel";
 
 export function useAuth() {
   const { signIn, signOut } = useAuthActions();
@@ -15,6 +16,12 @@ export function useAuth() {
   // Skip the query entirely while auth is loading or when not authenticated
   const user = useQuery(
     api.users.getMe,
+    isAuthLoading || !isSessionAuthenticated ? "skip" : undefined
+  );
+
+  // Query organization data if user is authenticated and has an orgId
+  const org = useQuery(
+    api.organizations.getMyOrg,
     isAuthLoading || !isSessionAuthenticated ? "skip" : undefined
   );
 
@@ -63,6 +70,7 @@ export function useAuth() {
 
   return {
     user,
+    org,
     isLoading,
     isAuthenticated,
     // Also expose the raw session auth state for components that need it

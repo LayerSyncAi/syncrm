@@ -1,6 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { getCurrentUser, requireAdmin } from "./helpers";
+import { getCurrentUserWithOrg, requireAdmin, assertOrgAccess } from "./helpers";
 
 export const list = query({
   args: {
@@ -29,46 +29,24 @@ export const list = query({
     q: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await getCurrentUser(ctx);
+    const user = await getCurrentUserWithOrg(ctx);
 
-    // Use composite index by_filters when we have type/listingType/status filters
-    let properties;
-    if (args.type && args.listingType && args.status) {
-      properties = await ctx.db
-        .query("properties")
-        .withIndex("by_filters", (q) =>
-          q.eq("type", args.type!).eq("listingType", args.listingType!).eq("status", args.status!)
-        )
-        .collect();
-    } else if (args.type && args.listingType) {
-      properties = await ctx.db
-        .query("properties")
-        .withIndex("by_filters", (q) =>
-          q.eq("type", args.type!).eq("listingType", args.listingType!)
-        )
-        .collect();
-    } else if (args.type) {
-      properties = await ctx.db
-        .query("properties")
-        .withIndex("by_filters", (q) => q.eq("type", args.type!))
-        .collect();
-    } else {
-      properties = await ctx.db.query("properties").collect();
-    }
+    const properties = await ctx.db
+      .query("properties")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
 
-    // Apply remaining filters in memory on the narrowed set
     return properties.filter((property) => {
       if (args.location && !property.location.toLowerCase().includes(args.location.toLowerCase())) {
         return false;
       }
-      // Skip type/listingType/status if already filtered by index
-      if (args.listingType && !args.type && property.listingType !== args.listingType) {
+      if (args.type && property.type !== args.type) {
         return false;
       }
-      if (args.status && !(args.type && args.listingType && args.status) && property.status !== args.status) {
+      if (args.listingType && property.listingType !== args.listingType) {
         return false;
       }
-      if (args.status && args.type && !args.listingType && property.status !== args.status) {
+      if (args.status && property.status !== args.status) {
         return false;
       }
       if (args.priceMin && property.price < args.priceMin) {
@@ -113,13 +91,14 @@ export const create = mutation({
     images: v.array(v.string()),
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const admin = await requireAdmin(ctx);
     if (args.images.length < 2) {
       throw new Error("At least 2 property images are required");
     }
     const timestamp = Date.now();
     return ctx.db.insert("properties", {
       ...args,
+      orgId: admin.orgId,
       createdAt: timestamp,
       updatedAt: timestamp,
     });
@@ -159,7 +138,11 @@ export const update = mutation({
     images: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const admin = await requireAdmin(ctx);
+    const property = await ctx.db.get(args.propertyId);
+    if (!property) throw new Error("Property not found");
+    assertOrgAccess(property, admin.orgId);
+
     if (args.images !== undefined && args.images.length < 2) {
       throw new Error("At least 2 property images are required");
     }
@@ -179,12 +162,14 @@ export const remove = mutation({
     propertyId: v.id("properties"),
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const admin = await requireAdmin(ctx);
+    const property = await ctx.db.get(args.propertyId);
+    if (!property) throw new Error("Property not found");
+    assertOrgAccess(property, admin.orgId);
     await ctx.db.delete(args.propertyId);
   },
 });
 
-// Lightweight search for inline property picker (returns minimal fields)
 export const search = query({
   args: {
     q: v.optional(v.string()),
@@ -192,14 +177,17 @@ export const search = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    await getCurrentUser(ctx);
+    const user = await getCurrentUserWithOrg(ctx);
 
-    const allProperties = await ctx.db.query("properties").collect();
+    const allProperties = await ctx.db
+      .query("properties")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
+
     let properties = args.listingType
       ? allProperties.filter((p) => p.listingType === args.listingType)
       : allProperties;
 
-    // Filter by search query
     if (args.q) {
       const search = args.q.toLowerCase();
       properties = properties.filter(
@@ -209,7 +197,6 @@ export const search = query({
       );
     }
 
-    // Only return available / under_offer properties
     properties = properties.filter(
       (p) => p.status === "available" || p.status === "under_offer"
     );
@@ -236,7 +223,10 @@ export const getById = query({
     propertyId: v.id("properties"),
   },
   handler: async (ctx, args) => {
-    await getCurrentUser(ctx);
-    return ctx.db.get(args.propertyId);
+    const user = await getCurrentUserWithOrg(ctx);
+    const property = await ctx.db.get(args.propertyId);
+    if (!property) return null;
+    if (property.orgId && property.orgId !== user.orgId) return null;
+    return property;
   },
 });

@@ -1,11 +1,12 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { getCurrentUser } from "./helpers";
+import { getCurrentUserWithOrg, assertOrgAccess } from "./helpers";
 import { Id, Doc } from "./_generated/dataModel";
 
-async function canAccessLead(ctx: any, leadId: any, userId: any, isAdmin: boolean) {
+async function canAccessLead(ctx: any, leadId: any, userId: any, isAdmin: boolean, userOrgId: Id<"organizations">) {
   const lead = await ctx.db.get(leadId);
   if (!lead) return null;
+  if (lead.orgId && lead.orgId !== userOrgId) return null;
   if (!isAdmin && lead.ownerUserId !== userId) {
     return null;
   }
@@ -14,10 +15,10 @@ async function canAccessLead(ctx: any, leadId: any, userId: any, isAdmin: boolea
 
 // Match score calculation weights
 const SCORE_WEIGHTS = {
-  interestType: 30,      // Must match rent/buy vs rent/sale
-  budget: 35,            // How well does property price fit lead's budget
-  location: 25,          // Location preference match
-  availability: 10,      // Property availability status
+  interestType: 30,
+  budget: 35,
+  location: 25,
+  availability: 10,
 };
 
 interface MatchScoreBreakdown {
@@ -30,7 +31,6 @@ interface MatchScoreBreakdown {
   warnings: string[];
 }
 
-// Calculate match score between a lead and a property
 function calculateMatchScore(
   lead: Doc<"leads">,
   property: Doc<"properties">
@@ -42,7 +42,6 @@ function calculateMatchScore(
   let locationScore = 0;
   let availabilityScore = 0;
 
-  // 1. Interest Type Match (rent/buy vs rent/sale)
   const interestMatch =
     (lead.interestType === "rent" && property.listingType === "rent") ||
     (lead.interestType === "buy" && property.listingType === "sale");
@@ -54,18 +53,15 @@ function calculateMatchScore(
     warnings.push(`Lead wants to ${lead.interestType}, but property is for ${property.listingType}`);
   }
 
-  // 2. Budget Match
   if (lead.budgetMin !== undefined || lead.budgetMax !== undefined) {
     const budgetMin = lead.budgetMin ?? 0;
     const budgetMax = lead.budgetMax ?? Infinity;
     const price = property.price;
 
     if (price >= budgetMin && price <= budgetMax) {
-      // Perfect fit within budget
       budgetScore = SCORE_WEIGHTS.budget;
       matchReasons.push("Price within budget range");
     } else if (price < budgetMin) {
-      // Under budget - good but might indicate mismatch
       const underBy = ((budgetMin - price) / budgetMin) * 100;
       if (underBy <= 20) {
         budgetScore = SCORE_WEIGHTS.budget * 0.8;
@@ -75,7 +71,6 @@ function calculateMatchScore(
         warnings.push(`Price ${underBy.toFixed(0)}% under minimum budget`);
       }
     } else {
-      // Over budget
       const overBy = ((price - budgetMax) / budgetMax) * 100;
       if (overBy <= 10) {
         budgetScore = SCORE_WEIGHTS.budget * 0.7;
@@ -89,12 +84,10 @@ function calculateMatchScore(
       }
     }
   } else {
-    // No budget specified - give partial score
     budgetScore = SCORE_WEIGHTS.budget * 0.5;
     warnings.push("Lead has no budget specified");
   }
 
-  // 3. Location Match
   if (lead.preferredAreas.length > 0) {
     const propertyLocation = property.location.toLowerCase();
     const matchedAreas = lead.preferredAreas.filter((area) =>
@@ -106,7 +99,6 @@ function calculateMatchScore(
       locationScore = SCORE_WEIGHTS.location;
       matchReasons.push(`Location matches: ${matchedAreas.join(", ")}`);
     } else {
-      // Check for partial matches
       const partialMatches = lead.preferredAreas.filter((area) => {
         const areaWords = area.toLowerCase().split(/\s+/);
         const locationWords = propertyLocation.split(/\s+/);
@@ -121,12 +113,10 @@ function calculateMatchScore(
       }
     }
   } else {
-    // No preferred areas - give partial score
     locationScore = SCORE_WEIGHTS.location * 0.5;
     warnings.push("Lead has no preferred areas specified");
   }
 
-  // 4. Availability Score
   if (property.status === "available") {
     availabilityScore = SCORE_WEIGHTS.availability;
     matchReasons.push("Property is available");
@@ -162,14 +152,18 @@ export const attachPropertyToLead = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    const lead = await canAccessLead(ctx, args.leadId, user._id, user.role === "admin");
+    const user = await getCurrentUserWithOrg(ctx);
+    const lead = await canAccessLead(ctx, args.leadId, user._id, user.role === "admin", user.orgId);
     if (!lead) throw new Error("Lead not found");
+    const property = await ctx.db.get(args.propertyId);
+    if (!property) throw new Error("Property not found");
+    assertOrgAccess(property, user.orgId);
     return ctx.db.insert("leadPropertyMatches", {
       leadId: args.leadId,
       propertyId: args.propertyId,
       matchType: args.matchType,
       createdByUserId: user._id,
+      orgId: user.orgId,
       createdAt: Date.now(),
     });
   },
@@ -178,15 +172,14 @@ export const attachPropertyToLead = mutation({
 export const listForLead = query({
   args: { leadId: v.id("leads") },
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    const lead = await canAccessLead(ctx, args.leadId, user._id, user.role === "admin");
+    const user = await getCurrentUserWithOrg(ctx);
+    const lead = await canAccessLead(ctx, args.leadId, user._id, user.role === "admin", user.orgId);
     if (!lead) throw new Error("Lead not found");
     const matches = await ctx.db
       .query("leadPropertyMatches")
       .withIndex("by_lead", (q) => q.eq("leadId", args.leadId))
       .collect();
 
-    // Enrich with property details
     const enriched = await Promise.all(
       matches.map(async (match) => {
         const property = await ctx.db.get(match.propertyId);
@@ -212,16 +205,16 @@ export const listForLead = query({
 export const detach = mutation({
   args: { matchId: v.id("leadPropertyMatches") },
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
+    const user = await getCurrentUserWithOrg(ctx);
     const match = await ctx.db.get(args.matchId);
     if (!match) throw new Error("Match not found");
-    const lead = await canAccessLead(ctx, match.leadId, user._id, user.role === "admin");
+    assertOrgAccess(match, user.orgId);
+    const lead = await canAccessLead(ctx, match.leadId, user._id, user.role === "admin", user.orgId);
     if (!lead) throw new Error("Lead not found");
     await ctx.db.delete(args.matchId);
   },
 });
 
-// Auto-suggest properties for a lead based on preferences
 export const suggestPropertiesForLead = query({
   args: {
     leadId: v.id("leads"),
@@ -230,14 +223,16 @@ export const suggestPropertiesForLead = query({
     excludeAttached: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    const lead = await canAccessLead(ctx, args.leadId, user._id, user.role === "admin");
+    const user = await getCurrentUserWithOrg(ctx);
+    const lead = await canAccessLead(ctx, args.leadId, user._id, user.role === "admin", user.orgId);
     if (!lead) throw new Error("Lead not found");
 
-    // Get all properties
-    const properties = await ctx.db.query("properties").collect();
+    // Get org-scoped properties
+    const properties = await ctx.db
+      .query("properties")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
 
-    // Get already attached property IDs if excluding
     let attachedPropertyIds: Set<string> = new Set();
     if (args.excludeAttached !== false) {
       const existingMatches = await ctx.db
@@ -247,7 +242,6 @@ export const suggestPropertiesForLead = query({
       attachedPropertyIds = new Set(existingMatches.map((m) => m.propertyId));
     }
 
-    // Calculate scores for all properties
     const scoredProperties = properties
       .filter((property) => !attachedPropertyIds.has(property._id))
       .map((property) => {
@@ -291,7 +285,6 @@ export const suggestPropertiesForLead = query({
   },
 });
 
-// Bulk match: Find matching properties for multiple leads
 export const bulkMatchProperties = query({
   args: {
     leadIds: v.optional(v.array(v.id("leads"))),
@@ -299,18 +292,19 @@ export const bulkMatchProperties = query({
     topN: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
+    const user = await getCurrentUserWithOrg(ctx);
 
-    // Get leads to process
     let leads: Doc<"leads">[];
     if (args.leadIds && args.leadIds.length > 0) {
       const fetchedLeads = await Promise.all(
-        args.leadIds.map((id) => canAccessLead(ctx, id, user._id, user.role === "admin"))
+        args.leadIds.map((id) => canAccessLead(ctx, id, user._id, user.role === "admin", user.orgId))
       );
       leads = fetchedLeads.filter((l): l is Doc<"leads"> => l !== null);
     } else {
-      // Get all leads the user has access to (non-closed)
-      const allLeads = await ctx.db.query("leads").collect();
+      const allLeads = await ctx.db
+        .query("leads")
+        .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+        .collect();
       leads = allLeads.filter((lead) => {
         if (user.role !== "admin" && lead.ownerUserId !== user._id) return false;
         if (lead.closedAt) return false;
@@ -318,14 +312,18 @@ export const bulkMatchProperties = query({
       });
     }
 
-    // Get all available properties
-    const properties = await ctx.db.query("properties").collect();
+    const properties = await ctx.db
+      .query("properties")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
     const availableProperties = properties.filter(
       (p) => p.status === "available" || p.status === "under_offer"
     );
 
-    // Get all existing matches
-    const allMatches = await ctx.db.query("leadPropertyMatches").collect();
+    const allMatches = await ctx.db
+      .query("leadPropertyMatches")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
     const matchesByLead = new Map<string, Set<string>>();
     for (const match of allMatches) {
       if (!matchesByLead.has(match.leadId)) {
@@ -334,7 +332,6 @@ export const bulkMatchProperties = query({
       matchesByLead.get(match.leadId)!.add(match.propertyId);
     }
 
-    // Calculate matches for each lead
     const minScore = args.minScore ?? 50;
     const topN = args.topN ?? 5;
 
@@ -377,7 +374,6 @@ export const bulkMatchProperties = query({
       };
     });
 
-    // Summary statistics
     const totalLeads = results.length;
     const leadsWithMatches = results.filter((r) => r.matchCount > 0).length;
     const avgMatchesPerLead =
@@ -397,13 +393,12 @@ export const bulkMatchProperties = query({
   },
 });
 
-// Get properties for comparison
 export const getPropertiesForComparison = query({
   args: {
     propertyIds: v.array(v.id("properties")),
   },
   handler: async (ctx, args) => {
-    await getCurrentUser(ctx);
+    const user = await getCurrentUserWithOrg(ctx);
 
     if (args.propertyIds.length === 0) {
       return { properties: [] };
@@ -417,7 +412,9 @@ export const getPropertiesForComparison = query({
       args.propertyIds.map((id) => ctx.db.get(id))
     );
 
-    const validProperties = properties.filter((p): p is Doc<"properties"> => p !== null);
+    const validProperties = properties
+      .filter((p): p is Doc<"properties"> => p !== null)
+      .filter((p) => !p.orgId || p.orgId === user.orgId);
 
     return {
       properties: validProperties.map((p) => ({
@@ -440,19 +437,19 @@ export const getPropertiesForComparison = query({
   },
 });
 
-// Get match score for a specific lead-property pair
 export const getMatchScore = query({
   args: {
     leadId: v.id("leads"),
     propertyId: v.id("properties"),
   },
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    const lead = await canAccessLead(ctx, args.leadId, user._id, user.role === "admin");
+    const user = await getCurrentUserWithOrg(ctx);
+    const lead = await canAccessLead(ctx, args.leadId, user._id, user.role === "admin", user.orgId);
     if (!lead) throw new Error("Lead not found");
 
     const property = await ctx.db.get(args.propertyId);
     if (!property) throw new Error("Property not found");
+    assertOrgAccess(property, user.orgId);
 
     const scoreBreakdown = calculateMatchScore(lead, property);
 
@@ -477,7 +474,6 @@ export const getMatchScore = query({
   },
 });
 
-// Bulk attach suggested properties to leads
 export const bulkAttachSuggested = mutation({
   args: {
     attachments: v.array(
@@ -488,13 +484,13 @@ export const bulkAttachSuggested = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
+    const user = await getCurrentUserWithOrg(ctx);
     const timestamp = Date.now();
     const results: { leadId: string; propertyId: string; success: boolean; error?: string }[] = [];
 
     for (const attachment of args.attachments) {
       try {
-        const lead = await canAccessLead(ctx, attachment.leadId, user._id, user.role === "admin");
+        const lead = await canAccessLead(ctx, attachment.leadId, user._id, user.role === "admin", user.orgId);
         if (!lead) {
           results.push({
             leadId: attachment.leadId,
@@ -505,7 +501,6 @@ export const bulkAttachSuggested = mutation({
           continue;
         }
 
-        // Check if already attached
         const existingMatches = await ctx.db
           .query("leadPropertyMatches")
           .withIndex("by_lead", (q) => q.eq("leadId", attachment.leadId))
@@ -530,6 +525,7 @@ export const bulkAttachSuggested = mutation({
           propertyId: attachment.propertyId,
           matchType: "suggested",
           createdByUserId: user._id,
+          orgId: user.orgId,
           createdAt: timestamp,
         });
 

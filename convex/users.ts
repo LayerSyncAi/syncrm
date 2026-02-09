@@ -1,6 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { getCurrentUser, requireAdmin, getCurrentUserOptional } from "./helpers";
+import { getCurrentUser, requireAdmin, getCurrentUserOptional, getCurrentUserWithOrg } from "./helpers";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
 export const getMe = query({
@@ -12,27 +12,15 @@ export const getMe = query({
 // Debug query to understand auth state - helps diagnose user lookup issues
 export const debugAuthState = query({
   handler: async (ctx) => {
-    // Use the canonical getAuthUserId from Convex Auth
     const userId = await getAuthUserId(ctx);
     const identity = await ctx.auth.getUserIdentity();
 
-    // Get user if we have a userId
     let user = null;
     if (userId) {
       user = await ctx.db.get(userId);
     }
 
-    // Get all users for comparison
-    const allUsers = await ctx.db.query("users").collect();
-    const allUsersInfo = allUsers.map((u) => ({
-      id: u._id,
-      email: u.email,
-      isActive: u.isActive,
-      role: u.role,
-    }));
-
     return {
-      // The key info - what getAuthUserId returns
       authUserId: userId,
       userFound: !!user,
       user: user ? {
@@ -40,16 +28,14 @@ export const debugAuthState = query({
         email: user.email,
         isActive: user.isActive,
         role: user.role,
+        orgId: user.orgId,
       } : null,
-      // Identity info for comparison
       identity: identity ? {
         subject: identity.subject,
         tokenIdentifier: identity.tokenIdentifier,
         email: identity.email,
         issuer: identity.issuer,
       } : null,
-      // All users in DB
-      allUsers: allUsersInfo,
     };
   },
 });
@@ -62,8 +48,12 @@ export const getMeRequired = query({
 
 export const adminListUsers = query({
   handler: async (ctx) => {
-    await requireAdmin(ctx);
-    return ctx.db.query("users").collect();
+    const user = await requireAdmin(ctx);
+    const allUsers = await ctx.db
+      .query("users")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
+    return allUsers;
   },
 });
 
@@ -75,12 +65,16 @@ export const adminCreateUser = mutation({
     isActive: v.boolean(),
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const admin = await requireAdmin(ctx);
+
     const existing = await ctx.db
       .query("users")
       .withIndex("by_email", (q) => q.eq("email", args.email))
       .unique();
     if (existing) {
+      if (existing.orgId && existing.orgId !== admin.orgId) {
+        throw new Error("A user with this email already belongs to another organization");
+      }
       return existing._id;
     }
     const timestamp = Date.now();
@@ -89,6 +83,7 @@ export const adminCreateUser = mutation({
       fullName: args.fullName,
       role: args.role,
       isActive: args.isActive,
+      orgId: admin.orgId,
       createdAt: timestamp,
       updatedAt: timestamp,
     });
@@ -101,7 +96,11 @@ export const adminSetUserActive = mutation({
     isActive: v.boolean(),
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const admin = await requireAdmin(ctx);
+    const targetUser = await ctx.db.get(args.userId);
+    if (!targetUser || targetUser.orgId !== admin.orgId) {
+      throw new Error("User not found");
+    }
     await ctx.db.patch(args.userId, {
       isActive: args.isActive,
       updatedAt: Date.now(),
@@ -109,7 +108,6 @@ export const adminSetUserActive = mutation({
   },
 });
 
-// Admin function to change user role
 export const adminSetUserRole = mutation({
   args: {
     userId: v.id("users"),
@@ -119,19 +117,21 @@ export const adminSetUserRole = mutation({
     const currentAdmin = await requireAdmin(ctx);
 
     const targetUser = await ctx.db.get(args.userId);
-    if (!targetUser) {
+    if (!targetUser || targetUser.orgId !== currentAdmin.orgId) {
       throw new Error("User not found");
     }
 
-    // Prevent demoting self if last admin
+    // Prevent demoting self if last admin in the org
     if (
       currentAdmin._id === args.userId &&
       args.role === "agent" &&
       targetUser.role === "admin"
     ) {
-      // Count admins
-      const allUsers = await ctx.db.query("users").collect();
-      const adminCount = allUsers.filter(
+      const orgUsers = await ctx.db
+        .query("users")
+        .withIndex("by_org", (q) => q.eq("orgId", currentAdmin.orgId))
+        .collect();
+      const adminCount = orgUsers.filter(
         (u) => u.role === "admin" && u.isActive
       ).length;
 
@@ -149,21 +149,25 @@ export const adminSetUserRole = mutation({
   },
 });
 
-// Get count of active admins
 export const getAdminCount = query({
   handler: async (ctx) => {
-    await requireAdmin(ctx);
-    const allUsers = await ctx.db.query("users").collect();
-    return allUsers.filter((u) => u.role === "admin" && u.isActive).length;
+    const user = await requireAdmin(ctx);
+    const orgUsers = await ctx.db
+      .query("users")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
+    return orgUsers.filter((u) => u.role === "admin" && u.isActive).length;
   },
 });
 
-// List active users for dropdowns (admin only for now)
 export const listActiveUsers = query({
   handler: async (ctx) => {
-    await requireAdmin(ctx);
-    const allUsers = await ctx.db.query("users").collect();
-    return allUsers
+    const user = await requireAdmin(ctx);
+    const orgUsers = await ctx.db
+      .query("users")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
+    return orgUsers
       .filter((u) => u.isActive)
       .map((u) => ({
         _id: u._id,
@@ -174,12 +178,14 @@ export const listActiveUsers = query({
   },
 });
 
-// List users for lead assignment (any authenticated user can see names)
 export const listForAssignment = query({
   handler: async (ctx) => {
-    await getCurrentUser(ctx);
-    const allUsers = await ctx.db.query("users").collect();
-    return allUsers
+    const user = await getCurrentUserWithOrg(ctx);
+    const orgUsers = await ctx.db
+      .query("users")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
+    return orgUsers
       .filter((u) => u.isActive)
       .map((u) => ({
         _id: u._id,
@@ -188,12 +194,14 @@ export const listForAssignment = query({
   },
 });
 
-// List all active users with full info (for export filters, etc.)
 export const listAll = query({
   handler: async (ctx) => {
-    await getCurrentUser(ctx);
-    const allUsers = await ctx.db.query("users").collect();
-    return allUsers
+    const user = await getCurrentUserWithOrg(ctx);
+    const orgUsers = await ctx.db
+      .query("users")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
+    return orgUsers
       .filter((u) => u.isActive)
       .map((u) => ({
         _id: u._id,

@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { getCurrentUser } from "./helpers";
+import { getCurrentUserWithOrg, assertOrgAccess } from "./helpers";
+import { Id } from "./_generated/dataModel";
 
 const leadArgs = {
   contactId: v.id("contacts"),
@@ -27,9 +28,13 @@ function normalizePhone(phone: string) {
   return phone.replace(/\D/g, "");
 }
 
-async function assertLeadAccess(ctx: any, leadId: any, userId: any, isAdmin: boolean) {
+async function assertLeadAccess(ctx: any, leadId: any, userId: any, isAdmin: boolean, userOrgId: Id<"organizations">) {
   const lead = await ctx.db.get(leadId);
   if (!lead) {
+    return null;
+  }
+  // Check org access
+  if (lead.orgId && lead.orgId !== userOrgId) {
     return null;
   }
   if (!isAdmin && lead.ownerUserId !== userId) {
@@ -41,15 +46,14 @@ async function assertLeadAccess(ctx: any, leadId: any, userId: any, isAdmin: boo
 export const create = mutation({
   args: leadArgs,
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
+    const user = await getCurrentUserWithOrg(ctx);
 
-    // Fetch the contact to get denormalized data
     const contact = await ctx.db.get(args.contactId);
     if (!contact) {
       throw new Error("Contact not found");
     }
+    assertOrgAccess(contact, user.orgId);
 
-    // Check if user has access to the contact (must be an owner or admin)
     if (user.role !== "admin" && !contact.ownerUserIds.includes(user._id)) {
       throw new Error("You don't have access to this contact");
     }
@@ -74,6 +78,7 @@ export const create = mutation({
       notes: args.notes,
       stageId: args.stageId,
       ownerUserId: ownerId,
+      orgId: user.orgId,
       createdAt: timestamp,
       updatedAt: timestamp,
     });
@@ -89,44 +94,26 @@ export const list = query({
     ownerUserId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
+    const user = await getCurrentUserWithOrg(ctx);
     const isAdmin = user.role === "admin";
 
-    // Use indexed queries instead of .collect() + filter
-    // Pick the most selective index based on available filters
-    let results;
+    // Always scope by org first
+    let results = await ctx.db
+      .query("leads")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
 
+    // Apply role-based filtering
     if (!isAdmin) {
-      // Non-admin: always filter by owner using index (most selective)
-      results = await ctx.db
-        .query("leads")
-        .withIndex("by_owner", (q) => q.eq("ownerUserId", user._id))
-        .collect();
+      results = results.filter((lead) => lead.ownerUserId === user._id);
     } else if (args.ownerUserId) {
-      // Admin filtering by specific owner
-      results = await ctx.db
-        .query("leads")
-        .withIndex("by_owner", (q) => q.eq("ownerUserId", args.ownerUserId!))
-        .collect();
-    } else if (args.stageId) {
-      // Admin filtering by stage
-      results = await ctx.db
-        .query("leads")
-        .withIndex("by_stage", (q) => q.eq("stageId", args.stageId!))
-        .collect();
-    } else {
-      // Admin with no indexed filter - collect all
-      results = await ctx.db.query("leads").collect();
+      results = results.filter((lead) => lead.ownerUserId === args.ownerUserId);
     }
 
-    // Apply remaining filters in memory (on the already-narrowed result set)
+    // Apply remaining filters in memory
     const filtered = results.filter((lead) => {
-      // Exclude archived leads
       if (lead.isArchived) return false;
-      // Stage filter (skip if already applied via index)
-      if (args.stageId && !args.ownerUserId && isAdmin) {
-        // Already filtered by stage index
-      } else if (args.stageId && lead.stageId !== args.stageId) {
+      if (args.stageId && lead.stageId !== args.stageId) {
         return false;
       }
       if (args.interestType && lead.interestType !== args.interestType) {
@@ -151,10 +138,10 @@ export const list = query({
       return true;
     });
 
-    // Batch fetch stages and users for enrichment (small tables)
+    // Batch fetch stages and users for enrichment (scoped to org)
     const [stages, users] = await Promise.all([
-      ctx.db.query("pipelineStages").withIndex("by_order").collect(),
-      ctx.db.query("users").collect(),
+      ctx.db.query("pipelineStages").withIndex("by_org", (q) => q.eq("orgId", user.orgId)).collect(),
+      ctx.db.query("users").withIndex("by_org", (q) => q.eq("orgId", user.orgId)).collect(),
     ]);
     const stageMap = new Map(stages.map((s) => [s._id, s]));
     const userMap = new Map(users.map((u) => [u._id, u]));
@@ -175,12 +162,11 @@ export const list = query({
 export const getById = query({
   args: { leadId: v.id("leads") },
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    const lead = await assertLeadAccess(ctx, args.leadId, user._id, user.role === "admin");
+    const user = await getCurrentUserWithOrg(ctx);
+    const lead = await assertLeadAccess(ctx, args.leadId, user._id, user.role === "admin", user.orgId);
     if (!lead) {
       return null;
     }
-    // Parallel fetch stage and owner
     const [stage, owner] = await Promise.all([
       ctx.db.get(lead.stageId),
       ctx.db.get(lead.ownerUserId),
@@ -210,8 +196,8 @@ export const update = mutation({
     preferredAreas: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    const lead = await assertLeadAccess(ctx, args.leadId, user._id, user.role === "admin");
+    const user = await getCurrentUserWithOrg(ctx);
+    const lead = await assertLeadAccess(ctx, args.leadId, user._id, user.role === "admin", user.orgId);
     if (!lead) {
       throw new Error("Lead not found");
     }
@@ -233,8 +219,8 @@ export const moveStage = mutation({
     closeReason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    const lead = await assertLeadAccess(ctx, args.leadId, user._id, user.role === "admin");
+    const user = await getCurrentUserWithOrg(ctx);
+    const lead = await assertLeadAccess(ctx, args.leadId, user._id, user.role === "admin", user.orgId);
     if (!lead) {
       throw new Error("Lead not found");
     }
@@ -242,6 +228,8 @@ export const moveStage = mutation({
     if (!stage) {
       throw new Error("Stage not found");
     }
+    assertOrgAccess(stage, user.orgId);
+
     const updated: Record<string, unknown> = {
       stageId: args.stageId,
       updatedAt: Date.now(),
@@ -257,8 +245,8 @@ export const moveStage = mutation({
 export const updateNotes = mutation({
   args: { leadId: v.id("leads"), notes: v.string() },
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    const lead = await assertLeadAccess(ctx, args.leadId, user._id, user.role === "admin");
+    const user = await getCurrentUserWithOrg(ctx);
+    const lead = await assertLeadAccess(ctx, args.leadId, user._id, user.role === "admin", user.orgId);
     if (!lead) {
       throw new Error("Lead not found");
     }
@@ -266,19 +254,20 @@ export const updateNotes = mutation({
   },
 });
 
-// Create a lead and optionally attach properties in a single atomic operation
 export const createWithProperties = mutation({
   args: {
     ...leadArgs,
     propertyIds: v.optional(v.array(v.id("properties"))),
   },
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
+    const user = await getCurrentUserWithOrg(ctx);
 
     const contact = await ctx.db.get(args.contactId);
     if (!contact) {
       throw new Error("Contact not found");
     }
+    assertOrgAccess(contact, user.orgId);
+
     if (user.role !== "admin" && !contact.ownerUserIds.includes(user._id)) {
       throw new Error("You don't have access to this contact");
     }
@@ -302,20 +291,22 @@ export const createWithProperties = mutation({
       notes: args.notes,
       stageId: args.stageId,
       ownerUserId: ownerId,
+      orgId: user.orgId,
       createdAt: timestamp,
       updatedAt: timestamp,
     });
 
-    // Attach properties if provided
     if (args.propertyIds && args.propertyIds.length > 0) {
       for (const propertyId of args.propertyIds) {
         const property = await ctx.db.get(propertyId);
         if (!property) continue;
+        assertOrgAccess(property, user.orgId);
         await ctx.db.insert("leadPropertyMatches", {
           leadId,
           propertyId,
           matchType: "requested",
           createdByUserId: user._id,
+          orgId: user.orgId,
           createdAt: timestamp,
         });
       }
@@ -328,23 +319,18 @@ export const createWithProperties = mutation({
 export const statsSummary = query({
   args: { ownerUserId: v.optional(v.id("users")) },
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
+    const user = await getCurrentUserWithOrg(ctx);
     const isAdmin = user.role === "admin";
 
-    // Use indexed query for non-admin or when filtering by owner
-    let scoped;
+    let scoped = await ctx.db
+      .query("leads")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
+
     if (!isAdmin) {
-      scoped = await ctx.db
-        .query("leads")
-        .withIndex("by_owner", (q) => q.eq("ownerUserId", user._id))
-        .collect();
+      scoped = scoped.filter((l) => l.ownerUserId === user._id);
     } else if (args.ownerUserId) {
-      scoped = await ctx.db
-        .query("leads")
-        .withIndex("by_owner", (q) => q.eq("ownerUserId", args.ownerUserId!))
-        .collect();
-    } else {
-      scoped = await ctx.db.query("leads").collect();
+      scoped = scoped.filter((l) => l.ownerUserId === args.ownerUserId);
     }
 
     return {
@@ -358,20 +344,26 @@ export const statsSummary = query({
 export const dashboardStats = query({
   args: { ownerUserId: v.optional(v.id("users")) },
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
+    const user = await getCurrentUserWithOrg(ctx);
     const isAdmin = user.role === "admin";
 
-    // Use indexed query for non-admin or when filtering by owner
-    const [scoped, stages] = await Promise.all([
-      !isAdmin
-        ? ctx.db.query("leads").withIndex("by_owner", (q) => q.eq("ownerUserId", user._id)).collect()
-        : args.ownerUserId
-          ? ctx.db.query("leads").withIndex("by_owner", (q) => q.eq("ownerUserId", args.ownerUserId!)).collect()
-          : ctx.db.query("leads").collect(),
-      ctx.db.query("pipelineStages").withIndex("by_order").collect(),
-    ]);
+    let scoped = await ctx.db
+      .query("leads")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
 
-    // Time calculations
+    if (!isAdmin) {
+      scoped = scoped.filter((l) => l.ownerUserId === user._id);
+    } else if (args.ownerUserId) {
+      scoped = scoped.filter((l) => l.ownerUserId === args.ownerUserId);
+    }
+
+    const stages = await ctx.db
+      .query("pipelineStages")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
+    stages.sort((a, b) => a.order - b.order);
+
     const now = Date.now();
     const oneWeekAgo = now - 7 * 24 * 60 * 60 * 1000;
     const startOfMonth = new Date();
@@ -379,11 +371,9 @@ export const dashboardStats = query({
     startOfMonth.setHours(0, 0, 0, 0);
     const startOfMonthMs = startOfMonth.getTime();
 
-    // Get terminal stages to identify won/lost
     const wonStage = stages.find((s) => s.terminalOutcome === "won");
     const lostStage = stages.find((s) => s.terminalOutcome === "lost");
 
-    // Single pass aggregation instead of multiple filter passes
     let newThisWeek = 0;
     let openLeads = 0;
     let wonThisMonth = 0;
@@ -402,7 +392,6 @@ export const dashboardStats = query({
       }
     }
 
-    // Calculate stage breakdown (non-terminal stages only for pipeline view)
     const nonTerminalStages = stages.filter((s) => !s.isTerminal);
     const totalOpenForStages = openLeads;
 

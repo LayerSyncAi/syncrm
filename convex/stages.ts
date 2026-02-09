@@ -1,6 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { requireAdmin } from "./helpers";
+import { requireAdmin, getCurrentUserWithOrg, assertOrgAccess } from "./helpers";
 
 const defaultStages = [
   {
@@ -71,18 +71,30 @@ const defaultStages = [
 
 export const list = query({
   handler: async (ctx) => {
-    return ctx.db.query("pipelineStages").withIndex("by_order").collect();
+    const user = await getCurrentUserWithOrg(ctx);
+    const stages = await ctx.db
+      .query("pipelineStages")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
+    return stages.sort((a, b) => a.order - b.order);
   },
 });
 
 export const seedDefaultsIfEmpty = mutation({
   handler: async (ctx) => {
-    const existing = await ctx.db.query("pipelineStages").first();
+    const user = await getCurrentUserWithOrg(ctx);
+    // Check if org already has stages
+    const existing = await ctx.db
+      .query("pipelineStages")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .first();
     if (existing) return;
+
     const timestamp = Date.now();
     for (const stage of defaultStages) {
       await ctx.db.insert("pipelineStages", {
         ...stage,
+        orgId: user.orgId,
         createdAt: timestamp,
         updatedAt: timestamp,
       });
@@ -90,22 +102,24 @@ export const seedDefaultsIfEmpty = mutation({
   },
 });
 
-// Force re-seed stages (admin only) - useful for updating existing stages
 export const adminReseedStages = mutation({
   handler: async (ctx) => {
-    await requireAdmin(ctx);
+    const user = await requireAdmin(ctx);
 
-    // Delete all existing stages
-    const existingStages = await ctx.db.query("pipelineStages").collect();
+    // Delete all existing stages for this org
+    const existingStages = await ctx.db
+      .query("pipelineStages")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
     for (const stage of existingStages) {
       await ctx.db.delete(stage._id);
     }
 
-    // Insert new defaults
     const timestamp = Date.now();
     for (const stage of defaultStages) {
       await ctx.db.insert("pipelineStages", {
         ...stage,
+        orgId: user.orgId,
         createdAt: timestamp,
         updatedAt: timestamp,
       });
@@ -127,10 +141,11 @@ export const adminCreate = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const user = await requireAdmin(ctx);
     const timestamp = Date.now();
     return ctx.db.insert("pipelineStages", {
       ...args,
+      orgId: user.orgId,
       createdAt: timestamp,
       updatedAt: timestamp,
     });
@@ -152,7 +167,11 @@ export const adminUpdate = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const user = await requireAdmin(ctx);
+    const stage = await ctx.db.get(args.stageId);
+    if (!stage) throw new Error("Stage not found");
+    assertOrgAccess(stage, user.orgId);
+
     await ctx.db.patch(args.stageId, {
       name: args.name,
       description: args.description,
@@ -170,9 +189,13 @@ export const adminReorder = mutation({
     orderedStageIds: v.array(v.id("pipelineStages")),
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const user = await requireAdmin(ctx);
     const timestamp = Date.now();
     for (const [index, stageId] of args.orderedStageIds.entries()) {
+      const stage = await ctx.db.get(stageId);
+      if (stage) {
+        assertOrgAccess(stage, user.orgId);
+      }
       await ctx.db.patch(stageId, { order: index + 1, updatedAt: timestamp });
     }
   },
@@ -183,7 +206,10 @@ export const adminDelete = mutation({
     stageId: v.id("pipelineStages"),
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const user = await requireAdmin(ctx);
+    const stage = await ctx.db.get(args.stageId);
+    if (!stage) throw new Error("Stage not found");
+    assertOrgAccess(stage, user.orgId);
 
     // Check if any leads are using this stage
     const leadsWithStage = await ctx.db

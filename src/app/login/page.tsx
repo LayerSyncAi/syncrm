@@ -4,25 +4,27 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, FormEvent, useEffect } from "react";
 import { useAuthActions } from "@convex-dev/auth/react";
+import { useMutation } from "convex/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { Loader2 } from "lucide-react";
+import { api } from "../../../convex/_generated/api";
 
 type AuthMode = "signIn" | "signUp";
 
 export default function LoginPage() {
   const router = useRouter();
   const { signIn } = useAuthActions();
-  // Middleware redirects authenticated users, so if we get here we're not authenticated
-  // We still check isLoading to show proper loading state during initial auth check
   const { isLoading: authLoading, isSessionAuthenticated } = useAuth();
+  const setupOrganization = useMutation(api.organizations.setupOrganization);
 
   const [mode, setMode] = useState<AuthMode>("signIn");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [orgName, setOrgName] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -60,6 +62,11 @@ export default function LoginPage() {
           setIsSubmitting(false);
           return;
         }
+        if (!orgName.trim()) {
+          setError("Organization name is required");
+          setIsSubmitting(false);
+          return;
+        }
       }
 
       const formData = new FormData();
@@ -76,6 +83,11 @@ export default function LoginPage() {
 
       // Call Convex Auth signIn - this sets the auth cookie via the middleware integration
       await signIn("password", formData);
+
+      // If signing up, create the organization for the new user
+      if (mode === "signUp") {
+        await setupOrganization({ orgName: orgName.trim() });
+      }
 
       if (process.env.NODE_ENV === "development") {
         console.log("[LoginPage] signIn completed successfully");
@@ -142,26 +154,41 @@ export default function LoginPage() {
             <p className="text-sm text-text-muted">
               {mode === "signIn"
                 ? "Use your credentials to access the pipeline."
-                : "Register for a new account."}
+                : "Register your organization and create an admin account."}
             </p>
           </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === "signUp" && (
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-text-muted">
-                  Full Name
-                </label>
-                <Input
-                  type="text"
-                  placeholder="John Doe"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                  disabled={isSubmitting}
-                />
-              </div>
+              <>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-text-muted">
+                    Organization Name
+                  </label>
+                  <Input
+                    type="text"
+                    placeholder="Acme Realty"
+                    value={orgName}
+                    onChange={(e) => setOrgName(e.target.value)}
+                    required
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-text-muted">
+                    Full Name
+                  </label>
+                  <Input
+                    type="text"
+                    placeholder="John Doe"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                    disabled={isSubmitting}
+                  />
+                </div>
+              </>
             )}
             <div className="space-y-2">
               <label className="text-xs font-medium text-text-muted">

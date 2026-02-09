@@ -1,21 +1,22 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { getCurrentUser } from "./helpers";
+import { getCurrentUserWithOrg, assertOrgAccess } from "./helpers";
 import { Id } from "./_generated/dataModel";
 
 function normalizePhone(phone: string) {
   return phone.replace(/\D/g, "");
 }
 
-// Check if user can access a contact (owner or admin)
 async function canAccessContact(
   ctx: any,
   contactId: Id<"contacts">,
   userId: Id<"users">,
-  isAdmin: boolean
+  isAdmin: boolean,
+  userOrgId: Id<"organizations">
 ) {
   const contact = await ctx.db.get(contactId);
   if (!contact) return null;
+  if (contact.orgId && contact.orgId !== userOrgId) return null;
   if (isAdmin) return contact;
   if (contact.ownerUserIds.includes(userId)) return contact;
   return null;
@@ -31,10 +32,9 @@ export const create = mutation({
     ownerUserIds: v.optional(v.array(v.id("users"))),
   },
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
+    const user = await getCurrentUserWithOrg(ctx);
     const timestamp = Date.now();
 
-    // Default owner is current user, admins can assign to multiple owners
     let owners: Id<"users">[];
     if (user.role === "admin" && args.ownerUserIds && args.ownerUserIds.length > 0) {
       owners = args.ownerUserIds;
@@ -51,6 +51,7 @@ export const create = mutation({
       notes: args.notes,
       ownerUserIds: owners,
       createdByUserId: user._id,
+      orgId: user.orgId,
       createdAt: timestamp,
       updatedAt: timestamp,
     });
@@ -63,27 +64,32 @@ export const list = query({
     ownerUserId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    const contacts = await ctx.db.query("contacts").collect();
-    const users = await ctx.db.query("users").collect();
+    const user = await getCurrentUserWithOrg(ctx);
+
+    const contacts = await ctx.db
+      .query("contacts")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
+
+    const users = await ctx.db
+      .query("users")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
     const userMap = new Map(users.map((u) => [u._id, u]));
 
     const filtered = contacts.filter((contact) => {
-      // Access control: agents only see contacts they own, admins see all
       if (user.role !== "admin") {
         if (!contact.ownerUserIds.includes(user._id)) {
           return false;
         }
       }
 
-      // Admin can filter by specific owner
       if (user.role === "admin" && args.ownerUserId) {
         if (!contact.ownerUserIds.includes(args.ownerUserId)) {
           return false;
         }
       }
 
-      // Search filter
       if (args.q) {
         const search = args.q.toLowerCase();
         const nameMatch = contact.name.toLowerCase().includes(search);
@@ -98,7 +104,6 @@ export const list = query({
       return true;
     });
 
-    // Enrich with owner names
     return filtered.map((contact) => {
       const ownerNames = contact.ownerUserIds.map((ownerId) => {
         const owner = userMap.get(ownerId);
@@ -115,16 +120,16 @@ export const list = query({
 export const getById = query({
   args: { contactId: v.id("contacts") },
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
+    const user = await getCurrentUserWithOrg(ctx);
     const contact = await canAccessContact(
       ctx,
       args.contactId,
       user._id,
-      user.role === "admin"
+      user.role === "admin",
+      user.orgId
     );
     if (!contact) return null;
 
-    // Fetch only the specific users we need instead of all users
     const ownerIds = contact.ownerUserIds;
     const allIds = [...ownerIds];
     if (!allIds.some(id => id === contact.createdByUserId)) {
@@ -165,12 +170,13 @@ export const update = mutation({
     ownerUserIds: v.optional(v.array(v.id("users"))),
   },
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
+    const user = await getCurrentUserWithOrg(ctx);
     const contact = await canAccessContact(
       ctx,
       args.contactId,
       user._id,
-      user.role === "admin"
+      user.role === "admin",
+      user.orgId
     );
     if (!contact) {
       throw new Error("Contact not found or access denied");
@@ -187,7 +193,6 @@ export const update = mutation({
     if (args.company !== undefined) updates.company = args.company;
     if (args.notes !== undefined) updates.notes = args.notes;
 
-    // Only admins can change owners
     if (user.role === "admin" && args.ownerUserIds !== undefined) {
       if (args.ownerUserIds.length === 0) {
         throw new Error("Contact must have at least one owner");
@@ -202,12 +207,13 @@ export const update = mutation({
 export const remove = mutation({
   args: { contactId: v.id("contacts") },
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
+    const user = await getCurrentUserWithOrg(ctx);
     const contact = await canAccessContact(
       ctx,
       args.contactId,
       user._id,
-      user.role === "admin"
+      user.role === "admin",
+      user.orgId
     );
     if (!contact) {
       throw new Error("Contact not found or access denied");
@@ -217,32 +223,30 @@ export const remove = mutation({
   },
 });
 
-// Add an owner to a contact (admin or current owner only)
 export const addOwner = mutation({
   args: {
     contactId: v.id("contacts"),
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
+    const user = await getCurrentUserWithOrg(ctx);
     const contact = await canAccessContact(
       ctx,
       args.contactId,
       user._id,
-      user.role === "admin"
+      user.role === "admin",
+      user.orgId
     );
     if (!contact) {
       throw new Error("Contact not found or access denied");
     }
 
-    // Check if user is already an owner
     if (contact.ownerUserIds.includes(args.userId)) {
-      return; // Already an owner
+      return;
     }
 
-    // Verify the user being added exists and is active
     const targetUser = await ctx.db.get(args.userId);
-    if (!targetUser || !targetUser.isActive) {
+    if (!targetUser || !targetUser.isActive || targetUser.orgId !== user.orgId) {
       throw new Error("User not found or inactive");
     }
 
@@ -253,32 +257,30 @@ export const addOwner = mutation({
   },
 });
 
-// Remove an owner from a contact (admin or current owner only)
 export const removeOwner = mutation({
   args: {
     contactId: v.id("contacts"),
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
+    const user = await getCurrentUserWithOrg(ctx);
     const contact = await canAccessContact(
       ctx,
       args.contactId,
       user._id,
-      user.role === "admin"
+      user.role === "admin",
+      user.orgId
     );
     if (!contact) {
       throw new Error("Contact not found or access denied");
     }
 
-    // Must have at least one owner
     if (contact.ownerUserIds.length <= 1) {
       throw new Error("Contact must have at least one owner");
     }
 
-    // Check if user is actually an owner
     if (!contact.ownerUserIds.includes(args.userId)) {
-      return; // Not an owner
+      return;
     }
 
     await ctx.db.patch(args.contactId, {
@@ -288,12 +290,15 @@ export const removeOwner = mutation({
   },
 });
 
-// Stats for dashboard
 export const stats = query({
   args: {},
   handler: async (ctx) => {
-    const user = await getCurrentUser(ctx);
-    const contacts = await ctx.db.query("contacts").collect();
+    const user = await getCurrentUserWithOrg(ctx);
+
+    const contacts = await ctx.db
+      .query("contacts")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
 
     const accessible = contacts.filter((contact) => {
       if (user.role === "admin") return true;
