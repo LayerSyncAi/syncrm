@@ -1,6 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { getCurrentUser } from "./helpers";
+import { getCurrentUserWithOrg } from "./helpers";
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
@@ -18,7 +18,6 @@ const sourceValues = [
 
 const interestValues = ["rent", "buy"] as const;
 
-// Check for duplicates given a batch of rows
 export const checkDuplicates = query({
   args: {
     rows: v.array(
@@ -30,8 +29,11 @@ export const checkDuplicates = query({
     ),
   },
   handler: async (ctx, args) => {
-    await getCurrentUser(ctx);
-    const allLeads = await ctx.db.query("leads").collect();
+    const user = await getCurrentUserWithOrg(ctx);
+    const allLeads = await ctx.db
+      .query("leads")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
     const activeLeads = allLeads.filter((l) => !l.isArchived);
 
     const results: Array<{
@@ -87,7 +89,6 @@ export const checkDuplicates = query({
   },
 });
 
-// Find duplicates for a single lead (used in create/edit form)
 export const findDuplicatesForLead = query({
   args: {
     email: v.optional(v.string()),
@@ -95,10 +96,13 @@ export const findDuplicatesForLead = query({
     excludeLeadId: v.optional(v.id("leads")),
   },
   handler: async (ctx, args) => {
-    await getCurrentUser(ctx);
+    const user = await getCurrentUserWithOrg(ctx);
     if (!args.email && !args.phone) return [];
 
-    const allLeads = await ctx.db.query("leads").collect();
+    const allLeads = await ctx.db
+      .query("leads")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
     const activeLeads = allLeads.filter(
       (l) => !l.isArchived && l._id !== args.excludeLeadId
     );
@@ -143,7 +147,6 @@ export const findDuplicatesForLead = query({
   },
 });
 
-// Bulk import leads
 export const bulkImport = mutation({
   args: {
     mode: v.union(
@@ -167,21 +170,23 @@ export const bulkImport = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
+    const user = await getCurrentUserWithOrg(ctx);
     const timestamp = Date.now();
 
-    // Get default stage (first non-terminal by order)
     const stages = await ctx.db
       .query("pipelineStages")
-      .withIndex("by_order")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
       .collect();
+    stages.sort((a, b) => a.order - b.order);
     const defaultStage = stages.find((s) => !s.isTerminal);
     if (!defaultStage) {
       throw new Error("No pipeline stages configured");
     }
 
-    // Load existing leads for duplicate checking
-    const existingLeads = await ctx.db.query("leads").collect();
+    const existingLeads = await ctx.db
+      .query("leads")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
     const activeLeads = existingLeads.filter((l) => !l.isArchived);
 
     const results = {
@@ -196,7 +201,6 @@ export const bulkImport = mutation({
       const row = args.rows[i];
 
       try {
-        // Validate required fields
         if (!row.fullName?.trim()) {
           results.errors.push({ row: i, message: "Full name is required" });
           results.failed++;
@@ -216,7 +220,6 @@ export const bulkImport = mutation({
           ? (row.interestType as (typeof interestValues)[number])
           : "buy";
 
-        // Check for duplicates
         let duplicateLead = null;
         if (row.email) {
           const normEmail = normalizeEmail(row.email);
@@ -243,7 +246,6 @@ export const bulkImport = mutation({
             results.skipped++;
             continue;
           }
-          // upsert mode - update existing
           if (args.mode === "upsert") {
             await ctx.db.patch(duplicateLead._id, {
               fullName: row.fullName.trim(),
@@ -266,7 +268,6 @@ export const bulkImport = mutation({
           }
         }
 
-        // Create contact first
         const contactId = await ctx.db.insert("contacts", {
           name: row.fullName.trim(),
           phone: row.phone.trim(),
@@ -274,11 +275,11 @@ export const bulkImport = mutation({
           email: row.email?.trim(),
           ownerUserIds: [user._id],
           createdByUserId: user._id,
+          orgId: user.orgId,
           createdAt: timestamp,
           updatedAt: timestamp,
         });
 
-        // Create lead
         await ctx.db.insert("leads", {
           contactId,
           fullName: row.fullName.trim(),
@@ -296,6 +297,7 @@ export const bulkImport = mutation({
           notes: row.notes?.trim() || "",
           stageId: defaultStage._id,
           ownerUserId: user._id,
+          orgId: user.orgId,
           createdAt: timestamp,
           updatedAt: timestamp,
         });

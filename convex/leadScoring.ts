@@ -1,6 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { requireAdmin, getCurrentUser } from "./helpers";
+import { requireAdmin, getCurrentUserWithOrg } from "./helpers";
 
 const criterionSchema = v.object({
   key: v.string(),
@@ -21,21 +21,21 @@ const DEFAULT_CRITERIA = [
   { key: "recent_activity", label: "Activity in last 7 days", type: "boolean" as const, weight: 25, enabled: true },
 ];
 
-// Get scoring configuration (or defaults)
 export const getConfig = query({
   handler: async (ctx) => {
-    await getCurrentUser(ctx);
-    const configs = await ctx.db.query("leadScoreConfig").collect();
+    const user = await getCurrentUserWithOrg(ctx);
+    const configs = await ctx.db
+      .query("leadScoreConfig")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
     if (configs.length === 0) {
       return { criteria: DEFAULT_CRITERIA, isDefault: true };
     }
-    // Return the most recent config
     const latest = configs.sort((a, b) => b.updatedAt - a.updatedAt)[0];
     return { criteria: latest.criteria, isDefault: false, _id: latest._id };
   },
 });
 
-// Save scoring configuration (admin only)
 export const saveConfig = mutation({
   args: {
     criteria: v.array(criterionSchema),
@@ -44,7 +44,10 @@ export const saveConfig = mutation({
     const user = await requireAdmin(ctx);
     const timestamp = Date.now();
 
-    const configs = await ctx.db.query("leadScoreConfig").collect();
+    const configs = await ctx.db
+      .query("leadScoreConfig")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
     if (configs.length > 0) {
       const latest = configs.sort((a, b) => b.updatedAt - a.updatedAt)[0];
       await ctx.db.patch(latest._id, {
@@ -58,22 +61,23 @@ export const saveConfig = mutation({
     return ctx.db.insert("leadScoreConfig", {
       criteria: args.criteria,
       updatedByUserId: user._id,
+      orgId: user.orgId,
       createdAt: timestamp,
       updatedAt: timestamp,
     });
   },
 });
 
-// Compute score for a single lead (helper used by scoring preview)
 export const computeScorePreview = query({
   args: {
     leadId: v.id("leads"),
     criteria: v.array(criterionSchema),
   },
   handler: async (ctx, args) => {
-    await getCurrentUser(ctx);
+    const user = await getCurrentUserWithOrg(ctx);
     const lead = await ctx.db.get(args.leadId);
     if (!lead) return null;
+    if (lead.orgId && lead.orgId !== user.orgId) return null;
 
     const activities = await ctx.db
       .query("activities")
@@ -130,19 +134,24 @@ export const computeScorePreview = query({
   },
 });
 
-// Recompute scores for all active leads (admin only)
 export const recomputeAllScores = mutation({
   handler: async (ctx) => {
-    await requireAdmin(ctx);
+    const user = await requireAdmin(ctx);
     const timestamp = Date.now();
 
-    const configs = await ctx.db.query("leadScoreConfig").collect();
+    const configs = await ctx.db
+      .query("leadScoreConfig")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
     const criteria =
       configs.length > 0
         ? configs.sort((a, b) => b.updatedAt - a.updatedAt)[0].criteria
         : DEFAULT_CRITERIA;
 
-    const allLeads = await ctx.db.query("leads").collect();
+    const allLeads = await ctx.db
+      .query("leads")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
     const activeLeads = allLeads.filter((l) => !l.isArchived);
 
     const now = Date.now();

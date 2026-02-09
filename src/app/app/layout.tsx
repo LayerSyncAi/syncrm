@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 export default function AppLayout({ children }: { children: ReactNode }) {
   // Middleware handles auth redirects - if we get here, user should be authenticated
   // We need to wait for user data to load for the UI
-  const { user, isLoading, isAuthenticated, isSessionAuthenticated, signOut } = useAuth();
+  const { user, org, isLoading, isAuthenticated, isSessionAuthenticated, signOut } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const router = useRouter();
 
@@ -99,6 +99,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         isAdmin={isAdmin}
         collapsed={collapsed}
         onToggle={() => setCollapsed((prev) => !prev)}
+        orgName={org?.name}
       />
       <div
         className="transition-[margin] duration-200"
@@ -108,7 +109,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             : "var(--sidebar-width)",
         }}
       >
-        <Topbar userName={userName} userEmail={user.email || undefined} />
+        <Topbar userName={userName} userEmail={user.email || undefined} orgName={org?.name} />
         <div className="px-6 py-6">{children}</div>
       </div>
     </div>

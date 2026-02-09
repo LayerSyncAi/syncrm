@@ -43,9 +43,10 @@ interface SidebarProps {
   isAdmin?: boolean;
   collapsed?: boolean;
   onToggle?: () => void;
+  orgName?: string;
 }
 
-export const Sidebar = memo(function Sidebar({ isAdmin, collapsed, onToggle }: SidebarProps) {
+export const Sidebar = memo(function Sidebar({ isAdmin, collapsed, onToggle, orgName }: SidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -70,7 +71,7 @@ export const Sidebar = memo(function Sidebar({ isAdmin, collapsed, onToggle }: S
             collapsed ? "w-full text-center" : "w-auto"
           )}
         >
-          {collapsed ? "S" : "SynCRM"}
+          {collapsed ? (orgName ? orgName[0].toUpperCase() : "S") : (orgName || "SynCRM")}
         </div>
       </div>
       <nav className="flex-1 space-y-1">

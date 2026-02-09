@@ -4,6 +4,14 @@ import { authTables } from "@convex-dev/auth/server";
 
 export default defineSchema({
   ...authTables,
+  // Organizations table - each org is a separate tenant
+  organizations: defineTable({
+    name: v.string(),
+    slug: v.string(), // URL-friendly identifier
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_slug", ["slug"]),
   users: defineTable({
     // Convex Auth fields
     name: v.optional(v.string()),
@@ -15,9 +23,12 @@ export default defineSchema({
     fullName: v.optional(v.string()),
     role: v.union(v.literal("admin"), v.literal("agent")),
     isActive: v.boolean(),
+    orgId: v.optional(v.id("organizations")),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index("by_email", ["email"]),
+  })
+    .index("by_email", ["email"])
+    .index("by_org", ["orgId"]),
   passwordResetTokens: defineTable({
     userId: v.id("users"),
     tokenHash: v.string(),
@@ -38,9 +49,12 @@ export default defineSchema({
       v.literal("lost"),
       v.null()
     ),
+    orgId: v.optional(v.id("organizations")),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index("by_order", ["order"]),
+  })
+    .index("by_order", ["order"])
+    .index("by_org", ["orgId"]),
   leads: defineTable({
     // Link to contact - required for all leads
     contactId: v.id("contacts"),
@@ -74,6 +88,7 @@ export default defineSchema({
     // Merge / archive
     isArchived: v.optional(v.boolean()),
     mergedIntoLeadId: v.optional(v.id("leads")),
+    orgId: v.optional(v.id("organizations")),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -82,7 +97,8 @@ export default defineSchema({
     .index("by_contact", ["contactId"])
     .index("by_normalized_phone", ["normalizedPhone"])
     .index("by_name", ["fullName"])
-    .index("by_email", ["email"]),
+    .index("by_email", ["email"])
+    .index("by_org", ["orgId"]),
   leadScoreConfig: defineTable({
     criteria: v.array(
       v.object({
@@ -95,9 +111,11 @@ export default defineSchema({
       })
     ),
     updatedByUserId: v.id("users"),
+    orgId: v.optional(v.id("organizations")),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }),
+  })
+    .index("by_org", ["orgId"]),
   mergeAudits: defineTable({
     primaryLeadId: v.id("leads"),
     mergedLeadIds: v.array(v.id("leads")),
@@ -109,8 +127,11 @@ export default defineSchema({
       })
     ),
     mergedByUserId: v.id("users"),
+    orgId: v.optional(v.id("organizations")),
     mergedAt: v.number(),
-  }).index("by_primary", ["primaryLeadId"]),
+  })
+    .index("by_primary", ["primaryLeadId"])
+    .index("by_org", ["orgId"]),
   properties: defineTable({
     title: v.string(),
     type: v.union(
@@ -136,11 +157,13 @@ export default defineSchema({
     ),
     description: v.string(),
     images: v.array(v.string()),
+    orgId: v.optional(v.id("organizations")),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_location", ["location"])
-    .index("by_filters", ["type", "listingType", "status"]),
+    .index("by_filters", ["type", "listingType", "status"])
+    .index("by_org", ["orgId"]),
   leadPropertyMatches: defineTable({
     leadId: v.id("leads"),
     propertyId: v.id("properties"),
@@ -151,8 +174,11 @@ export default defineSchema({
       v.literal("offered")
     ),
     createdByUserId: v.id("users"),
+    orgId: v.optional(v.id("organizations")),
     createdAt: v.number(),
-  }).index("by_lead", ["leadId"]),
+  })
+    .index("by_lead", ["leadId"])
+    .index("by_org", ["orgId"]),
   activities: defineTable({
     leadId: v.id("leads"),
     type: v.union(
@@ -173,6 +199,7 @@ export default defineSchema({
     completionNotes: v.optional(v.string()),
     assignedToUserId: v.id("users"),
     createdByUserId: v.id("users"),
+    orgId: v.optional(v.id("organizations")),
     createdAt: v.number(),
     updatedAt: v.optional(v.number()),
   })
@@ -183,12 +210,16 @@ export default defineSchema({
     ])
     .index("by_status", ["status"])
     .index("by_type", ["type"])
-    .index("by_lead", ["leadId"]),
+    .index("by_lead", ["leadId"])
+    .index("by_org", ["orgId"]),
   locations: defineTable({
     name: v.string(),
     createdByUserId: v.id("users"),
+    orgId: v.optional(v.id("organizations")),
     createdAt: v.number(),
-  }).index("by_name", ["name"]),
+  })
+    .index("by_name", ["name"])
+    .index("by_org", ["orgId"]),
   contacts: defineTable({
     name: v.string(),
     phone: v.string(),
@@ -199,9 +230,11 @@ export default defineSchema({
     // Multiple owners can see this contact - agents only see contacts they own
     ownerUserIds: v.array(v.id("users")),
     createdByUserId: v.id("users"),
+    orgId: v.optional(v.id("organizations")),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_normalized_phone", ["normalizedPhone"])
-    .index("by_name", ["name"]),
+    .index("by_name", ["name"])
+    .index("by_org", ["orgId"]),
 });
