@@ -1,6 +1,15 @@
 /**
- * Email sender interface - placeholder implementation
- * Swap this out for Resend, SendGrid, or any other provider
+ * Email sending abstraction for SynCRM.
+ *
+ * Provider selection (checked at runtime):
+ *   1. Resend — set RESEND_API_KEY in your Convex environment variables.
+ *      Optionally set EMAIL_FROM to customise the sender address/name
+ *      (default: "SynCRM <noreply@syncrm.app>").
+ *   2. Fallback — if RESEND_API_KEY is absent the email is logged to the
+ *      console so development/testing works without real credentials.
+ *
+ * Adding a new provider: implement the same EmailSendResult shape and
+ * replace the Resend block below.
  */
 
 export interface EmailSendResult {
@@ -17,38 +26,66 @@ export interface EmailOptions {
 }
 
 /**
- * Placeholder email sender - logs to console in development
- * Replace this implementation with your actual email provider:
+ * Sends an email via Resend (when RESEND_API_KEY is set) or falls back to a
+ * console-log stub for local development.
  *
- * For Resend:
- * ```
- * import { Resend } from 'resend';
- * const resend = new Resend(process.env.RESEND_API_KEY);
- * ```
+ * Required env vars:
+ *   RESEND_API_KEY  — Resend API key (https://resend.com)
  *
- * For SendGrid:
- * ```
- * import sgMail from '@sendgrid/mail';
- * sgMail.setApiKey(process.env.SENDGRID_API_KEY);
- * ```
+ * Optional env vars:
+ *   EMAIL_FROM      — "From" address, e.g. "SynCRM <noreply@yourdomain.com>"
+ *                     Defaults to "SynCRM <noreply@syncrm.app>"
  */
 export async function sendEmail(options: EmailOptions): Promise<EmailSendResult> {
-  // Log the email in development (placeholder)
-  console.log("=== EMAIL SENT (placeholder) ===");
+  const apiKey = process.env.RESEND_API_KEY;
+
+  if (apiKey) {
+    // ── Resend via REST API (no SDK dependency required) ──────────────────
+    const from = process.env.EMAIL_FROM ?? "SynCRM <noreply@syncrm.app>";
+    let response: Response;
+    try {
+      response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from,
+          to: [options.to],
+          subject: options.subject,
+          html: options.html,
+          ...(options.text ? { text: options.text } : {}),
+        }),
+      });
+    } catch (err) {
+      // Network-level failure
+      return { success: false, error: `Network error: ${String(err)}` };
+    }
+
+    if (!response.ok) {
+      let message = `HTTP ${response.status}`;
+      try {
+        const body = (await response.json()) as { message?: string; name?: string };
+        message = body.message ?? body.name ?? message;
+      } catch {
+        // ignore JSON parse errors
+      }
+      return { success: false, error: message };
+    }
+
+    const data = (await response.json()) as { id?: string };
+    return { success: true, messageId: data.id };
+  }
+
+  // ── Development placeholder ───────────────────────────────────────────────
+  // RESEND_API_KEY is not set; log to console so you can inspect emails
+  // without a real provider during local development.
+  console.log("=== EMAIL (placeholder — set RESEND_API_KEY to send for real) ===");
   console.log("To:", options.to);
   console.log("Subject:", options.subject);
-  console.log("HTML:", options.html);
-  console.log("================================");
-
-  // In production, replace with actual email sending logic:
-  // Example with Resend:
-  // const { data, error } = await resend.emails.send({
-  //   from: 'SynCRM <noreply@yourdomain.com>',
-  //   to: options.to,
-  //   subject: options.subject,
-  //   html: options.html,
-  // });
-  // return error ? { success: false, error: error.message } : { success: true, messageId: data.id };
+  console.log("Body preview:", options.text?.slice(0, 200) ?? options.html.slice(0, 200));
+  console.log("=================================================================");
 
   return {
     success: true,

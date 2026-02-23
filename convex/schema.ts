@@ -24,6 +24,8 @@ export default defineSchema({
     role: v.union(v.literal("admin"), v.literal("agent")),
     isActive: v.boolean(),
     orgId: v.optional(v.id("organizations")),
+    // IANA timezone string (e.g. "America/New_York"). Falls back to "UTC" when absent.
+    timezone: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -211,7 +213,9 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_type", ["type"])
     .index("by_lead", ["leadId"])
-    .index("by_org", ["orgId"]),
+    .index("by_org", ["orgId"])
+    // Used by reminder cron jobs to efficiently scan activities in a time window
+    .index("by_scheduled_at", ["scheduledAt"]),
   locations: defineTable({
     name: v.string(),
     createdByUserId: v.id("users"),
@@ -237,4 +241,47 @@ export default defineSchema({
     .index("by_normalized_phone", ["normalizedPhone"])
     .index("by_name", ["name"])
     .index("by_org", ["orgId"]),
+
+  /**
+   * Tracks every email reminder attempt for activities.
+   * The `dedupeKey` column has a unique index and is the primary
+   * guard against sending the same reminder twice (even on retries).
+   *
+   * dedupeKey formats:
+   *   pre_start_1h:{activityId}
+   *   post_start_1h_open:{activityId}
+   *   daily_digest:{userId}:{YYYY-MM-DD}   ← date in user's local timezone
+   */
+  activityReminderEvents: defineTable({
+    // null for daily_digest (not tied to a single activity)
+    activityId: v.optional(v.id("activities")),
+    userId: v.id("users"),
+    reminderType: v.union(
+      v.literal("pre_start_1h"),
+      v.literal("post_start_1h_open"),
+      v.literal("daily_digest")
+    ),
+    // When this reminder was intended to fire (Unix ms)
+    scheduledFor: v.number(),
+    // Unique key — insert failure here is the dedup guard
+    dedupeKey: v.string(),
+    sentAt: v.optional(v.number()),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("sent"),
+      v.literal("skipped"),
+      v.literal("failed")
+    ),
+    skipReason: v.optional(v.string()),
+    error: v.optional(v.string()),
+    orgId: v.optional(v.id("organizations")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    // Primary dedup lookup — most queries start here
+    .index("by_dedupe_key", ["dedupeKey"])
+    // Lets the cron scan for pending reminders that are overdue
+    .index("by_status_scheduled", ["status", "scheduledFor"])
+    // Lets us list all reminders for a user
+    .index("by_user_type", ["userId", "reminderType"]),
 });
