@@ -2,14 +2,18 @@
 
 import { useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { ChevronDown, LogOut, Search, User } from "lucide-react";
+import { ChevronDown, Globe, LogOut, Search } from "lucide-react";
 import { useAuthActions } from "@convex-dev/auth/react";
+import { useMutation } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 import { cn } from "@/lib/utils";
+import { TIMEZONES, detectBrowserTimezone } from "@/lib/timezones";
 
 interface TopbarProps {
   userName: string;
   userEmail?: string;
   orgName?: string;
+  userTimezone?: string;
 }
 
 const titleMap: Record<string, string> = {
@@ -23,12 +27,14 @@ const titleMap: Record<string, string> = {
   "/app/admin/stages": "Stages",
 };
 
-export function Topbar({ userName, userEmail, orgName }: TopbarProps) {
+export function Topbar({ userName, userEmail, orgName, userTimezone }: TopbarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { signOut } = useAuthActions();
+  const updateTimezone = useMutation(api.users.updateMyTimezone);
   const [open, setOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [showTimezone, setShowTimezone] = useState(false);
 
   const title = useMemo(() => {
     const match = Object.keys(titleMap).find((key) => pathname.startsWith(key));
@@ -46,6 +52,15 @@ export function Topbar({ userName, userEmail, orgName }: TopbarProps) {
       setIsLoggingOut(false);
       setOpen(false);
     }
+  };
+
+  const handleTimezoneChange = async (tz: string) => {
+    try {
+      await updateTimezone({ timezone: tz });
+    } catch (error) {
+      console.error("Timezone update error:", error);
+    }
+    setShowTimezone(false);
   };
 
   // Get initials for avatar
@@ -91,6 +106,39 @@ export function Topbar({ userName, userEmail, orgName }: TopbarProps) {
                   <p className="text-xs text-text-dim truncate mt-0.5">{orgName}</p>
                 )}
               </div>
+              <button
+                onClick={() => setShowTimezone((v) => !v)}
+                className="flex w-full items-center gap-2 rounded-[10px] px-3 py-2 text-sm text-text-muted hover:bg-row-hover"
+              >
+                <Globe className="h-4 w-4" />
+                <span className="truncate">
+                  {userTimezone || "Set timezone"}
+                </span>
+              </button>
+              {showTimezone && (
+                <div className="border-t border-border px-2 py-1 max-h-48 overflow-y-auto">
+                  {!userTimezone && (
+                    <button
+                      onClick={() => handleTimezoneChange(detectBrowserTimezone())}
+                      className="flex w-full items-center gap-2 rounded-[10px] px-3 py-1.5 text-xs text-primary-600 hover:bg-row-hover font-medium"
+                    >
+                      Detect my timezone
+                    </button>
+                  )}
+                  {TIMEZONES.map((tz) => (
+                    <button
+                      key={tz.value}
+                      onClick={() => handleTimezoneChange(tz.value)}
+                      className={cn(
+                        "flex w-full items-center rounded-[10px] px-3 py-1.5 text-xs text-text-muted hover:bg-row-hover",
+                        userTimezone === tz.value && "text-primary-600 font-medium"
+                      )}
+                    >
+                      {tz.label}
+                    </button>
+                  ))}
+                </div>
+              )}
               <button
                 onClick={handleLogout}
                 disabled={isLoggingOut}

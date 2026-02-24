@@ -194,6 +194,48 @@ export const listForAssignment = query({
   },
 });
 
+export const updateMyTimezone = mutation({
+  args: {
+    timezone: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserWithOrg(ctx);
+    // Validate timezone string using Intl
+    try {
+      Intl.DateTimeFormat(undefined, { timeZone: args.timezone });
+    } catch {
+      throw new Error("Invalid timezone");
+    }
+    await ctx.db.patch(user._id, {
+      timezone: args.timezone,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+export const adminUpdateUserTimezone = mutation({
+  args: {
+    userId: v.id("users"),
+    timezone: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+    const targetUser = await ctx.db.get(args.userId);
+    if (!targetUser || targetUser.orgId !== admin.orgId) {
+      throw new Error("User not found");
+    }
+    try {
+      Intl.DateTimeFormat(undefined, { timeZone: args.timezone });
+    } catch {
+      throw new Error("Invalid timezone");
+    }
+    await ctx.db.patch(args.userId, {
+      timezone: args.timezone,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
 export const listAll = query({
   handler: async (ctx) => {
     const user = await getCurrentUserWithOrg(ctx);

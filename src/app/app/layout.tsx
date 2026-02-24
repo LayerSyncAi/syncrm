@@ -109,7 +109,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             : "var(--sidebar-width)",
         }}
       >
-        <Topbar userName={userName} userEmail={user.email || undefined} orgName={org?.name} />
+        <Topbar userName={userName} userEmail={user.email || undefined} orgName={org?.name} userTimezone={user.timezone || undefined} />
         <div className="px-6 py-6">{children}</div>
       </div>
     </div>

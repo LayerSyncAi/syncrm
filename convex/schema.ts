@@ -24,6 +24,7 @@ export default defineSchema({
     role: v.union(v.literal("admin"), v.literal("agent")),
     isActive: v.boolean(),
     orgId: v.optional(v.id("organizations")),
+    timezone: v.optional(v.string()), // IANA timezone, e.g. "Africa/Harare"
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -212,6 +213,19 @@ export default defineSchema({
     .index("by_type", ["type"])
     .index("by_lead", ["leadId"])
     .index("by_org", ["orgId"]),
+  activityReminders: defineTable({
+    activityId: v.optional(v.id("activities")),
+    reminderType: v.union(
+      v.literal("pre_reminder"),
+      v.literal("daily_digest"),
+      v.literal("overdue_reminder")
+    ),
+    userId: v.id("users"),
+    sentAt: v.number(),
+    digestDate: v.optional(v.string()), // "YYYY-MM-DD" for daily digest dedup
+  })
+    .index("by_activity_type", ["activityId", "reminderType"])
+    .index("by_user_digest", ["userId", "reminderType", "digestDate"]),
   locations: defineTable({
     name: v.string(),
     createdByUserId: v.id("users"),

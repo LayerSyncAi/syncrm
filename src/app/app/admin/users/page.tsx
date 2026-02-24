@@ -28,6 +28,7 @@ import {
   Shield,
   ShieldCheck,
 } from "lucide-react";
+import { TIMEZONES } from "@/lib/timezones";
 
 interface UserFormData {
   fullName: string;
@@ -52,6 +53,7 @@ export default function UsersPage() {
   const createUser = useMutation(api.users.adminCreateUser);
   const setUserActive = useMutation(api.users.adminSetUserActive);
   const setUserRole = useMutation(api.users.adminSetUserRole);
+  const setUserTimezone = useMutation(api.users.adminUpdateUserTimezone);
 
   // UI state
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -168,6 +170,19 @@ export default function UsersPage() {
     }
   };
 
+  const handleTimezoneChange = async (userId: Id<"users">, timezone: string) => {
+    setUpdatingUserId(userId);
+    setError(null);
+
+    try {
+      await setUserTimezone({ userId, timezone });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update timezone");
+    } finally {
+      setUpdatingUserId(null);
+    }
+  };
+
   const getInitials = (fullName?: string, name?: string, email?: string) => {
     const displayName = fullName || name || email || "U";
     return displayName
@@ -238,6 +253,7 @@ export default function UsersPage() {
                 <TableHead>User</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Role</TableHead>
+                <TableHead>Timezone</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -291,6 +307,23 @@ export default function UsersPage() {
                           <option value="admin">Admin</option>
                         </Select>
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      <Select
+                        value={u.timezone || ""}
+                        onChange={(e) =>
+                          handleTimezoneChange(u._id, e.target.value)
+                        }
+                        disabled={isUpdating}
+                        className="w-44 text-xs"
+                      >
+                        <option value="">Not set</option>
+                        {TIMEZONES.map((tz) => (
+                          <option key={tz.value} value={tz.value}>
+                            {tz.label}
+                          </option>
+                        ))}
+                      </Select>
                     </TableCell>
                     <TableCell>
                       <Badge variant={u.isActive ? "default" : "secondary"}>
