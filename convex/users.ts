@@ -6,7 +6,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { Scrypt } from "lucia";
 
 /** Default temporary password for admin-created users */
-const DEFAULT_TEMP_PASSWORD = "1234";
+const DEFAULT_TEMP_PASSWORD = "12345678";
 
 export const getMe = query({
   handler: async (ctx) => {
