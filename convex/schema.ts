@@ -25,6 +25,8 @@ export default defineSchema({
     isActive: v.boolean(),
     orgId: v.optional(v.id("organizations")),
     timezone: v.optional(v.string()), // IANA timezone, e.g. "Africa/Harare"
+    resetPasswordOnNextLogin: v.optional(v.boolean()),
+    passwordUpdatedAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

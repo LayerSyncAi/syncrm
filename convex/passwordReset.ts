@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { mutation, query, action, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { sendPasswordResetEmail } from "./email";
+import { Scrypt } from "lucia";
 
 // Generate a random token (32 bytes hex)
 function generateToken(): string {
@@ -118,23 +119,9 @@ export const validateResetToken = query({
   },
 });
 
-// Hash password for storage (using bcrypt-like approach with crypto)
+// Hash password for storage using Scrypt (compatible with @convex-dev/auth Password provider)
 async function hashPassword(password: string): Promise<string> {
-  // Generate salt
-  const salt = new Uint8Array(16);
-  crypto.getRandomValues(salt);
-  const saltHex = Array.from(salt)
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-
-  // Hash password with salt
-  const encoder = new TextEncoder();
-  const data = encoder.encode(saltHex + password);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-
-  return `${saltHex}:${hashHex}`;
+  return await new Scrypt().hash(password);
 }
 
 // Reset password with token (internal mutation for password update)

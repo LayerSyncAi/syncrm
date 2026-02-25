@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode, useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,6 +14,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const { user, org, isLoading, isAuthenticated, isSessionAuthenticated, signOut } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
+
+  const isForceChangePasswordPage = pathname === "/app/force-change-password";
 
   // Redirect to login if not authenticated (must be in useEffect to avoid state update during render)
   useEffect(() => {
@@ -21,6 +24,13 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       router.replace("/login");
     }
   }, [isLoading, isSessionAuthenticated, router]);
+
+  // Redirect to force-change-password if user has resetPasswordOnNextLogin flag
+  useEffect(() => {
+    if (!isLoading && user && user.resetPasswordOnNextLogin && !isForceChangePasswordPage) {
+      router.replace("/app/force-change-password");
+    }
+  }, [isLoading, user, isForceChangePasswordPage, router]);
 
   // Show loading state while auth session or user data is loading
   if (isLoading) {
@@ -88,6 +98,22 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   // At this point we should have a user, but TypeScript doesn't know that
   if (!user) {
     return null;
+  }
+
+  // If user must reset password, only allow the force-change-password page (no sidebar/topbar)
+  if (user.resetPasswordOnNextLogin) {
+    if (isForceChangePasswordPage) {
+      return <>{children}</>;
+    }
+    // Redirect happens in useEffect above, show loading in the meantime
+    return (
+      <div className="min-h-screen bg-content-bg flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+          <p className="text-sm text-text-muted">Redirecting...</p>
+        </div>
+      </div>
+    );
   }
 
   const userName = user.fullName || user.name || user.email || "User";

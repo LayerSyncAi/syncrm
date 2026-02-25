@@ -9,8 +9,10 @@
  */
 
 import type * as activities from "../activities.js";
+import type * as activityReminders from "../activityReminders.js";
 import type * as auth from "../auth.js";
 import type * as contacts from "../contacts.js";
+import type * as crons from "../crons.js";
 import type * as email from "../email.js";
 import type * as helpers from "../helpers.js";
 import type * as http from "../http.js";
@@ -36,8 +38,10 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   activities: typeof activities;
+  activityReminders: typeof activityReminders;
   auth: typeof auth;
   contacts: typeof contacts;
+  crons: typeof crons;
   email: typeof email;
   helpers: typeof helpers;
   http: typeof http;
