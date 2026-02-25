@@ -17,6 +17,7 @@ import { CurrencyInput } from "@/components/ui/currency-input";
 import { parseCurrencyInput } from "@/lib/currency";
 import { ConfirmDeleteDialog } from "@/components/common/confirm-delete-dialog";
 import { ImageUpload, ImageItem, serializeImages, deserializeImages } from "@/components/ui/image-upload";
+import { propertyToasts } from "@/lib/toast";
 
 type PropertyType = "house" | "apartment" | "land" | "commercial" | "other";
 type ListingType = "rent" | "sale";
@@ -316,10 +317,13 @@ export default function PropertiesPage() {
         description: description.trim(),
         images: serializeImages(images),
       });
+      propertyToasts.updated(title.value.trim());
       closeModal();
     } catch (error) {
       console.error("Failed to update property:", error);
-      setFormError(error instanceof Error ? error.message : "Failed to update property. Please try again.");
+      const msg = error instanceof Error ? error.message : "Failed to update property. Please try again.";
+      setFormError(msg);
+      propertyToasts.updateFailed(msg);
     } finally {
       setIsSaving(false);
     }
@@ -329,9 +333,11 @@ export default function PropertiesPage() {
     if (!deleteTarget) return;
     try {
       await removeProperty({ propertyId: deleteTarget._id });
+      propertyToasts.deleted(deleteTarget.title);
       setDeleteTarget(null);
     } catch (error) {
       console.error("Failed to delete property:", error);
+      propertyToasts.deleteFailed(error instanceof Error ? error.message : undefined);
     }
   };
 

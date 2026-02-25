@@ -19,6 +19,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { parseCSV, generateCSV, downloadBlob } from "@/lib/csv";
 import { Upload, AlertTriangle, CheckCircle, XCircle, FileDown } from "lucide-react";
+import { importToasts } from "@/lib/toast";
 
 const LEAD_FIELDS: Array<{ key: string; label: string; required?: boolean }> = [
   { key: "fullName", label: "Full Name", required: true },
@@ -188,6 +189,7 @@ export default function LeadImportPage() {
   const runImport = async () => {
     setStep("importing");
     setError("");
+    importToasts.started(csvRows.length);
     try {
       const allMapped = getMappedRows(csvRows, csvHeaders, columnMap);
       const result = await bulkImport({
@@ -195,9 +197,11 @@ export default function LeadImportPage() {
         rows: allMapped,
       });
       setImportResults(result);
+      importToasts.complete(result.created, result.updated, result.skipped, result.failed);
       setStep("results");
     } catch (e: any) {
       setError(e.message || "Import failed");
+      importToasts.failed(e.message);
       setStep("preview");
     }
   };

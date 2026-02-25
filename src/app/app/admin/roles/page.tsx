@@ -18,6 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Loader2, Shield, ShieldAlert, ShieldCheck, AlertTriangle } from "lucide-react";
+import { roleToasts } from "@/lib/toast";
 
 export default function AdminRolesPage() {
   const router = useRouter();
@@ -60,10 +61,18 @@ export default function AdminRolesPage() {
   ) => {
     setError(null);
     setUpdatingUserId(userId);
+    const userName = users?.find((u) => u._id === userId)?.fullName || users?.find((u) => u._id === userId)?.name || "User";
     try {
       await setUserRole({ userId, role: newRole });
+      if (newRole === "admin") {
+        roleToasts.promoted(userName);
+      } else {
+        roleToasts.demoted(userName);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update role");
+      const msg = err instanceof Error ? err.message : "Failed to update role";
+      setError(msg);
+      roleToasts.changeFailed(msg);
     } finally {
       setUpdatingUserId(null);
     }

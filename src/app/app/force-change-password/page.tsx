@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { KeyRound, Loader2 } from "lucide-react";
+import { authToasts } from "@/lib/toast";
 
 export default function ForceChangePasswordPage() {
   const router = useRouter();
@@ -37,13 +38,16 @@ export default function ForceChangePasswordPage() {
     try {
       const result = await forceChangePassword({ newPassword: password });
       if (result.success) {
+        authToasts.forceChangeSuccess();
         router.replace("/app/dashboard");
       } else {
         setError(result.error || "Failed to change password");
+        authToasts.forceChangeFailed(result.error);
       }
     } catch (err) {
       console.error("Password change error:", err);
       setError("Something went wrong. Please try again.");
+      authToasts.forceChangeFailed();
     } finally {
       setIsLoading(false);
     }

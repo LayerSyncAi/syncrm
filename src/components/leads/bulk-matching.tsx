@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
+import { bulkMatchToasts } from "@/lib/toast";
 
 interface BulkMatchingProps {
   open: boolean;
@@ -119,11 +120,12 @@ export function BulkMatching({ open, onClose, selectedLeadIds }: BulkMatchingPro
     try {
       const result = await bulkAttach({ attachments });
       if (result.successCount > 0) {
+        bulkMatchToasts.attached(result.successCount);
         setSelectedAttachments(new Map());
-        // Show success message or close modal
       }
     } catch (error) {
       console.error("Failed to bulk attach:", error);
+      bulkMatchToasts.attachFailed(error instanceof Error ? error.message : undefined);
     } finally {
       setIsAttaching(false);
     }

@@ -15,6 +15,7 @@ import {
   Loader2,
   AlertTriangle,
 } from "lucide-react";
+import { authToasts } from "@/lib/toast";
 
 function ResetPasswordContent() {
   const router = useRouter();
@@ -122,12 +123,15 @@ function ResetPasswordContent() {
       const result = await resetPassword({ token, newPassword: password });
       if (result.success) {
         setIsSuccess(true);
+        authToasts.passwordResetSuccess();
       } else {
         setError(result.error || "Failed to reset password");
+        authToasts.passwordResetError(result.error);
       }
     } catch (err) {
       console.error("Reset error:", err);
       setError("Something went wrong. Please try again.");
+      authToasts.passwordResetError();
     } finally {
       setIsLoading(false);
     }

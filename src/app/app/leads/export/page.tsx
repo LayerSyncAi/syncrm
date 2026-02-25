@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { generateCSV, downloadBlob } from "@/lib/csv";
 import { Download, FileSpreadsheet } from "lucide-react";
 import { Id } from "../../../../../convex/_generated/dataModel";
+import { exportToasts } from "@/lib/toast";
 
 const ALL_FIELDS = [
   { key: "fullName", label: "Full Name" },
@@ -85,6 +86,9 @@ export default function LeadExportPage() {
         new Blob([csv], { type: "text/csv;charset=utf-8;" }),
         `leads-export-${new Date().toISOString().slice(0, 10)}.csv`
       );
+      exportToasts.complete("CSV", leads.length);
+    } catch (error) {
+      exportToasts.failed(error instanceof Error ? error.message : undefined);
     } finally {
       setExporting(false);
     }
@@ -112,6 +116,9 @@ export default function LeadExportPage() {
         }),
         `leads-export-${new Date().toISOString().slice(0, 10)}.xlsx`
       );
+      exportToasts.complete("Excel", leads.length);
+    } catch (error) {
+      exportToasts.failed(error instanceof Error ? error.message : undefined);
     } finally {
       setExporting(false);
     }

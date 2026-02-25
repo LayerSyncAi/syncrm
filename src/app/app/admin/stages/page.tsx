@@ -32,6 +32,7 @@ import {
   CheckCircle,
   XCircle,
 } from "lucide-react";
+import { stageToasts } from "@/lib/toast";
 
 interface StageFormData {
   name: string;
@@ -168,9 +169,16 @@ export default function StagesPage() {
           terminalOutcome: formData.isTerminal ? formData.terminalOutcome : null,
         });
       }
+      if (editingStage) {
+        stageToasts.updated(formData.name.trim());
+      } else {
+        stageToasts.created(formData.name.trim());
+      }
       closeDrawer();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save stage");
+      const msg = err instanceof Error ? err.message : "Failed to save stage";
+      setError(msg);
+      stageToasts.saveFailed(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -182,12 +190,16 @@ export default function StagesPage() {
     setIsSubmitting(true);
     setError(null);
 
+    const stageName = stages?.find((s) => s._id === stageToDelete)?.name || "Stage";
     try {
       await deleteStage({ stageId: stageToDelete });
+      stageToasts.deleted(stageName);
       setDeleteConfirmOpen(false);
       setStageToDelete(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete stage");
+      const msg = err instanceof Error ? err.message : "Failed to delete stage";
+      setError(msg);
+      stageToasts.deleteFailed(msg);
       setDeleteConfirmOpen(false);
     } finally {
       setIsSubmitting(false);
@@ -214,7 +226,9 @@ export default function StagesPage() {
         orderedStageIds: newOrder.map((s) => s._id),
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to reorder stages");
+      const msg = err instanceof Error ? err.message : "Failed to reorder stages";
+      setError(msg);
+      stageToasts.reorderFailed(msg);
     } finally {
       setReordering(null);
     }
@@ -235,7 +249,9 @@ export default function StagesPage() {
         orderedStageIds: newOrder.map((s) => s._id),
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to reorder stages");
+      const msg = err instanceof Error ? err.message : "Failed to reorder stages";
+      setError(msg);
+      stageToasts.reorderFailed(msg);
     } finally {
       setReordering(null);
     }

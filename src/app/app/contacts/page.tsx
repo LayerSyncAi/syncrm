@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmDeleteDialog } from "@/components/common/confirm-delete-dialog";
+import { contactToasts } from "@/lib/toast";
 
 type ContactWithOwners = {
   _id: Id<"contacts">;
@@ -204,10 +205,17 @@ export default function ContactsPage() {
           ownerUserIds: ownerUserIds.length > 0 ? ownerUserIds : undefined,
         });
       }
+      if (isCreating) {
+        contactToasts.created(name.value.trim());
+      } else {
+        contactToasts.updated(name.value.trim());
+      }
       closeModal();
     } catch (error) {
       console.error("Failed to save contact:", error);
-      setFormError(error instanceof Error ? error.message : "Failed to save contact. Please try again.");
+      const msg = error instanceof Error ? error.message : "Failed to save contact. Please try again.";
+      setFormError(msg);
+      contactToasts.saveFailed(msg);
     } finally {
       setIsSaving(false);
     }
@@ -217,9 +225,11 @@ export default function ContactsPage() {
     if (!deleteTarget) return;
     try {
       await removeContact({ contactId: deleteTarget._id });
+      contactToasts.deleted(deleteTarget.name);
       setDeleteTarget(null);
     } catch (error) {
       console.error("Failed to delete contact:", error);
+      contactToasts.deleteFailed(error instanceof Error ? error.message : undefined);
     }
   };
 

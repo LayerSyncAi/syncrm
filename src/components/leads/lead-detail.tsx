@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { RightDrawer } from "@/components/common/right-drawer";
 import { useRequireAuth } from "@/hooks/useAuth";
 import { DuplicateWarning } from "@/components/leads/duplicate-warning";
+import { leadToasts, activityToasts, propertyToasts } from "@/lib/toast";
 
 const PropertySuggestions = lazy(() =>
   import("./property-suggestions").then((m) => ({ default: m.PropertySuggestions }))
@@ -110,8 +111,10 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
         stageId: newStageId,
         closeReason: stage?.isTerminal ? closeReason : undefined,
       });
+      leadToasts.stageMoved(stage?.name || "new stage");
     } catch (error) {
       console.error("Failed to update stage:", error);
+      leadToasts.stageMoveFailed(error instanceof Error ? error.message : undefined);
     }
   }, [stages, moveStage, leadId, closeReason]);
 
@@ -119,8 +122,10 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
     setIsSavingNotes(true);
     try {
       await updateNotes({ leadId, notes });
+      leadToasts.notesSaved();
     } catch (error) {
       console.error("Failed to save notes:", error);
+      leadToasts.notesSaveFailed(error instanceof Error ? error.message : undefined);
     } finally {
       setIsSavingNotes(false);
     }
@@ -137,11 +142,13 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
         description: activityDescription.trim(),
         scheduledAt: activityScheduledAt ? new Date(activityScheduledAt).getTime() : undefined,
       });
+      activityToasts.created(activityTitle.trim());
       setActivityTitle("");
       setActivityDescription("");
       setActivityScheduledAt("");
     } catch (error) {
       console.error("Failed to create activity:", error);
+      activityToasts.createFailed(error instanceof Error ? error.message : undefined);
     } finally {
       setIsSavingActivity(false);
     }
@@ -165,9 +172,11 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
         activityId: completingActivityId,
         completionNotes: completionNotes.trim(),
       });
+      activityToasts.completed("Activity");
       handleCloseCompleteModal();
     } catch (error) {
       console.error("Failed to mark activity complete:", error);
+      activityToasts.completeFailed(error instanceof Error ? error.message : undefined);
     } finally {
       setIsMarkingComplete(false);
     }
@@ -184,10 +193,12 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
           matchType,
         });
       }
+      propertyToasts.attached(selectedPropertyIds.size);
       setDrawerOpen(false);
       setSelectedPropertyIds(new Set());
     } catch (error) {
       console.error("Failed to attach property:", error);
+      propertyToasts.attachFailed(error instanceof Error ? error.message : undefined);
     } finally {
       setIsAttaching(false);
     }
@@ -208,8 +219,10 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
   const handleDetachProperty = useCallback(async (matchId: Id<"leadPropertyMatches">) => {
     try {
       await detachProperty({ matchId });
+      propertyToasts.detached();
     } catch (error) {
       console.error("Failed to detach property:", error);
+      propertyToasts.detachFailed(error instanceof Error ? error.message : undefined);
     }
   }, [detachProperty]);
 
