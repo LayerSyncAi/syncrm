@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { parseCurrencyInput } from "@/lib/currency";
 import { ImageUpload, ImageItem, serializeImages } from "@/components/ui/image-upload";
+import { propertyToasts } from "@/lib/toast";
 
 type PropertyType = "house" | "apartment" | "land" | "commercial" | "other";
 type ListingType = "rent" | "sale";
@@ -174,10 +175,13 @@ export default function NewPropertyPage() {
         description: description.trim(),
         images: serializeImages(images),
       });
+      propertyToasts.created(title.value.trim());
       router.push("/app/properties");
     } catch (error) {
       console.error("Failed to create property:", error);
-      setFormError(error instanceof Error ? error.message : "Failed to create property. Please try again.");
+      const msg = error instanceof Error ? error.message : "Failed to create property. Please try again.";
+      setFormError(msg);
+      propertyToasts.createFailed(msg);
     } finally {
       setIsSaving(false);
     }

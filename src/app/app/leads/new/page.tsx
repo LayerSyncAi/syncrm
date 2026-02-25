@@ -15,6 +15,7 @@ import { Modal } from "@/components/ui/modal";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { useRequireAuth } from "@/hooks/useAuth";
 import { DuplicateWarning } from "@/components/leads/duplicate-warning";
+import { leadToasts, contactToasts, locationToasts } from "@/lib/toast";
 
 type Source =
   | "walk_in"
@@ -291,10 +292,12 @@ export default function NewLeadPage() {
     try {
       await createLocation({ name: newLocation.trim() });
       handleAddArea(newLocation.trim());
+      locationToasts.created(newLocation.trim());
       setNewLocation("");
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Failed to add location";
       setFormError(errorMessage);
+      locationToasts.createFailed(errorMessage);
     } finally {
       setIsAddingLocation(false);
     }
@@ -349,6 +352,7 @@ export default function NewLeadPage() {
       setContactSearchInput(newContactName.value.trim());
       setShowNewContactModal(false);
       setContactError(undefined);
+      contactToasts.created(newContactName.value.trim());
 
       setNewContactName(createEmptyFieldState());
       setNewContactPhone(createEmptyFieldState());
@@ -357,6 +361,7 @@ export default function NewLeadPage() {
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Failed to create contact";
       setNewContactError(errorMessage);
+      contactToasts.saveFailed(errorMessage);
     } finally {
       setIsCreatingContact(false);
     }
@@ -409,10 +414,12 @@ export default function NewLeadPage() {
           ? Array.from(selectedPropertyIds)
           : undefined,
       });
+      leadToasts.created();
       router.push(`/app/leads/${leadId}`);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Failed to create lead";
       setFormError(errorMessage);
+      leadToasts.createFailed(errorMessage);
     } finally {
       setIsSubmitting(false);
     }

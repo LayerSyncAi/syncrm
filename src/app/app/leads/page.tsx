@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Table, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { useRequireAuth } from "@/hooks/useAuth";
+import { leadToasts } from "@/lib/toast";
 
 const BulkMatching = lazy(() =>
   import("@/components/leads/bulk-matching").then((m) => ({ default: m.BulkMatching }))
@@ -68,8 +69,11 @@ export default function LeadsPage() {
   ) => {
     try {
       await moveStage({ leadId, stageId: newStageId });
+      const stageName = stages?.find((s) => s._id === newStageId)?.name || "new stage";
+      leadToasts.stageMoved(stageName);
     } catch (error) {
       console.error("Failed to update stage:", error);
+      leadToasts.stageMoveFailed(error instanceof Error ? error.message : undefined);
     }
   };
 

@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Merge, CheckCircle, AlertTriangle } from "lucide-react";
 import { Id } from "../../../../../convex/_generated/dataModel";
+import { mergeToasts } from "@/lib/toast";
 
 const MERGEABLE_FIELDS = [
   { key: "fullName", label: "Full Name" },
@@ -130,9 +131,11 @@ export default function MergeLeadsPage() {
         mergedLeadIds: mergedIds,
         fieldResolutions: resolutions,
       });
+      mergeToasts.complete();
       setStep("done");
     } catch (e: any) {
       setError(e.message || "Merge failed");
+      mergeToasts.failed(e.message);
     } finally {
       setMerging(false);
     }

@@ -7,6 +7,7 @@ import { Id } from "../../../convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { propertyToasts } from "@/lib/toast";
 
 interface PropertySuggestionsProps {
   leadId: Id<"leads">;
@@ -75,8 +76,10 @@ export function PropertySuggestions({
         propertyId,
         matchType: "suggested",
       });
+      propertyToasts.suggested();
     } catch (error) {
       console.error("Failed to attach property:", error);
+      propertyToasts.suggestFailed(error instanceof Error ? error.message : undefined);
     } finally {
       setIsAttaching(null);
     }

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Modal } from "@/components/ui/modal";
 import { Textarea } from "@/components/ui/textarea";
+import { activityToasts } from "@/lib/toast";
 
 interface TaskActivity {
   _id: Id<"activities">;
@@ -63,12 +64,14 @@ export function TaskDetailModal({ open, onClose, task, onTaskUpdated }: TaskDeta
         activityId: task._id,
         completionNotes: completionNotes.trim(),
       });
+      activityToasts.completed(task.title);
       setCompletionNotes("");
       setShowCompleteForm(false);
       onTaskUpdated?.();
       onClose();
     } catch (error) {
       console.error("Failed to mark task complete:", error);
+      activityToasts.completeFailed(error instanceof Error ? error.message : undefined);
     } finally {
       setIsCompleting(false);
     }
@@ -79,9 +82,11 @@ export function TaskDetailModal({ open, onClose, task, onTaskUpdated }: TaskDeta
     setIsReopening(true);
     try {
       await reopenTask({ activityId: task._id });
+      activityToasts.reopened(task.title);
       onTaskUpdated?.();
     } catch (error) {
       console.error("Failed to reopen task:", error);
+      activityToasts.reopenFailed(error instanceof Error ? error.message : undefined);
     } finally {
       setIsReopening(false);
     }

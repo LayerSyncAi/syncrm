@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, CheckCircle, Loader2, Mail } from "lucide-react";
+import { authToasts } from "@/lib/toast";
 
 export default function ForgotPasswordPage() {
   const requestReset = useAction(api.passwordReset.requestPasswordReset);
@@ -26,9 +27,11 @@ export default function ForgotPasswordPage() {
       const baseUrl = window.location.origin;
       await requestReset({ email, baseUrl });
       setIsSuccess(true);
+      authToasts.passwordResetRequested(email);
     } catch (err) {
       console.error("Reset request error:", err);
       setError("Something went wrong. Please try again.");
+      authToasts.passwordResetFailed();
     } finally {
       setIsLoading(false);
     }

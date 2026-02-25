@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertTriangle, Save, RefreshCw, Star, Check, X } from "lucide-react";
 import { Id } from "../../../../../convex/_generated/dataModel";
+import { scoringToasts } from "@/lib/toast";
 
 interface Criterion {
   key: string;
@@ -76,9 +77,11 @@ export default function LeadScoringPage() {
         })),
       });
       setSaveSuccess(true);
+      scoringToasts.configSaved();
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (e: any) {
       setError(e.message || "Failed to save");
+      scoringToasts.configSaveFailed(e.message);
     } finally {
       setSaving(false);
     }
@@ -87,12 +90,15 @@ export default function LeadScoringPage() {
   const handleRecompute = async () => {
     setRecomputing(true);
     setError("");
+    scoringToasts.recomputeStarted();
     try {
       const result = await recomputeAll();
       setError("");
       setSaveSuccess(false);
+      scoringToasts.recomputeComplete();
     } catch (e: any) {
       setError(e.message || "Recompute failed");
+      scoringToasts.recomputeFailed(e.message);
     } finally {
       setRecomputing(false);
     }

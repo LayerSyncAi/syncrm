@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { Loader2 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
+import { authToasts } from "@/lib/toast";
 
 type AuthMode = "signIn" | "signUp";
 
@@ -122,6 +123,11 @@ export default function LoginPage() {
       }
 
       setError(errorMessage);
+      if (mode === "signIn") {
+        authToasts.loginFailed(errorMessage);
+      } else {
+        authToasts.signupFailed(errorMessage);
+      }
       // Reset loading state on error so user can retry
       setIsSubmitting(false);
     }
