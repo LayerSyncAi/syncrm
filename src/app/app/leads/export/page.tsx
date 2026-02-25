@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { FlipCalendar } from "@/components/ui/flip-calendar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { generateCSV, downloadBlob } from "@/lib/csv";
 import { Download, FileSpreadsheet } from "lucide-react";
@@ -39,8 +40,8 @@ export default function LeadExportPage() {
 
   const [stageFilter, setStageFilter] = useState("");
   const [ownerFilter, setOwnerFilter] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [dateFrom, setDateFrom] = useState<Date | null>(null);
+  const [dateTo, setDateTo] = useState<Date | null>(null);
   const [selectedFields, setSelectedFields] = useState<string[]>(
     ALL_FIELDS.map((f) => f.key)
   );
@@ -56,8 +57,10 @@ export default function LeadExportPage() {
     ownerUserId: ownerFilter
       ? (ownerFilter as Id<"users">)
       : undefined,
-    dateFrom: dateFrom ? new Date(dateFrom).getTime() : undefined,
-    dateTo: dateTo ? new Date(dateTo + "T23:59:59").getTime() : undefined,
+    dateFrom: dateFrom ? dateFrom.getTime() : undefined,
+    dateTo: dateTo
+      ? new Date(dateTo.getFullYear(), dateTo.getMonth(), dateTo.getDate(), 23, 59, 59).getTime()
+      : undefined,
   };
 
   const leads = useQuery(api.leadExport.getLeadsForExport, exportArgs);
@@ -189,10 +192,10 @@ export default function LeadExportPage() {
               <label className="mb-1 block text-sm font-medium text-text">
                 Date From
               </label>
-              <Input
-                type="date"
+              <FlipCalendar
                 value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
+                onChange={setDateFrom}
+                placeholder="Start date"
               />
             </div>
 
@@ -200,10 +203,10 @@ export default function LeadExportPage() {
               <label className="mb-1 block text-sm font-medium text-text">
                 Date To
               </label>
-              <Input
-                type="date"
+              <FlipCalendar
                 value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
+                onChange={setDateTo}
+                placeholder="End date"
               />
             </div>
           </div>

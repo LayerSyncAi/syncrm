@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { FlipCalendar } from "@/components/ui/flip-calendar";
 import { RightDrawer } from "@/components/common/right-drawer";
 import { useRequireAuth } from "@/hooks/useAuth";
 import { DuplicateWarning } from "@/components/leads/duplicate-warning";
@@ -69,7 +70,7 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
   const [activityType, setActivityType] = useState<"call" | "whatsapp" | "email" | "meeting" | "viewing" | "note">("call");
   const [activityTitle, setActivityTitle] = useState("");
   const [activityDescription, setActivityDescription] = useState("");
-  const [activityScheduledAt, setActivityScheduledAt] = useState("");
+  const [activityScheduledAt, setActivityScheduledAt] = useState<Date | null>(null);
   const [isSavingActivity, setIsSavingActivity] = useState(false);
 
   // Complete activity modal state
@@ -140,12 +141,12 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
         type: activityType,
         title: activityTitle.trim(),
         description: activityDescription.trim(),
-        scheduledAt: activityScheduledAt ? new Date(activityScheduledAt).getTime() : undefined,
+        scheduledAt: activityScheduledAt ? activityScheduledAt.getTime() : undefined,
       });
       activityToasts.created(activityTitle.trim());
       setActivityTitle("");
       setActivityDescription("");
-      setActivityScheduledAt("");
+      setActivityScheduledAt(null);
     } catch (error) {
       console.error("Failed to create activity:", error);
       activityToasts.createFailed(error instanceof Error ? error.message : undefined);
@@ -436,10 +437,10 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
                   onChange={(e) => setActivityTitle(e.target.value)}
                 />
               </div>
-              <Input
-                type="datetime-local"
+              <FlipCalendar
                 value={activityScheduledAt}
-                onChange={(e) => setActivityScheduledAt(e.target.value)}
+                onChange={setActivityScheduledAt}
+                showTime
                 placeholder="Schedule date/time (optional)"
               />
               <Textarea
