@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
@@ -27,6 +27,8 @@ import {
   UserPlus,
   Shield,
   ShieldCheck,
+  KeyRound,
+  CheckCircle,
 } from "lucide-react";
 import { TIMEZONES } from "@/lib/timezones";
 
@@ -50,17 +52,21 @@ export default function UsersPage() {
 
   // Convex queries and mutations
   const users = useQuery(api.users.adminListUsers);
-  const createUser = useMutation(api.users.adminCreateUser);
+  const createUser = useAction(api.users.adminCreateUser);
   const setUserActive = useMutation(api.users.adminSetUserActive);
   const setUserRole = useMutation(api.users.adminSetUserRole);
   const setUserTimezone = useMutation(api.users.adminUpdateUserTimezone);
+  const resetUserPassword = useAction(api.users.adminResetUserPassword);
 
   // UI state
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [formData, setFormData] = useState<UserFormData>(defaultFormData);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [updatingUserId, setUpdatingUserId] = useState<Id<"users"> | null>(null);
+  const [resetConfirmUserId, setResetConfirmUserId] = useState<Id<"users"> | null>(null);
+  const [resettingPasswordUserId, setResettingPasswordUserId] = useState<Id<"users"> | null>(null);
 
   // Redirect non-admin users
   useEffect(() => {
@@ -68,6 +74,14 @@ export default function UsersPage() {
       router.replace("/app/dashboard");
     }
   }, [authLoading, user, router]);
+
+  // Auto-clear success message
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => setSuccessMessage(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
 
   // Show loading while checking auth
   if (authLoading) {
@@ -131,6 +145,7 @@ export default function UsersPage() {
         isActive: formData.isActive,
       });
       closeDrawer();
+      setSuccessMessage("User created. They must change their password on first login.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create user");
     } finally {
@@ -183,6 +198,21 @@ export default function UsersPage() {
     }
   };
 
+  const handleResetPassword = async (userId: Id<"users">) => {
+    setResettingPasswordUserId(userId);
+    setError(null);
+    setResetConfirmUserId(null);
+
+    try {
+      await resetUserPassword({ targetUserId: userId });
+      setSuccessMessage("Password reset. User must change password on next login.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to reset password");
+    } finally {
+      setResettingPasswordUserId(null);
+    }
+  };
+
   const getInitials = (fullName?: string, name?: string, email?: string) => {
     const displayName = fullName || name || email || "U";
     return displayName
@@ -219,6 +249,19 @@ export default function UsersPage() {
           Create user
         </Button>
       </div>
+
+      {successMessage && (
+        <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+          <CheckCircle className="h-4 w-4" />
+          {successMessage}
+          <button
+            onClick={() => setSuccessMessage(null)}
+            className="ml-auto text-green-400 hover:text-green-600"
+          >
+            &times;
+          </button>
+        </div>
+      )}
 
       {error && (
         <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
@@ -262,6 +305,7 @@ export default function UsersPage() {
               {sortedUsers.map((u) => {
                 const isCurrentUser = u._id === user._id;
                 const isUpdating = updatingUserId === u._id;
+                const isResetting = resettingPasswordUserId === u._id;
 
                 return (
                   <TableRow key={u._id}>
@@ -279,11 +323,16 @@ export default function UsersPage() {
                               </span>
                             )}
                           </p>
+                          {u.resetPasswordOnNextLogin && (
+                            <span className="text-xs text-amber-600">
+                              Pending password change
+                            </span>
+                          )}
                         </div>
                       </div>
                     </TableCell>
                     <TableCell className="text-text-muted">
-                      {u.email || "—"}
+                      {u.email || "\u2014"}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -331,20 +380,37 @@ export default function UsersPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant={u.isActive ? "ghost" : "secondary"}
-                        size="sm"
-                        onClick={() => handleToggleActive(u._id, u.isActive)}
-                        disabled={isUpdating}
-                      >
-                        {isUpdating ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : u.isActive ? (
-                          "Disable"
-                        ) : (
-                          "Enable"
+                      <div className="flex items-center justify-end gap-2">
+                        {!isCurrentUser && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setResetConfirmUserId(u._id)}
+                            disabled={isResetting || isUpdating}
+                            title="Reset password"
+                          >
+                            {isResetting ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <KeyRound className="h-4 w-4" />
+                            )}
+                          </Button>
                         )}
-                      </Button>
+                        <Button
+                          variant={u.isActive ? "ghost" : "secondary"}
+                          size="sm"
+                          onClick={() => handleToggleActive(u._id, u.isActive)}
+                          disabled={isUpdating}
+                        >
+                          {isUpdating ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : u.isActive ? (
+                            "Disable"
+                          ) : (
+                            "Enable"
+                          )}
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
@@ -352,6 +418,20 @@ export default function UsersPage() {
             </TableBody>
           </Table>
         </div>
+      )}
+
+      {/* Reset Password Confirmation Dialog */}
+      {resetConfirmUserId && (
+        <ResetPasswordConfirmDialog
+          userName={
+            (() => {
+              const u = sortedUsers.find((u) => u._id === resetConfirmUserId);
+              return u?.fullName || u?.name || u?.email || "this user";
+            })()
+          }
+          onConfirm={() => handleResetPassword(resetConfirmUserId)}
+          onCancel={() => setResetConfirmUserId(null)}
+        />
       )}
 
       {/* Create User Drawer */}
@@ -403,7 +483,7 @@ export default function UsersPage() {
               }
             />
             <p className="text-xs text-text-muted">
-              This email will be used for login credentials
+              This email will be used for login. A temporary password will be assigned.
             </p>
           </div>
 
@@ -450,6 +530,44 @@ export default function UsersPage() {
           </div>
         </div>
       </RightDrawer>
+    </div>
+  );
+}
+
+function ResetPasswordConfirmDialog({
+  userName,
+  onConfirm,
+  onCancel,
+}: {
+  userName: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div
+        className="absolute inset-0 bg-black/60"
+        onClick={onCancel}
+        role="presentation"
+      />
+      <div className="relative z-10 w-full max-w-md rounded-[12px] border border-border-strong bg-card-bg p-5 shadow-[0_10px_28px_rgba(0,0,0,0.32)]">
+        <div className="space-y-2">
+          <h3 className="text-base font-semibold">Reset Password</h3>
+          <p className="text-sm text-text-muted">
+            Reset the password for <strong>{userName}</strong>? Their password
+            will be set to a temporary value and they will be required to change
+            it on their next login.
+          </p>
+        </div>
+        <div className="mt-4 flex justify-end gap-2">
+          <Button variant="secondary" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button onClick={onConfirm}>
+            Reset Password
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
