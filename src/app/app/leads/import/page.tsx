@@ -6,7 +6,7 @@ import { api } from "../../../../../convex/_generated/api";
 import { useRequireAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
-import { Select } from "@/components/ui/select";
+import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -323,23 +323,21 @@ export default function LeadImportPage() {
                       <span className="ml-1 text-red-500">*</span>
                     )}
                   </label>
-                  <Select
+                  <StaggeredDropDown
                     value={columnMap[field.key] || ""}
-                    onChange={(e) =>
+                    onChange={(val) =>
                       setColumnMap((m) => ({
                         ...m,
-                        [field.key]: e.target.value,
+                        [field.key]: val,
                       }))
                     }
                     className="max-w-xs"
-                  >
-                    <option value="">-- Not mapped --</option>
-                    {csvHeaders.map((h) => (
-                      <option key={h} value={h}>
-                        {h}
-                      </option>
-                    ))}
-                  </Select>
+                    placeholder="-- Not mapped --"
+                    options={[
+                      { value: "", label: "-- Not mapped --" },
+                      ...csvHeaders.map((h) => ({ value: h, label: h })),
+                    ]}
+                  />
                 </div>
               ))}
             </div>
@@ -348,15 +346,16 @@ export default function LeadImportPage() {
               <label className="text-sm font-medium text-text">
                 Import Mode:
               </label>
-              <Select
+              <StaggeredDropDown
                 value={importMode}
-                onChange={(e) => setImportMode(e.target.value as ImportMode)}
+                onChange={(val) => setImportMode(val as ImportMode)}
                 className="max-w-xs"
-              >
-                <option value="create_only">Create only (fail on duplicates)</option>
-                <option value="upsert">Upsert by email/phone</option>
-                <option value="skip_duplicates">Skip duplicates</option>
-              </Select>
+                options={[
+                  { value: "create_only", label: "Create only (fail on duplicates)" },
+                  { value: "upsert", label: "Upsert by email/phone" },
+                  { value: "skip_duplicates", label: "Skip duplicates" },
+                ]}
+              />
             </div>
 
             <div className="mt-6 flex gap-3">

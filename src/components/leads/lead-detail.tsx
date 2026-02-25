@@ -11,7 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Modal } from "@/components/ui/modal";
-import { Select } from "@/components/ui/select";
+import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 import { Textarea } from "@/components/ui/textarea";
 import { FlipCalendar } from "@/components/ui/flip-calendar";
 import { RightDrawer } from "@/components/common/right-drawer";
@@ -365,17 +365,12 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
           </div>
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          <Select
+          <StaggeredDropDown
             className="max-w-xs"
             value={lead.stageId}
-            onChange={(e) => handleStageChange(e.target.value as Id<"pipelineStages">)}
-          >
-            {stages?.map((s) => (
-              <option key={s._id} value={s._id}>
-                {s.name}
-              </option>
-            ))}
-          </Select>
+            onChange={(val) => handleStageChange(val as Id<"pipelineStages">)}
+            options={stages?.map((s) => ({ value: s._id, label: s.name })) ?? []}
+          />
           {stages?.find((s) => s._id === lead.stageId)?.isTerminal && (
             <Input
               placeholder="Close reason"
@@ -420,17 +415,18 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
             </h3>
             <div className="grid gap-3">
               <div className="grid gap-3 md:grid-cols-2">
-                <Select
+                <StaggeredDropDown
                   value={activityType}
-                  onChange={(e) => setActivityType(e.target.value as typeof activityType)}
-                >
-                  <option value="call">Call</option>
-                  <option value="whatsapp">WhatsApp</option>
-                  <option value="email">Email</option>
-                  <option value="meeting">Meeting</option>
-                  <option value="viewing">Viewing</option>
-                  <option value="note">Note</option>
-                </Select>
+                  onChange={(val) => setActivityType(val as typeof activityType)}
+                  options={[
+                    { value: "call", label: "Call" },
+                    { value: "whatsapp", label: "WhatsApp" },
+                    { value: "email", label: "Email" },
+                    { value: "meeting", label: "Meeting" },
+                    { value: "viewing", label: "Viewing" },
+                    { value: "note", label: "Note" },
+                  ]}
+                />
                 <Input
                   placeholder="Title"
                   value={activityTitle}
@@ -648,15 +644,16 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
           />
           <div className="space-y-2">
             <Label>Match type</Label>
-            <Select
+            <StaggeredDropDown
               value={matchType}
-              onChange={(e) => setMatchType(e.target.value as typeof matchType)}
-            >
-              <option value="requested">Requested</option>
-              <option value="suggested">Suggested</option>
-              <option value="viewed">Viewed</option>
-              <option value="offered">Offered</option>
-            </Select>
+              onChange={(val) => setMatchType(val as typeof matchType)}
+              options={[
+                { value: "requested", label: "Requested" },
+                { value: "suggested", label: "Suggested" },
+                { value: "viewed", label: "Viewed" },
+                { value: "offered", label: "Offered" },
+              ]}
+            />
           </div>
           <div className="space-y-2 max-h-[360px] overflow-y-auto">
             {filteredProperties?.filter((p) => !attachedPropertyIds.has(p._id)).map((property) => {

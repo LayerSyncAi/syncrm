@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RightDrawer } from "@/components/common/right-drawer";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
 import {
@@ -362,14 +362,15 @@ export default function UsersPage() {
             {/* Role */}
             <div className="space-y-2">
               <Label>Role</Label>
-              <Select
+              <StaggeredDropDown
                 value={editingUser.role}
-                onChange={(e) => handleRoleChange(e.target.value as "admin" | "agent")}
+                onChange={(val) => handleRoleChange(val as "admin" | "agent")}
                 disabled={isSaving}
-              >
-                <option value="agent">Agent</option>
-                <option value="admin">Admin</option>
-              </Select>
+                options={[
+                  { value: "agent", label: "Agent" },
+                  { value: "admin", label: "Admin" },
+                ]}
+              />
               <p className="text-xs text-text-muted">
                 Admins can manage users, stages, and all settings.
               </p>
@@ -378,18 +379,17 @@ export default function UsersPage() {
             {/* Timezone */}
             <div className="space-y-2">
               <Label>Timezone</Label>
-              <Select
+              <StaggeredDropDown
                 value={editingUser.timezone || ""}
-                onChange={(e) => handleTimezoneChange(e.target.value)}
+                onChange={(val) => handleTimezoneChange(val)}
                 disabled={isSaving}
-              >
-                <option value="">Not set</option>
-                {TIMEZONES.map((tz) => (
-                  <option key={tz.value} value={tz.value}>
-                    {tz.label}
-                  </option>
-                ))}
-              </Select>
+                placeholder="Not set"
+                maxHeight={320}
+                options={[
+                  { value: "", label: "Not set" },
+                  ...TIMEZONES.map((tz) => ({ value: tz.value, label: tz.label })),
+                ]}
+              />
             </div>
 
             {/* Active / Inactive */}
@@ -513,15 +513,16 @@ export default function UsersPage() {
 
           <div className="space-y-2">
             <Label>Role</Label>
-            <Select
+            <StaggeredDropDown
               value={formData.role}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, role: e.target.value as "admin" | "agent" }))
+              onChange={(val) =>
+                setFormData((prev) => ({ ...prev, role: val as "admin" | "agent" }))
               }
-            >
-              <option value="agent">Agent</option>
-              <option value="admin">Admin</option>
-            </Select>
+              options={[
+                { value: "agent", label: "Agent" },
+                { value: "admin", label: "Admin" },
+              ]}
+            />
             <p className="text-xs text-text-muted">
               Admins can manage users, stages, and all settings
             </p>

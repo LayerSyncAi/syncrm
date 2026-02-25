@@ -6,7 +6,7 @@ import { api } from "../../../../../convex/_generated/api";
 import { useRequireAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
-import { Select } from "@/components/ui/select";
+import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 import { Input } from "@/components/ui/input";
 import { FlipCalendar } from "@/components/ui/flip-calendar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -156,17 +156,14 @@ export default function LeadExportPage() {
               <label className="mb-1 block text-sm font-medium text-text">
                 Stage
               </label>
-              <Select
+              <StaggeredDropDown
                 value={stageFilter}
-                onChange={(e) => setStageFilter(e.target.value)}
-              >
-                <option value="">All Stages</option>
-                {stages?.map((s) => (
-                  <option key={s._id} value={s._id}>
-                    {s.name}
-                  </option>
-                ))}
-              </Select>
+                onChange={(val) => setStageFilter(val)}
+                options={[
+                  { value: "", label: "All Stages" },
+                  ...(stages?.map((s) => ({ value: s._id, label: s.name })) ?? []),
+                ]}
+              />
             </div>
 
             {isAdmin && (
@@ -174,17 +171,14 @@ export default function LeadExportPage() {
                 <label className="mb-1 block text-sm font-medium text-text">
                   Assigned Agent
                 </label>
-                <Select
+                <StaggeredDropDown
                   value={ownerFilter}
-                  onChange={(e) => setOwnerFilter(e.target.value)}
-                >
-                  <option value="">All Agents</option>
-                  {users?.map((u) => (
-                    <option key={u._id} value={u._id}>
-                      {u.fullName || u.name || u.email}
-                    </option>
-                  ))}
-                </Select>
+                  onChange={(val) => setOwnerFilter(val)}
+                  options={[
+                    { value: "", label: "All Agents" },
+                    ...(users?.map((u) => ({ value: u._id, label: u.fullName || u.name || u.email || "Unknown" })) ?? []),
+                  ]}
+                />
               </div>
             )}
 

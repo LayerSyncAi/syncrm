@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Modal } from "@/components/ui/modal";
-import { Select } from "@/components/ui/select";
+import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -291,17 +291,14 @@ export default function ContactsPage() {
           {isAdmin && (
             <div className="space-y-2">
               <Label>Owner</Label>
-              <Select
+              <StaggeredDropDown
                 value={ownerFilter}
-                onChange={(e) => setOwnerFilter(e.target.value as Id<"users"> | "")}
-              >
-                <option value="">All owners</option>
-                {users.map((user) => (
-                  <option key={user._id} value={user._id}>
-                    {user.name}
-                  </option>
-                ))}
-              </Select>
+                onChange={(val) => setOwnerFilter(val as Id<"users"> | "")}
+                options={[
+                  { value: "", label: "All owners" },
+                  ...users.map((user) => ({ value: user._id, label: user.name })),
+                ]}
+              />
             </div>
           )}
           <div className="flex items-end">
