@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import { ChevronDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -37,6 +38,8 @@ export interface StaggeredDropDownProps {
   selectedIcon?: React.ReactNode;
   /** Icon shown as the open/close chevron. Default: ChevronDown */
   chevronIcon?: React.ReactNode;
+  /** Render the dropdown list via a portal so it escapes overflow:hidden containers (e.g. tables). Default: false */
+  portal?: boolean;
 }
 
 export function StaggeredDropDown({
@@ -52,18 +55,53 @@ export function StaggeredDropDown({
   maxHeight = 256,
   selectedIcon,
   chevronIcon,
+  portal = false,
 }: StaggeredDropDownProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLUListElement>(null);
 
-  // Close on outside click
+  // Portal positioning state
+  const [portalPos, setPortalPos] = useState({ top: 0, left: 0, width: 0 });
+
+  const updatePortalPos = useCallback(() => {
+    if (!portal || !buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    setPortalPos({
+      top: rect.bottom + 4,
+      left: rect.left,
+      width: rect.width,
+    });
+  }, [portal]);
+
+  // Update portal position when open
+  useLayoutEffect(() => {
+    if (!open || !portal) return;
+    updatePortalPos();
+  }, [open, portal, updatePortalPos]);
+
+  // Reposition on scroll/resize when portaled
+  useEffect(() => {
+    if (!open || !portal) return;
+    window.addEventListener("scroll", updatePortalPos, true);
+    window.addEventListener("resize", updatePortalPos);
+    return () => {
+      window.removeEventListener("scroll", updatePortalPos, true);
+      window.removeEventListener("resize", updatePortalPos);
+    };
+  }, [open, portal, updatePortalPos]);
+
+  // Close on outside click — handles both inline and portal
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
+      const target = e.target as Node;
+      const inContainer =
+        containerRef.current && containerRef.current.contains(target);
+      const inDropdown =
+        dropdownRef.current && dropdownRef.current.contains(target);
+      if (!inContainer && !inDropdown) {
         setOpen(false);
       }
     };
@@ -130,6 +168,62 @@ export function StaggeredDropDown({
   const checkIcon = selectedIcon ?? <Check className="h-3.5 w-3.5" />;
   const chevron = chevronIcon ?? <ChevronDown className="h-4 w-4" />;
 
+  // ─── Dropdown list content ──────────────────────────────
+  const dropdownList = (
+    <motion.ul
+      ref={dropdownRef}
+      animate={open ? "open" : "closed"}
+      initial="closed"
+      variants={wrapperVariants}
+      style={
+        portal
+          ? {
+              originY: "top",
+              pointerEvents: open ? "auto" : "none",
+              position: "fixed",
+              top: portalPos.top,
+              left: portalPos.left,
+              width: portalPos.width,
+            }
+          : { originY: "top", pointerEvents: open ? "auto" : "none" }
+      }
+      className={cn(
+        "z-50 flex flex-col gap-0.5 overflow-hidden rounded-[10px] border border-border-strong bg-card-bg p-1.5 shadow-xl",
+        !portal && "absolute mt-1 w-full"
+      )}
+    >
+      <div style={{ maxHeight }} className="overflow-y-auto">
+        {options.map((option) => {
+          const isSelected = option.value === value;
+          return (
+            <motion.li
+              key={option.value}
+              variants={itemVariants}
+              onClick={() => {
+                onChange?.(option.value);
+                setOpen(false);
+              }}
+              className={cn(
+                "flex cursor-pointer items-center gap-2 rounded-[8px] px-2.5 py-2 text-xs font-medium whitespace-nowrap transition-colors",
+                isSelected
+                  ? "bg-primary/10 text-primary"
+                  : "text-text hover:bg-primary/5 hover:text-primary"
+              )}
+            >
+              <motion.span
+                variants={actionIconVariants}
+                className="shrink-0"
+              >
+                {isSelected ? checkIcon : <span className="h-3.5 w-3.5" />}
+              </motion.span>
+              <span className="truncate">{option.label}</span>
+            </motion.li>
+          );
+        })}
+      </div>
+    </motion.ul>
+  );
+
   return (
     <motion.div
       ref={containerRef}
@@ -137,6 +231,7 @@ export function StaggeredDropDown({
       className={cn("relative", className)}
     >
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => !disabled && setOpen((pv) => !pv)}
         disabled={disabled}
@@ -160,42 +255,10 @@ export function StaggeredDropDown({
         </motion.span>
       </button>
 
-      <motion.ul
-        initial={wrapperVariants.closed}
-        variants={wrapperVariants}
-        style={{ originY: "top", pointerEvents: open ? "auto" : "none" }}
-        className="absolute z-50 mt-1 flex w-full flex-col gap-0.5 overflow-hidden rounded-[10px] border border-border-strong bg-card-bg p-1.5 shadow-xl"
-      >
-        <div style={{ maxHeight }} className="overflow-y-auto">
-          {options.map((option) => {
-            const isSelected = option.value === value;
-            return (
-              <motion.li
-                key={option.value}
-                variants={itemVariants}
-                onClick={() => {
-                  onChange?.(option.value);
-                  setOpen(false);
-                }}
-                className={cn(
-                  "flex cursor-pointer items-center gap-2 rounded-[8px] px-2.5 py-2 text-xs font-medium whitespace-nowrap transition-colors",
-                  isSelected
-                    ? "bg-primary/10 text-primary"
-                    : "text-text hover:bg-primary/5 hover:text-primary"
-                )}
-              >
-                <motion.span
-                  variants={actionIconVariants}
-                  className="shrink-0"
-                >
-                  {isSelected ? checkIcon : <span className="h-3.5 w-3.5" />}
-                </motion.span>
-                <span className="truncate">{option.label}</span>
-              </motion.li>
-            );
-          })}
-        </div>
-      </motion.ul>
+      {portal
+        ? typeof document !== "undefined" &&
+          createPortal(dropdownList, document.body)
+        : dropdownList}
     </motion.div>
   );
 }

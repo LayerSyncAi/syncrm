@@ -241,6 +241,7 @@ export default function LeadsPage() {
                       )
                     }
                     aria-label={`Update stage for ${lead.fullName}`}
+                    portal
                     options={stages?.map((stage) => ({ value: stage._id, label: stage.name })) ?? []}
                   />
                 </TableCell>
