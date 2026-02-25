@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Modal } from "@/components/ui/modal";
-import { Select } from "@/components/ui/select";
+import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 import { bulkMatchToasts } from "@/lib/toast";
 
 interface BulkMatchingProps {
@@ -173,30 +173,32 @@ export function BulkMatching({ open, onClose, selectedLeadIds }: BulkMatchingPro
       <div className="flex flex-wrap gap-4 mb-4 p-3 bg-card-bg/50 rounded-lg border border-border">
         <div className="flex items-center gap-2">
           <label className="text-xs text-text-muted">Min Score:</label>
-          <Select
+          <StaggeredDropDown
             value={minScore.toString()}
-            onChange={(e) => setMinScore(parseInt(e.target.value))}
+            onChange={(val) => setMinScore(parseInt(val))}
             className="w-24"
-          >
-            <option value="30">30%</option>
-            <option value="40">40%</option>
-            <option value="50">50%</option>
-            <option value="60">60%</option>
-            <option value="70">70%</option>
-            <option value="80">80%</option>
-          </Select>
+            options={[
+              { value: "30", label: "30%" },
+              { value: "40", label: "40%" },
+              { value: "50", label: "50%" },
+              { value: "60", label: "60%" },
+              { value: "70", label: "70%" },
+              { value: "80", label: "80%" },
+            ]}
+          />
         </div>
         <div className="flex items-center gap-2">
           <label className="text-xs text-text-muted">Top N per lead:</label>
-          <Select
+          <StaggeredDropDown
             value={topN.toString()}
-            onChange={(e) => setTopN(parseInt(e.target.value))}
+            onChange={(val) => setTopN(parseInt(val))}
             className="w-20"
-          >
-            <option value="3">3</option>
-            <option value="5">5</option>
-            <option value="10">10</option>
-          </Select>
+            options={[
+              { value: "3", label: "3" },
+              { value: "5", label: "5" },
+              { value: "10", label: "10" },
+            ]}
+          />
         </div>
       </div>
 

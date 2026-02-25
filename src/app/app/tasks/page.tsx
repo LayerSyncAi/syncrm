@@ -8,7 +8,7 @@ import { Id } from "../../../../convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Select } from "@/components/ui/select";
+import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 import { Table, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { useRequireAuth } from "@/hooks/useAuth";
 
@@ -130,31 +130,33 @@ export default function TasksPage() {
         <div className="flex flex-wrap gap-4 items-center">
           <div className="space-y-1">
             <label className="text-xs text-text-muted">Status</label>
-            <Select
+            <StaggeredDropDown
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as TaskStatus)}
+              onChange={(val) => setStatusFilter(val as TaskStatus)}
               className="min-w-[140px]"
-            >
-              <option value="all">All Statuses</option>
-              <option value="todo">To Do</option>
-              <option value="completed">Completed</option>
-            </Select>
+              options={[
+                { value: "all", label: "All Statuses" },
+                { value: "todo", label: "To Do" },
+                { value: "completed", label: "Completed" },
+              ]}
+            />
           </div>
           <div className="space-y-1">
             <label className="text-xs text-text-muted">Activity Type</label>
-            <Select
+            <StaggeredDropDown
               value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value as ActivityType)}
+              onChange={(val) => setTypeFilter(val as ActivityType)}
               className="min-w-[140px]"
-            >
-              <option value="all">All Types</option>
-              <option value="call">Call</option>
-              <option value="whatsapp">WhatsApp</option>
-              <option value="email">Email</option>
-              <option value="meeting">Meeting</option>
-              <option value="viewing">Viewing</option>
-              <option value="note">Note</option>
-            </Select>
+              options={[
+                { value: "all", label: "All Types" },
+                { value: "call", label: "Call" },
+                { value: "whatsapp", label: "WhatsApp" },
+                { value: "email", label: "Email" },
+                { value: "meeting", label: "Meeting" },
+                { value: "viewing", label: "Viewing" },
+                { value: "note", label: "Note" },
+              ]}
+            />
           </div>
         </div>
       </Card>

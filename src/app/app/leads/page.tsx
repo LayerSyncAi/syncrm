@@ -8,7 +8,7 @@ import { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
+import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 import { Table, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { useRequireAuth } from "@/hooks/useAuth";
 import { leadToasts } from "@/lib/toast";
@@ -124,28 +124,26 @@ export default function LeadsPage() {
         <div className="grid gap-3 md:grid-cols-4 xl:grid-cols-5">
           <div className="space-y-2">
             <Label>Stage</Label>
-            <Select
+            <StaggeredDropDown
               value={stageFilter}
-              onChange={(e) => setStageFilter(e.target.value)}
-            >
-              <option value="">All stages</option>
-              {stages?.map((stage) => (
-                <option key={stage._id} value={stage._id}>
-                  {stage.name}
-                </option>
-              ))}
-            </Select>
+              onChange={(val) => setStageFilter(val)}
+              options={[
+                { value: "", label: "All stages" },
+                ...(stages?.map((stage) => ({ value: stage._id, label: stage.name })) ?? []),
+              ]}
+            />
           </div>
           <div className="space-y-2">
             <Label>Interest type</Label>
-            <Select
+            <StaggeredDropDown
               value={interestFilter}
-              onChange={(e) => setInterestFilter(e.target.value)}
-            >
-              <option value="">Rent / Buy</option>
-              <option value="rent">Rent</option>
-              <option value="buy">Buy</option>
-            </Select>
+              onChange={(val) => setInterestFilter(val)}
+              options={[
+                { value: "", label: "Rent / Buy" },
+                { value: "rent", label: "Rent" },
+                { value: "buy", label: "Buy" },
+              ]}
+            />
           </div>
           <div className="space-y-2">
             <Label>Location keyword</Label>
@@ -166,17 +164,14 @@ export default function LeadsPage() {
           {isAdmin && (
             <div className="space-y-2">
               <Label>Owner</Label>
-              <Select
+              <StaggeredDropDown
                 value={ownerFilter}
-                onChange={(e) => setOwnerFilter(e.target.value)}
-              >
-                <option value="">All owners</option>
-                {users?.map((u) => (
-                  <option key={u._id} value={u._id}>
-                    {u.name}
-                  </option>
-                ))}
-              </Select>
+                onChange={(val) => setOwnerFilter(val)}
+                options={[
+                  { value: "", label: "All owners" },
+                  ...(users?.map((u) => ({ value: u._id, label: u.name })) ?? []),
+                ]}
+              />
             </div>
           )}
         </div>
@@ -237,23 +232,18 @@ export default function LeadsPage() {
                   </p>
                 </TableCell>
                 <TableCell>
-                  <Select
+                  <StaggeredDropDown
                     value={lead.stageId}
-                    onChange={(e) =>
+                    onChange={(val) =>
                       handleStageChange(
                         lead._id,
-                        e.target.value as Id<"pipelineStages">
+                        val as Id<"pipelineStages">
                       )
                     }
                     aria-label={`Update stage for ${lead.fullName}`}
-                    className="h-9"
-                  >
-                    {stages?.map((stage) => (
-                      <option key={stage._id} value={stage._id}>
-                        {stage.name}
-                      </option>
-                    ))}
-                  </Select>
+                    portal
+                    options={stages?.map((stage) => ({ value: stage._id, label: stage.name })) ?? []}
+                  />
                 </TableCell>
                 <TableCell>{lead.ownerName}</TableCell>
                 <TableCell>{formatDate(lead.updatedAt)}</TableCell>

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
+import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 import { Textarea } from "@/components/ui/textarea";
 import { Modal } from "@/components/ui/modal";
 import { CurrencyInput } from "@/components/ui/currency-input";
@@ -580,13 +580,14 @@ export default function NewLeadPage() {
                 <Label className="flex items-center gap-1">
                   Interest type <span className="text-danger">*</span>
                 </Label>
-                <Select
+                <StaggeredDropDown
                   value={interestType}
-                  onChange={(e) => setInterestType(e.target.value as InterestType)}
-                >
-                  <option value="rent">Rent</option>
-                  <option value="buy">Buy</option>
-                </Select>
+                  onChange={(val) => setInterestType(val as InterestType)}
+                  options={[
+                    { value: "rent", label: "Rent" },
+                    { value: "buy", label: "Buy" },
+                  ]}
+                />
               </div>
 
               {/* Source */}
@@ -594,18 +595,19 @@ export default function NewLeadPage() {
                 <Label className="flex items-center gap-1">
                   Source <span className="text-danger">*</span>
                 </Label>
-                <Select
+                <StaggeredDropDown
                   value={source}
-                  onChange={(e) => setSource(e.target.value as Source)}
-                >
-                  <option value="walk_in">Walk-in</option>
-                  <option value="referral">Referral</option>
-                  <option value="facebook">Facebook</option>
-                  <option value="whatsapp">WhatsApp</option>
-                  <option value="website">Website</option>
-                  <option value="property_portal">Property portal</option>
-                  <option value="other">Other</option>
-                </Select>
+                  onChange={(val) => setSource(val as Source)}
+                  options={[
+                    { value: "walk_in", label: "Walk-in" },
+                    { value: "referral", label: "Referral" },
+                    { value: "facebook", label: "Facebook" },
+                    { value: "whatsapp", label: "WhatsApp" },
+                    { value: "website", label: "Website" },
+                    { value: "property_portal", label: "Property portal" },
+                    { value: "other", label: "Other" },
+                  ]}
+                />
               </div>
 
               {/* Budget Min */}
@@ -642,16 +644,11 @@ export default function NewLeadPage() {
                 <Label className="flex items-center gap-1">
                   Initial Stage <span className="text-danger">*</span>
                 </Label>
-                <Select
+                <StaggeredDropDown
                   value={selectedStage}
-                  onChange={(e) => setSelectedStage(e.target.value)}
-                >
-                  {stages?.map((stage) => (
-                    <option key={stage._id} value={stage._id}>
-                      {stage.name}
-                    </option>
-                  ))}
-                </Select>
+                  onChange={(val) => setSelectedStage(val)}
+                  options={stages?.map((stage) => ({ value: stage._id, label: stage.name })) ?? []}
+                />
                 {selectedStageData?.description && (
                   <p className="text-xs text-text-muted mt-1">
                     {selectedStageData.description}
@@ -663,17 +660,14 @@ export default function NewLeadPage() {
               {isAdmin && (
                 <div className="space-y-2">
                   <Label>Assign to</Label>
-                  <Select
+                  <StaggeredDropDown
                     value={selectedOwner}
-                    onChange={(e) => setSelectedOwner(e.target.value)}
-                  >
-                    <option value="">Myself</option>
-                    {users?.map((u) => (
-                      <option key={u._id} value={u._id}>
-                        {u.name}
-                      </option>
-                    ))}
-                  </Select>
+                    onChange={(val) => setSelectedOwner(val)}
+                    options={[
+                      { value: "", label: "Myself" },
+                      ...(users?.map((u) => ({ value: u._id, label: u.name })) ?? []),
+                    ]}
+                  />
                 </div>
               )}
 
@@ -681,22 +675,20 @@ export default function NewLeadPage() {
               <div className="space-y-2 md:col-span-2">
                 <Label>Preferred Areas</Label>
                 <div className="flex gap-2">
-                  <Select
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        handleAddArea(e.target.value);
-                        e.target.value = "";
+                  <StaggeredDropDown
+                    value=""
+                    onChange={(val) => {
+                      if (val) {
+                        handleAddArea(val);
                       }
                     }}
                     className="flex-1"
-                  >
-                    <option value="">Select a location...</option>
-                    {locations?.map((loc) => (
-                      <option key={loc._id} value={loc.name}>
-                        {loc.name}
-                      </option>
-                    ))}
-                  </Select>
+                    placeholder="Select a location..."
+                    options={[
+                      { value: "", label: "Select a location..." },
+                      ...(locations?.map((loc) => ({ value: loc.name, label: loc.name })) ?? []),
+                    ]}
+                  />
                 </div>
                 <div className="flex gap-2 mt-2">
                   <Input
