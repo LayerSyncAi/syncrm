@@ -101,46 +101,68 @@ export function FlipCalendar({
   };
 
   return (
-    <div ref={containerRef} className="relative inline-flex flex-col items-center text-text">
-      {/* ── display card ── */}
-      <CalendarDisplay
-        index={index}
-        date={date}
-        visible={visible}
-        setVisible={setVisible}
-        placeholder={placeholder}
-        onClear={handleClear}
-        showTime={showTime}
-        hours={hours}
-        minutes={minutes}
-      />
+    <div ref={containerRef} className="relative text-text">
+      <div className="inline-flex items-start gap-3">
+        {/* ── left: display card + summary ── */}
+        <div className="flex flex-col items-start">
+          <CalendarDisplay
+            index={index}
+            date={date}
+            visible={visible}
+            setVisible={setVisible}
+            placeholder={placeholder}
+            onClear={handleClear}
+            showTime={showTime}
+            hours={hours}
+            minutes={minutes}
+          />
 
-      {/* ── picker dropdown ── */}
-      <AnimatePresence>
-        {visible && (
-          <motion.div
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.15 }}
-            className="absolute left-0 top-full z-50 mt-2 w-fit rounded-[10px] border border-border-strong bg-card-bg p-3 shadow-lg"
-          >
-            <DatePicker
-              selected={date ?? new Date()}
-              onDateSelected={handleSelectDate}
-            />
+          {/* ── selected date/time summary ── */}
+          {date && (
+            <div className="mt-2 w-52 rounded-[8px] border border-border-strong bg-surface-2 px-3 py-1.5 text-xs text-text-muted">
+              {showTime
+                ? format(
+                    new Date(
+                      date.getFullYear(),
+                      date.getMonth(),
+                      date.getDate(),
+                      hours,
+                      minutes
+                    ),
+                    "EEE, MMM do yyyy 'at' HH:mm"
+                  )
+                : format(date, "EEE, MMM do yyyy")}
+            </div>
+          )}
+        </div>
 
-            {showTime && (
-              <TimePicker
-                hours={hours}
-                minutes={minutes}
-                onHoursChange={handleHoursChange}
-                onMinutesChange={handleMinutesChange}
+        {/* ── right: picker panel ── */}
+        <AnimatePresence>
+          {visible && (
+            <motion.div
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -8 }}
+              transition={{ duration: 0.15 }}
+              className="w-fit rounded-[10px] border border-border-strong bg-card-bg p-3 shadow-lg"
+            >
+              <DatePicker
+                selected={date ?? new Date()}
+                onDateSelected={handleSelectDate}
               />
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+
+              {showTime && (
+                <TimePicker
+                  hours={hours}
+                  minutes={minutes}
+                  onHoursChange={handleHoursChange}
+                  onMinutesChange={handleMinutesChange}
+                />
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
