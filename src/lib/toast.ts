@@ -25,23 +25,23 @@ import { toast, ExternalToast } from "sonner";
 // Edit these to globally change the look of success/error/info toasts.
 
 export const successStyle: ExternalToast = {
-  // style: { background: "#f0fdf4", borderColor: "#86efac" },
+  style: { background: "#f0fdf4", borderColor: "#86efac", color: "#166534"},
 };
 
 export const errorStyle: ExternalToast = {
-  // style: { background: "#fef2f2", borderColor: "#fca5a5" },
+    style: { background: "#fef2f2", borderColor: "#fca5a5", color: "#991b1b" },
 };
 
 export const infoStyle: ExternalToast = {
-  // style: { background: "#eff6ff", borderColor: "#93c5fd" },
+  style: { background: "#ecfeff", borderColor: "#67e8f9", color: "#155e75" },
 };
 
 export const warningStyle: ExternalToast = {
-  // style: { background: "#fffbeb", borderColor: "#fcd34d" },
+    style: { background: "#fffbeb", borderColor: "#fbbf24", color: "#92400e" },
 };
 
 export const loadingStyle: ExternalToast = {
-  // style: { background: "#f8fafc", borderColor: "#cbd5e1" },
+  style: { background: "#eef2ff", borderColor: "#818cf8", color: "#3730a3" },
 };
 
 // ── Auth ──────────────────────────────────────────────────
