@@ -15,15 +15,7 @@ import { AlertTriangle, Save, RefreshCw, Star, Check, X } from "lucide-react";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { scoringToasts } from "@/lib/toast";
 
-const cardContainerVariants = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.06 } },
-};
-
-const cardItemVariants = {
-  hidden: { opacity: 0, y: 12 },
-  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
-};
+const cardItemTransition = { type: "spring" as const, stiffness: 300, damping: 24 };
 
 interface Criterion {
   key: string;
@@ -215,20 +207,17 @@ export default function LeadScoringPage() {
                   ))}
                 </div>
               ) : (
-                <motion.div
-                  variants={cardContainerVariants}
-                  initial="hidden"
-                  animate="show"
-                  className="space-y-3"
-                >
+                <div className="space-y-3">
                   {criteria.map((criterion, i) => (
                     <motion.div
                       key={criterion.key}
-                      variants={cardItemVariants}
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ ...cardItemTransition, delay: i * 0.06 }}
                       className={`rounded-[10px] border p-4 transition ${
                         criterion.enabled
                           ? "border-border-strong bg-card-bg"
-                          : "border-border bg-gray-50/50 opacity-60"
+                          : "border-border bg-surface-2/50 opacity-60"
                       }`}
                     >
                       <div className="flex items-center justify-between gap-4">
@@ -299,7 +288,7 @@ export default function LeadScoringPage() {
                           </div>
                           {/* Visual weight bar */}
                           <div className="w-24">
-                            <div className="h-2 rounded-full bg-gray-200">
+                            <div className="h-2 rounded-full bg-border">
                               <div
                                 className="h-2 rounded-full bg-primary-600 transition-all"
                                 style={{
@@ -312,7 +301,7 @@ export default function LeadScoringPage() {
                       </div>
                     </motion.div>
                   ))}
-                </motion.div>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -361,7 +350,7 @@ export default function LeadScoringPage() {
                     <p className="text-sm text-text-muted">
                       out of {maxPossibleScore}
                     </p>
-                    <div className="mx-auto mt-2 h-3 w-full max-w-[200px] rounded-full bg-gray-200">
+                    <div className="mx-auto mt-2 h-3 w-full max-w-[200px] rounded-full bg-border">
                       <div
                         className={`h-3 rounded-full transition-all ${
                           previewResult.totalScore / maxPossibleScore > 0.7
