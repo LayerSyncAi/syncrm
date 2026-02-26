@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useQuery, useMutation } from "convex/react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -109,6 +109,66 @@ const formatListingType = (type: ListingType): string => {
   return type === "rent" ? "Rent" : "Sale";
 };
 
+// #38 – Card Image Parallax
+function ParallaxImage({ src, alt, layoutId, onClick }: { src: string; alt: string; layoutId?: string; onClick?: () => void }) {
+  const wrapRef = React.useRef<HTMLDivElement>(null);
+  const imgRef = React.useRef<HTMLImageElement>(null);
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!wrapRef.current || !imgRef.current) return;
+    const rect = wrapRef.current.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width - 0.5) * -16;
+    const y = ((e.clientY - rect.top) / rect.height - 0.5) * -16;
+    imgRef.current.style.transform = `translate3d(${x}px, ${y}px, 0) scale(1.05)`;
+  };
+
+  const handleMouseLeave = () => {
+    if (imgRef.current) {
+      imgRef.current.style.transform = "translate3d(0,0,0) scale(1)";
+    }
+  };
+
+  return (
+    <div
+      ref={wrapRef}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      className="aspect-[4/3] w-full overflow-hidden rounded-[12px] border border-border-strong bg-surface-2 cursor-pointer"
+      onClick={onClick}
+    >
+      {layoutId ? (
+        <motion.img
+          layoutId={layoutId}
+          ref={imgRef as any}
+          src={src}
+          alt={alt}
+          className="h-full w-full object-cover transition-transform duration-300 ease-out will-change-transform"
+        />
+      ) : (
+        <img
+          ref={imgRef}
+          src={src}
+          alt={alt}
+          className="h-full w-full object-cover transition-transform duration-300 ease-out will-change-transform"
+        />
+      )}
+    </div>
+  );
+}
+
+// #40 – Comparison bottom-sheet item variants
+const sheetBackdropVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { duration: 0.2 } },
+  exit: { opacity: 0, transition: { duration: 0.15 } },
+};
+
+const sheetPanelVariants = {
+  hidden: { y: "100%" },
+  visible: { y: 0, transition: { type: "spring", stiffness: 300, damping: 30 } },
+  exit: { y: "100%", transition: { type: "spring", stiffness: 300, damping: 30 } },
+};
+
 export default function PropertiesPage() {
   const currentUser = useQuery(api.users.getMeRequired);
 
@@ -165,6 +225,32 @@ export default function PropertiesPage() {
   const [isSaving, setIsSaving] = React.useState(false);
   const [deleteTarget, setDeleteTarget] = React.useState<Property | null>(null);
   const [formError, setFormError] = React.useState("");
+
+  // #40 – Comparison state
+  const [compareIds, setCompareIds] = React.useState<string[]>([]);
+  const [showCompare, setShowCompare] = React.useState(false);
+
+  const toggleCompare = (id: string) => {
+    setCompareIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : prev.length < 4 ? [...prev, id] : prev
+    );
+  };
+
+  const compareProperties = React.useMemo(
+    () => (properties ?? []).filter((p: Property) => compareIds.includes(p._id)),
+    [properties, compareIds]
+  );
+
+  // #41 – Lightbox state
+  const [lightboxImage, setLightboxImage] = React.useState<{ url: string; id: string } | null>(null);
+
+  React.useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightboxImage(null);
+    };
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, []);
 
   // Form state with validation
   const [title, setTitle] = React.useState<FieldState>(createEmptyFieldState());
@@ -607,27 +693,45 @@ export default function PropertiesPage() {
             key="card-data"
             className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
           >
-            {properties.map((property: Property) => (
+            {properties.map((property: Property) => {
+              const isCompared = compareIds.includes(property._id);
+              return (
               <motion.div
                 key={property._id}
                 variants={gridItemVariants}
                 whileHover={{ y: -4, boxShadow: "0 12px 28px rgba(0,0,0,0.12)" }}
                 transition={{ type: "spring", stiffness: 400, damping: 25 }}
               >
-              <Card className="flex h-full flex-col">
-                <div className="aspect-[4/3] w-full overflow-hidden rounded-[12px] border border-border-strong bg-muted">
-                  {property.images && property.images.length > 0 ? (
-                    <img
-                      src={property.images[0]}
-                      alt={`${property.title} cover`}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="h-full w-full flex items-center justify-center text-text-muted">
-                      No image
-                    </div>
-                  )}
-                </div>
+              <Card className="flex h-full flex-col relative">
+                {/* #40 – Compare checkbox */}
+                <button
+                  type="button"
+                  onClick={() => toggleCompare(property._id)}
+                  className={`absolute top-3 right-3 z-10 flex h-7 w-7 items-center justify-center rounded-lg border-2 transition ${
+                    isCompared
+                      ? "border-primary bg-primary text-white"
+                      : "border-white/70 bg-white/60 text-transparent backdrop-blur-sm hover:border-primary/50"
+                  }`}
+                >
+                  <svg viewBox="0 0 16 16" fill="none" className="h-4 w-4">
+                    <path d="M3 8l3.5 3.5L13 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+
+                {/* #38 – Parallax image / #41 – Lightbox trigger */}
+                {property.images && property.images.length > 0 ? (
+                  <ParallaxImage
+                    src={property.images[0]}
+                    alt={`${property.title} cover`}
+                    layoutId={`prop-img-${property._id}`}
+                    onClick={() => setLightboxImage({ url: property.images[0], id: `prop-img-${property._id}` })}
+                  />
+                ) : (
+                  <div className="aspect-[4/3] w-full overflow-hidden rounded-[12px] border border-border-strong bg-surface-2 flex items-center justify-center text-text-muted">
+                    No image
+                  </div>
+                )}
+
                 <CardHeader className="space-y-3">
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -640,9 +744,15 @@ export default function PropertiesPage() {
                       {formatStatus(property.status)}
                     </span>
                   </div>
-                  <div className="text-sm font-medium">
-                    {formatPrice(property.price, property.currency)}
-                  </div>
+                  {/* #39 – Price Tag Pop + Shine */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: 6 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.15 }}
+                    className="text-sm font-medium"
+                  >
+                    <span className="price-shine">{formatPrice(property.price, property.currency)}</span>
+                  </motion.div>
                 </CardHeader>
                 <CardContent className="flex flex-1 flex-col gap-3">
                   <div className="grid gap-2 text-sm text-text-muted">
@@ -683,7 +793,8 @@ export default function PropertiesPage() {
                 </CardContent>
               </Card>
               </motion.div>
-            ))}
+              );
+            })}
           </motion.div>
       )}
 
@@ -888,6 +999,130 @@ export default function PropertiesPage() {
           </div>
         </div>
       </Modal>
+
+      {/* #40 – Comparison floating bar */}
+      <AnimatePresence>
+        {compareIds.length >= 2 && !showCompare && (
+          <motion.div
+            initial={{ y: 80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 80, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className="fixed bottom-6 left-1/2 z-40 -translate-x-1/2 flex items-center gap-3 rounded-full border border-border-strong bg-card-bg px-5 py-3 shadow-[0_12px_40px_rgba(0,0,0,0.15)]"
+          >
+            <span className="text-sm font-medium text-text">{compareIds.length} selected</span>
+            <Button className="h-8 rounded-full px-4" onClick={() => setShowCompare(true)}>
+              Compare
+            </Button>
+            <Button variant="ghost" className="h-8 rounded-full px-3 text-text-muted" onClick={() => setCompareIds([])}>
+              Clear
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* #40 – Comparison bottom sheet */}
+      <AnimatePresence>
+        {showCompare && (
+          <>
+            <motion.div
+              key="compare-backdrop"
+              variants={sheetBackdropVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              onClick={() => setShowCompare(false)}
+              className="fixed inset-0 z-50 bg-black/40"
+            />
+            <motion.div
+              key="compare-sheet"
+              variants={sheetPanelVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="fixed bottom-0 left-0 right-0 z-50 max-h-[70vh] overflow-y-auto rounded-t-2xl border-t border-border-strong bg-card-bg p-6 shadow-[0_-12px_40px_rgba(0,0,0,0.12)]"
+            >
+              <div className="mx-auto max-w-5xl">
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-text">Property Comparison</h3>
+                  <Button variant="ghost" className="h-8 px-3 text-text-muted" onClick={() => setShowCompare(false)}>
+                    Close
+                  </Button>
+                </div>
+                <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${compareProperties.length}, minmax(0, 1fr))` }}>
+                  {compareProperties.map((prop: Property, idx: number) => (
+                    <motion.div
+                      key={prop._id}
+                      initial={{ opacity: 0, x: idx % 2 === 0 ? -40 : 40 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 24, delay: idx * 0.1 }}
+                      className="rounded-xl border border-border-strong bg-surface-2/40 p-4 space-y-3"
+                    >
+                      {prop.images?.[0] && (
+                        <img src={prop.images[0]} alt={prop.title} className="w-full aspect-[4/3] rounded-lg object-cover" />
+                      )}
+                      <h4 className="text-sm font-semibold text-text">{prop.title}</h4>
+                      <div className="space-y-1 text-xs text-text-muted">
+                        <div className="flex justify-between"><span>Price</span><span className="font-medium text-text">{formatPrice(prop.price, prop.currency)}</span></div>
+                        <div className="flex justify-between"><span>Location</span><span className="text-text">{prop.location}</span></div>
+                        <div className="flex justify-between"><span>Area</span><span className="text-text">{prop.area} m²</span></div>
+                        <div className="flex justify-between"><span>Type</span><span className="text-text">{formatType(prop.type)}</span></div>
+                        <div className="flex justify-between"><span>Listing</span><span className="text-text">{formatListingType(prop.listingType)}</span></div>
+                        {prop.bedrooms != null && <div className="flex justify-between"><span>Beds</span><span className="text-text">{prop.bedrooms}</span></div>}
+                        {prop.bathrooms != null && <div className="flex justify-between"><span>Baths</span><span className="text-text">{prop.bathrooms}</span></div>}
+                        <div className="flex justify-between"><span>Status</span><span className="text-text">{formatStatus(prop.status)}</span></div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        className="h-7 w-full text-xs text-danger"
+                        onClick={() => {
+                          const next = compareIds.filter((x) => x !== prop._id);
+                          setCompareIds(next);
+                          if (next.length < 2) setShowCompare(false);
+                        }}
+                      >
+                        Remove
+                      </Button>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* #41 – Image Gallery Lightbox */}
+      <AnimatePresence>
+        {lightboxImage && (
+          <motion.div
+            key="lightbox"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-8"
+            onClick={() => setLightboxImage(null)}
+          >
+            <button
+              type="button"
+              className="absolute top-4 right-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-sm transition hover:bg-white/20"
+              onClick={() => setLightboxImage(null)}
+            >
+              <svg viewBox="0 0 16 16" fill="none" className="h-5 w-5">
+                <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </button>
+            <motion.img
+              layoutId={lightboxImage.id}
+              src={lightboxImage.url}
+              alt="Property"
+              className="max-h-full max-w-full rounded-xl object-contain shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Delete Confirmation */}
       <ConfirmDeleteDialog

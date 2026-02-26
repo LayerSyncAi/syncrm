@@ -91,6 +91,27 @@ a {
   100% { transform: translateX(100%); }
 }
 
+@keyframes price-shine {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.price-shine {
+  background: linear-gradient(
+    90deg,
+    var(--text) 0%,
+    var(--text) 35%,
+    var(--primary) 50%,
+    var(--text) 65%,
+    var(--text) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: price-shine 3s ease-in-out 0.6s 1;
+}
+
 .shimmer-overlay {
   position: absolute;
   inset: 0;
