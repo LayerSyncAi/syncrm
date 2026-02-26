@@ -1,11 +1,33 @@
 "use client";
 
 import { useQuery } from "convex/react";
+import { motion } from "framer-motion";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
+
+// #40-43: Comparison table animation variants
+const tableContainerVariants = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.04, delayChildren: 0.1 } },
+};
+
+const columnVariants = {
+  hidden: { opacity: 0, y: -12 },
+  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+};
+
+const rowVariants = {
+  hidden: { opacity: 0, x: -8 },
+  show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+};
+
+const pricePerSqmVariants = {
+  hidden: { opacity: 0, y: 12 },
+  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24, delay: 0.3 } },
+};
 
 interface PropertyComparisonProps {
   open: boolean;
@@ -160,16 +182,24 @@ export function PropertyComparison({
       ) : properties.length === 0 ? (
         <p className="text-text-muted text-center py-8">No properties to compare.</p>
       ) : (
-        <div className="overflow-x-auto">
+        // #40: Table entrance with column stagger
+        <motion.div
+          className="overflow-x-auto"
+          variants={tableContainerVariants}
+          initial="hidden"
+          animate="show"
+        >
           <table className="w-full border-collapse">
             <thead>
-              <tr className="border-b border-border">
+              <motion.tr className="border-b border-border" variants={rowVariants}>
                 <th className="py-2 px-3 text-left text-xs font-semibold text-text-muted w-28 border-r border-border">
                   Feature
                 </th>
+                {/* #41: Column header stagger entrance */}
                 {properties.map((property) => (
-                  <th
+                  <motion.th
                     key={property._id}
+                    variants={columnVariants}
                     className="py-2 px-3 text-center text-xs font-semibold border-r border-border last:border-r-0 min-w-[150px]"
                   >
                     <div className="space-y-1">
@@ -184,11 +214,12 @@ export function PropertyComparison({
                         />
                       )}
                     </div>
-                  </th>
+                  </motion.th>
                 ))}
-              </tr>
+              </motion.tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            {/* #42: Row cascade entrance */}
+            <motion.tbody className="divide-y divide-border" variants={tableContainerVariants} initial="hidden" animate="show">
               {/* Match Score Row (if lead context available) */}
               {leadId && (
                 <tr className="bg-primary/10">
@@ -266,7 +297,7 @@ export function PropertyComparison({
               />
 
               {/* Description row */}
-              <tr>
+              <motion.tr variants={rowVariants}>
                 <td className="py-2 px-3 text-xs font-medium text-text-muted border-r border-border align-top">
                   Description
                 </td>
@@ -278,13 +309,18 @@ export function PropertyComparison({
                     <p className="line-clamp-4">{property.description || "-"}</p>
                   </td>
                 ))}
-              </tr>
-            </tbody>
+              </motion.tr>
+            </motion.tbody>
           </table>
 
-          {/* Price per sqm comparison */}
+          {/* #43: Price per sqm entrance */}
           {properties.some((p) => p.area && p.area > 0) && (
-            <div className="mt-4 p-3 bg-card-bg/50 rounded-lg border border-border">
+            <motion.div
+              variants={pricePerSqmVariants}
+              initial="hidden"
+              animate="show"
+              className="mt-4 p-3 bg-card-bg/50 rounded-lg border border-border"
+            >
               <p className="text-xs font-semibold text-text-muted mb-2">Price per sqm</p>
               <div className="flex flex-wrap gap-4">
                 {properties.map((property) => {
@@ -305,9 +341,9 @@ export function PropertyComparison({
                   );
                 })}
               </div>
-            </div>
+            </motion.div>
           )}
-        </div>
+        </motion.div>
       )}
     </Modal>
   );

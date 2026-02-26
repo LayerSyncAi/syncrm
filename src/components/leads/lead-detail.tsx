@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, lazy, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +30,44 @@ const PropertyComparison = lazy(() =>
 
 const tabs = ["Timeline", "Matched Properties", "Suggested", "Notes"] as const;
 
+// --- #18–25 animation variants ---
+
+const timelineContainerVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.06 } },
+};
+
+const timelineItemVariants = {
+  hidden: { opacity: 0, y: 12 },
+  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+};
+
+const matchCardContainerVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.05 } },
+};
+
+const matchCardItemVariants = {
+  hidden: { opacity: 0, x: -10 },
+  show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+};
+
+const tabContentVariants = {
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } },
+  exit: { opacity: 0, y: -8, transition: { duration: 0.15 } },
+};
+
+const drawerItemContainerVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.04 } },
+};
+
+const drawerItemVariants = {
+  hidden: { opacity: 0, x: 12 },
+  show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+};
+
 interface LeadDetailProps {
   leadId: Id<"leads">;
 }
@@ -49,6 +88,53 @@ const formatDateTime = (timestamp: number) => {
     minute: "2-digit",
   });
 };
+
+const formatPrice = (price: number, currency: string) =>
+  new Intl.NumberFormat("en-US", { style: "currency", currency, minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(price);
+
+const formatPropertyType = (type: string) => {
+  const m: Record<string, string> = { house: "House", apartment: "Apartment", land: "Land", commercial: "Commercial", other: "Other" };
+  return m[type] || type;
+};
+
+const formatPropertyStatus = (status: string) => {
+  const m: Record<string, string> = { available: "Available", under_offer: "Under Offer", let: "Let", sold: "Sold", off_market: "Off Market" };
+  return m[status] || status;
+};
+
+const isActivityOverdue = (a: { status: string; scheduledAt?: number }) =>
+  a.status === "todo" && !!a.scheduledAt && a.scheduledAt < Date.now();
+
+// Due date proximity ring
+function DueDateRing({ scheduledAt, createdAt }: { scheduledAt: number; createdAt: number }) {
+  const now = Date.now();
+  const total = scheduledAt - createdAt;
+  const elapsed = now - createdAt;
+  const progress = total > 0 ? Math.min(Math.max(elapsed / total, 0), 1) : 1;
+  const r = 9;
+  const c = 2 * Math.PI * r;
+  const offset = c * (1 - progress);
+  const color = progress >= 1 ? "var(--danger)" : progress >= 0.75 ? "var(--warning)" : "var(--info)";
+
+  return (
+    <svg width="22" height="22" viewBox="0 0 22 22" className="shrink-0">
+      <circle cx="11" cy="11" r={r} fill="none" stroke="var(--border)" strokeWidth="2" />
+      <circle cx="11" cy="11" r={r} fill="none" stroke={color} strokeWidth="2.5"
+        strokeDasharray={c} strokeDashoffset={offset} strokeLinecap="round"
+        transform="rotate(-90 11 11)" className="transition-all duration-700" />
+    </svg>
+  );
+}
+
+// Animated SVG checkmark for completion celebration
+function CelebrationCheck() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5 text-success">
+      <path d="M5 12l5 5L19 7" fill="none" stroke="currentColor" strokeWidth="2.5"
+        strokeLinecap="round" strokeLinejoin="round" className="check-draw-in" />
+    </svg>
+  );
+}
 
 export function LeadDetail({ leadId }: LeadDetailProps) {
   const router = useRouter();
@@ -83,13 +169,20 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
   const [comparisonOpen, setComparisonOpen] = useState(false);
   const [comparisonPropertyIds, setComparisonPropertyIds] = useState<Id<"properties">[]>([]);
 
+  // View property modal state
+  const [viewPropertyId, setViewPropertyId] = useState<string | null>(null);
+
+  // Timeline celebration state
+  const [celebratingIds, setCelebratingIds] = useState<Set<string>>(new Set());
+
   // Queries - conditionally skip properties query when drawer is closed
   const leadData = useQuery(api.leads.getById, { leadId });
   const stages = useQuery(api.stages.list);
   const activities = useQuery(api.activities.listForLead, { leadId });
   const matches = useQuery(api.matches.listForLead, { leadId });
-  // Only load all properties when the attach drawer is open (avoids loading entire property table)
-  const properties = useQuery(api.properties.list, drawerOpen ? {} : "skip");
+  // Load properties when attach drawer or property view modal is open
+  const properties = useQuery(api.properties.list, (drawerOpen || viewPropertyId) ? {} : "skip");
+  const viewProperty = viewPropertyId ? properties?.find((p) => p._id === viewPropertyId) : null;
 
   // Mutations
   const moveStage = useMutation(api.leads.moveStage);
@@ -175,6 +268,16 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
         completionNotes: completionNotes.trim(),
       });
       activityToasts.completed("Activity");
+      // Trigger celebration animation
+      const cid = completingActivityId;
+      setCelebratingIds((prev) => new Set([...prev, cid]));
+      setTimeout(() => {
+        setCelebratingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(cid);
+          return next;
+        });
+      }, 1600);
       handleCloseCompleteModal();
     } catch (error) {
       console.error("Failed to mark activity complete:", error);
@@ -296,6 +399,13 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
           { label: lead.fullName },
         ]}
       />
+      {/* #47: Hero card entrance + hover lift */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        whileHover={{ y: -2, boxShadow: "0 8px 30px rgba(0,0,0,0.08)" }}
+        transition={{ type: "spring", stiffness: 300, damping: 24 }}
+      >
       <Card className="p-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="space-y-2">
@@ -332,15 +442,19 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
               {lead.email && <span>Email: {lead.email}</span>}
               <span>Created: {formatDate(lead.createdAt)}</span>
             </div>
+            {/* #21: Area tags with stagger entrance */}
             {lead.preferredAreas.length > 0 && (
               <div className="flex flex-wrap gap-2">
-                {lead.preferredAreas.map((area: string) => (
-                  <span
+                {lead.preferredAreas.map((area: string, i: number) => (
+                  <motion.span
                     key={area}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 25, delay: 0.1 + i * 0.04 }}
                     className="inline-flex items-center rounded-full bg-border px-2 py-0.5 text-xs"
                   >
                     {area}
-                  </span>
+                  </motion.span>
                 ))}
               </div>
             )}
@@ -359,15 +473,20 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
               <span>Stage progress</span>
               <span>{stageProgress}%</span>
             </div>
-            <div className="mt-2 h-2 rounded-full bg-border">
-              <div
-                className={`h-2 rounded-full ${
+            {/* #20: Stage progress bar with spring fill + shimmer */}
+            <div className="mt-2 h-2 rounded-full bg-border overflow-hidden">
+              <motion.div
+                className={`h-2 rounded-full relative overflow-hidden ${
                   lead.closedAt && stage?.terminalOutcome === "lost"
                     ? "bg-danger"
                     : "bg-primary"
                 }`}
-                style={{ width: `${stageProgress}%` }}
-              />
+                initial={{ width: 0 }}
+                animate={{ width: `${stageProgress}%` }}
+                transition={{ type: "spring", stiffness: 80, damping: 20, delay: 0.3 }}
+              >
+                <div className="shimmer-overlay" />
+              </motion.div>
             </div>
           </div>
         </div>
@@ -388,6 +507,7 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
           )}
         </div>
       </Card>
+      </motion.div>
 
       {/* Duplicate Detection Warning */}
       <DuplicateWarning
@@ -396,26 +516,38 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
         excludeLeadId={leadId}
       />
 
+      {/* #18: Tab bar with sliding underline indicator */}
       <div className="border-b border-border">
-        <div className="flex gap-6">
+        <div className="flex gap-6 relative">
           {tabs.map((tab) => (
             <button
               key={tab}
-              className={`pb-3 text-sm font-medium transition duration-150 ${
+              className={`relative pb-3 text-sm font-medium transition-colors duration-150 ${
                 activeTab === tab
-                  ? "border-b-2 border-primary text-text"
-                  : "text-text-muted"
+                  ? "text-text"
+                  : "text-text-muted hover:text-text"
               }`}
               onClick={() => setActiveTab(tab)}
             >
               {tab}
+              {activeTab === tab && (
+                <motion.div
+                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
+                  layoutId="lead-tab-indicator"
+                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                />
+              )}
             </button>
           ))}
         </div>
       </div>
 
+      {/* #19: Tab content crossfade */}
+      <AnimatePresence mode="wait">
       {activeTab === "Timeline" && (
-        <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+        <motion.div key="timeline" variants={tabContentVariants} initial="initial" animate="animate" exit="exit" className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+          {/* #23: Activity form card entrance */}
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 24 }}>
           <Card className="p-5 space-y-4">
             <h3 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
               Log activity
@@ -461,6 +593,7 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
               </div>
             </div>
           </Card>
+          </motion.div>
           <Card className="p-5 space-y-4">
             <h3 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
               Timeline
@@ -472,11 +605,21 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
             ) : activities.length === 0 ? (
               <p className="text-text-muted text-sm py-4">No activities yet.</p>
             ) : (
-              <div className="space-y-4">
-                {activities.map((activity) => (
-                  <div
+              // #22: Timeline entry stagger cascade with hover lift
+              <motion.div variants={timelineContainerVariants} initial="hidden" animate="show" className="space-y-4">
+                {activities.map((activity) => {
+                  const overdue = isActivityOverdue(activity);
+                  const celebrating = celebratingIds.has(activity._id);
+                  return (
+                  <motion.div
                     key={activity._id}
-                    className="rounded-[10px] border border-border-strong bg-card-bg/40 p-4"
+                    variants={timelineItemVariants}
+                    layout
+                    whileHover={{ y: -2, boxShadow: "0 4px 16px rgba(0,0,0,0.08)" }}
+                    transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                    className={`rounded-[10px] border border-border-strong bg-card-bg/40 p-4 ${
+                      overdue ? "overdue-pulse" : ""
+                    } ${celebrating ? "celebration-glow" : ""}`}
                   >
                     <div className="flex items-center justify-between text-sm">
                       <span className="font-medium">{activity.title}</span>
@@ -484,15 +627,22 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
                         <Badge className="bg-info/10 text-info capitalize">
                           {activity.type}
                         </Badge>
-                        <Badge
-                          className={
-                            activity.status === "completed"
-                              ? "bg-success/10 text-success"
-                              : "bg-warning/10 text-warning"
-                          }
-                        >
-                          {activity.status === "completed" ? "Completed" : "To Do"}
-                        </Badge>
+                        {celebrating ? (
+                          <div className="flex items-center gap-1.5">
+                            <CelebrationCheck />
+                            <span className="text-xs font-medium text-success">Done!</span>
+                          </div>
+                        ) : (
+                          <Badge
+                            className={
+                              activity.status === "completed"
+                                ? "bg-success/10 text-success"
+                                : "bg-warning/10 text-warning"
+                            }
+                          >
+                            {activity.status === "completed" ? "Completed" : "To Do"}
+                          </Badge>
+                        )}
                       </div>
                     </div>
                     {activity.description && (
@@ -507,16 +657,20 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
                       </div>
                     )}
                     <div className="mt-3 flex items-center justify-between">
-                      <p className="text-xs text-text-muted">
-                        {activity.scheduledAt
-                          ? `Scheduled: ${formatDateTime(activity.scheduledAt)}`
-                          : `Created: ${formatDateTime(activity.createdAt)}`}
-                        {activity.completedAt && (
-                          <span className="ml-2">
-                            · Completed: {formatDateTime(activity.completedAt)}
-                          </span>
+                      <div className="flex items-center gap-2 text-xs text-text-muted">
+                        {/* Due date proximity ring */}
+                        {activity.status === "todo" && activity.scheduledAt && (
+                          <DueDateRing scheduledAt={activity.scheduledAt} createdAt={activity.createdAt} />
                         )}
-                      </p>
+                        <span className={overdue ? "overdue-breathe text-danger font-medium" : ""}>
+                          {activity.scheduledAt
+                            ? `Scheduled: ${formatDateTime(activity.scheduledAt)}`
+                            : `Created: ${formatDateTime(activity.createdAt)}`}
+                        </span>
+                        {activity.completedAt && (
+                          <span>· Completed: {formatDateTime(activity.completedAt)}</span>
+                        )}
+                      </div>
                       {activity.status !== "completed" && (
                         <Button
                           variant="secondary"
@@ -526,16 +680,17 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
                         </Button>
                       )}
                     </div>
-                  </div>
-                ))}
-              </div>
+                  </motion.div>
+                  );
+                })}
+              </motion.div>
             )}
           </Card>
-        </div>
+        </motion.div>
       )}
 
       {activeTab === "Matched Properties" && (
-        <div className="space-y-4">
+        <motion.div key="matched" variants={tabContentVariants} initial="initial" animate="animate" exit="exit" className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
               Matches
@@ -550,10 +705,14 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
             ) : matches.length === 0 ? (
               <p className="text-text-muted text-sm py-4">No properties matched yet.</p>
             ) : (
-              <div className="space-y-3">
+              // #24: Match card stagger + hover lift
+              <motion.div variants={matchCardContainerVariants} initial="hidden" animate="show" className="space-y-3">
                 {matches.map((match) => (
-                  <div
+                  <motion.div
                     key={match._id}
+                    variants={matchCardItemVariants}
+                    whileHover={{ x: 4, boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}
+                    transition={{ type: "spring", stiffness: 400, damping: 25 }}
                     className="flex items-center justify-between rounded-[10px] border border-border-strong p-3"
                   >
                     <div>
@@ -568,21 +727,29 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
                       </span>
                       <Button
                         variant="secondary"
+                        className="h-8 px-2 text-xs"
+                        onClick={() => setViewPropertyId(match.propertyId)}
+                      >
+                        View
+                      </Button>
+                      <Button
+                        variant="secondary"
                         className="h-8 px-2 text-xs text-danger hover:text-danger"
                         onClick={() => handleDetachProperty(match._id)}
                       >
                         Remove
                       </Button>
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
-              </div>
+              </motion.div>
             )}
           </Card>
-        </div>
+        </motion.div>
       )}
 
       {activeTab === "Suggested" && (
+        <motion.div key="suggested" variants={tabContentVariants} initial="initial" animate="animate" exit="exit">
         <Suspense
           fallback={
             <div className="flex items-center justify-center py-12">
@@ -595,9 +762,12 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
             onCompareSelect={handleOpenComparison}
           />
         </Suspense>
+        </motion.div>
       )}
 
+      {/* #25: Notes tab entrance */}
       {activeTab === "Notes" && (
+        <motion.div key="notes" variants={tabContentVariants} initial="initial" animate="animate" exit="exit">
         <Card className="p-5 space-y-3">
           <h3 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
             Lead notes
@@ -614,7 +784,9 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
             </Button>
           </div>
         </Card>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       <RightDrawer
         open={drawerOpen}
@@ -662,12 +834,14 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
               ]}
             />
           </div>
-          <div className="space-y-2 max-h-[360px] overflow-y-auto">
+          {/* #22b: Drawer property list stagger */}
+          <motion.div variants={drawerItemContainerVariants} initial="hidden" animate="show" className="space-y-2 max-h-[360px] overflow-y-auto">
             {filteredProperties?.filter((p) => !attachedPropertyIds.has(p._id)).map((property) => {
               const isSelected = selectedPropertyIds.has(property._id);
               return (
-                <label
+                <motion.label
                   key={property._id}
+                  variants={drawerItemVariants}
                   className={`flex items-center gap-3 rounded-[10px] border p-3 text-sm cursor-pointer transition-colors ${
                     isSelected
                       ? "border-primary/40 bg-primary/5"
@@ -686,13 +860,13 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
                       {property.listingType === "sale" ? "Sale" : "Rent"} &middot; {property.location}
                     </p>
                   </div>
-                </label>
+                </motion.label>
               );
             })}
             {filteredProperties?.filter((p) => !attachedPropertyIds.has(p._id)).length === 0 && (
               <p className="text-text-muted text-sm py-4">No properties available to attach.</p>
             )}
-          </div>
+          </motion.div>
         </div>
       </RightDrawer>
 
@@ -707,31 +881,37 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
           </div>
         }
       >
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
+        {/* #48: Contact modal field stagger entrance */}
+        <motion.div
+          className="grid gap-4 md:grid-cols-2"
+          initial="hidden"
+          animate="show"
+          variants={{ hidden: {}, show: { transition: { staggerChildren: 0.05 } } }}
+        >
+          <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } } }} className="space-y-2">
             <Label>Name</Label>
             <Input value={lead.fullName} readOnly />
-          </div>
-          <div className="space-y-2">
+          </motion.div>
+          <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } } }} className="space-y-2">
             <Label>Phone</Label>
             <Input value={lead.phone} readOnly />
-          </div>
-          <div className="space-y-2">
+          </motion.div>
+          <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } } }} className="space-y-2">
             <Label>Email</Label>
             <Input value={lead.email || "Not provided"} readOnly />
-          </div>
-          <div className="space-y-2">
+          </motion.div>
+          <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } } }} className="space-y-2">
             <Label>Owner</Label>
             <Input value={owner?.fullName || owner?.name || owner?.email || "Unassigned"} readOnly />
-          </div>
-          <div className="space-y-2">
+          </motion.div>
+          <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } } }} className="space-y-2">
             <Label>Interest</Label>
             <Input value={lead.interestType === "buy" ? "Buying" : "Renting"} readOnly />
-          </div>
-          <div className="space-y-2">
+          </motion.div>
+          <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } } }} className="space-y-2">
             <Label>Source</Label>
             <Input value={lead.source.replace("_", " ").replace(/^\w/, (c: string) => c.toUpperCase())} readOnly />
-          </div>
+          </motion.div>
           {lead.budgetMin !== undefined && (
             <div className="space-y-2">
               <Label>Budget Min</Label>
@@ -751,9 +931,10 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
               readOnly
             />
           </div>
-        </div>
+        </motion.div>
       </Modal>
 
+      {/* #49: Complete Activity modal entrance */}
       <Modal
         open={completingActivityId !== null}
         title="Complete Activity"
@@ -773,7 +954,12 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
           </div>
         }
       >
-        <div className="space-y-4">
+        <motion.div
+          className="space-y-4"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 24, delay: 0.1 }}
+        >
           <div className="space-y-2">
             <Label>
               Completion Notes <span className="text-danger">*</span>
@@ -788,7 +974,99 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
               These notes will be visible in the timeline and on the tasks page.
             </p>
           </div>
-        </div>
+        </motion.div>
+      </Modal>
+
+      {/* Read-only Property View Modal */}
+      <Modal
+        open={viewPropertyId !== null}
+        title={viewProperty ? `Property: ${viewProperty.title}` : "Loading property..."}
+        description="Read-only view of property details."
+        onClose={() => setViewPropertyId(null)}
+        footer={
+          <div className="flex justify-end">
+            <Button onClick={() => setViewPropertyId(null)}>Close</Button>
+          </div>
+        }
+      >
+        {viewProperty ? (
+          <motion.div
+            className="space-y-6"
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 24, delay: 0.05 }}
+          >
+            {/* Images */}
+            {viewProperty.images?.length > 0 && (
+              <div className="space-y-2">
+                <div className="aspect-[4/3] w-full overflow-hidden rounded-[12px] border border-border-strong">
+                  <img src={viewProperty.images[0]} alt={viewProperty.title} className="h-full w-full object-cover" />
+                </div>
+                {viewProperty.images.length > 1 && (
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {viewProperty.images.slice(1).map((img: string, i: number) => (
+                      <div key={i} className="h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-border-strong">
+                        <img src={img} alt={`${viewProperty.title} ${i + 2}`} className="h-full w-full object-cover" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2 md:col-span-2">
+                <Label>Title</Label>
+                <Input value={viewProperty.title} readOnly />
+              </div>
+              <div className="space-y-2">
+                <Label>Type</Label>
+                <Input value={formatPropertyType(viewProperty.type)} readOnly />
+              </div>
+              <div className="space-y-2">
+                <Label>Listing</Label>
+                <Input value={viewProperty.listingType === "sale" ? "Sale" : "Rent"} readOnly />
+              </div>
+              <div className="space-y-2">
+                <Label>Price</Label>
+                <Input value={formatPrice(viewProperty.price, viewProperty.currency)} readOnly />
+              </div>
+              <div className="space-y-2">
+                <Label>Location</Label>
+                <Input value={viewProperty.location} readOnly />
+              </div>
+              <div className="space-y-2">
+                <Label>Area (m²)</Label>
+                <Input value={viewProperty.area?.toString() || "-"} readOnly />
+              </div>
+              <div className="space-y-2">
+                <Label>Bedrooms</Label>
+                <Input value={viewProperty.bedrooms?.toString() || "-"} readOnly />
+              </div>
+              <div className="space-y-2">
+                <Label>Bathrooms</Label>
+                <Input value={viewProperty.bathrooms?.toString() || "-"} readOnly />
+              </div>
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Input value={formatPropertyStatus(viewProperty.status)} readOnly />
+              </div>
+            </div>
+
+            {viewProperty.description && (
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <div className="rounded-[10px] border border-border-strong bg-card-bg/40 p-3">
+                  <p className="text-sm whitespace-pre-wrap">{viewProperty.description}</p>
+                </div>
+              </div>
+            )}
+          </motion.div>
+        ) : (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+          </div>
+        )}
       </Modal>
 
       {comparisonOpen && (

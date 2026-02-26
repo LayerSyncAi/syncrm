@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useCallback, useMemo, lazy, Suspense } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef, lazy, Suspense } from "react";
 import Link from "next/link";
 import { useQuery, useMutation } from "convex/react";
+import { motion, AnimatePresence, useMotionValue, animate } from "framer-motion";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +12,51 @@ import { Card } from "@/components/ui/card";
 import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 import { Table, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { useRequireAuth } from "@/hooks/useAuth";
+
+function AnimatedCounter({ value }: { value: number }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const mv = useMotionValue(0);
+
+  useEffect(() => {
+    mv.set(0);
+    const controls = animate(mv, value, {
+      duration: 1,
+      ease: "easeOut",
+    });
+    return () => controls.stop();
+  }, [mv, value]);
+
+  useEffect(() => {
+    const unsubscribe = mv.on("change", (v) => {
+      if (ref.current) {
+        ref.current.textContent = Math.round(v).toString();
+      }
+    });
+    return unsubscribe;
+  }, [mv]);
+
+  return <span ref={ref}>{value}</span>;
+}
+
+const cardContainerVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.08 } },
+};
+
+const cardItemVariants = {
+  hidden: { opacity: 0, y: 16 },
+  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+};
+
+const listVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.04 } },
+};
+
+const rowVariants = {
+  hidden: { opacity: 0, x: -8 },
+  show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+};
 
 const TaskDetailModal = lazy(() =>
   import("@/components/tasks/task-detail-modal").then((m) => ({ default: m.TaskDetailModal }))
@@ -39,6 +85,57 @@ const activityTypeLabels: Record<string, string> = {
 
 const getActivityTypeLabel = (type: string) => activityTypeLabels[type] || type;
 
+const isTaskOverdue = (task: { status: string; scheduledAt?: number }) =>
+  task.status === "todo" && !!task.scheduledAt && task.scheduledAt < Date.now();
+
+// Due date proximity ring — fills as the deadline approaches
+function DueDateRing({ scheduledAt, createdAt }: { scheduledAt: number; createdAt: number }) {
+  const now = Date.now();
+  const total = scheduledAt - createdAt;
+  const elapsed = now - createdAt;
+  const progress = total > 0 ? Math.min(Math.max(elapsed / total, 0), 1) : 1;
+  const r = 9;
+  const circumference = 2 * Math.PI * r;
+  const offset = circumference * (1 - progress);
+  const color = progress >= 1 ? "var(--danger)" : progress >= 0.75 ? "var(--warning)" : "var(--info)";
+
+  return (
+    <svg width="22" height="22" viewBox="0 0 22 22" className="shrink-0">
+      <circle cx="11" cy="11" r={r} fill="none" stroke="var(--border)" strokeWidth="2" />
+      <circle
+        cx="11"
+        cy="11"
+        r={r}
+        fill="none"
+        stroke={color}
+        strokeWidth="2.5"
+        strokeDasharray={circumference}
+        strokeDashoffset={offset}
+        strokeLinecap="round"
+        transform="rotate(-90 11 11)"
+        className="transition-all duration-700"
+      />
+    </svg>
+  );
+}
+
+// Animated checkmark SVG for completion celebration
+function CelebrationCheck() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5 text-success">
+      <path
+        d="M5 12l5 5L19 7"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="check-draw-in"
+      />
+    </svg>
+  );
+}
+
 interface TaskActivity {
   _id: Id<"activities">;
   leadId: Id<"leads">;
@@ -63,6 +160,7 @@ export default function TasksPage() {
   const [typeFilter, setTypeFilter] = useState<ActivityType>("all");
   const [selectedTask, setSelectedTask] = useState<TaskActivity | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [celebratingIds, setCelebratingIds] = useState<Set<string>>(new Set());
 
   const tasks = useQuery(api.activities.listAllTasks, {
     status: statusFilter,
@@ -77,6 +175,17 @@ export default function TasksPage() {
   const handleCloseModal = useCallback(() => {
     setModalOpen(false);
     setSelectedTask(null);
+  }, []);
+
+  const handleTaskCompleted = useCallback((taskId: string) => {
+    setCelebratingIds((prev) => new Set([...prev, taskId]));
+    setTimeout(() => {
+      setCelebratingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(taskId);
+        return next;
+      });
+    }, 1600);
   }, []);
 
   if (authLoading) {
@@ -111,20 +220,31 @@ export default function TasksPage() {
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="p-4">
-          <p className="text-xs text-text-muted uppercase tracking-wide">To Do</p>
-          <p className="text-2xl font-semibold mt-1">{todoCount}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-text-muted uppercase tracking-wide">Completed</p>
-          <p className="text-2xl font-semibold mt-1">{completedCount}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-text-muted uppercase tracking-wide">Total</p>
-          <p className="text-2xl font-semibold mt-1">{tasks?.length ?? 0}</p>
-        </Card>
-      </div>
+      <motion.div
+        variants={cardContainerVariants}
+        initial="hidden"
+        animate="show"
+        className="grid gap-4 md:grid-cols-3"
+      >
+        <motion.div variants={cardItemVariants} whileHover={{ scale: 1.02, boxShadow: "0 8px 25px rgba(0,0,0,0.1)" }}>
+          <Card className="p-4">
+            <p className="text-xs text-text-muted uppercase tracking-wide">To Do</p>
+            <p className="text-2xl font-semibold mt-1"><AnimatedCounter value={todoCount} /></p>
+          </Card>
+        </motion.div>
+        <motion.div variants={cardItemVariants} whileHover={{ scale: 1.02, boxShadow: "0 8px 25px rgba(0,0,0,0.1)" }}>
+          <Card className="p-4">
+            <p className="text-xs text-text-muted uppercase tracking-wide">Completed</p>
+            <p className="text-2xl font-semibold mt-1"><AnimatedCounter value={completedCount} /></p>
+          </Card>
+        </motion.div>
+        <motion.div variants={cardItemVariants} whileHover={{ scale: 1.02, boxShadow: "0 8px 25px rgba(0,0,0,0.1)" }}>
+          <Card className="p-4">
+            <p className="text-xs text-text-muted uppercase tracking-wide">Total</p>
+            <p className="text-2xl font-semibold mt-1"><AnimatedCounter value={tasks?.length ?? 0} /></p>
+          </Card>
+        </motion.div>
+      </motion.div>
 
       <Card className="p-4">
         <div className="flex flex-wrap gap-4 items-center">
@@ -181,13 +301,31 @@ export default function TasksPage() {
               <TableHead>Actions</TableHead>
             </tr>
           </thead>
-          <tbody>
-            {tasks.map((task) => (
-              <TableRow key={task._id}>
+          <motion.tbody variants={listVariants} initial="hidden" animate="show">
+            {tasks.map((task) => {
+              const overdue = isTaskOverdue(task);
+              const celebrating = celebratingIds.has(task._id);
+              return (
+              <motion.tr
+                key={task._id}
+                variants={rowVariants}
+                layout
+                className={`h-11 border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)] ${
+                  overdue ? "overdue-pulse" : ""
+                } ${celebrating ? "celebration-glow" : ""}`}
+              >
                 <TableCell className="whitespace-nowrap">
-                  {task.scheduledAt
-                    ? formatDateTime(task.scheduledAt)
-                    : formatDateTime(task.createdAt)}
+                  <div className="flex items-center gap-2">
+                    {/* Due date proximity ring */}
+                    {task.status === "todo" && task.scheduledAt && (
+                      <DueDateRing scheduledAt={task.scheduledAt} createdAt={task.createdAt} />
+                    )}
+                    <span className={overdue ? "overdue-breathe text-danger font-medium" : ""}>
+                      {task.scheduledAt
+                        ? formatDateTime(task.scheduledAt)
+                        : formatDateTime(task.createdAt)}
+                    </span>
+                  </div>
                 </TableCell>
                 <TableCell>
                   <div>
@@ -215,15 +353,23 @@ export default function TasksPage() {
                   )}
                 </TableCell>
                 <TableCell>
-                  <Badge
-                    className={
-                      task.status === "completed"
-                        ? "bg-success/10 text-success"
-                        : "bg-warning/10 text-warning"
-                    }
-                  >
-                    {task.status === "completed" ? "Completed" : "To Do"}
-                  </Badge>
+                  {/* Celebration checkmark or normal status badge */}
+                  {celebrating ? (
+                    <div className="flex items-center gap-2">
+                      <CelebrationCheck />
+                      <span className="text-xs font-medium text-success">Done!</span>
+                    </div>
+                  ) : (
+                    <Badge
+                      className={
+                        task.status === "completed"
+                          ? "bg-success/10 text-success"
+                          : "bg-warning/10 text-warning"
+                      }
+                    >
+                      {task.status === "completed" ? "Completed" : "To Do"}
+                    </Badge>
+                  )}
                 </TableCell>
                 <TableCell>
                   <div className="flex gap-2">
@@ -243,21 +389,25 @@ export default function TasksPage() {
                     )}
                   </div>
                 </TableCell>
-              </TableRow>
-            ))}
-          </tbody>
+              </motion.tr>
+              );
+            })}
+          </motion.tbody>
         </Table>
       )}
 
-      {modalOpen && (
-        <Suspense fallback={null}>
-          <TaskDetailModal
-            open={modalOpen}
-            onClose={handleCloseModal}
-            task={selectedTask}
-          />
-        </Suspense>
-      )}
+      <AnimatePresence>
+        {modalOpen && (
+          <Suspense fallback={null}>
+            <TaskDetailModal
+              open={modalOpen}
+              onClose={handleCloseModal}
+              task={selectedTask}
+              onTaskCompleted={handleTaskCompleted}
+            />
+          </Suspense>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

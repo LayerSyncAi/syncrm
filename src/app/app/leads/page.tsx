@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
 import Link from "next/link";
 import { useQuery, useMutation } from "convex/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,16 @@ import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 import { Table, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { useRequireAuth } from "@/hooks/useAuth";
 import { leadToasts } from "@/lib/toast";
+
+const listVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.04 } },
+};
+
+const rowVariants = {
+  hidden: { opacity: 0, x: -8 },
+  show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+};
 
 const BulkMatching = lazy(() =>
   import("@/components/leads/bulk-matching").then((m) => ({ default: m.BulkMatching }))
@@ -103,7 +114,13 @@ export default function LeadsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      {/* #31: Header entrance */}
+      <motion.div
+        initial={{ opacity: 0, y: -12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 24 }}
+        className="flex flex-wrap items-center justify-between gap-4"
+      >
         <div>
           <h2 className="text-lg font-semibold">Leads</h2>
           <p className="text-sm text-text-muted">
@@ -135,9 +152,15 @@ export default function LeadsPage() {
             <span className="text-sm font-medium">New Lead</span>
           </Link>
         </div>
-      </div>
+      </motion.div>
 
-      <div className="rounded-[12px] border border-border-strong bg-card-bg p-4">
+      {/* #32: Filter panel entrance */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 24, delay: 0.06 }}
+        className="rounded-[12px] border border-border-strong bg-card-bg p-4"
+      >
         <div className="grid gap-3 md:grid-cols-4 xl:grid-cols-5">
           <div className="space-y-2">
             <Label>Stage</Label>
@@ -192,19 +215,25 @@ export default function LeadsPage() {
             </div>
           )}
         </div>
-      </div>
+      </motion.div>
 
       {leads === undefined ? (
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
       ) : leads.length === 0 ? (
-        <div className="text-center py-12">
+        // #33: Empty state spring entrance
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ type: "spring", stiffness: 300, damping: 24 }}
+          className="text-center py-12"
+        >
           <p className="text-text-muted">No leads found.</p>
           <Link href="/app/leads/new">
             <Button className="mt-4">Create your first lead</Button>
           </Link>
-        </div>
+        </motion.div>
       ) : (
         <Table>
           <thead>
@@ -218,9 +247,13 @@ export default function LeadsPage() {
               <TableHead>Actions</TableHead>
             </tr>
           </thead>
-          <tbody>
+          <motion.tbody variants={listVariants} initial="hidden" animate="show">
             {leads.map((lead) => (
-              <TableRow key={lead._id}>
+              <motion.tr
+                key={lead._id}
+                variants={rowVariants}
+                className="h-11 border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)]"
+              >
                 <TableCell>
                   <Link
                     href={`/app/leads/${lead._id}`}
@@ -271,9 +304,9 @@ export default function LeadsPage() {
                     </Button>
                   </Link>
                 </TableCell>
-              </TableRow>
+              </motion.tr>
             ))}
-          </tbody>
+          </motion.tbody>
         </Table>
       )}
 

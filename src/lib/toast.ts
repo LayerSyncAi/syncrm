@@ -1,104 +1,63 @@
-import { toast, ExternalToast } from "sonner";
+import { animatedToast } from "@/components/ui/animated-toaster";
 
 // ─────────────────────────────────────────────────────────
 // Centralized toast notification config for SynCRM
 //
-// HOW TO CUSTOMIZE:
+// Uses AnimatedToaster for custom entrance animations per type:
+//   - Success: slides in from right with SVG check draw
+//   - Error: drops from top with X shake
+//   - Info: fades in from center with i pulse
+//   - Warning: slides in from right
 //
-// 1. Change text: Edit the `message` or `description` for any toast below.
-//
-// 2. Change styling (e.g., red background for errors):
-//    Add a `style` property to the options object:
-//      style: { background: "#fee2e2", borderColor: "#fca5a5" }
-//
-// 3. Change duration: Add `duration: 5000` (in ms) to any toast options.
-//
-// 4. Change position per-toast: Add `position: "bottom-center"` etc.
-//
-// 5. Add custom class names: Add `className: "my-custom-class"` to options.
-//
-// Each section below groups toasts by feature area.
+// Each toast has a progress bar that pauses on hover.
 // ─────────────────────────────────────────────────────────
-
-// ── Shared option presets ─────────────────────────────────
-// Reuse these in any toast call to keep styling consistent.
-// Edit these to globally change the look of success/error/info toasts.
-
-export const successStyle: ExternalToast = {
-  style: { background: "#f0fdf4", borderColor: "#86efac", color: "#166534"},
-};
-
-export const errorStyle: ExternalToast = {
-    style: { background: "#fef2f2", borderColor: "#fca5a5", color: "#991b1b" },
-};
-
-export const infoStyle: ExternalToast = {
-  style: { background: "#ecfeff", borderColor: "#67e8f9", color: "#155e75" },
-};
-
-export const warningStyle: ExternalToast = {
-    style: { background: "#fffbeb", borderColor: "#fbbf24", color: "#92400e" },
-};
-
-export const loadingStyle: ExternalToast = {
-  style: { background: "#eef2ff", borderColor: "#818cf8", color: "#3730a3" },
-};
 
 // ── Auth ──────────────────────────────────────────────────
 
 export const authToasts = {
   loginFailed: (detail?: string) =>
-    toast.error("Sign in failed", {
+    animatedToast.error("Sign in failed", {
       description: detail || "Invalid email or password.",
-      ...errorStyle,
     }),
 
   signupFailed: (detail?: string) =>
-    toast.error("Account creation failed", {
+    animatedToast.error("Account creation failed", {
       description: detail || "Could not create account. Please try again.",
-      ...errorStyle,
     }),
 
   signupSuccess: () =>
-    toast.success("Account created", {
+    animatedToast.success("Account created", {
       description: "Welcome to SynCRM! Setting up your workspace...",
-      ...successStyle,
     }),
 
   passwordResetRequested: (email: string) =>
-    toast.success("Reset email sent", {
+    animatedToast.success("Reset email sent", {
       description: `If an account exists for ${email}, you'll receive instructions shortly.`,
-      ...successStyle,
     }),
 
   passwordResetFailed: (detail?: string) =>
-    toast.error("Reset request failed", {
+    animatedToast.error("Reset request failed", {
       description: detail || "Something went wrong. Please try again.",
-      ...errorStyle,
     }),
 
   passwordResetSuccess: () =>
-    toast.success("Password reset successful", {
+    animatedToast.success("Password reset successful", {
       description: "You can now sign in with your new password.",
-      ...successStyle,
     }),
 
   passwordResetError: (detail?: string) =>
-    toast.error("Password reset failed", {
+    animatedToast.error("Password reset failed", {
       description: detail || "Something went wrong. Please try again.",
-      ...errorStyle,
     }),
 
   forceChangeSuccess: () =>
-    toast.success("Password changed", {
+    animatedToast.success("Password changed", {
       description: "Your password has been updated. Redirecting...",
-      ...successStyle,
     }),
 
   forceChangeFailed: (detail?: string) =>
-    toast.error("Password change failed", {
+    animatedToast.error("Password change failed", {
       description: detail || "Something went wrong. Please try again.",
-      ...errorStyle,
     }),
 };
 
@@ -106,39 +65,33 @@ export const authToasts = {
 
 export const leadToasts = {
   created: (name?: string) =>
-    toast.success("Lead created", {
+    animatedToast.success("Lead created", {
       description: name ? `${name} has been added to the pipeline.` : "New lead added to the pipeline.",
-      ...successStyle,
     }),
 
   createFailed: (detail?: string) =>
-    toast.error("Failed to create lead", {
+    animatedToast.error("Failed to create lead", {
       description: detail || "Something went wrong. Please try again.",
-      ...errorStyle,
     }),
 
   stageMoved: (stageName: string) =>
-    toast.success("Stage updated", {
+    animatedToast.success("Stage updated", {
       description: `Lead moved to "${stageName}".`,
-      ...successStyle,
     }),
 
   stageMoveFailed: (detail?: string) =>
-    toast.error("Stage update failed", {
+    animatedToast.error("Stage update failed", {
       description: detail || "Could not move lead to new stage.",
-      ...errorStyle,
     }),
 
   notesSaved: () =>
-    toast.success("Notes saved", {
+    animatedToast.success("Notes saved", {
       description: "Lead notes have been updated.",
-      ...successStyle,
     }),
 
   notesSaveFailed: (detail?: string) =>
-    toast.error("Failed to save notes", {
+    animatedToast.error("Failed to save notes", {
       description: detail || "Something went wrong. Please try again.",
-      ...errorStyle,
     }),
 };
 
@@ -146,39 +99,33 @@ export const leadToasts = {
 
 export const activityToasts = {
   created: (title: string) =>
-    toast.success("Activity logged", {
+    animatedToast.success("Activity logged", {
       description: `"${title}" has been added to the timeline.`,
-      ...successStyle,
     }),
 
   createFailed: (detail?: string) =>
-    toast.error("Failed to log activity", {
+    animatedToast.error("Failed to log activity", {
       description: detail || "Something went wrong. Please try again.",
-      ...errorStyle,
     }),
 
   completed: (title: string) =>
-    toast.success("Activity completed", {
+    animatedToast.success("Activity completed", {
       description: `"${title}" has been marked as complete.`,
-      ...successStyle,
     }),
 
   completeFailed: (detail?: string) =>
-    toast.error("Failed to complete activity", {
+    animatedToast.error("Failed to complete activity", {
       description: detail || "Something went wrong. Please try again.",
-      ...errorStyle,
     }),
 
   reopened: (title: string) =>
-    toast.success("Task reopened", {
+    animatedToast.success("Task reopened", {
       description: `"${title}" has been moved back to To Do.`,
-      ...successStyle,
     }),
 
   reopenFailed: (detail?: string) =>
-    toast.error("Failed to reopen task", {
+    animatedToast.error("Failed to reopen task", {
       description: detail || "Something went wrong. Please try again.",
-      ...errorStyle,
     }),
 };
 
@@ -186,33 +133,28 @@ export const activityToasts = {
 
 export const contactToasts = {
   created: (name: string) =>
-    toast.success("Contact created", {
+    animatedToast.success("Contact created", {
       description: `${name} has been added to your contacts.`,
-      ...successStyle,
     }),
 
   updated: (name: string) =>
-    toast.success("Contact updated", {
+    animatedToast.success("Contact updated", {
       description: `${name}'s details have been saved.`,
-      ...successStyle,
     }),
 
   saveFailed: (detail?: string) =>
-    toast.error("Failed to save contact", {
+    animatedToast.error("Failed to save contact", {
       description: detail || "Something went wrong. Please try again.",
-      ...errorStyle,
     }),
 
   deleted: (name: string) =>
-    toast.success("Contact deleted", {
+    animatedToast.success("Contact deleted", {
       description: `${name} has been removed.`,
-      ...successStyle,
     }),
 
   deleteFailed: (detail?: string) =>
-    toast.error("Failed to delete contact", {
+    animatedToast.error("Failed to delete contact", {
       description: detail || "Something went wrong. Please try again.",
-      ...errorStyle,
     }),
 };
 
@@ -220,78 +162,66 @@ export const contactToasts = {
 
 export const propertyToasts = {
   created: (title: string) =>
-    toast.success("Property created", {
+    animatedToast.success("Property created", {
       description: `"${title}" has been added to the inventory.`,
-      ...successStyle,
     }),
 
   createFailed: (detail?: string) =>
-    toast.error("Failed to create property", {
+    animatedToast.error("Failed to create property", {
       description: detail || "Something went wrong. Please try again.",
-      ...errorStyle,
     }),
 
   updated: (title: string) =>
-    toast.success("Property updated", {
+    animatedToast.success("Property updated", {
       description: `"${title}" details have been saved.`,
-      ...successStyle,
     }),
 
   updateFailed: (detail?: string) =>
-    toast.error("Failed to update property", {
+    animatedToast.error("Failed to update property", {
       description: detail || "Something went wrong. Please try again.",
-      ...errorStyle,
     }),
 
   deleted: (title: string) =>
-    toast.success("Property deleted", {
+    animatedToast.success("Property deleted", {
       description: `"${title}" has been removed.`,
-      ...successStyle,
     }),
 
   deleteFailed: (detail?: string) =>
-    toast.error("Failed to delete property", {
+    animatedToast.error("Failed to delete property", {
       description: detail || "Something went wrong. Please try again.",
-      ...errorStyle,
     }),
 
   attached: (count: number) =>
-    toast.success(
+    animatedToast.success(
       count === 1 ? "Property attached" : `${count} properties attached`,
       {
         description: "The properties have been linked to this lead.",
-        ...successStyle,
       }
     ),
 
   attachFailed: (detail?: string) =>
-    toast.error("Failed to attach property", {
+    animatedToast.error("Failed to attach property", {
       description: detail || "Something went wrong. Please try again.",
-      ...errorStyle,
     }),
 
   detached: () =>
-    toast.success("Property removed", {
+    animatedToast.success("Property removed", {
       description: "The property has been unlinked from this lead.",
-      ...successStyle,
     }),
 
   detachFailed: (detail?: string) =>
-    toast.error("Failed to remove property", {
+    animatedToast.error("Failed to remove property", {
       description: detail || "Something went wrong. Please try again.",
-      ...errorStyle,
     }),
 
   suggested: () =>
-    toast.success("Property suggested", {
+    animatedToast.success("Property suggested", {
       description: "The property has been suggested for this lead.",
-      ...successStyle,
     }),
 
   suggestFailed: (detail?: string) =>
-    toast.error("Failed to suggest property", {
+    animatedToast.error("Failed to suggest property", {
       description: detail || "Something went wrong. Please try again.",
-      ...errorStyle,
     }),
 };
 
@@ -299,39 +229,33 @@ export const propertyToasts = {
 
 export const stageToasts = {
   created: (name: string) =>
-    toast.success("Stage created", {
+    animatedToast.success("Stage created", {
       description: `"${name}" has been added to the pipeline.`,
-      ...successStyle,
     }),
 
   updated: (name: string) =>
-    toast.success("Stage updated", {
+    animatedToast.success("Stage updated", {
       description: `"${name}" has been saved.`,
-      ...successStyle,
     }),
 
   saveFailed: (detail?: string) =>
-    toast.error("Failed to save stage", {
+    animatedToast.error("Failed to save stage", {
       description: detail || "Something went wrong. Please try again.",
-      ...errorStyle,
     }),
 
   deleted: (name: string) =>
-    toast.success("Stage deleted", {
+    animatedToast.success("Stage deleted", {
       description: `"${name}" has been removed from the pipeline.`,
-      ...successStyle,
     }),
 
   deleteFailed: (detail?: string) =>
-    toast.error("Failed to delete stage", {
+    animatedToast.error("Failed to delete stage", {
       description: detail || "Something went wrong. Please try again.",
-      ...errorStyle,
     }),
 
   reorderFailed: (detail?: string) =>
-    toast.error("Failed to reorder stages", {
+    animatedToast.error("Failed to reorder stages", {
       description: detail || "Something went wrong. Please try again.",
-      ...errorStyle,
     }),
 };
 
@@ -339,35 +263,30 @@ export const stageToasts = {
 
 export const scoringToasts = {
   configSaved: () =>
-    toast.success("Scoring config saved", {
+    animatedToast.success("Scoring config saved", {
       description: "Lead scoring criteria have been updated.",
-      ...successStyle,
     }),
 
   configSaveFailed: (detail?: string) =>
-    toast.error("Failed to save config", {
+    animatedToast.error("Failed to save config", {
       description: detail || "Something went wrong. Please try again.",
-      ...errorStyle,
     }),
 
   recomputeStarted: () =>
-    toast.info("Recomputing scores...", {
+    animatedToast.info("Recomputing scores...", {
       description: "All lead scores are being recalculated.",
-      ...infoStyle,
     }),
 
   recomputeComplete: (count?: number) =>
-    toast.success("Scores recomputed", {
+    animatedToast.success("Scores recomputed", {
       description: count
         ? `${count} lead scores have been updated.`
         : "All lead scores have been updated.",
-      ...successStyle,
     }),
 
   recomputeFailed: (detail?: string) =>
-    toast.error("Recompute failed", {
+    animatedToast.error("Recompute failed", {
       description: detail || "Something went wrong. Please try again.",
-      ...errorStyle,
     }),
 };
 
@@ -375,21 +294,18 @@ export const scoringToasts = {
 
 export const roleToasts = {
   promoted: (name: string) =>
-    toast.success("User promoted", {
+    animatedToast.success("User promoted", {
       description: `${name} has been promoted to Admin.`,
-      ...successStyle,
     }),
 
   demoted: (name: string) =>
-    toast.success("User demoted", {
+    animatedToast.success("User demoted", {
       description: `${name} has been changed to Agent.`,
-      ...successStyle,
     }),
 
   changeFailed: (detail?: string) =>
-    toast.error("Role change failed", {
+    animatedToast.error("Role change failed", {
       description: detail || "Something went wrong. Please try again.",
-      ...errorStyle,
     }),
 };
 
@@ -397,55 +313,47 @@ export const roleToasts = {
 
 export const importToasts = {
   started: (rowCount: number) =>
-    toast.info("Import started", {
+    animatedToast.info("Import started", {
       description: `Importing ${rowCount} rows...`,
-      ...loadingStyle,
     }),
 
   complete: (created: number, updated: number, skipped: number, failed: number) =>
-    toast.success("Import complete", {
+    animatedToast.success("Import complete", {
       description: `Created: ${created}, Updated: ${updated}, Skipped: ${skipped}, Failed: ${failed}`,
-      ...successStyle,
     }),
 
   failed: (detail?: string) =>
-    toast.error("Import failed", {
+    animatedToast.error("Import failed", {
       description: detail || "Something went wrong during import.",
-      ...errorStyle,
     }),
 };
 
 export const exportToasts = {
   started: (format: string) =>
-    toast.info(`Exporting ${format}...`, {
+    animatedToast.info(`Exporting ${format}...`, {
       description: "Your file is being generated.",
-      ...loadingStyle,
     }),
 
   complete: (format: string, count: number) =>
-    toast.success(`${format} exported`, {
+    animatedToast.success(`${format} exported`, {
       description: `${count} leads have been exported.`,
-      ...successStyle,
     }),
 
   failed: (detail?: string) =>
-    toast.error("Export failed", {
+    animatedToast.error("Export failed", {
       description: detail || "Something went wrong during export.",
-      ...errorStyle,
     }),
 };
 
 export const mergeToasts = {
   complete: () =>
-    toast.success("Leads merged", {
+    animatedToast.success("Leads merged", {
       description: "Leads have been merged successfully. Activities and properties moved to primary lead.",
-      ...successStyle,
     }),
 
   failed: (detail?: string) =>
-    toast.error("Merge failed", {
+    animatedToast.error("Merge failed", {
       description: detail || "Something went wrong during merge.",
-      ...errorStyle,
     }),
 };
 
@@ -453,15 +361,13 @@ export const mergeToasts = {
 
 export const bulkMatchToasts = {
   attached: (count: number) =>
-    toast.success(`${count} properties suggested`, {
+    animatedToast.success(`${count} properties suggested`, {
       description: "The matched properties have been linked to their leads.",
-      ...successStyle,
     }),
 
   attachFailed: (detail?: string) =>
-    toast.error("Bulk suggestion failed", {
+    animatedToast.error("Bulk suggestion failed", {
       description: detail || "Something went wrong. Please try again.",
-      ...errorStyle,
     }),
 };
 
@@ -469,14 +375,12 @@ export const bulkMatchToasts = {
 
 export const locationToasts = {
   created: (name: string) =>
-    toast.success("Location added", {
+    animatedToast.success("Location added", {
       description: `"${name}" is now available as a preferred area.`,
-      ...successStyle,
     }),
 
   createFailed: (detail?: string) =>
-    toast.error("Failed to add location", {
+    animatedToast.error("Failed to add location", {
       description: detail || "Something went wrong. Please try again.",
-      ...errorStyle,
     }),
 };

@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { useMutation, useQuery } from "convex/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../../../../convex/_generated/api";
 import { useRequireAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,23 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { parseCSV, generateCSV, downloadBlob } from "@/lib/csv";
 import { Upload, AlertTriangle, CheckCircle, XCircle, FileDown } from "lucide-react";
 import { importToasts } from "@/lib/toast";
+
+const resultCardVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.08 } },
+};
+
+const resultItemVariants = {
+  hidden: { opacity: 0, scale: 0.9 },
+  show: { opacity: 1, scale: 1, transition: { type: "spring", stiffness: 300, damping: 24 } },
+};
+
+// #35: Step transition variants
+const stepVariants = {
+  initial: { opacity: 0, x: 20 },
+  animate: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+  exit: { opacity: 0, x: -20, transition: { duration: 0.15 } },
+};
 
 const LEAD_FIELDS: Array<{ key: string; label: string; required?: boolean }> = [
   { key: "fullName", label: "Full Name", required: true },
@@ -252,8 +270,11 @@ export default function LeadImportPage() {
         </div>
       )}
 
+      {/* #35: Step transitions */}
+      <AnimatePresence mode="wait">
       {/* Step 1: Upload */}
       {step === "upload" && (
+        <motion.div key="upload" variants={stepVariants} initial="initial" animate="animate" exit="exit">
         <Card>
           <CardHeader>
             <h2 className="text-base font-semibold">Upload CSV File</h2>
@@ -295,10 +316,12 @@ export default function LeadImportPage() {
             </div>
           </CardContent>
         </Card>
+        </motion.div>
       )}
 
       {/* Step 2: Column Mapping */}
       {step === "mapping" && (
+        <motion.div key="mapping" variants={stepVariants} initial="initial" animate="animate" exit="exit">
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -366,10 +389,12 @@ export default function LeadImportPage() {
             </div>
           </CardContent>
         </Card>
+        </motion.div>
       )}
 
       {/* Step 3: Preview */}
       {step === "preview" && (
+        <motion.div key="preview" variants={stepVariants} initial="initial" animate="animate" exit="exit">
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -452,10 +477,12 @@ export default function LeadImportPage() {
             )}
           </CardContent>
         </Card>
+        </motion.div>
       )}
 
       {/* Step 4: Importing */}
       {step === "importing" && (
+        <motion.div key="importing" variants={stepVariants} initial="initial" animate="animate" exit="exit">
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-600 border-t-transparent" />
@@ -464,41 +491,48 @@ export default function LeadImportPage() {
             </p>
           </CardContent>
         </Card>
+        </motion.div>
       )}
 
       {/* Step 5: Results */}
       {step === "results" && importResults && (
+        <motion.div key="results" variants={stepVariants} initial="initial" animate="animate" exit="exit">
         <Card>
           <CardHeader>
             <h2 className="text-base font-semibold">Import Complete</h2>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              <div className="rounded-[10px] border border-green-200 bg-green-50 p-4 text-center">
+            <motion.div
+              variants={resultCardVariants}
+              initial="hidden"
+              animate="show"
+              className="grid grid-cols-2 gap-4 sm:grid-cols-4"
+            >
+              <motion.div variants={resultItemVariants} className="rounded-[10px] border border-green-200 bg-green-50 p-4 text-center">
                 <p className="text-2xl font-bold text-green-700">
                   {importResults.created}
                 </p>
                 <p className="text-xs text-green-600">Created</p>
-              </div>
-              <div className="rounded-[10px] border border-blue-200 bg-blue-50 p-4 text-center">
+              </motion.div>
+              <motion.div variants={resultItemVariants} className="rounded-[10px] border border-blue-200 bg-blue-50 p-4 text-center">
                 <p className="text-2xl font-bold text-blue-700">
                   {importResults.updated}
                 </p>
                 <p className="text-xs text-blue-600">Updated</p>
-              </div>
-              <div className="rounded-[10px] border border-amber-200 bg-amber-50 p-4 text-center">
+              </motion.div>
+              <motion.div variants={resultItemVariants} className="rounded-[10px] border border-amber-200 bg-amber-50 p-4 text-center">
                 <p className="text-2xl font-bold text-amber-700">
                   {importResults.skipped}
                 </p>
                 <p className="text-xs text-amber-600">Skipped</p>
-              </div>
-              <div className="rounded-[10px] border border-red-200 bg-red-50 p-4 text-center">
+              </motion.div>
+              <motion.div variants={resultItemVariants} className="rounded-[10px] border border-red-200 bg-red-50 p-4 text-center">
                 <p className="text-2xl font-bold text-red-700">
                   {importResults.failed}
                 </p>
                 <p className="text-xs text-red-600">Failed</p>
-              </div>
-            </div>
+              </motion.div>
+            </motion.div>
 
             {importResults.errors.length > 0 && (
               <div className="mt-6">
@@ -536,7 +570,9 @@ export default function LeadImportPage() {
             </div>
           </CardContent>
         </Card>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   );
 }

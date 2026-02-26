@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -455,15 +456,31 @@ export default function NewLeadPage() {
         </p>
       </div>
 
+      {/* #34: Form error slide-in */}
+      <AnimatePresence>
       {formError && (
+        <motion.div
+          initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+          animate={{ opacity: 1, height: "auto", marginBottom: 0 }}
+          exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 24 }}
+          className="overflow-hidden"
+        >
         <div className="rounded-lg bg-danger/10 p-4 text-danger text-sm">
           {formError}
         </div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       <form onSubmit={handleSubmit}>
         <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
           {/* Left column: Lead details */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 24 }}
+          >
           <Card className="p-5">
             <div className="grid gap-4 md:grid-cols-2">
               {/* Contact Selection */}
@@ -531,9 +548,17 @@ export default function NewLeadPage() {
                 </div>
               </div>
 
-              {/* Selected Contact Info */}
+              {/* #34b: Selected contact info slide-in */}
+              <AnimatePresence>
               {selectedContact && (
-                <div className="md:col-span-2 rounded-lg bg-gray-50 p-4 space-y-2">
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 24 }}
+                  className="md:col-span-2 overflow-hidden"
+                >
+                <div className="rounded-lg bg-gray-50 p-4 space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-text-muted">Selected Contact</span>
                     <Button
@@ -563,7 +588,9 @@ export default function NewLeadPage() {
                     </div>
                   </div>
                 </div>
+                </motion.div>
               )}
+              </AnimatePresence>
 
               {/* Duplicate Detection Warning */}
               {selectedContact && (
@@ -744,9 +771,15 @@ export default function NewLeadPage() {
               </div>
             </div>
           </Card>
+          </motion.div>
 
           {/* Right column: Property attachment */}
-          <div className="space-y-4">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 24, delay: 0.08 }}
+            className="space-y-4"
+          >
             <Card className="p-5">
               <div className="flex items-center justify-between mb-4">
                 <div>
@@ -894,7 +927,7 @@ export default function NewLeadPage() {
                     : "Save lead"}
               </Button>
             </div>
-          </div>
+          </motion.div>
         </div>
       </form>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Label } from "./label";
 
@@ -29,9 +30,19 @@ export function FormField({
         {label}
         {required && <span className="text-danger">*</span>}
       </Label>
-      {showError && (
-        <p className="text-xs text-danger">{error}</p>
-      )}
+      <AnimatePresence>
+        {showError && (
+          <motion.p
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.15 }}
+            className="text-xs text-danger overflow-hidden"
+          >
+            {error}
+          </motion.p>
+        )}
+      </AnimatePresence>
       {children}
     </div>
   );
