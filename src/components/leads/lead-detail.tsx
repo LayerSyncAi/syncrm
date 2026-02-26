@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, useCallback, lazy, Suspense } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -90,6 +89,53 @@ const formatDateTime = (timestamp: number) => {
   });
 };
 
+const formatPrice = (price: number, currency: string) =>
+  new Intl.NumberFormat("en-US", { style: "currency", currency, minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(price);
+
+const formatPropertyType = (type: string) => {
+  const m: Record<string, string> = { house: "House", apartment: "Apartment", land: "Land", commercial: "Commercial", other: "Other" };
+  return m[type] || type;
+};
+
+const formatPropertyStatus = (status: string) => {
+  const m: Record<string, string> = { available: "Available", under_offer: "Under Offer", let: "Let", sold: "Sold", off_market: "Off Market" };
+  return m[status] || status;
+};
+
+const isActivityOverdue = (a: { status: string; scheduledAt?: number }) =>
+  a.status === "todo" && !!a.scheduledAt && a.scheduledAt < Date.now();
+
+// Due date proximity ring
+function DueDateRing({ scheduledAt, createdAt }: { scheduledAt: number; createdAt: number }) {
+  const now = Date.now();
+  const total = scheduledAt - createdAt;
+  const elapsed = now - createdAt;
+  const progress = total > 0 ? Math.min(Math.max(elapsed / total, 0), 1) : 1;
+  const r = 9;
+  const c = 2 * Math.PI * r;
+  const offset = c * (1 - progress);
+  const color = progress >= 1 ? "var(--danger)" : progress >= 0.75 ? "var(--warning)" : "var(--info)";
+
+  return (
+    <svg width="22" height="22" viewBox="0 0 22 22" className="shrink-0">
+      <circle cx="11" cy="11" r={r} fill="none" stroke="var(--border)" strokeWidth="2" />
+      <circle cx="11" cy="11" r={r} fill="none" stroke={color} strokeWidth="2.5"
+        strokeDasharray={c} strokeDashoffset={offset} strokeLinecap="round"
+        transform="rotate(-90 11 11)" className="transition-all duration-700" />
+    </svg>
+  );
+}
+
+// Animated SVG checkmark for completion celebration
+function CelebrationCheck() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5 text-success">
+      <path d="M5 12l5 5L19 7" fill="none" stroke="currentColor" strokeWidth="2.5"
+        strokeLinecap="round" strokeLinejoin="round" className="check-draw-in" />
+    </svg>
+  );
+}
+
 export function LeadDetail({ leadId }: LeadDetailProps) {
   const router = useRouter();
   const { user, isLoading: authLoading } = useRequireAuth();
@@ -123,13 +169,20 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
   const [comparisonOpen, setComparisonOpen] = useState(false);
   const [comparisonPropertyIds, setComparisonPropertyIds] = useState<Id<"properties">[]>([]);
 
+  // View property modal state
+  const [viewPropertyId, setViewPropertyId] = useState<string | null>(null);
+
+  // Timeline celebration state
+  const [celebratingIds, setCelebratingIds] = useState<Set<string>>(new Set());
+
   // Queries - conditionally skip properties query when drawer is closed
   const leadData = useQuery(api.leads.getById, { leadId });
   const stages = useQuery(api.stages.list);
   const activities = useQuery(api.activities.listForLead, { leadId });
   const matches = useQuery(api.matches.listForLead, { leadId });
-  // Only load all properties when the attach drawer is open (avoids loading entire property table)
-  const properties = useQuery(api.properties.list, drawerOpen ? {} : "skip");
+  // Load properties when attach drawer or property view modal is open
+  const properties = useQuery(api.properties.list, (drawerOpen || viewPropertyId) ? {} : "skip");
+  const viewProperty = viewPropertyId ? properties?.find((p) => p._id === viewPropertyId) : null;
 
   // Mutations
   const moveStage = useMutation(api.leads.moveStage);
@@ -215,6 +268,16 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
         completionNotes: completionNotes.trim(),
       });
       activityToasts.completed("Activity");
+      // Trigger celebration animation
+      const cid = completingActivityId;
+      setCelebratingIds((prev) => new Set([...prev, cid]));
+      setTimeout(() => {
+        setCelebratingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(cid);
+          return next;
+        });
+      }, 1600);
       handleCloseCompleteModal();
     } catch (error) {
       console.error("Failed to mark activity complete:", error);
@@ -544,13 +607,19 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
             ) : (
               // #22: Timeline entry stagger cascade with hover lift
               <motion.div variants={timelineContainerVariants} initial="hidden" animate="show" className="space-y-4">
-                {activities.map((activity) => (
+                {activities.map((activity) => {
+                  const overdue = isActivityOverdue(activity);
+                  const celebrating = celebratingIds.has(activity._id);
+                  return (
                   <motion.div
                     key={activity._id}
                     variants={timelineItemVariants}
+                    layout
                     whileHover={{ y: -2, boxShadow: "0 4px 16px rgba(0,0,0,0.08)" }}
                     transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                    className="rounded-[10px] border border-border-strong bg-card-bg/40 p-4"
+                    className={`rounded-[10px] border border-border-strong bg-card-bg/40 p-4 ${
+                      overdue ? "overdue-pulse" : ""
+                    } ${celebrating ? "celebration-glow" : ""}`}
                   >
                     <div className="flex items-center justify-between text-sm">
                       <span className="font-medium">{activity.title}</span>
@@ -558,15 +627,22 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
                         <Badge className="bg-info/10 text-info capitalize">
                           {activity.type}
                         </Badge>
-                        <Badge
-                          className={
-                            activity.status === "completed"
-                              ? "bg-success/10 text-success"
-                              : "bg-warning/10 text-warning"
-                          }
-                        >
-                          {activity.status === "completed" ? "Completed" : "To Do"}
-                        </Badge>
+                        {celebrating ? (
+                          <div className="flex items-center gap-1.5">
+                            <CelebrationCheck />
+                            <span className="text-xs font-medium text-success">Done!</span>
+                          </div>
+                        ) : (
+                          <Badge
+                            className={
+                              activity.status === "completed"
+                                ? "bg-success/10 text-success"
+                                : "bg-warning/10 text-warning"
+                            }
+                          >
+                            {activity.status === "completed" ? "Completed" : "To Do"}
+                          </Badge>
+                        )}
                       </div>
                     </div>
                     {activity.description && (
@@ -581,16 +657,20 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
                       </div>
                     )}
                     <div className="mt-3 flex items-center justify-between">
-                      <p className="text-xs text-text-muted">
-                        {activity.scheduledAt
-                          ? `Scheduled: ${formatDateTime(activity.scheduledAt)}`
-                          : `Created: ${formatDateTime(activity.createdAt)}`}
-                        {activity.completedAt && (
-                          <span className="ml-2">
-                            · Completed: {formatDateTime(activity.completedAt)}
-                          </span>
+                      <div className="flex items-center gap-2 text-xs text-text-muted">
+                        {/* Due date proximity ring */}
+                        {activity.status === "todo" && activity.scheduledAt && (
+                          <DueDateRing scheduledAt={activity.scheduledAt} createdAt={activity.createdAt} />
                         )}
-                      </p>
+                        <span className={overdue ? "overdue-breathe text-danger font-medium" : ""}>
+                          {activity.scheduledAt
+                            ? `Scheduled: ${formatDateTime(activity.scheduledAt)}`
+                            : `Created: ${formatDateTime(activity.createdAt)}`}
+                        </span>
+                        {activity.completedAt && (
+                          <span>· Completed: {formatDateTime(activity.completedAt)}</span>
+                        )}
+                      </div>
                       {activity.status !== "completed" && (
                         <Button
                           variant="secondary"
@@ -601,7 +681,8 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
                       )}
                     </div>
                   </motion.div>
-                ))}
+                  );
+                })}
               </motion.div>
             )}
           </Card>
@@ -644,11 +725,13 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
                       <span className="text-xs text-text-muted">
                         {match.property?.listingType === "sale" ? "Sale" : "Rent"}
                       </span>
-                      <Link href="/app/properties">
-                        <Button variant="secondary" className="h-8 px-2 text-xs">
-                          View
-                        </Button>
-                      </Link>
+                      <Button
+                        variant="secondary"
+                        className="h-8 px-2 text-xs"
+                        onClick={() => setViewPropertyId(match.propertyId)}
+                      >
+                        View
+                      </Button>
                       <Button
                         variant="secondary"
                         className="h-8 px-2 text-xs text-danger hover:text-danger"
@@ -892,6 +975,98 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
             </p>
           </div>
         </motion.div>
+      </Modal>
+
+      {/* Read-only Property View Modal */}
+      <Modal
+        open={viewPropertyId !== null}
+        title={viewProperty ? `Property: ${viewProperty.title}` : "Loading property..."}
+        description="Read-only view of property details."
+        onClose={() => setViewPropertyId(null)}
+        footer={
+          <div className="flex justify-end">
+            <Button onClick={() => setViewPropertyId(null)}>Close</Button>
+          </div>
+        }
+      >
+        {viewProperty ? (
+          <motion.div
+            className="space-y-6"
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 24, delay: 0.05 }}
+          >
+            {/* Images */}
+            {viewProperty.images?.length > 0 && (
+              <div className="space-y-2">
+                <div className="aspect-[4/3] w-full overflow-hidden rounded-[12px] border border-border-strong">
+                  <img src={viewProperty.images[0]} alt={viewProperty.title} className="h-full w-full object-cover" />
+                </div>
+                {viewProperty.images.length > 1 && (
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {viewProperty.images.slice(1).map((img: string, i: number) => (
+                      <div key={i} className="h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-border-strong">
+                        <img src={img} alt={`${viewProperty.title} ${i + 2}`} className="h-full w-full object-cover" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2 md:col-span-2">
+                <Label>Title</Label>
+                <Input value={viewProperty.title} readOnly />
+              </div>
+              <div className="space-y-2">
+                <Label>Type</Label>
+                <Input value={formatPropertyType(viewProperty.type)} readOnly />
+              </div>
+              <div className="space-y-2">
+                <Label>Listing</Label>
+                <Input value={viewProperty.listingType === "sale" ? "Sale" : "Rent"} readOnly />
+              </div>
+              <div className="space-y-2">
+                <Label>Price</Label>
+                <Input value={formatPrice(viewProperty.price, viewProperty.currency)} readOnly />
+              </div>
+              <div className="space-y-2">
+                <Label>Location</Label>
+                <Input value={viewProperty.location} readOnly />
+              </div>
+              <div className="space-y-2">
+                <Label>Area (m²)</Label>
+                <Input value={viewProperty.area?.toString() || "-"} readOnly />
+              </div>
+              <div className="space-y-2">
+                <Label>Bedrooms</Label>
+                <Input value={viewProperty.bedrooms?.toString() || "-"} readOnly />
+              </div>
+              <div className="space-y-2">
+                <Label>Bathrooms</Label>
+                <Input value={viewProperty.bathrooms?.toString() || "-"} readOnly />
+              </div>
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Input value={formatPropertyStatus(viewProperty.status)} readOnly />
+              </div>
+            </div>
+
+            {viewProperty.description && (
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <div className="rounded-[10px] border border-border-strong bg-card-bg/40 p-3">
+                  <p className="text-sm whitespace-pre-wrap">{viewProperty.description}</p>
+                </div>
+              </div>
+            )}
+          </motion.div>
+        ) : (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+          </div>
+        )}
       </Modal>
 
       {comparisonOpen && (
