@@ -585,23 +585,22 @@ export default function PropertiesPage() {
             </motion.tbody>
           )}
         </Table>
+      ) : !properties ? (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="col-span-full text-center text-text-muted py-8">
+            Loading properties...
+          </div>
+        </div>
+      ) : properties.length === 0 ? (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="col-span-full text-center text-text-muted py-8">
+            {debouncedSearch || listingTypeFilter || statusFilter || typeFilter || debouncedLocation || priceMin
+              ? "No properties match your filters"
+              : "No properties yet. Create one to get started."}
+          </div>
+        </div>
       ) : (
-        {!properties ? (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <div className="col-span-full text-center text-text-muted py-8">
-              Loading properties...
-            </div>
-          </div>
-        ) : properties.length === 0 ? (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <div className="col-span-full text-center text-text-muted py-8">
-              {debouncedSearch || listingTypeFilter || statusFilter || typeFilter || debouncedLocation || priceMin
-                ? "No properties match your filters"
-                : "No properties yet. Create one to get started."}
-            </div>
-          </div>
-        ) : (
-          <motion.div
+        <motion.div
             variants={gridVariants}
             initial="hidden"
             animate="show"
@@ -686,7 +685,6 @@ export default function PropertiesPage() {
               </motion.div>
             ))}
           </motion.div>
-        )}
       )}
 
       {/* View/Edit Modal */}
