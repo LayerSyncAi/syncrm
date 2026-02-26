@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import { ChevronDown, Globe, LogOut, Search } from "lucide-react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useMutation } from "convex/react";
@@ -35,11 +36,21 @@ export function Topbar({ userName, userEmail, orgName, userTimezone }: TopbarPro
   const [open, setOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showTimezone, setShowTimezone] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
   const title = useMemo(() => {
     const match = Object.keys(titleMap).find((key) => pathname.startsWith(key));
     return match ? titleMap[match] : "SynCRM";
   }, [pathname]);
+
+  // Recommendation #4: Progressive scroll shadow + backdrop blur
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 8);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -72,7 +83,14 @@ export function Topbar({ userName, userEmail, orgName, userTimezone }: TopbarPro
     .slice(0, 2);
 
   return (
-    <header className="sticky top-0 z-30 flex h-[var(--topbar-height)] items-center justify-between border-b border-border bg-card-bg px-6">
+    <header
+      className={cn(
+        "sticky top-0 z-30 flex h-[var(--topbar-height)] items-center justify-between border-b px-6 transition-all duration-300",
+        scrolled
+          ? "border-border-strong/60 bg-card-bg/80 shadow-[0_1px_12px_rgba(0,0,0,0.08)] backdrop-blur-md"
+          : "border-border bg-card-bg"
+      )}
+    >
       <div className="flex items-center gap-4">
         <h1 className="text-lg font-semibold">{title}</h1>
         <span className="rounded-full border border-border-strong px-3 py-1 text-xs text-text-muted">
@@ -89,8 +107,21 @@ export function Topbar({ userName, userEmail, orgName, userTimezone }: TopbarPro
             className="flex items-center gap-2 rounded-[10px] border border-border-strong px-3 py-2 text-sm text-text"
             onClick={() => setOpen((prev) => !prev)}
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-600/30 text-xs font-medium text-primary-600">
+            {/* Recommendation #5: Avatar with breathing pulse ring */}
+            <div className="relative flex h-8 w-8 items-center justify-center rounded-full bg-primary-600/30 text-xs font-medium text-primary-600">
               {initials}
+              <motion.span
+                className="absolute inset-[-2px] rounded-full border-2 border-green-500/50"
+                animate={{
+                  scale: [1, 1.2, 1],
+                  opacity: [0.5, 0, 0.5],
+                }}
+                transition={{
+                  duration: 2.5,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+              />
             </div>
             <span className="hidden sm:inline">{userName}</span>
             <ChevronDown className="h-4 w-4 text-text-muted" />
