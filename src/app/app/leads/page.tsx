@@ -118,13 +118,11 @@ export default function LeadsPage() {
             href="/app/leads/new"
             className="group flex h-10 items-center gap-2 rounded-full bg-border pl-3 pr-4 transition-all duration-300 ease-in-out hover:bg-primary hover:pl-2 hover:text-white active:bg-primary-600"
           >
-            <span className="flex items-center justify-center rounded-full bg-primary p-1 text-white transition-colors duration-300 group-hover:bg-white">
+            <span className="flex items-center justify-center overflow-hidden rounded-full bg-primary p-1 text-white transition-all duration-300 group-hover:bg-white">
               <svg
-                width="16"
-                height="16"
                 viewBox="0 0 16 16"
                 fill="none"
-                className="-translate-x-[200%] text-[0px] transition-all duration-300 group-hover:translate-x-0 group-hover:text-[16px] group-hover:text-primary"
+                className="h-0 w-0 transition-all duration-300 group-hover:h-4 group-hover:w-4 group-hover:text-primary"
               >
                 <path
                   d="M8 3v10M3 8h10"

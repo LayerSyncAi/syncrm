@@ -62,7 +62,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </p>
           <div className="flex gap-3 mt-4">
             <Button
-              variant="outline"
+              variant="secondary"
               onClick={() => window.location.reload()}
             >
               Try Again

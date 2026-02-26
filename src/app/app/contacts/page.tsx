@@ -275,7 +275,26 @@ export default function ContactsPage() {
             Contacts are the people you engage, separate from property-specific leads.
           </p>
         </div>
-        <Button onClick={openCreateModal}>+ New Contact</Button>
+        <button
+          onClick={openCreateModal}
+          className="group flex h-10 items-center gap-2 rounded-full bg-border pl-3 pr-4 transition-all duration-300 ease-in-out hover:bg-primary hover:pl-2 hover:text-white active:bg-primary-600"
+        >
+          <span className="flex items-center justify-center overflow-hidden rounded-full bg-primary p-1 text-white transition-all duration-300 group-hover:bg-white">
+            <svg
+              viewBox="0 0 16 16"
+              fill="none"
+              className="h-0 w-0 transition-all duration-300 group-hover:h-4 group-hover:w-4 group-hover:text-primary"
+            >
+              <path
+                d="M8 3v10M3 8h10"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </svg>
+          </span>
+          <span className="text-sm font-medium">New Contact</span>
+        </button>
       </div>
 
       <div className="rounded-[12px] border border-border-strong bg-card-bg p-4">
