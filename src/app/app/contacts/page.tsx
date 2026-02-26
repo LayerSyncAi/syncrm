@@ -374,7 +374,7 @@ export default function ContactsPage() {
               <motion.tr
                 key={contact._id}
                 variants={rowVariants}
-                className="h-11 cursor-pointer border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)]"
+                className="group h-11 cursor-pointer border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)]"
               >
                 <TableCell>
                   <p className="font-medium">{contact.name}</p>
@@ -397,18 +397,50 @@ export default function ContactsPage() {
                   </div>
                 </TableCell>
                 <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
+                  <div className="flex justify-end gap-1.5">
+                    {/* Quick action fan-out buttons */}
+                    {contact.phone && (
+                      <a href={`tel:${contact.phone}`} onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          variant="secondary"
+                          className="h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
+                          style={{ transitionDelay: "0ms" }}
+                          title="Call"
+                        >
+                          <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                            <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+                          </svg>
+                        </Button>
+                      </a>
+                    )}
+                    {contact.email && (
+                      <a href={`mailto:${contact.email}`} onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          variant="secondary"
+                          className="h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
+                          style={{ transitionDelay: "50ms" }}
+                          title="Email"
+                        >
+                          <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                            <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                            <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                          </svg>
+                        </Button>
+                      </a>
+                    )}
                     <Button
                       variant="secondary"
-                      className="h-9 px-3"
+                      className="h-9 px-3 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
+                      style={{ transitionDelay: "100ms" }}
                       onClick={() => setSelectedContact(contact)}
                     >
-                      View
+                      Edit
                     </Button>
                     {(isAdmin || contact.ownerUserIds.includes(currentUser._id)) && (
                       <Button
                         variant="secondary"
-                        className="h-9 px-3 text-red-500 hover:text-red-600"
+                        className="h-9 px-3 text-red-500 hover:text-red-600 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
+                        style={{ transitionDelay: "150ms" }}
                         onClick={() => setDeleteTarget(contact)}
                       >
                         Delete

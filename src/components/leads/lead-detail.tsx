@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, lazy, Suspense } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -643,6 +644,11 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
                       <span className="text-xs text-text-muted">
                         {match.property?.listingType === "sale" ? "Sale" : "Rent"}
                       </span>
+                      <Link href="/app/properties">
+                        <Button variant="secondary" className="h-8 px-2 text-xs">
+                          View
+                        </Button>
+                      </Link>
                       <Button
                         variant="secondary"
                         className="h-8 px-2 text-xs text-danger hover:text-danger"

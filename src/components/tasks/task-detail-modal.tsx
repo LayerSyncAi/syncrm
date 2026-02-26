@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useMutation } from "convex/react";
+import { motion } from "framer-motion";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
@@ -35,9 +36,10 @@ interface TaskDetailModalProps {
   onClose: () => void;
   task: TaskActivity | null;
   onTaskUpdated?: () => void;
+  onTaskCompleted?: (taskId: string) => void;
 }
 
-export function TaskDetailModal({ open, onClose, task, onTaskUpdated }: TaskDetailModalProps) {
+export function TaskDetailModal({ open, onClose, task, onTaskUpdated, onTaskCompleted }: TaskDetailModalProps) {
   const [completionNotes, setCompletionNotes] = useState("");
   const [isCompleting, setIsCompleting] = useState(false);
   const [isReopening, setIsReopening] = useState(false);
@@ -67,6 +69,7 @@ export function TaskDetailModal({ open, onClose, task, onTaskUpdated }: TaskDeta
       activityToasts.completed(task.title);
       setCompletionNotes("");
       setShowCompleteForm(false);
+      onTaskCompleted?.(task._id);
       onTaskUpdated?.();
       onClose();
     } catch (error) {
@@ -153,7 +156,12 @@ export function TaskDetailModal({ open, onClose, task, onTaskUpdated }: TaskDeta
         </div>
       }
     >
-      <div className="space-y-6">
+      <motion.div
+        className="space-y-6"
+        initial={{ opacity: 0, scale: 0.92, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 24, delay: 0.05 }}
+      >
         <div className="flex items-center gap-3">
           <Badge
             className={
@@ -241,7 +249,7 @@ export function TaskDetailModal({ open, onClose, task, onTaskUpdated }: TaskDeta
             />
           </div>
         )}
-      </div>
+      </motion.div>
     </Modal>
   );
 }
