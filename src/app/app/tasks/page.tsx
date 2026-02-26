@@ -15,26 +15,27 @@ import { useRequireAuth } from "@/hooks/useAuth";
 
 function AnimatedCounter({ value }: { value: number }) {
   const ref = useRef<HTMLSpanElement>(null);
-  const motionValue = useMotionValue(0);
+  const mv = useMotionValue(0);
 
   useEffect(() => {
-    const controls = animate(motionValue, value, {
+    mv.set(0);
+    const controls = animate(mv, value, {
       duration: 1,
       ease: "easeOut",
     });
-    return controls.stop;
-  }, [motionValue, value]);
+    return () => controls.stop();
+  }, [mv, value]);
 
   useEffect(() => {
-    const unsubscribe = motionValue.on("change", (v) => {
+    const unsubscribe = mv.on("change", (v) => {
       if (ref.current) {
         ref.current.textContent = Math.round(v).toString();
       }
     });
     return unsubscribe;
-  }, [motionValue]);
+  }, [mv]);
 
-  return <span ref={ref}>0</span>;
+  return <span ref={ref}>{value}</span>;
 }
 
 const cardContainerVariants = {

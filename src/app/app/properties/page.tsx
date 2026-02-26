@@ -520,14 +520,16 @@ export default function PropertiesPage() {
               <TableHead className="text-right">Action</TableHead>
             </tr>
           </thead>
-          <motion.tbody variants={listVariants} initial="hidden" animate="show">
-            {!properties ? (
+          {!properties ? (
+            <tbody>
               <TableRow>
                 <TableCell colSpan={8} className="text-center text-text-muted">
                   Loading properties...
                 </TableCell>
               </TableRow>
-            ) : properties.length === 0 ? (
+            </tbody>
+          ) : properties.length === 0 ? (
+            <tbody>
               <TableRow>
                 <TableCell colSpan={8} className="text-center text-text-muted">
                   {debouncedSearch || listingTypeFilter || statusFilter || typeFilter || debouncedLocation || priceMin
@@ -535,8 +537,10 @@ export default function PropertiesPage() {
                     : "No properties yet. Create one to get started."}
                 </TableCell>
               </TableRow>
-            ) : (
-              properties.map((property: Property) => (
+            </tbody>
+          ) : (
+            <motion.tbody variants={listVariants} initial="hidden" animate="show" key="data">
+              {properties.map((property: Property) => (
                 <motion.tr
                   key={property._id}
                   variants={rowVariants}
@@ -577,29 +581,34 @@ export default function PropertiesPage() {
                     </div>
                   </TableCell>
                 </motion.tr>
-              ))
-            )}
-          </motion.tbody>
+              ))}
+            </motion.tbody>
+          )}
         </Table>
       ) : (
-        <motion.div
-          variants={gridVariants}
-          initial="hidden"
-          animate="show"
-          className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
-        >
-          {!properties ? (
+        {!properties ? (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <div className="col-span-full text-center text-text-muted py-8">
               Loading properties...
             </div>
-          ) : properties.length === 0 ? (
+          </div>
+        ) : properties.length === 0 ? (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <div className="col-span-full text-center text-text-muted py-8">
               {debouncedSearch || listingTypeFilter || statusFilter || typeFilter || debouncedLocation || priceMin
                 ? "No properties match your filters"
                 : "No properties yet. Create one to get started."}
             </div>
-          ) : (
-            properties.map((property: Property) => (
+          </div>
+        ) : (
+          <motion.div
+            variants={gridVariants}
+            initial="hidden"
+            animate="show"
+            key="card-data"
+            className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
+          >
+            {properties.map((property: Property) => (
               <motion.div
                 key={property._id}
                 variants={gridItemVariants}
@@ -675,9 +684,9 @@ export default function PropertiesPage() {
                 </CardContent>
               </Card>
               </motion.div>
-            ))
-          )}
-        </motion.div>
+            ))}
+          </motion.div>
+        )}
       )}
 
       {/* View/Edit Modal */}

@@ -12,26 +12,29 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 function AnimatedCounter({ value }: { value: number }) {
   const ref = useRef<HTMLSpanElement>(null);
-  const motionValue = useMotionValue(0);
+  const mv = useMotionValue(0);
 
   useEffect(() => {
-    const controls = animate(motionValue, value, {
-      duration: 1.2,
+    // Reset to 0 and animate to target
+    mv.set(0);
+    const controls = animate(mv, value, {
+      duration: 1,
       ease: "easeOut",
     });
-    return controls.stop;
-  }, [motionValue, value]);
+    return () => controls.stop();
+  }, [mv, value]);
 
   useEffect(() => {
-    const unsubscribe = motionValue.on("change", (v) => {
+    const unsubscribe = mv.on("change", (v) => {
       if (ref.current) {
         ref.current.textContent = Math.round(v).toString();
       }
     });
     return unsubscribe;
-  }, [motionValue]);
+  }, [mv]);
 
-  return <span ref={ref}>0</span>;
+  // Show actual value as fallback text in case animation doesn't fire
+  return <span ref={ref}>{value}</span>;
 }
 
 // --- Skeleton loaders (unchanged) ---
@@ -247,7 +250,9 @@ export default function DashboardPage() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
                       <span>{stage.name}</span>
-                      <span className="text-text-muted">{stage.count}</span>
+                      <span className="text-text-muted">
+                        <AnimatedCounter value={stage.count} />
+                      </span>
                     </div>
                     {/* #14: Progress bar with spring fill + shimmer */}
                     <div className="h-2 rounded-full bg-border overflow-hidden">

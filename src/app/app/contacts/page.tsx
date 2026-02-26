@@ -350,14 +350,16 @@ export default function ContactsPage() {
             <TableHead className="text-right">Action</TableHead>
           </tr>
         </thead>
-        <motion.tbody variants={listVariants} initial="hidden" animate="show">
-          {!contacts ? (
+        {!contacts ? (
+          <tbody>
             <TableRow>
               <TableCell colSpan={6} className="text-center text-text-muted">
                 Loading contacts...
               </TableCell>
             </TableRow>
-          ) : contacts.length === 0 ? (
+          </tbody>
+        ) : contacts.length === 0 ? (
+          <tbody>
             <TableRow>
               <TableCell colSpan={6} className="text-center text-text-muted">
                 {debouncedSearch || ownerFilter
@@ -365,8 +367,10 @@ export default function ContactsPage() {
                   : "No contacts yet. Create one to get started."}
               </TableCell>
             </TableRow>
-          ) : (
-            contacts.map((contact: ContactWithOwners) => (
+          </tbody>
+        ) : (
+          <motion.tbody variants={listVariants} initial="hidden" animate="show" key="data">
+            {contacts.map((contact: ContactWithOwners) => (
               <motion.tr
                 key={contact._id}
                 variants={rowVariants}
@@ -413,9 +417,9 @@ export default function ContactsPage() {
                   </div>
                 </TableCell>
               </motion.tr>
-            ))
-          )}
-        </motion.tbody>
+            ))}
+          </motion.tbody>
+        )}
       </Table>
 
       {/* Create/Edit Modal */}
