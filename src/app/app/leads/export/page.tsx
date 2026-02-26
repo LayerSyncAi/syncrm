@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useQuery } from "convex/react";
+import { motion } from "framer-motion";
 import { api } from "../../../../../convex/_generated/api";
 import { useRequireAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,16 @@ import { generateCSV, downloadBlob } from "@/lib/csv";
 import { Download, FileSpreadsheet } from "lucide-react";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { exportToasts } from "@/lib/toast";
+
+const sectionVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.08 } },
+};
+
+const sectionItemVariants = {
+  hidden: { opacity: 0, y: 16 },
+  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+};
 
 const ALL_FIELDS = [
   { key: "fullName", label: "Full Name" },
@@ -137,15 +148,21 @@ export default function LeadExportPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
+    <motion.div
+      variants={sectionVariants}
+      initial="hidden"
+      animate="show"
+      className="space-y-6"
+    >
+      <motion.div variants={sectionItemVariants}>
         <h1 className="text-xl font-semibold text-text">Lead Export</h1>
         <p className="mt-1 text-sm text-text-muted">
           Export leads to CSV or Excel
         </p>
-      </div>
+      </motion.div>
 
       {/* Filters */}
+      <motion.div variants={sectionItemVariants}>
       <Card>
         <CardHeader>
           <h2 className="text-base font-semibold">Filters</h2>
@@ -206,8 +223,10 @@ export default function LeadExportPage() {
           </div>
         </CardContent>
       </Card>
+      </motion.div>
 
       {/* Column Selector */}
+      <motion.div variants={sectionItemVariants}>
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -245,8 +264,10 @@ export default function LeadExportPage() {
           </div>
         </CardContent>
       </Card>
+      </motion.div>
 
       {/* Export Actions */}
+      <motion.div variants={sectionItemVariants}>
       <Card>
         <CardContent className="flex items-center justify-between py-5">
           <p className="text-sm text-text-muted">
@@ -275,6 +296,7 @@ export default function LeadExportPage() {
           </div>
         </CardContent>
       </Card>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useCallback, useMemo, lazy, Suspense } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef, lazy, Suspense } from "react";
 import Link from "next/link";
 import { useQuery, useMutation } from "convex/react";
+import { motion, useMotionValue, animate } from "framer-motion";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +12,50 @@ import { Card } from "@/components/ui/card";
 import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 import { Table, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { useRequireAuth } from "@/hooks/useAuth";
+
+function AnimatedCounter({ value }: { value: number }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const motionValue = useMotionValue(0);
+
+  useEffect(() => {
+    const controls = animate(motionValue, value, {
+      duration: 1,
+      ease: "easeOut",
+    });
+    return controls.stop;
+  }, [motionValue, value]);
+
+  useEffect(() => {
+    const unsubscribe = motionValue.on("change", (v) => {
+      if (ref.current) {
+        ref.current.textContent = Math.round(v).toString();
+      }
+    });
+    return unsubscribe;
+  }, [motionValue]);
+
+  return <span ref={ref}>0</span>;
+}
+
+const cardContainerVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.08 } },
+};
+
+const cardItemVariants = {
+  hidden: { opacity: 0, y: 16 },
+  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+};
+
+const listVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.04 } },
+};
+
+const rowVariants = {
+  hidden: { opacity: 0, x: -8 },
+  show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+};
 
 const TaskDetailModal = lazy(() =>
   import("@/components/tasks/task-detail-modal").then((m) => ({ default: m.TaskDetailModal }))
@@ -111,20 +156,31 @@ export default function TasksPage() {
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="p-4">
-          <p className="text-xs text-text-muted uppercase tracking-wide">To Do</p>
-          <p className="text-2xl font-semibold mt-1">{todoCount}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-text-muted uppercase tracking-wide">Completed</p>
-          <p className="text-2xl font-semibold mt-1">{completedCount}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-text-muted uppercase tracking-wide">Total</p>
-          <p className="text-2xl font-semibold mt-1">{tasks?.length ?? 0}</p>
-        </Card>
-      </div>
+      <motion.div
+        variants={cardContainerVariants}
+        initial="hidden"
+        animate="show"
+        className="grid gap-4 md:grid-cols-3"
+      >
+        <motion.div variants={cardItemVariants} whileHover={{ scale: 1.02, boxShadow: "0 8px 25px rgba(0,0,0,0.1)" }}>
+          <Card className="p-4">
+            <p className="text-xs text-text-muted uppercase tracking-wide">To Do</p>
+            <p className="text-2xl font-semibold mt-1"><AnimatedCounter value={todoCount} /></p>
+          </Card>
+        </motion.div>
+        <motion.div variants={cardItemVariants} whileHover={{ scale: 1.02, boxShadow: "0 8px 25px rgba(0,0,0,0.1)" }}>
+          <Card className="p-4">
+            <p className="text-xs text-text-muted uppercase tracking-wide">Completed</p>
+            <p className="text-2xl font-semibold mt-1"><AnimatedCounter value={completedCount} /></p>
+          </Card>
+        </motion.div>
+        <motion.div variants={cardItemVariants} whileHover={{ scale: 1.02, boxShadow: "0 8px 25px rgba(0,0,0,0.1)" }}>
+          <Card className="p-4">
+            <p className="text-xs text-text-muted uppercase tracking-wide">Total</p>
+            <p className="text-2xl font-semibold mt-1"><AnimatedCounter value={tasks?.length ?? 0} /></p>
+          </Card>
+        </motion.div>
+      </motion.div>
 
       <Card className="p-4">
         <div className="flex flex-wrap gap-4 items-center">
@@ -181,9 +237,13 @@ export default function TasksPage() {
               <TableHead>Actions</TableHead>
             </tr>
           </thead>
-          <tbody>
+          <motion.tbody variants={listVariants} initial="hidden" animate="show">
             {tasks.map((task) => (
-              <TableRow key={task._id}>
+              <motion.tr
+                key={task._id}
+                variants={rowVariants}
+                className="h-11 border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)]"
+              >
                 <TableCell className="whitespace-nowrap">
                   {task.scheduledAt
                     ? formatDateTime(task.scheduledAt)
@@ -243,9 +303,9 @@ export default function TasksPage() {
                     )}
                   </div>
                 </TableCell>
-              </TableRow>
+              </motion.tr>
             ))}
-          </tbody>
+          </motion.tbody>
         </Table>
       )}
 

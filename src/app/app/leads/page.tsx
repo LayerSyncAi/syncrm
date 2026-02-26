@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
 import Link from "next/link";
 import { useQuery, useMutation } from "convex/react";
+import { motion } from "framer-motion";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,16 @@ import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 import { Table, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { useRequireAuth } from "@/hooks/useAuth";
 import { leadToasts } from "@/lib/toast";
+
+const listVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.04 } },
+};
+
+const rowVariants = {
+  hidden: { opacity: 0, x: -8 },
+  show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+};
 
 const BulkMatching = lazy(() =>
   import("@/components/leads/bulk-matching").then((m) => ({ default: m.BulkMatching }))
@@ -218,9 +229,13 @@ export default function LeadsPage() {
               <TableHead>Actions</TableHead>
             </tr>
           </thead>
-          <tbody>
+          <motion.tbody variants={listVariants} initial="hidden" animate="show">
             {leads.map((lead) => (
-              <TableRow key={lead._id}>
+              <motion.tr
+                key={lead._id}
+                variants={rowVariants}
+                className="h-11 border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)]"
+              >
                 <TableCell>
                   <Link
                     href={`/app/leads/${lead._id}`}
@@ -271,9 +286,9 @@ export default function LeadsPage() {
                     </Button>
                   </Link>
                 </TableCell>
-              </TableRow>
+              </motion.tr>
             ))}
-          </tbody>
+          </motion.tbody>
         </Table>
       )}
 

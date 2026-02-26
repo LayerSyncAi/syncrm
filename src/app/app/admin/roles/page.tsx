@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
+import { motion } from "framer-motion";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,6 +20,16 @@ import {
 } from "@/components/ui/table";
 import { Loader2, Shield, ShieldAlert, ShieldCheck, AlertTriangle } from "lucide-react";
 import { roleToasts } from "@/lib/toast";
+
+const listVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.04 } },
+};
+
+const rowVariants = {
+  hidden: { opacity: 0, x: -8 },
+  show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+};
 
 export default function AdminRolesPage() {
   const router = useRouter();
@@ -132,13 +143,17 @@ export default function AdminRolesPage() {
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody>
+              <motion.tbody variants={listVariants} initial="hidden" animate="show">
                 {users.map((u) => {
                   const isCurrentUser = u._id === user._id;
                   const cannotDemote = isLastAdmin(u._id, u.role);
 
                   return (
-                    <TableRow key={u._id}>
+                    <motion.tr
+                      key={u._id}
+                      variants={rowVariants}
+                      className="h-11 border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)]"
+                    >
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-600/20 text-xs font-medium text-primary-600">
@@ -223,10 +238,10 @@ export default function AdminRolesPage() {
                           </Button>
                         )}
                       </TableCell>
-                    </TableRow>
+                    </motion.tr>
                   );
                 })}
-              </TableBody>
+              </motion.tbody>
             </Table>
           )}
         </CardContent>

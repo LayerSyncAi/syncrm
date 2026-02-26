@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, lazy, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
+import { motion } from "framer-motion";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
@@ -296,6 +297,11 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
           { label: lead.fullName },
         ]}
       />
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 24 }}
+      >
       <Card className="p-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="space-y-2">
@@ -388,6 +394,7 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
           )}
         </div>
       </Card>
+      </motion.div>
 
       {/* Duplicate Detection Warning */}
       <DuplicateWarning

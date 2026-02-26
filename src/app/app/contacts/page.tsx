@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useQuery, useMutation } from "convex/react";
+import { motion } from "framer-motion";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,16 @@ import { Table, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmDeleteDialog } from "@/components/common/confirm-delete-dialog";
 import { contactToasts } from "@/lib/toast";
+
+const listVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.04 } },
+};
+
+const rowVariants = {
+  hidden: { opacity: 0, x: -8 },
+  show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+};
 
 type ContactWithOwners = {
   _id: Id<"contacts">;
@@ -339,7 +350,7 @@ export default function ContactsPage() {
             <TableHead className="text-right">Action</TableHead>
           </tr>
         </thead>
-        <tbody>
+        <motion.tbody variants={listVariants} initial="hidden" animate="show">
           {!contacts ? (
             <TableRow>
               <TableCell colSpan={6} className="text-center text-text-muted">
@@ -356,7 +367,11 @@ export default function ContactsPage() {
             </TableRow>
           ) : (
             contacts.map((contact: ContactWithOwners) => (
-              <TableRow key={contact._id} className="cursor-pointer">
+              <motion.tr
+                key={contact._id}
+                variants={rowVariants}
+                className="h-11 cursor-pointer border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)]"
+              >
                 <TableCell>
                   <p className="font-medium">{contact.name}</p>
                 </TableCell>
@@ -397,10 +412,10 @@ export default function ContactsPage() {
                     )}
                   </div>
                 </TableCell>
-              </TableRow>
+              </motion.tr>
             ))
           )}
-        </tbody>
+        </motion.tbody>
       </Table>
 
       {/* Create/Edit Modal */}

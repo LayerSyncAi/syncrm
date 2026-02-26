@@ -8,10 +8,12 @@ export function Skeleton({
   return (
     <div
       className={cn(
-        "animate-pulse rounded-md bg-border",
+        "relative animate-pulse rounded-md bg-border overflow-hidden",
         className
       )}
       {...props}
-    />
+    >
+      <div className="shimmer-overlay" />
+    </div>
   );
 }

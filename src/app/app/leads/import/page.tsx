@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { useMutation, useQuery } from "convex/react";
+import { motion } from "framer-motion";
 import { api } from "../../../../../convex/_generated/api";
 import { useRequireAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { parseCSV, generateCSV, downloadBlob } from "@/lib/csv";
 import { Upload, AlertTriangle, CheckCircle, XCircle, FileDown } from "lucide-react";
 import { importToasts } from "@/lib/toast";
+
+const resultCardVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.08 } },
+};
+
+const resultItemVariants = {
+  hidden: { opacity: 0, scale: 0.9 },
+  show: { opacity: 1, scale: 1, transition: { type: "spring", stiffness: 300, damping: 24 } },
+};
 
 const LEAD_FIELDS: Array<{ key: string; label: string; required?: boolean }> = [
   { key: "fullName", label: "Full Name", required: true },
@@ -473,32 +484,37 @@ export default function LeadImportPage() {
             <h2 className="text-base font-semibold">Import Complete</h2>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              <div className="rounded-[10px] border border-green-200 bg-green-50 p-4 text-center">
+            <motion.div
+              variants={resultCardVariants}
+              initial="hidden"
+              animate="show"
+              className="grid grid-cols-2 gap-4 sm:grid-cols-4"
+            >
+              <motion.div variants={resultItemVariants} className="rounded-[10px] border border-green-200 bg-green-50 p-4 text-center">
                 <p className="text-2xl font-bold text-green-700">
                   {importResults.created}
                 </p>
                 <p className="text-xs text-green-600">Created</p>
-              </div>
-              <div className="rounded-[10px] border border-blue-200 bg-blue-50 p-4 text-center">
+              </motion.div>
+              <motion.div variants={resultItemVariants} className="rounded-[10px] border border-blue-200 bg-blue-50 p-4 text-center">
                 <p className="text-2xl font-bold text-blue-700">
                   {importResults.updated}
                 </p>
                 <p className="text-xs text-blue-600">Updated</p>
-              </div>
-              <div className="rounded-[10px] border border-amber-200 bg-amber-50 p-4 text-center">
+              </motion.div>
+              <motion.div variants={resultItemVariants} className="rounded-[10px] border border-amber-200 bg-amber-50 p-4 text-center">
                 <p className="text-2xl font-bold text-amber-700">
                   {importResults.skipped}
                 </p>
                 <p className="text-xs text-amber-600">Skipped</p>
-              </div>
-              <div className="rounded-[10px] border border-red-200 bg-red-50 p-4 text-center">
+              </motion.div>
+              <motion.div variants={resultItemVariants} className="rounded-[10px] border border-red-200 bg-red-50 p-4 text-center">
                 <p className="text-2xl font-bold text-red-700">
                   {importResults.failed}
                 </p>
                 <p className="text-xs text-red-600">Failed</p>
-              </div>
-            </div>
+              </motion.div>
+            </motion.div>
 
             {importResults.errors.length > 0 && (
               <div className="mt-6">

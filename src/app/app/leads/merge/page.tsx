@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "convex/react";
+import { motion } from "framer-motion";
 import { api } from "../../../../../convex/_generated/api";
 import { useRequireAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,16 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Merge, CheckCircle, AlertTriangle } from "lucide-react";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { mergeToasts } from "@/lib/toast";
+
+const conflictContainerVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.06 } },
+};
+
+const conflictItemVariants = {
+  hidden: { opacity: 0, y: 12 },
+  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+};
 
 const MERGEABLE_FIELDS = [
   { key: "fullName", label: "Full Name" },
@@ -288,7 +299,12 @@ export default function MergeLeadsPage() {
             </p>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <motion.div
+              variants={conflictContainerVariants}
+              initial="hidden"
+              animate="show"
+              className="space-y-4"
+            >
               {MERGEABLE_FIELDS.map((field) => {
                 const values = selectedLeads.map((lead) => {
                   let val = "";
@@ -319,8 +335,9 @@ export default function MergeLeadsPage() {
                     : "");
 
                 return (
-                  <div
+                  <motion.div
                     key={field.key}
+                    variants={conflictItemVariants}
                     className={`rounded-[10px] border p-4 ${
                       hasConflict
                         ? "border-amber-200 bg-amber-50/50"
@@ -373,10 +390,10 @@ export default function MergeLeadsPage() {
                         </label>
                       ))}
                     </div>
-                  </div>
+                  </motion.div>
                 );
               })}
-            </div>
+            </motion.div>
           </CardContent>
         </Card>
       )}
@@ -385,7 +402,13 @@ export default function MergeLeadsPage() {
       {step === "done" && (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <CheckCircle className="mb-4 h-12 w-12 text-green-500" />
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 260, damping: 20 }}
+            >
+              <CheckCircle className="mb-4 h-12 w-12 text-green-500" />
+            </motion.div>
             <h2 className="text-lg font-semibold text-text">Merge Complete</h2>
             <p className="mt-1 text-sm text-text-muted">
               Leads have been merged successfully. Related activities and

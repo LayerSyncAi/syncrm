@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -464,6 +465,11 @@ export default function NewLeadPage() {
       <form onSubmit={handleSubmit}>
         <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
           {/* Left column: Lead details */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 24 }}
+          >
           <Card className="p-5">
             <div className="grid gap-4 md:grid-cols-2">
               {/* Contact Selection */}
@@ -744,9 +750,15 @@ export default function NewLeadPage() {
               </div>
             </div>
           </Card>
+          </motion.div>
 
           {/* Right column: Property attachment */}
-          <div className="space-y-4">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 300, damping: 24, delay: 0.08 }}
+            className="space-y-4"
+          >
             <Card className="p-5">
               <div className="flex items-center justify-between mb-4">
                 <div>
@@ -894,7 +906,7 @@ export default function NewLeadPage() {
                     : "Save lead"}
               </Button>
             </div>
-          </div>
+          </motion.div>
         </div>
       </form>
 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useAction } from "convex/react";
+import { motion } from "framer-motion";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
@@ -30,6 +31,16 @@ import {
 } from "lucide-react";
 import { TIMEZONES } from "@/lib/timezones";
 import { toast } from "sonner";
+
+const listVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.04 } },
+};
+
+const rowVariants = {
+  hidden: { opacity: 0, x: -8 },
+  show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+};
 
 // ── Types ──────────────────────────────────────────────────
 
@@ -304,11 +315,15 @@ export default function UsersPage() {
                 <TableHead className="text-right w-20" />
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <motion.tbody variants={listVariants} initial="hidden" animate="show">
               {sortedUsers.map((u) => {
                 const isCurrentUser = u._id === user._id;
                 return (
-                  <TableRow key={u._id}>
+                  <motion.tr
+                    key={u._id}
+                    variants={rowVariants}
+                    className="h-11 border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)]"
+                  >
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-600/20 text-xs font-medium text-primary-600">
@@ -347,10 +362,10 @@ export default function UsersPage() {
                         <Pencil className="h-4 w-4" />
                       </Button>
                     </TableCell>
-                  </TableRow>
+                  </motion.tr>
                 );
               })}
-            </TableBody>
+            </motion.tbody>
           </Table>
         </div>
       )}

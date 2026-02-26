@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
+import { motion } from "framer-motion";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
@@ -33,6 +34,16 @@ import {
   XCircle,
 } from "lucide-react";
 import { stageToasts } from "@/lib/toast";
+
+const listVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.04 } },
+};
+
+const rowVariants = {
+  hidden: { opacity: 0, x: -8 },
+  show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+};
 
 interface StageFormData {
   name: string;
@@ -321,9 +332,13 @@ export default function StagesPage() {
                 <TableHead className="w-36 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <motion.tbody variants={listVariants} initial="hidden" animate="show">
               {sortedStages.map((stage, index) => (
-                <TableRow key={stage._id}>
+                <motion.tr
+                  key={stage._id}
+                  variants={rowVariants}
+                  className="h-11 border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)]"
+                >
                   <TableCell className="font-mono text-sm">
                     {stage.order}
                   </TableCell>
@@ -400,9 +415,9 @@ export default function StagesPage() {
                       </Button>
                     </div>
                   </TableCell>
-                </TableRow>
+                </motion.tr>
               ))}
-            </TableBody>
+            </motion.tbody>
           </Table>
         </div>
       )}

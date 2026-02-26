@@ -3,6 +3,7 @@
 import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useAction } from "convex/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -55,7 +56,13 @@ export default function ForceChangePasswordPage() {
 
   return (
     <div className="min-h-screen bg-content-bg flex items-center justify-center px-6">
-      <Card className="w-full max-w-md">
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 24 }}
+        className="w-full max-w-md"
+      >
+      <Card>
         <CardHeader>
           <div className="flex flex-col items-center space-y-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-600/10">
@@ -106,11 +113,18 @@ export default function ForceChangePasswordPage() {
               />
             </div>
 
-            {error && (
-              <div className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg p-3">
-                {error}
-              </div>
-            )}
+            <AnimatePresence>
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg p-3 overflow-hidden"
+                >
+                  {error}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             <Button className="w-full" type="submit" disabled={isLoading}>
               {isLoading ? (
@@ -125,6 +139,7 @@ export default function ForceChangePasswordPage() {
           </form>
         </CardContent>
       </Card>
+      </motion.div>
     </div>
   );
 }

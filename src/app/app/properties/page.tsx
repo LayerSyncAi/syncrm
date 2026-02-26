@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useQuery, useMutation } from "convex/react";
+import { motion } from "framer-motion";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,26 @@ import { parseCurrencyInput } from "@/lib/currency";
 import { ConfirmDeleteDialog } from "@/components/common/confirm-delete-dialog";
 import { ImageUpload, ImageItem, serializeImages, deserializeImages } from "@/components/ui/image-upload";
 import { propertyToasts } from "@/lib/toast";
+
+const listVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.04 } },
+};
+
+const rowVariants = {
+  hidden: { opacity: 0, x: -8 },
+  show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+};
+
+const gridVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.06 } },
+};
+
+const gridItemVariants = {
+  hidden: { opacity: 0, y: 16 },
+  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+};
 
 type PropertyType = "house" | "apartment" | "land" | "commercial" | "other";
 type ListingType = "rent" | "sale";
@@ -499,7 +520,7 @@ export default function PropertiesPage() {
               <TableHead className="text-right">Action</TableHead>
             </tr>
           </thead>
-          <tbody>
+          <motion.tbody variants={listVariants} initial="hidden" animate="show">
             {!properties ? (
               <TableRow>
                 <TableCell colSpan={8} className="text-center text-text-muted">
@@ -516,7 +537,11 @@ export default function PropertiesPage() {
               </TableRow>
             ) : (
               properties.map((property: Property) => (
-                <TableRow key={property._id} className="cursor-pointer">
+                <motion.tr
+                  key={property._id}
+                  variants={rowVariants}
+                  className="h-11 cursor-pointer border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)]"
+                >
                   <TableCell className="font-medium">{property.title}</TableCell>
                   <TableCell>{formatType(property.type)}</TableCell>
                   <TableCell>{formatListingType(property.listingType)}</TableCell>
@@ -551,13 +576,18 @@ export default function PropertiesPage() {
                       )}
                     </div>
                   </TableCell>
-                </TableRow>
+                </motion.tr>
               ))
             )}
-          </tbody>
+          </motion.tbody>
         </Table>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <motion.div
+          variants={gridVariants}
+          initial="hidden"
+          animate="show"
+          className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
+        >
           {!properties ? (
             <div className="col-span-full text-center text-text-muted py-8">
               Loading properties...
@@ -570,7 +600,13 @@ export default function PropertiesPage() {
             </div>
           ) : (
             properties.map((property: Property) => (
-              <Card key={property._id} className="flex h-full flex-col">
+              <motion.div
+                key={property._id}
+                variants={gridItemVariants}
+                whileHover={{ y: -4, boxShadow: "0 12px 28px rgba(0,0,0,0.12)" }}
+                transition={{ type: "spring", stiffness: 400, damping: 25 }}
+              >
+              <Card className="flex h-full flex-col">
                 <div className="aspect-[4/3] w-full overflow-hidden rounded-[12px] border border-border-strong bg-muted">
                   {property.images && property.images.length > 0 ? (
                     <img
@@ -638,9 +674,10 @@ export default function PropertiesPage() {
                   </div>
                 </CardContent>
               </Card>
+              </motion.div>
             ))
           )}
-        </div>
+        </motion.div>
       )}
 
       {/* View/Edit Modal */}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../../../../convex/_generated/api";
 import { useRequireAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AlertTriangle, Save, RefreshCw, Star, Check, X } from "lucide-react";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { scoringToasts } from "@/lib/toast";
+
+const cardContainerVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.06 } },
+};
+
+const cardItemVariants = {
+  hidden: { opacity: 0, y: 12 },
+  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+};
 
 interface Criterion {
   key: string;
@@ -156,19 +167,33 @@ export default function LeadScoringPage() {
         </div>
       </div>
 
-      {error && (
-        <div className="rounded-[10px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          <AlertTriangle className="mr-2 inline h-4 w-4" />
-          {error}
-        </div>
-      )}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="rounded-[10px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          >
+            <AlertTriangle className="mr-2 inline h-4 w-4" />
+            {error}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {saveSuccess && (
-        <div className="rounded-[10px] border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-          <Check className="mr-2 inline h-4 w-4" />
-          Configuration saved successfully
-        </div>
-      )}
+      <AnimatePresence>
+        {saveSuccess && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="rounded-[10px] border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700"
+          >
+            <Check className="mr-2 inline h-4 w-4" />
+            Configuration saved successfully
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Criteria Configuration */}
@@ -190,10 +215,16 @@ export default function LeadScoringPage() {
                   ))}
                 </div>
               ) : (
-                <div className="space-y-3">
+                <motion.div
+                  variants={cardContainerVariants}
+                  initial="hidden"
+                  animate="show"
+                  className="space-y-3"
+                >
                   {criteria.map((criterion, i) => (
-                    <div
+                    <motion.div
                       key={criterion.key}
+                      variants={cardItemVariants}
                       className={`rounded-[10px] border p-4 transition ${
                         criterion.enabled
                           ? "border-border-strong bg-card-bg"
@@ -279,9 +310,9 @@ export default function LeadScoringPage() {
                           </div>
                         </div>
                       </div>
-                    </div>
+                    </motion.div>
                   ))}
-                </div>
+                </motion.div>
               )}
             </CardContent>
           </Card>
