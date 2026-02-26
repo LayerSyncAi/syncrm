@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { FlipCalendar } from "@/components/ui/flip-calendar";
 import { RightDrawer } from "@/components/common/right-drawer";
 import { useRequireAuth } from "@/hooks/useAuth";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { DuplicateWarning } from "@/components/leads/duplicate-warning";
 import { leadToasts, activityToasts, propertyToasts } from "@/lib/toast";
 
@@ -289,6 +290,12 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
 
   return (
     <div className="space-y-6">
+      <Breadcrumb
+        items={[
+          { label: "Leads", href: "/app/leads" },
+          { label: lead.fullName },
+        ]}
+      />
       <Card className="p-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="space-y-2">
