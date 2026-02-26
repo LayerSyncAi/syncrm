@@ -242,11 +242,17 @@ export default function LeadExportPage() {
           </div>
         </CardHeader>
         <CardContent>
+          {/* #36: Column chip toggle animation */}
           <div className="flex flex-wrap gap-2">
             {ALL_FIELDS.map((field) => (
-              <label
+              <motion.label
                 key={field.key}
-                className={`flex cursor-pointer items-center gap-2 rounded-[8px] border px-3 py-2 text-sm transition ${
+                whileTap={{ scale: 0.95 }}
+                animate={{
+                  scale: selectedFields.includes(field.key) ? 1 : 0.97,
+                }}
+                transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                className={`flex cursor-pointer items-center gap-2 rounded-[8px] border px-3 py-2 text-sm transition-colors ${
                   selectedFields.includes(field.key)
                     ? "border-primary-600 bg-primary-600/10 text-primary-600"
                     : "border-border-strong text-text-muted hover:border-primary-600/40"
@@ -259,7 +265,7 @@ export default function LeadExportPage() {
                   className="sr-only"
                 />
                 {field.label}
-              </label>
+              </motion.label>
             ))}
           </div>
         </CardContent>

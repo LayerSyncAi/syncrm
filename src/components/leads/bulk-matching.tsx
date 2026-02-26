@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
+import { motion } from "framer-motion";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +11,27 @@ import { Card } from "@/components/ui/card";
 import { Modal } from "@/components/ui/modal";
 import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 import { bulkMatchToasts } from "@/lib/toast";
+
+// #30: Bulk matching animations
+const bulkStatContainerVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.06 } },
+};
+
+const bulkStatItemVariants = {
+  hidden: { opacity: 0, scale: 0.9 },
+  show: { opacity: 1, scale: 1, transition: { type: "spring", stiffness: 300, damping: 24 } },
+};
+
+const bulkResultContainerVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.05 } },
+};
+
+const bulkResultItemVariants = {
+  hidden: { opacity: 0, x: -10 },
+  show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+};
 
 interface BulkMatchingProps {
   open: boolean;
@@ -202,26 +224,34 @@ export function BulkMatching({ open, onClose, selectedLeadIds }: BulkMatchingPro
         </div>
       </div>
 
-      {/* Summary Stats */}
+      {/* #30: Summary Stats with stagger entrance */}
       {summary && (
-        <div className="grid grid-cols-4 gap-3 mb-4">
+        <motion.div variants={bulkStatContainerVariants} initial="hidden" animate="show" className="grid grid-cols-4 gap-3 mb-4">
+          <motion.div variants={bulkStatItemVariants}>
           <Card className="p-3 text-center">
             <p className="text-2xl font-bold text-primary">{summary.totalLeads}</p>
             <p className="text-xs text-text-muted">Leads Analyzed</p>
           </Card>
+          </motion.div>
+          <motion.div variants={bulkStatItemVariants}>
           <Card className="p-3 text-center">
             <p className="text-2xl font-bold text-green-600">{summary.leadsWithMatches}</p>
             <p className="text-xs text-text-muted">With Matches</p>
           </Card>
+          </motion.div>
+          <motion.div variants={bulkStatItemVariants}>
           <Card className="p-3 text-center">
             <p className="text-2xl font-bold text-blue-600">{summary.avgMatchesPerLead}</p>
             <p className="text-xs text-text-muted">Avg Matches/Lead</p>
           </Card>
+          </motion.div>
+          <motion.div variants={bulkStatItemVariants}>
           <Card className="p-3 text-center">
             <p className="text-2xl font-bold text-text-muted">{summary.totalPropertiesAnalyzed}</p>
             <p className="text-xs text-text-muted">Properties Scanned</p>
           </Card>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
 
       {/* Results */}
@@ -234,9 +264,10 @@ export function BulkMatching({ open, onClose, selectedLeadIds }: BulkMatchingPro
           <p className="text-text-muted">No leads to analyze. Select leads or adjust filters.</p>
         </Card>
       ) : (
-        <div className="space-y-3 max-h-[400px] overflow-y-auto">
+        <motion.div variants={bulkResultContainerVariants} initial="hidden" animate="show" className="space-y-3 max-h-[400px] overflow-y-auto">
           {results.map((result: MatchResult) => (
-            <Card key={result.lead._id} className="p-4">
+            <motion.div key={result.lead._id} variants={bulkResultItemVariants}>
+            <Card className="p-4">
               <div
                 className="flex items-center justify-between cursor-pointer"
                 onClick={() => setExpandedLead(expandedLead === result.lead._id ? null : result.lead._id)}
@@ -347,8 +378,9 @@ export function BulkMatching({ open, onClose, selectedLeadIds }: BulkMatchingPro
                 </div>
               )}
             </Card>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       )}
     </Modal>
   );

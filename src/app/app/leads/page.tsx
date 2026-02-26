@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
 import Link from "next/link";
 import { useQuery, useMutation } from "convex/react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -114,7 +114,13 @@ export default function LeadsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      {/* #31: Header entrance */}
+      <motion.div
+        initial={{ opacity: 0, y: -12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 24 }}
+        className="flex flex-wrap items-center justify-between gap-4"
+      >
         <div>
           <h2 className="text-lg font-semibold">Leads</h2>
           <p className="text-sm text-text-muted">
@@ -146,9 +152,15 @@ export default function LeadsPage() {
             <span className="text-sm font-medium">New Lead</span>
           </Link>
         </div>
-      </div>
+      </motion.div>
 
-      <div className="rounded-[12px] border border-border-strong bg-card-bg p-4">
+      {/* #32: Filter panel entrance */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 24, delay: 0.06 }}
+        className="rounded-[12px] border border-border-strong bg-card-bg p-4"
+      >
         <div className="grid gap-3 md:grid-cols-4 xl:grid-cols-5">
           <div className="space-y-2">
             <Label>Stage</Label>
@@ -203,19 +215,25 @@ export default function LeadsPage() {
             </div>
           )}
         </div>
-      </div>
+      </motion.div>
 
       {leads === undefined ? (
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
       ) : leads.length === 0 ? (
-        <div className="text-center py-12">
+        // #33: Empty state spring entrance
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ type: "spring", stiffness: 300, damping: 24 }}
+          className="text-center py-12"
+        >
           <p className="text-text-muted">No leads found.</p>
           <Link href="/app/leads/new">
             <Button className="mt-4">Create your first lead</Button>
           </Link>
-        </div>
+        </motion.div>
       ) : (
         <Table>
           <thead>

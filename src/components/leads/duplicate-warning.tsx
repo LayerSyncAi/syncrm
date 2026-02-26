@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "convex/react";
+import { motion } from "framer-motion";
 import { api } from "../../../convex/_generated/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,8 +35,14 @@ export function DuplicateWarning({
 
   if (!duplicates || duplicates.length === 0) return null;
 
+  // #29: Duplicate warning slide-in
   return (
-    <div className="rounded-[10px] border border-amber-200 bg-amber-50 p-4">
+    <motion.div
+      initial={{ opacity: 0, y: -12, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ type: "spring", stiffness: 300, damping: 24 }}
+      className="rounded-[10px] border border-amber-200 bg-amber-50 p-4"
+    >
       <div className="flex items-start gap-2">
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
         <div className="min-w-0 flex-1">
@@ -81,6 +88,6 @@ export function DuplicateWarning({
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

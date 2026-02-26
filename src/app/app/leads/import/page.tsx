@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../../../../convex/_generated/api";
 import { useRequireAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,13 @@ const resultCardVariants = {
 const resultItemVariants = {
   hidden: { opacity: 0, scale: 0.9 },
   show: { opacity: 1, scale: 1, transition: { type: "spring", stiffness: 300, damping: 24 } },
+};
+
+// #35: Step transition variants
+const stepVariants = {
+  initial: { opacity: 0, x: 20 },
+  animate: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+  exit: { opacity: 0, x: -20, transition: { duration: 0.15 } },
 };
 
 const LEAD_FIELDS: Array<{ key: string; label: string; required?: boolean }> = [
@@ -263,8 +270,11 @@ export default function LeadImportPage() {
         </div>
       )}
 
+      {/* #35: Step transitions */}
+      <AnimatePresence mode="wait">
       {/* Step 1: Upload */}
       {step === "upload" && (
+        <motion.div key="upload" variants={stepVariants} initial="initial" animate="animate" exit="exit">
         <Card>
           <CardHeader>
             <h2 className="text-base font-semibold">Upload CSV File</h2>
@@ -306,10 +316,12 @@ export default function LeadImportPage() {
             </div>
           </CardContent>
         </Card>
+        </motion.div>
       )}
 
       {/* Step 2: Column Mapping */}
       {step === "mapping" && (
+        <motion.div key="mapping" variants={stepVariants} initial="initial" animate="animate" exit="exit">
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -377,10 +389,12 @@ export default function LeadImportPage() {
             </div>
           </CardContent>
         </Card>
+        </motion.div>
       )}
 
       {/* Step 3: Preview */}
       {step === "preview" && (
+        <motion.div key="preview" variants={stepVariants} initial="initial" animate="animate" exit="exit">
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -463,10 +477,12 @@ export default function LeadImportPage() {
             )}
           </CardContent>
         </Card>
+        </motion.div>
       )}
 
       {/* Step 4: Importing */}
       {step === "importing" && (
+        <motion.div key="importing" variants={stepVariants} initial="initial" animate="animate" exit="exit">
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-600 border-t-transparent" />
@@ -475,10 +491,12 @@ export default function LeadImportPage() {
             </p>
           </CardContent>
         </Card>
+        </motion.div>
       )}
 
       {/* Step 5: Results */}
       {step === "results" && importResults && (
+        <motion.div key="results" variants={stepVariants} initial="initial" animate="animate" exit="exit">
         <Card>
           <CardHeader>
             <h2 className="text-base font-semibold">Import Complete</h2>
@@ -552,7 +570,9 @@ export default function LeadImportPage() {
             </div>
           </CardContent>
         </Card>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   );
 }

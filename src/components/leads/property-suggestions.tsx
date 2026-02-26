@@ -2,12 +2,25 @@
 
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { propertyToasts } from "@/lib/toast";
+
+// --- #26-28 animation variants ---
+
+const suggestionContainerVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.06 } },
+};
+
+const suggestionCardVariants = {
+  hidden: { opacity: 0, y: 16 },
+  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+};
 
 interface PropertySuggestionsProps {
   leadId: Id<"leads">;
@@ -29,6 +42,7 @@ function getScoreBadgeClass(score: number): string {
   return "bg-red-100 text-red-700 border-red-200";
 }
 
+// #27: Score bar with spring fill
 function ScoreBar({ label, score, maxScore }: { label: string; score: number; maxScore: number }) {
   const percentage = (score / maxScore) * 100;
   return (
@@ -37,14 +51,16 @@ function ScoreBar({ label, score, maxScore }: { label: string; score: number; ma
         <span className="text-text-muted">{label}</span>
         <span className={getScoreColor(percentage)}>{score}/{maxScore}</span>
       </div>
-      <div className="h-1.5 rounded-full bg-border">
-        <div
-          className={`h-1.5 rounded-full transition-all ${
+      <div className="h-1.5 rounded-full bg-border overflow-hidden">
+        <motion.div
+          className={`h-1.5 rounded-full ${
             percentage >= 80 ? "bg-green-500" :
             percentage >= 60 ? "bg-blue-500" :
             percentage >= 40 ? "bg-amber-500" : "bg-red-500"
           }`}
-          style={{ width: `${percentage}%` }}
+          initial={{ width: 0 }}
+          animate={{ width: `${percentage}%` }}
+          transition={{ type: "spring", stiffness: 80, damping: 20, delay: 0.1 }}
         />
       </div>
     </div>
@@ -171,10 +187,16 @@ export function PropertySuggestions({
           </p>
         </Card>
       ) : (
-        <div className="space-y-3">
+        // #26: Suggestion card stagger + hover lift
+        <motion.div variants={suggestionContainerVariants} initial="hidden" animate="show" className="space-y-3">
           {propertySuggestions.map((suggestion) => (
-            <Card
+            <motion.div
               key={suggestion.property._id}
+              variants={suggestionCardVariants}
+              whileHover={{ y: -3, boxShadow: "0 6px 20px rgba(0,0,0,0.08)" }}
+              transition={{ type: "spring", stiffness: 400, damping: 25 }}
+            >
+            <Card
               className={`p-4 transition-all ${
                 selectedForCompare.has(suggestion.property._id) ? "ring-2 ring-primary" : ""
               }`}
@@ -242,7 +264,16 @@ export function PropertySuggestions({
                     {expandedCard === suggestion.property._id ? "Hide score details" : "Show score details"}
                   </button>
 
+                  {/* #28: Score breakdown expand/collapse animation */}
+                  <AnimatePresence>
                   {expandedCard === suggestion.property._id && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 28 }}
+                      className="overflow-hidden"
+                    >
                     <div className="mt-3 space-y-2 p-3 bg-card-bg/50 rounded-lg border border-border">
                       <ScoreBar label="Interest Type" score={suggestion.interestTypeScore} maxScore={30} />
                       <ScoreBar label="Budget Fit" score={suggestion.budgetScore} maxScore={35} />
@@ -271,7 +302,9 @@ export function PropertySuggestions({
                         </div>
                       )}
                     </div>
+                    </motion.div>
                   )}
+                  </AnimatePresence>
                 </div>
 
                 {/* Actions */}
@@ -296,8 +329,9 @@ export function PropertySuggestions({
                 </div>
               </div>
             </Card>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       )}
     </div>
   );

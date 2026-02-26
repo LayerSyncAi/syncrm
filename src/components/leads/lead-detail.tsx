@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback, lazy, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +29,44 @@ const PropertyComparison = lazy(() =>
 );
 
 const tabs = ["Timeline", "Matched Properties", "Suggested", "Notes"] as const;
+
+// --- #18–25 animation variants ---
+
+const timelineContainerVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.06 } },
+};
+
+const timelineItemVariants = {
+  hidden: { opacity: 0, y: 12 },
+  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+};
+
+const matchCardContainerVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.05 } },
+};
+
+const matchCardItemVariants = {
+  hidden: { opacity: 0, x: -10 },
+  show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+};
+
+const tabContentVariants = {
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } },
+  exit: { opacity: 0, y: -8, transition: { duration: 0.15 } },
+};
+
+const drawerItemContainerVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.04 } },
+};
+
+const drawerItemVariants = {
+  hidden: { opacity: 0, x: 12 },
+  show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+};
 
 interface LeadDetailProps {
   leadId: Id<"leads">;
@@ -338,15 +376,19 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
               {lead.email && <span>Email: {lead.email}</span>}
               <span>Created: {formatDate(lead.createdAt)}</span>
             </div>
+            {/* #21: Area tags with stagger entrance */}
             {lead.preferredAreas.length > 0 && (
               <div className="flex flex-wrap gap-2">
-                {lead.preferredAreas.map((area: string) => (
-                  <span
+                {lead.preferredAreas.map((area: string, i: number) => (
+                  <motion.span
                     key={area}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 25, delay: 0.1 + i * 0.04 }}
                     className="inline-flex items-center rounded-full bg-border px-2 py-0.5 text-xs"
                   >
                     {area}
-                  </span>
+                  </motion.span>
                 ))}
               </div>
             )}
@@ -365,15 +407,20 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
               <span>Stage progress</span>
               <span>{stageProgress}%</span>
             </div>
-            <div className="mt-2 h-2 rounded-full bg-border">
-              <div
-                className={`h-2 rounded-full ${
+            {/* #20: Stage progress bar with spring fill + shimmer */}
+            <div className="mt-2 h-2 rounded-full bg-border overflow-hidden">
+              <motion.div
+                className={`h-2 rounded-full relative overflow-hidden ${
                   lead.closedAt && stage?.terminalOutcome === "lost"
                     ? "bg-danger"
                     : "bg-primary"
                 }`}
-                style={{ width: `${stageProgress}%` }}
-              />
+                initial={{ width: 0 }}
+                animate={{ width: `${stageProgress}%` }}
+                transition={{ type: "spring", stiffness: 80, damping: 20, delay: 0.3 }}
+              >
+                <div className="shimmer-overlay" />
+              </motion.div>
             </div>
           </div>
         </div>
@@ -403,26 +450,38 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
         excludeLeadId={leadId}
       />
 
+      {/* #18: Tab bar with sliding underline indicator */}
       <div className="border-b border-border">
-        <div className="flex gap-6">
+        <div className="flex gap-6 relative">
           {tabs.map((tab) => (
             <button
               key={tab}
-              className={`pb-3 text-sm font-medium transition duration-150 ${
+              className={`relative pb-3 text-sm font-medium transition-colors duration-150 ${
                 activeTab === tab
-                  ? "border-b-2 border-primary text-text"
-                  : "text-text-muted"
+                  ? "text-text"
+                  : "text-text-muted hover:text-text"
               }`}
               onClick={() => setActiveTab(tab)}
             >
               {tab}
+              {activeTab === tab && (
+                <motion.div
+                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
+                  layoutId="lead-tab-indicator"
+                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                />
+              )}
             </button>
           ))}
         </div>
       </div>
 
+      {/* #19: Tab content crossfade */}
+      <AnimatePresence mode="wait">
       {activeTab === "Timeline" && (
-        <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+        <motion.div key="timeline" variants={tabContentVariants} initial="initial" animate="animate" exit="exit" className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+          {/* #23: Activity form card entrance */}
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 24 }}>
           <Card className="p-5 space-y-4">
             <h3 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
               Log activity
@@ -468,6 +527,7 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
               </div>
             </div>
           </Card>
+          </motion.div>
           <Card className="p-5 space-y-4">
             <h3 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
               Timeline
@@ -479,10 +539,14 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
             ) : activities.length === 0 ? (
               <p className="text-text-muted text-sm py-4">No activities yet.</p>
             ) : (
-              <div className="space-y-4">
+              // #22: Timeline entry stagger cascade with hover lift
+              <motion.div variants={timelineContainerVariants} initial="hidden" animate="show" className="space-y-4">
                 {activities.map((activity) => (
-                  <div
+                  <motion.div
                     key={activity._id}
+                    variants={timelineItemVariants}
+                    whileHover={{ y: -2, boxShadow: "0 4px 16px rgba(0,0,0,0.08)" }}
+                    transition={{ type: "spring", stiffness: 400, damping: 25 }}
                     className="rounded-[10px] border border-border-strong bg-card-bg/40 p-4"
                   >
                     <div className="flex items-center justify-between text-sm">
@@ -533,16 +597,16 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
                         </Button>
                       )}
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
-              </div>
+              </motion.div>
             )}
           </Card>
-        </div>
+        </motion.div>
       )}
 
       {activeTab === "Matched Properties" && (
-        <div className="space-y-4">
+        <motion.div key="matched" variants={tabContentVariants} initial="initial" animate="animate" exit="exit" className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
               Matches
@@ -557,10 +621,14 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
             ) : matches.length === 0 ? (
               <p className="text-text-muted text-sm py-4">No properties matched yet.</p>
             ) : (
-              <div className="space-y-3">
+              // #24: Match card stagger + hover lift
+              <motion.div variants={matchCardContainerVariants} initial="hidden" animate="show" className="space-y-3">
                 {matches.map((match) => (
-                  <div
+                  <motion.div
                     key={match._id}
+                    variants={matchCardItemVariants}
+                    whileHover={{ x: 4, boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}
+                    transition={{ type: "spring", stiffness: 400, damping: 25 }}
                     className="flex items-center justify-between rounded-[10px] border border-border-strong p-3"
                   >
                     <div>
@@ -581,15 +649,16 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
                         Remove
                       </Button>
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
-              </div>
+              </motion.div>
             )}
           </Card>
-        </div>
+        </motion.div>
       )}
 
       {activeTab === "Suggested" && (
+        <motion.div key="suggested" variants={tabContentVariants} initial="initial" animate="animate" exit="exit">
         <Suspense
           fallback={
             <div className="flex items-center justify-center py-12">
@@ -602,9 +671,12 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
             onCompareSelect={handleOpenComparison}
           />
         </Suspense>
+        </motion.div>
       )}
 
+      {/* #25: Notes tab entrance */}
       {activeTab === "Notes" && (
+        <motion.div key="notes" variants={tabContentVariants} initial="initial" animate="animate" exit="exit">
         <Card className="p-5 space-y-3">
           <h3 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
             Lead notes
@@ -621,7 +693,9 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
             </Button>
           </div>
         </Card>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       <RightDrawer
         open={drawerOpen}
@@ -669,12 +743,14 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
               ]}
             />
           </div>
-          <div className="space-y-2 max-h-[360px] overflow-y-auto">
+          {/* #22b: Drawer property list stagger */}
+          <motion.div variants={drawerItemContainerVariants} initial="hidden" animate="show" className="space-y-2 max-h-[360px] overflow-y-auto">
             {filteredProperties?.filter((p) => !attachedPropertyIds.has(p._id)).map((property) => {
               const isSelected = selectedPropertyIds.has(property._id);
               return (
-                <label
+                <motion.label
                   key={property._id}
+                  variants={drawerItemVariants}
                   className={`flex items-center gap-3 rounded-[10px] border p-3 text-sm cursor-pointer transition-colors ${
                     isSelected
                       ? "border-primary/40 bg-primary/5"
@@ -693,13 +769,13 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
                       {property.listingType === "sale" ? "Sale" : "Rent"} &middot; {property.location}
                     </p>
                   </div>
-                </label>
+                </motion.label>
               );
             })}
             {filteredProperties?.filter((p) => !attachedPropertyIds.has(p._id)).length === 0 && (
               <p className="text-text-muted text-sm py-4">No properties available to attach.</p>
             )}
-          </div>
+          </motion.div>
         </div>
       </RightDrawer>
 

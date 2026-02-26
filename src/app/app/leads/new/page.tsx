@@ -456,11 +456,22 @@ export default function NewLeadPage() {
         </p>
       </div>
 
+      {/* #34: Form error slide-in */}
+      <AnimatePresence>
       {formError && (
+        <motion.div
+          initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+          animate={{ opacity: 1, height: "auto", marginBottom: 0 }}
+          exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 24 }}
+          className="overflow-hidden"
+        >
         <div className="rounded-lg bg-danger/10 p-4 text-danger text-sm">
           {formError}
         </div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       <form onSubmit={handleSubmit}>
         <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
@@ -537,9 +548,17 @@ export default function NewLeadPage() {
                 </div>
               </div>
 
-              {/* Selected Contact Info */}
+              {/* #34b: Selected contact info slide-in */}
+              <AnimatePresence>
               {selectedContact && (
-                <div className="md:col-span-2 rounded-lg bg-gray-50 p-4 space-y-2">
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 24 }}
+                  className="md:col-span-2 overflow-hidden"
+                >
+                <div className="rounded-lg bg-gray-50 p-4 space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-text-muted">Selected Contact</span>
                     <Button
@@ -569,7 +588,9 @@ export default function NewLeadPage() {
                     </div>
                   </div>
                 </div>
+                </motion.div>
               )}
+              </AnimatePresence>
 
               {/* Duplicate Detection Warning */}
               {selectedContact && (
