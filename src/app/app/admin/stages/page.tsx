@@ -571,6 +571,7 @@ export default function StagesPage() {
               variant="destructive"
               onClick={handleDelete}
               disabled={isSubmitting}
+              className="attention-shake"
             >
               {isSubmitting ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

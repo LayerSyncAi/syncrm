@@ -227,3 +227,57 @@ a {
 .glow-slider-input::-moz-focus-outer {
   border: 0;
 }
+
+/* Confirm dialog: shake attention on destructive button */
+@keyframes attention-shake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-3px); }
+  30% { transform: translateX(3px); }
+  45% { transform: translateX(-2px); }
+  60% { transform: translateX(2px); }
+  75% { transform: translateX(-1px); }
+  90% { transform: translateX(1px); }
+}
+
+.attention-shake {
+  animation: attention-shake 0.5s ease-in-out 0.4s 1;
+}
+
+/* Toast icon animations */
+@keyframes toast-check-draw {
+  from { stroke-dashoffset: 30; }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes toast-x-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-2px) rotate(-5deg); }
+  40% { transform: translateX(2px) rotate(5deg); }
+  60% { transform: translateX(-1px) rotate(-3deg); }
+  80% { transform: translateX(1px) rotate(3deg); }
+}
+
+@keyframes toast-info-pulse {
+  0% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 0.7; }
+}
+
+@keyframes toast-progress-drain {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+.toast-check-draw {
+  stroke-dasharray: 30;
+  stroke-dashoffset: 30;
+  animation: toast-check-draw 0.5s ease-out 0.15s forwards;
+}
+
+.toast-x-shake {
+  animation: toast-x-shake 0.4s ease-in-out 0.1s 1;
+}
+
+.toast-info-pulse {
+  animation: toast-info-pulse 0.8s ease-in-out 0.1s 1;
+}

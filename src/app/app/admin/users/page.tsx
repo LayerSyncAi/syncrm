@@ -30,7 +30,7 @@ import {
   Pencil,
 } from "lucide-react";
 import { TIMEZONES } from "@/lib/timezones";
-import { toast } from "sonner";
+import { animatedToast } from "@/components/ui/animated-toaster";
 
 const listVariants = {
   hidden: {},
@@ -152,7 +152,7 @@ export default function UsersPage() {
         isActive: formData.isActive,
       });
       closeDrawer();
-      toast.success(`User created for ${formData.fullName.trim()}`, {
+      animatedToast.success(`User created for ${formData.fullName.trim()}`, {
         description: "They must change their password on first login.",
       });
     } catch (err) {
@@ -183,11 +183,11 @@ export default function UsersPage() {
     try {
       await setUserRole({ userId: editingUser._id, role: newRole });
       setEditingUser((prev) => prev ? { ...prev, role: newRole } : prev);
-      toast.success(`Role changed for ${name}`, {
+      animatedToast.success(`Role changed for ${name}`, {
         description: newRole === "admin" ? "Upgraded to Admin." : "Downgraded to Agent.",
       });
     } catch (err) {
-      toast.error(`Role change failed for ${name}`, {
+      animatedToast.error(`Role change failed for ${name}`, {
         description: err instanceof Error ? err.message : "Something went wrong.",
       });
     } finally {
@@ -202,9 +202,9 @@ export default function UsersPage() {
     try {
       await setUserTimezone({ userId: editingUser._id, timezone });
       setEditingUser((prev) => prev ? { ...prev, timezone } : prev);
-      toast.success(`Timezone updated for ${name}`);
+      animatedToast.success(`Timezone updated for ${name}`);
     } catch (err) {
-      toast.error(`Timezone update failed for ${name}`, {
+      animatedToast.error(`Timezone update failed for ${name}`, {
         description: err instanceof Error ? err.message : "Something went wrong.",
       });
     } finally {
@@ -234,9 +234,9 @@ export default function UsersPage() {
           return next;
         });
       }, 1000);
-      toast.success(`${newActive ? "Activated" : "Deactivated"} ${name}`);
+      animatedToast.success(`${newActive ? "Activated" : "Deactivated"} ${name}`);
     } catch (err) {
-      toast.error(`Status change failed for ${name}`, {
+      animatedToast.error(`Status change failed for ${name}`, {
         description: err instanceof Error ? err.message : "Something went wrong.",
       });
     } finally {
@@ -252,11 +252,11 @@ export default function UsersPage() {
     try {
       await resetUserPassword({ targetUserId: editingUser._id });
       setEditingUser((prev) => prev ? { ...prev, resetPasswordOnNextLogin: true } : prev);
-      toast.success(`Password reset for ${name}`, {
+      animatedToast.success(`Password reset for ${name}`, {
         description: "User must change password on next login.",
       });
     } catch (err) {
-      toast.error(`Password reset failed for ${name}`, {
+      animatedToast.error(`Password reset failed for ${name}`, {
         description: err instanceof Error ? err.message : "Something went wrong.",
       });
     } finally {
