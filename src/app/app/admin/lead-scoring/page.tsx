@@ -33,10 +33,10 @@ function GlowSlider({
   const percent = Math.min((value / max) * 100, 100);
 
   return (
-    <div className="relative flex items-center gap-3 w-full min-w-[180px]">
+    <div className="relative w-full pt-8 pb-1">
       {/* Floating weight bubble */}
       <motion.div
-        className="absolute -top-7 pointer-events-none rounded-md bg-primary px-2 py-0.5 text-[11px] font-bold text-white shadow-md"
+        className="absolute top-0 pointer-events-none z-10 rounded-md bg-primary px-2 py-0.5 text-[11px] font-bold text-white shadow-md"
         style={{ left: `calc(${percent}% - 16px)` }}
         animate={{
           scale: isDragging ? 1.15 : 1,
@@ -46,6 +46,26 @@ function GlowSlider({
       >
         {value}
       </motion.div>
+      {/* Visual track behind the input */}
+      <div className="relative h-[6px] w-full rounded-full overflow-hidden" style={{ background: "var(--border)" }}>
+        <motion.div
+          className="absolute inset-y-0 left-0 rounded-full"
+          style={{ background: "var(--primary)", width: `${percent}%` }}
+          animate={{ width: `${percent}%` }}
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        />
+        {isDragging && (
+          <div
+            className="absolute inset-y-0 left-0 rounded-full"
+            style={{
+              width: `${percent}%`,
+              boxShadow: "0 0 10px rgba(236, 164, 0, 0.5), 0 0 20px rgba(236, 164, 0, 0.25)",
+              background: "var(--primary)",
+            }}
+          />
+        )}
+      </div>
+      {/* Transparent range input overlaid for interaction */}
       <input
         type="range"
         min={0}
@@ -56,11 +76,34 @@ function GlowSlider({
         onPointerDown={() => setIsDragging(true)}
         onPointerUp={() => setIsDragging(false)}
         onPointerLeave={() => setIsDragging(false)}
-        className="slider-glow w-full h-[6px] appearance-none rounded-full bg-transparent cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+        className="glow-slider-input absolute left-0 right-0 w-full cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
         style={{
-          "--slider-percent": `${percent}%`,
-          "--slider-glow": isDragging ? "1" : "0",
-        } as React.CSSProperties}
+          top: "22px",
+          height: "20px",
+          WebkitAppearance: "none",
+          appearance: "none",
+          background: "transparent",
+          margin: 0,
+          zIndex: 2,
+        }}
+      />
+      {/* Thumb indicator */}
+      <motion.div
+        className="absolute pointer-events-none z-[3] rounded-full bg-white border-2"
+        style={{
+          width: 18,
+          height: 18,
+          top: "22px",
+          left: `calc(${percent}% - 9px)`,
+          borderColor: "var(--primary)",
+          boxShadow: isDragging
+            ? "0 0 0 5px rgba(236, 164, 0, 0.2), 0 2px 6px rgba(0,0,0,0.15)"
+            : "0 0 0 3px rgba(236, 164, 0, 0.15), 0 1px 3px rgba(0,0,0,0.1)",
+        }}
+        animate={{
+          scale: isDragging ? 1.15 : 1,
+        }}
+        transition={{ type: "spring", stiffness: 400, damping: 25 }}
       />
     </div>
   );
@@ -276,6 +319,7 @@ export default function LeadScoringPage() {
                           : "border-border bg-surface-2/50 opacity-60"
                       }`}
                     >
+                      {/* Top row: checkbox, label, threshold */}
                       <div className="flex items-center justify-between gap-4">
                         <div className="flex items-center gap-3">
                           <button
@@ -285,7 +329,7 @@ export default function LeadScoringPage() {
                                 enabled: !criterion.enabled,
                               })
                             }
-                            className={`flex h-6 w-6 items-center justify-center rounded-md border transition ${
+                            className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border transition ${
                               criterion.enabled
                                 ? "border-primary-600 bg-primary-600 text-white"
                                 : "border-border-strong text-transparent"
@@ -305,35 +349,34 @@ export default function LeadScoringPage() {
                             </p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-4">
-                          {criterion.type === "threshold" && (
-                            <div className="flex items-center gap-2">
-                              <label className="text-xs text-text-muted">
-                                Threshold:
-                              </label>
-                              <Input
-                                type="number"
-                                value={criterion.threshold ?? 0}
-                                onChange={(e) =>
-                                  updateCriterion(i, {
-                                    threshold: Number(e.target.value),
-                                  })
-                                }
-                                className="h-8 w-24"
-                                disabled={!criterion.enabled}
-                              />
-                            </div>
-                          )}
-                          <div className="relative pt-6">
-                            <GlowSlider
-                              value={criterion.weight}
-                              onChange={(v) =>
-                                updateCriterion(i, { weight: v })
+                        {criterion.type === "threshold" && (
+                          <div className="flex items-center gap-2">
+                            <label className="text-xs text-text-muted">
+                              Threshold:
+                            </label>
+                            <Input
+                              type="number"
+                              value={criterion.threshold ?? 0}
+                              onChange={(e) =>
+                                updateCriterion(i, {
+                                  threshold: Number(e.target.value),
+                                })
                               }
+                              className="h-8 w-24"
                               disabled={!criterion.enabled}
                             />
                           </div>
-                        </div>
+                        )}
+                      </div>
+                      {/* Slider row: full width below */}
+                      <div className="mt-2 pl-9">
+                        <GlowSlider
+                          value={criterion.weight}
+                          onChange={(v) =>
+                            updateCriterion(i, { weight: v })
+                          }
+                          disabled={!criterion.enabled}
+                        />
                       </div>
                     </motion.div>
                   ))}

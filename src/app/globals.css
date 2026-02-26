@@ -186,57 +186,25 @@ a {
   animation: row-flash-deactivate 1s ease-out forwards;
 }
 
-/* Admin page: slider glow trail */
-.slider-glow::-webkit-slider-runnable-track {
-  height: 6px;
-  border-radius: 999px;
-  background: linear-gradient(
-    90deg,
-    var(--primary) 0%,
-    var(--primary-600) var(--slider-percent, 50%),
-    var(--border) var(--slider-percent, 50%),
-    var(--border) 100%
-  );
-  box-shadow: 0 0 8px rgba(236, 164, 0, calc(var(--slider-glow, 0) * 0.4));
-  transition: box-shadow 0.3s ease;
-}
-
-.slider-glow::-webkit-slider-thumb {
+/* Admin page: hide native range thumb/track (visual rendered via React) */
+.glow-slider-input::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: white;
-  border: 2px solid var(--primary);
-  box-shadow: 0 0 0 3px rgba(236, 164, 0, 0.15), 0 1px 3px rgba(0,0,0,0.1);
-  margin-top: -6px;
-  cursor: pointer;
-  transition: box-shadow 0.2s ease, transform 0.15s ease;
+  appearance: none;
+  width: 0;
+  height: 0;
+  opacity: 0;
 }
-
-.slider-glow::-webkit-slider-thumb:hover {
-  transform: scale(1.15);
-  box-shadow: 0 0 0 5px rgba(236, 164, 0, 0.2), 0 2px 6px rgba(0,0,0,0.15);
+.glow-slider-input::-moz-range-thumb {
+  appearance: none;
+  width: 0;
+  height: 0;
+  opacity: 0;
 }
-
-.slider-glow::-moz-range-track {
-  height: 6px;
-  border-radius: 999px;
-  background: linear-gradient(
-    90deg,
-    var(--primary) 0%,
-    var(--primary-600) var(--slider-percent, 50%),
-    var(--border) var(--slider-percent, 50%),
-    var(--border) 100%
-  );
+.glow-slider-input::-webkit-slider-runnable-track {
+  background: transparent;
+  height: 20px;
 }
-
-.slider-glow::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: white;
-  border: 2px solid var(--primary);
-  box-shadow: 0 0 0 3px rgba(236, 164, 0, 0.15), 0 1px 3px rgba(0,0,0,0.1);
-  cursor: pointer;
+.glow-slider-input::-moz-range-track {
+  background: transparent;
+  height: 20px;
 }
