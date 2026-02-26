@@ -335,9 +335,11 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
           { label: lead.fullName },
         ]}
       />
+      {/* #47: Hero card entrance + hover lift */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
+        whileHover={{ y: -2, boxShadow: "0 8px 30px rgba(0,0,0,0.08)" }}
         transition={{ type: "spring", stiffness: 300, damping: 24 }}
       >
       <Card className="p-5">
@@ -790,31 +792,37 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
           </div>
         }
       >
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
+        {/* #48: Contact modal field stagger entrance */}
+        <motion.div
+          className="grid gap-4 md:grid-cols-2"
+          initial="hidden"
+          animate="show"
+          variants={{ hidden: {}, show: { transition: { staggerChildren: 0.05 } } }}
+        >
+          <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } } }} className="space-y-2">
             <Label>Name</Label>
             <Input value={lead.fullName} readOnly />
-          </div>
-          <div className="space-y-2">
+          </motion.div>
+          <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } } }} className="space-y-2">
             <Label>Phone</Label>
             <Input value={lead.phone} readOnly />
-          </div>
-          <div className="space-y-2">
+          </motion.div>
+          <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } } }} className="space-y-2">
             <Label>Email</Label>
             <Input value={lead.email || "Not provided"} readOnly />
-          </div>
-          <div className="space-y-2">
+          </motion.div>
+          <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } } }} className="space-y-2">
             <Label>Owner</Label>
             <Input value={owner?.fullName || owner?.name || owner?.email || "Unassigned"} readOnly />
-          </div>
-          <div className="space-y-2">
+          </motion.div>
+          <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } } }} className="space-y-2">
             <Label>Interest</Label>
             <Input value={lead.interestType === "buy" ? "Buying" : "Renting"} readOnly />
-          </div>
-          <div className="space-y-2">
+          </motion.div>
+          <motion.div variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } } }} className="space-y-2">
             <Label>Source</Label>
             <Input value={lead.source.replace("_", " ").replace(/^\w/, (c: string) => c.toUpperCase())} readOnly />
-          </div>
+          </motion.div>
           {lead.budgetMin !== undefined && (
             <div className="space-y-2">
               <Label>Budget Min</Label>
@@ -834,9 +842,10 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
               readOnly
             />
           </div>
-        </div>
+        </motion.div>
       </Modal>
 
+      {/* #49: Complete Activity modal entrance */}
       <Modal
         open={completingActivityId !== null}
         title="Complete Activity"
@@ -856,7 +865,12 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
           </div>
         }
       >
-        <div className="space-y-4">
+        <motion.div
+          className="space-y-4"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 24, delay: 0.1 }}
+        >
           <div className="space-y-2">
             <Label>
               Completion Notes <span className="text-danger">*</span>
@@ -871,7 +885,7 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
               These notes will be visible in the timeline and on the tasks page.
             </p>
           </div>
-        </div>
+        </motion.div>
       </Modal>
 
       {comparisonOpen && (

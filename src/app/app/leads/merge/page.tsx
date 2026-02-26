@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "convex/react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../../../../convex/_generated/api";
 import { useRequireAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,24 @@ const conflictContainerVariants = {
 const conflictItemVariants = {
   hidden: { opacity: 0, y: 12 },
   show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+};
+
+// #44: Step transition variants
+const mergeStepVariants = {
+  initial: { opacity: 0, x: 24 },
+  animate: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+  exit: { opacity: 0, x: -24, transition: { duration: 0.15 } },
+};
+
+// #45: Select table row stagger
+const selectTableVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.03 } },
+};
+
+const selectRowVariants = {
+  hidden: { opacity: 0, x: -8 },
+  show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
 };
 
 const MERGEABLE_FIELDS = [
@@ -182,15 +200,29 @@ export default function MergeLeadsPage() {
         </p>
       </div>
 
+      {/* #46: Error banner slide-in */}
+      <AnimatePresence>
       {error && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 24 }}
+          className="overflow-hidden"
+        >
         <div className="rounded-[10px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           <AlertTriangle className="mr-2 inline h-4 w-4" />
           {error}
         </div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
+      {/* #44: Step transitions */}
+      <AnimatePresence mode="wait">
       {/* Step 1: Select leads */}
       {step === "select" && (
+        <motion.div key="select" variants={mergeStepVariants} initial="initial" animate="animate" exit="exit">
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -230,9 +262,10 @@ export default function MergeLeadsPage() {
                       <TableHead>Source</TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody>
+                  {/* #45: Select table row stagger */}
+                  <motion.tbody variants={selectTableVariants} initial="hidden" animate="show">
                     {filteredLeads.map((lead) => (
-                      <TableRow key={lead._id}>
+                      <motion.tr key={lead._id} variants={selectRowVariants} className="h-11 border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)]">
                         <TableCell>
                           <input
                             type="checkbox"
@@ -260,18 +293,20 @@ export default function MergeLeadsPage() {
                         <TableCell>
                           <Badge variant="secondary">{lead.source}</Badge>
                         </TableCell>
-                      </TableRow>
+                      </motion.tr>
                     ))}
-                  </TableBody>
+                  </motion.tbody>
                 </Table>
               </div>
             )}
           </CardContent>
         </Card>
+        </motion.div>
       )}
 
       {/* Step 2: Field Resolution */}
       {step === "resolve" && selectedLeads.length > 0 && (
+        <motion.div key="resolve" variants={mergeStepVariants} initial="initial" animate="animate" exit="exit">
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -396,10 +431,12 @@ export default function MergeLeadsPage() {
             </motion.div>
           </CardContent>
         </Card>
+        </motion.div>
       )}
 
       {/* Step 3: Done */}
       {step === "done" && (
+        <motion.div key="done" variants={mergeStepVariants} initial="initial" animate="animate" exit="exit">
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <motion.div
@@ -431,7 +468,9 @@ export default function MergeLeadsPage() {
             </div>
           </CardContent>
         </Card>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   );
 }
