@@ -187,24 +187,43 @@ a {
 }
 
 /* Admin page: hide native range thumb/track (visual rendered via React) */
+.glow-slider-input {
+  outline: none;
+  color: transparent;
+}
 .glow-slider-input::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
   width: 0;
   height: 0;
   opacity: 0;
+  border: none;
+  background: transparent;
 }
 .glow-slider-input::-moz-range-thumb {
   appearance: none;
   width: 0;
   height: 0;
   opacity: 0;
+  border: none;
+  background: transparent;
 }
 .glow-slider-input::-webkit-slider-runnable-track {
+  -webkit-appearance: none;
+  appearance: none;
   background: transparent;
+  border: none;
   height: 20px;
 }
 .glow-slider-input::-moz-range-track {
+  appearance: none;
   background: transparent;
+  border: none;
   height: 20px;
+}
+.glow-slider-input:focus {
+  outline: none;
+}
+.glow-slider-input::-moz-focus-outer {
+  border: 0;
 }
