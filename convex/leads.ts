@@ -364,62 +364,50 @@ export const dashboardStats = query({
       .collect();
     stages.sort((a, b) => a.order - b.order);
 
-    const now = Date.now();
-    const oneWeekAgo = now - 7 * 24 * 60 * 60 * 1000;
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
-    const startOfMonthMs = startOfMonth.getTime();
-
     const wonStage = stages.find((s) => s.terminalOutcome === "won");
     const lostStage = stages.find((s) => s.terminalOutcome === "lost");
 
-    let newThisWeek = 0;
+    let totalLeads = 0;
     let openLeads = 0;
-    let wonThisMonth = 0;
-    let lostThisMonth = 0;
+    let totalWon = 0;
+    let totalLost = 0;
     const stageCountMap = new Map<string, number>();
 
     for (const lead of scoped) {
-      if (lead.createdAt >= oneWeekAgo) newThisWeek++;
+      totalLeads++;
       if (!lead.closedAt) {
         openLeads++;
-        stageCountMap.set(lead.stageId, (stageCountMap.get(lead.stageId) ?? 0) + 1);
       }
-      if (lead.closedAt && lead.closedAt >= startOfMonthMs) {
-        if (wonStage && lead.stageId === wonStage._id) wonThisMonth++;
-        if (lostStage && lead.stageId === lostStage._id) lostThisMonth++;
-      }
+      if (wonStage && lead.stageId === wonStage._id) totalWon++;
+      if (lostStage && lead.stageId === lostStage._id) totalLost++;
+      stageCountMap.set(lead.stageId, (stageCountMap.get(lead.stageId) ?? 0) + 1);
     }
 
-    const nonTerminalStages = stages.filter((s) => !s.isTerminal);
-    const totalOpenForStages = openLeads;
-
-    const stageBreakdown = nonTerminalStages.map((stage) => {
+    const stageBreakdown = stages.map((stage) => {
       const count = stageCountMap.get(stage._id) ?? 0;
       return {
         id: stage._id,
         name: stage.name,
         count,
         order: stage.order,
-        percent: totalOpenForStages > 0 ? count / totalOpenForStages : 0,
+        percent: totalLeads > 0 ? count / totalLeads : 0,
       };
     });
 
-    const closedThisMonth = wonThisMonth + lostThisMonth;
-    const monthlyProgress = closedThisMonth > 0
-      ? Math.round((wonThisMonth / closedThisMonth) * 100)
+    const totalClosed = totalWon + totalLost;
+    const overallProgress = totalClosed > 0
+      ? Math.round((totalWon / totalClosed) * 100)
       : 0;
 
     return {
       stats: {
-        newThisWeek,
+        totalLeads,
         openLeads,
-        wonThisMonth,
-        lostThisMonth,
+        totalWon,
+        totalLost,
       },
       stageBreakdown,
-      monthlyProgress,
+      monthlyProgress: overallProgress,
     };
   },
 });

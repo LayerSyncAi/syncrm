@@ -97,10 +97,10 @@ export default function DashboardPage() {
 
   const stats = dashboardData
     ? [
-        { label: "New leads this week", value: dashboardData.stats.newThisWeek },
+        { label: "Total leads", value: dashboardData.stats.totalLeads },
         { label: "Open leads", value: dashboardData.stats.openLeads },
-        { label: "Won this month", value: dashboardData.stats.wonThisMonth },
-        { label: "Lost this month", value: dashboardData.stats.lostThisMonth },
+        { label: "Won", value: dashboardData.stats.totalWon },
+        { label: "Lost", value: dashboardData.stats.totalLost },
       ]
     : [];
 
@@ -118,12 +118,12 @@ export default function DashboardPage() {
                 <Badge className="bg-primary/10 text-primary">All Leads</Badge>
               </div>
               <p className="text-sm text-text-muted">
-                Monitor your weekly performance and conversion velocity.
+                Monitor your pipeline performance and conversion velocity.
               </p>
             </div>
             <div className="min-w-[220px]">
               <div className="flex items-center justify-between text-xs text-text-muted">
-                <span>Monthly progress</span>
+                <span>Win rate</span>
                 {isLoading ? (
                   <Skeleton className="h-3 w-8" />
                 ) : (
