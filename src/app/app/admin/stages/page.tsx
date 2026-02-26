@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
-import { motion } from "framer-motion";
+import { motion, Reorder, useDragControls } from "framer-motion";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
@@ -27,8 +27,7 @@ import {
   Plus,
   Pencil,
   Trash2,
-  ChevronUp,
-  ChevronDown,
+  GripVertical,
   AlertTriangle,
   CheckCircle,
   XCircle,
@@ -44,6 +43,109 @@ const rowVariants = {
   hidden: { opacity: 0, x: -8 },
   show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
 };
+
+/* ── Drag handle component ──────────────────────────── */
+function DragHandle({ dragControls }: { dragControls: ReturnType<typeof useDragControls> }) {
+  return (
+    <button
+      type="button"
+      className="cursor-grab touch-none rounded p-1 text-text-muted transition-colors hover:bg-border hover:text-text active:cursor-grabbing"
+      onPointerDown={(e) => dragControls.start(e)}
+    >
+      <GripVertical className="h-4 w-4" />
+    </button>
+  );
+}
+
+/* ── Draggable stage row ──────────────────────────────── */
+function StageRow({
+  stage,
+  index,
+  onEdit,
+  onDelete,
+}: {
+  stage: { _id: Id<"pipelineStages">; name: string; description?: string; action?: string; order: number; isTerminal: boolean; terminalOutcome: "won" | "lost" | null };
+  index: number;
+  onEdit: (id: Id<"pipelineStages">) => void;
+  onDelete: (id: Id<"pipelineStages">) => void;
+}) {
+  const dragControls = useDragControls();
+
+  return (
+    <Reorder.Item
+      as="tr"
+      value={stage._id}
+      dragListener={false}
+      dragControls={dragControls}
+      initial={{ opacity: 0, x: -8 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -8 }}
+      transition={{ type: "spring", stiffness: 300, damping: 24 }}
+      whileDrag={{
+        scale: 1.02,
+        boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+        background: "var(--card-bg)",
+        zIndex: 50,
+      }}
+      layout
+      className="h-11 border-b border-[rgba(148,163,184,0.1)] transition-colors duration-150 hover:bg-row-hover"
+      style={{ position: "relative" }}
+    >
+      <TableCell className="w-12">
+        <DragHandle dragControls={dragControls} />
+      </TableCell>
+      <TableCell className="font-mono text-sm">{index + 1}</TableCell>
+      <TableCell className="font-medium">{stage.name}</TableCell>
+      <TableCell className="hidden md:table-cell text-text-muted text-sm max-w-xs truncate">
+        {stage.description || "—"}
+      </TableCell>
+      <TableCell className="hidden lg:table-cell text-text-muted text-sm max-w-xs truncate">
+        {stage.action || "—"}
+      </TableCell>
+      <TableCell>
+        {stage.isTerminal ? (
+          <CheckCircle className="h-4 w-4 text-green-500" />
+        ) : (
+          <span className="text-text-muted">—</span>
+        )}
+      </TableCell>
+      <TableCell>
+        {stage.terminalOutcome === "won" ? (
+          <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+            Won
+          </span>
+        ) : stage.terminalOutcome === "lost" ? (
+          <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+            Lost
+          </span>
+        ) : (
+          <span className="text-text-muted">—</span>
+        )}
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center justify-end gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onEdit(stage._id)}
+            title="Edit"
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onDelete(stage._id)}
+            title="Delete"
+            className="text-red-500 hover:text-red-600 hover:bg-red-50"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </TableCell>
+    </Reorder.Item>
+  );
+}
 
 interface StageFormData {
   name: string;
@@ -86,6 +188,15 @@ export default function StagesPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [reordering, setReordering] = useState<Id<"pipelineStages"> | null>(null);
+  const [localOrder, setLocalOrder] = useState<string[]>([]);
+
+  // Keep local order in sync with server data
+  useEffect(() => {
+    if (stages) {
+      const sorted = [...stages].sort((a, b) => a.order - b.order);
+      setLocalOrder(sorted.map((s) => s._id));
+    }
+  }, [stages]);
 
   // Seed default stages on mount if empty
   useEffect(() => {
@@ -222,53 +333,33 @@ export default function StagesPage() {
     setDeleteConfirmOpen(true);
   };
 
-  const handleMoveUp = async (stageId: Id<"pipelineStages">) => {
-    if (!stages) return;
-    const sortedStages = [...stages].sort((a, b) => a.order - b.order);
-    const index = sortedStages.findIndex((s) => s._id === stageId);
-    if (index <= 0) return;
-
-    setReordering(stageId);
-    const newOrder = [...sortedStages];
-    [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
-
+  const handleDragReorder = async (newOrder: string[]) => {
+    setLocalOrder(newOrder);
+    // Persist to backend
+    setReordering("__dragging__" as Id<"pipelineStages">);
     try {
       await reorderStages({
-        orderedStageIds: newOrder.map((s) => s._id),
+        orderedStageIds: newOrder as Id<"pipelineStages">[],
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to reorder stages";
       setError(msg);
       stageToasts.reorderFailed(msg);
+      // Revert to server order
+      if (stages) {
+        const sorted = [...stages].sort((a, b) => a.order - b.order);
+        setLocalOrder(sorted.map((s) => s._id));
+      }
     } finally {
       setReordering(null);
     }
   };
 
-  const handleMoveDown = async (stageId: Id<"pipelineStages">) => {
-    if (!stages) return;
-    const sortedStages = [...stages].sort((a, b) => a.order - b.order);
-    const index = sortedStages.findIndex((s) => s._id === stageId);
-    if (index >= sortedStages.length - 1) return;
-
-    setReordering(stageId);
-    const newOrder = [...sortedStages];
-    [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
-
-    try {
-      await reorderStages({
-        orderedStageIds: newOrder.map((s) => s._id),
-      });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to reorder stages";
-      setError(msg);
-      stageToasts.reorderFailed(msg);
-    } finally {
-      setReordering(null);
-    }
-  };
-
-  const sortedStages = stages ? [...stages].sort((a, b) => a.order - b.order) : [];
+  // Build sorted stages from localOrder
+  const stageMap = new Map((stages || []).map((s) => [s._id, s]));
+  const sortedStages = localOrder
+    .map((id) => stageMap.get(id as Id<"pipelineStages">))
+    .filter(Boolean) as NonNullable<typeof stages>[number][];
   const stageToDeleteName = stages?.find((s) => s._id === stageToDelete)?.name;
 
   return (
@@ -323,101 +414,32 @@ export default function StagesPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-12" />
                 <TableHead className="w-16">Order</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead className="hidden md:table-cell">Description</TableHead>
                 <TableHead className="hidden lg:table-cell">Action</TableHead>
                 <TableHead className="w-24">Terminal</TableHead>
                 <TableHead className="w-24">Outcome</TableHead>
-                <TableHead className="w-36 text-right">Actions</TableHead>
+                <TableHead className="w-28 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
-            <motion.tbody variants={listVariants} initial="hidden" animate="show">
+            <Reorder.Group
+              as="tbody"
+              axis="y"
+              values={localOrder}
+              onReorder={handleDragReorder}
+            >
               {sortedStages.map((stage, index) => (
-                <motion.tr
+                <StageRow
                   key={stage._id}
-                  variants={rowVariants}
-                  className="h-11 border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)]"
-                >
-                  <TableCell className="font-mono text-sm">
-                    {stage.order}
-                  </TableCell>
-                  <TableCell className="font-medium">{stage.name}</TableCell>
-                  <TableCell className="hidden md:table-cell text-text-muted text-sm max-w-xs truncate">
-                    {stage.description || "—"}
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell text-text-muted text-sm max-w-xs truncate">
-                    {stage.action || "—"}
-                  </TableCell>
-                  <TableCell>
-                    {stage.isTerminal ? (
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                    ) : (
-                      <span className="text-text-muted">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {stage.terminalOutcome === "won" ? (
-                      <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                        Won
-                      </span>
-                    ) : stage.terminalOutcome === "lost" ? (
-                      <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
-                        Lost
-                      </span>
-                    ) : (
-                      <span className="text-text-muted">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleMoveUp(stage._id)}
-                        disabled={index === 0 || reordering === stage._id}
-                        title="Move up"
-                      >
-                        {reordering === stage._id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <ChevronUp className="h-4 w-4" />
-                        )}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleMoveDown(stage._id)}
-                        disabled={
-                          index === sortedStages.length - 1 ||
-                          reordering === stage._id
-                        }
-                        title="Move down"
-                      >
-                        <ChevronDown className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openEditDrawer(stage._id)}
-                        title="Edit"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openDeleteConfirm(stage._id)}
-                        title="Delete"
-                        className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </motion.tr>
+                  stage={stage}
+                  index={index}
+                  onEdit={openEditDrawer}
+                  onDelete={openDeleteConfirm}
+                />
               ))}
-            </motion.tbody>
+            </Reorder.Group>
           </Table>
         </div>
       )}

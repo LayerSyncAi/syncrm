@@ -11,11 +11,60 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AlertTriangle, Save, RefreshCw, Star, Check, X } from "lucide-react";
+import { AlertTriangle, Save, RefreshCw, Star, Check, X, Loader2 } from "lucide-react";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { scoringToasts } from "@/lib/toast";
 
 const cardItemTransition = { type: "spring" as const, stiffness: 300, damping: 24 };
+
+/* ── Scoring weight slider with glow + floating value ── */
+function GlowSlider({
+  value,
+  onChange,
+  disabled,
+  max = 100,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  disabled: boolean;
+  max?: number;
+}) {
+  const [isDragging, setIsDragging] = useState(false);
+  const percent = Math.min((value / max) * 100, 100);
+
+  return (
+    <div className="relative flex items-center gap-3 w-full min-w-[180px]">
+      {/* Floating weight bubble */}
+      <motion.div
+        className="absolute -top-7 pointer-events-none rounded-md bg-primary px-2 py-0.5 text-[11px] font-bold text-white shadow-md"
+        style={{ left: `calc(${percent}% - 16px)` }}
+        animate={{
+          scale: isDragging ? 1.15 : 1,
+          y: isDragging ? -2 : 0,
+        }}
+        transition={{ type: "spring", stiffness: 400, damping: 25 }}
+      >
+        {value}
+      </motion.div>
+      <input
+        type="range"
+        min={0}
+        max={max}
+        value={value}
+        disabled={disabled}
+        onChange={(e) => onChange(Number(e.target.value))}
+        onPointerDown={() => setIsDragging(true)}
+        onPointerUp={() => setIsDragging(false)}
+        onPointerLeave={() => setIsDragging(false)}
+        className="slider-glow w-full h-[6px] appearance-none rounded-full bg-transparent cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+        style={{
+          "--slider-percent": `${percent}%`,
+          "--slider-glow": isDragging ? "1" : "0",
+        } as React.CSSProperties}
+      />
+    </div>
+  );
+}
 
 interface Criterion {
   key: string;
@@ -80,8 +129,7 @@ export default function LeadScoringPage() {
         })),
       });
       setSaveSuccess(true);
-      scoringToasts.configSaved();
-      setTimeout(() => setSaveSuccess(false), 3000);
+      setTimeout(() => setSaveSuccess(false), 2000);
     } catch (e: any) {
       setError(e.message || "Failed to save");
       scoringToasts.configSaveFailed(e.message);
@@ -152,10 +200,30 @@ export default function LeadScoringPage() {
             />
             {recomputing ? "Recomputing..." : "Recompute All Scores"}
           </Button>
-          <Button onClick={handleSave} disabled={saving}>
-            <Save className="mr-2 h-4 w-4" />
-            {saving ? "Saving..." : "Save Config"}
-          </Button>
+          <div className="flex items-center gap-3">
+            <AnimatePresence>
+              {saveSuccess && (
+                <motion.span
+                  initial={{ opacity: 0, x: 12, scale: 0.9 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  exit={{ opacity: 0, x: 12, scale: 0.9 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                  className="flex items-center gap-1.5 text-sm font-medium text-green-600"
+                >
+                  <Check className="h-4 w-4" />
+                  Saved
+                </motion.span>
+              )}
+            </AnimatePresence>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="mr-2 h-4 w-4" />
+              )}
+              {saving ? "Saving..." : "Save Config"}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -173,19 +241,7 @@ export default function LeadScoringPage() {
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {saveSuccess && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            className="rounded-[10px] border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700"
-          >
-            <Check className="mr-2 inline h-4 w-4" />
-            Configuration saved successfully
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Inline save indicator is shown next to the save button */}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Criteria Configuration */}
@@ -268,34 +324,14 @@ export default function LeadScoringPage() {
                               />
                             </div>
                           )}
-                          <div className="flex items-center gap-2">
-                            <label className="text-xs text-text-muted">
-                              Weight:
-                            </label>
-                            <Input
-                              type="number"
-                              min={0}
-                              max={100}
+                          <div className="relative pt-6">
+                            <GlowSlider
                               value={criterion.weight}
-                              onChange={(e) =>
-                                updateCriterion(i, {
-                                  weight: Number(e.target.value),
-                                })
+                              onChange={(v) =>
+                                updateCriterion(i, { weight: v })
                               }
-                              className="h-8 w-20"
                               disabled={!criterion.enabled}
                             />
-                          </div>
-                          {/* Visual weight bar */}
-                          <div className="w-24">
-                            <div className="h-2 rounded-full bg-border">
-                              <div
-                                className="h-2 rounded-full bg-primary-600 transition-all"
-                                style={{
-                                  width: `${Math.min((criterion.weight / Math.max(maxPossibleScore, 1)) * 100, 100)}%`,
-                                }}
-                              />
-                            </div>
                           </div>
                         </div>
                       </div>

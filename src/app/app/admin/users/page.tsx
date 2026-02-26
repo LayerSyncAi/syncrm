@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useAction } from "convex/react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
@@ -93,6 +93,9 @@ export default function UsersPage() {
   const [editingUser, setEditingUser] = useState<EditingUser | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+
+  // Row flash state: maps userId to "activate" | "deactivate"
+  const [flashingRows, setFlashingRows] = useState<Map<string, "activate" | "deactivate">>(new Map());
 
   // Redirect non-admin users
   useEffect(() => {
@@ -217,6 +220,20 @@ export default function UsersPage() {
     try {
       await setUserActive({ userId: editingUser._id, isActive: newActive });
       setEditingUser((prev) => prev ? { ...prev, isActive: newActive } : prev);
+      // Trigger row flash
+      const userId = editingUser._id;
+      setFlashingRows((prev) => {
+        const next = new Map(prev);
+        next.set(userId, newActive ? "activate" : "deactivate");
+        return next;
+      });
+      setTimeout(() => {
+        setFlashingRows((prev) => {
+          const next = new Map(prev);
+          next.delete(userId);
+          return next;
+        });
+      }, 1000);
       toast.success(`${newActive ? "Activated" : "Deactivated"} ${name}`);
     } catch (err) {
       toast.error(`Status change failed for ${name}`, {
@@ -318,11 +335,18 @@ export default function UsersPage() {
             <motion.tbody variants={listVariants} initial="hidden" animate="show">
               {sortedUsers.map((u) => {
                 const isCurrentUser = u._id === user._id;
+                const flashType = flashingRows.get(u._id);
+                const flashClass = flashType === "activate"
+                  ? "row-flash-activate"
+                  : flashType === "deactivate"
+                    ? "row-flash-deactivate"
+                    : "";
                 return (
                   <motion.tr
                     key={u._id}
                     variants={rowVariants}
-                    className="h-11 border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)]"
+                    layout
+                    className={`h-11 border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)] ${flashClass}`}
                   >
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -345,9 +369,19 @@ export default function UsersPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Badge variant={u.isActive ? "default" : "secondary"}>
-                          {u.isActive ? "Active" : "Inactive"}
-                        </Badge>
+                        <AnimatePresence mode="wait">
+                          <motion.div
+                            key={u.isActive ? "active" : "inactive"}
+                            initial={{ scale: 0.8, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.8, opacity: 0 }}
+                            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                          >
+                            <Badge variant={u.isActive ? "default" : "secondary"}>
+                              {u.isActive ? "Active" : "Inactive"}
+                            </Badge>
+                          </motion.div>
+                        </AnimatePresence>
                         {u.resetPasswordOnNextLogin && (
                           <Badge variant="warning">Password reset pending</Badge>
                         )}
@@ -412,15 +446,32 @@ export default function UsersPage() {
               />
             </div>
 
-            {/* Active / Inactive */}
+            {/* Active / Inactive with morph animation */}
             <div className="flex items-center justify-between rounded-lg border border-border p-4">
-              <div>
-                <p className="text-sm font-medium">Account status</p>
-                <p className="text-xs text-text-muted">
-                  {editingUser.isActive
-                    ? "User can sign in and use the app."
-                    : "User is blocked from signing in."}
-                </p>
+              <div className="flex items-center gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium">Account status</p>
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={editingUser.isActive ? "active" : "inactive"}
+                        initial={{ scale: 0.7, opacity: 0, y: 4 }}
+                        animate={{ scale: 1, opacity: 1, y: 0 }}
+                        exit={{ scale: 0.7, opacity: 0, y: -4 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 22 }}
+                      >
+                        <Badge variant={editingUser.isActive ? "success" : "danger"}>
+                          {editingUser.isActive ? "Active" : "Inactive"}
+                        </Badge>
+                      </motion.div>
+                    </AnimatePresence>
+                  </div>
+                  <p className="text-xs text-text-muted mt-0.5">
+                    {editingUser.isActive
+                      ? "User can sign in and use the app."
+                      : "User is blocked from signing in."}
+                  </p>
+                </div>
               </div>
               <Button
                 variant={editingUser.isActive ? "destructive" : "primary"}

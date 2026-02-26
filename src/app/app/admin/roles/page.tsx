@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
@@ -20,6 +20,39 @@ import {
 } from "@/components/ui/table";
 import { Loader2, Shield, ShieldAlert, ShieldCheck, AlertTriangle } from "lucide-react";
 import { roleToasts } from "@/lib/toast";
+
+/* ── Spring-animated role toggle switch ───────────────── */
+function RoleToggleSwitch({
+  isAdmin,
+  onToggle,
+  disabled,
+}: {
+  isAdmin: boolean;
+  onToggle: () => void;
+  disabled: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={isAdmin}
+      onClick={onToggle}
+      disabled={disabled}
+      className="relative inline-flex h-7 w-[52px] shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
+      style={{ backgroundColor: isAdmin ? "#16a34a" : "#94a3b8" }}
+    >
+      <motion.span
+        layout
+        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+        className="pointer-events-none block h-5 w-5 rounded-full bg-white shadow-md"
+        style={{ marginLeft: isAdmin ? 26 : 4 }}
+      />
+      {disabled && (
+        <Loader2 className="absolute left-1/2 top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 animate-spin text-white/70" />
+      )}
+    </button>
+  );
+}
 
 const listVariants = {
   hidden: {},
@@ -205,38 +238,30 @@ export default function AdminRolesPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        {u.role === "agent" ? (
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => handleRoleChange(u._id, "admin")}
-                            disabled={updatingUserId === u._id}
-                          >
-                            {updatingUserId === u._id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              "Promote to Admin"
-                            )}
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRoleChange(u._id, "agent")}
-                            disabled={updatingUserId === u._id || cannotDemote}
-                            title={
-                              cannotDemote
-                                ? "Cannot demote the last admin"
-                                : undefined
+                        <div className="flex items-center justify-end gap-3">
+                          <AnimatePresence mode="wait">
+                            <motion.span
+                              key={u.role}
+                              initial={{ opacity: 0, y: 4 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -4 }}
+                              transition={{ duration: 0.15 }}
+                              className={`text-xs font-medium ${u.role === "admin" ? "text-green-600" : "text-slate-400"}`}
+                            >
+                              {u.role === "admin" ? "Admin" : "Agent"}
+                            </motion.span>
+                          </AnimatePresence>
+                          <RoleToggleSwitch
+                            isAdmin={u.role === "admin"}
+                            onToggle={() =>
+                              handleRoleChange(
+                                u._id,
+                                u.role === "admin" ? "agent" : "admin"
+                              )
                             }
-                          >
-                            {updatingUserId === u._id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              "Demote to Agent"
-                            )}
-                          </Button>
-                        )}
+                            disabled={updatingUserId === u._id || cannotDemote}
+                          />
+                        </div>
                       </TableCell>
                     </motion.tr>
                   );
