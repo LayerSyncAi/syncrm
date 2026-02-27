@@ -136,6 +136,7 @@ function NavItem({
 
 export const Sidebar = memo(function Sidebar({ isAdmin, collapsed, onToggle, orgName }: SidebarProps) {
   const pathname = usePathname();
+  const [ioExpanded, setIoExpanded] = useState(false);
 
   return (
     <aside
@@ -174,28 +175,59 @@ export const Sidebar = memo(function Sidebar({ isAdmin, collapsed, onToggle, org
         ))}
       </nav>
       <div className="mt-4 space-y-1 border-t border-white/20 pt-4">
-        <AnimatePresence>
-          {!collapsed && (
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.12 }}
-              className="px-3 text-[11px] font-medium uppercase tracking-[0.14em] text-white/70"
+        {collapsed ? (
+          /* When sidebar is collapsed, show items directly (with hover tooltips) */
+          importExportItems.map((item) => (
+            <NavItem
+              key={item.href}
+              item={item}
+              active={pathname.startsWith(item.href)}
+              collapsed={collapsed}
+              pillId="nav-pill-io"
+            />
+          ))
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => setIoExpanded((p) => !p)}
+              className="flex w-full items-center justify-between rounded-[10px] px-3 py-1.5 transition-colors duration-150 hover:bg-white/10"
             >
-              Import / Export
-            </motion.p>
-          )}
-        </AnimatePresence>
-        {importExportItems.map((item) => (
-          <NavItem
-            key={item.href}
-            item={item}
-            active={pathname.startsWith(item.href)}
-            collapsed={collapsed}
-            pillId="nav-pill-io"
-          />
-        ))}
+              <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/70">
+                Import / Export
+              </span>
+              <motion.div
+                animate={{ rotate: ioExpanded ? 180 : 0 }}
+                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              >
+                <ChevronRight className="h-3 w-3 rotate-90 text-white/50" />
+              </motion.div>
+            </button>
+            <AnimatePresence initial={false}>
+              {ioExpanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="overflow-hidden"
+                >
+                  <div className="space-y-1">
+                    {importExportItems.map((item) => (
+                      <NavItem
+                        key={item.href}
+                        item={item}
+                        active={pathname.startsWith(item.href)}
+                        collapsed={collapsed}
+                        pillId="nav-pill-io"
+                      />
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </>
+        )}
       </div>
       {isAdmin ? (
         <div className="mt-4 space-y-1 border-t border-white/20 pt-4">
