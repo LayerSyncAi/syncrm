@@ -270,6 +270,24 @@ export const updateMyTimezone = mutation({
   },
 });
 
+export const updateMyWhatsappNumber = mutation({
+  args: {
+    whatsappNumber: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserWithOrg(ctx);
+    const trimmed = args.whatsappNumber.trim();
+    // Allow empty string to clear the number
+    if (trimmed && !/^\+\d{7,15}$/.test(trimmed)) {
+      throw new Error("Invalid WhatsApp number. Use E.164 format e.g. +263771234567");
+    }
+    await ctx.db.patch(user._id, {
+      whatsappNumber: trimmed || undefined,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
 export const adminUpdateUserTimezone = mutation({
   args: {
     userId: v.id("users"),
@@ -288,6 +306,28 @@ export const adminUpdateUserTimezone = mutation({
     }
     await ctx.db.patch(args.userId, {
       timezone: args.timezone,
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+export const adminUpdateUserWhatsappNumber = mutation({
+  args: {
+    userId: v.id("users"),
+    whatsappNumber: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+    const targetUser = await ctx.db.get(args.userId);
+    if (!targetUser || targetUser.orgId !== admin.orgId) {
+      throw new Error("User not found");
+    }
+    const trimmed = args.whatsappNumber.trim();
+    if (trimmed && !/^\+\d{7,15}$/.test(trimmed)) {
+      throw new Error("Invalid WhatsApp number. Use E.164 format e.g. +263771234567");
+    }
+    await ctx.db.patch(args.userId, {
+      whatsappNumber: trimmed || undefined,
       updatedAt: Date.now(),
     });
   },

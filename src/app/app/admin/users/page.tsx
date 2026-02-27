@@ -66,6 +66,7 @@ type EditingUser = {
   role: "admin" | "agent";
   isActive: boolean;
   timezone?: string;
+  whatsappNumber?: string;
   resetPasswordOnNextLogin?: boolean;
 };
 
@@ -81,6 +82,7 @@ export default function UsersPage() {
   const setUserActive = useMutation(api.users.adminSetUserActive);
   const setUserRole = useMutation(api.users.adminSetUserRole);
   const setUserTimezone = useMutation(api.users.adminUpdateUserTimezone);
+  const setUserWhatsappNumber = useMutation(api.users.adminUpdateUserWhatsappNumber);
   const resetUserPassword = useAction(api.users.adminResetUserPassword);
 
   // Create drawer state
@@ -93,6 +95,8 @@ export default function UsersPage() {
   const [editingUser, setEditingUser] = useState<EditingUser | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  const [whatsappInput, setWhatsappInput] = useState("");
+  const [whatsappError, setWhatsappError] = useState("");
 
   // Row flash state: maps userId to "activate" | "deactivate"
   const [flashingRows, setFlashingRows] = useState<Map<string, "activate" | "deactivate">>(new Map());
@@ -166,6 +170,8 @@ export default function UsersPage() {
 
   const openEditModal = (u: EditingUser) => {
     setEditingUser({ ...u });
+    setWhatsappInput(u.whatsappNumber || "");
+    setWhatsappError("");
     setResetConfirmOpen(false);
   };
 
@@ -205,6 +211,30 @@ export default function UsersPage() {
       animatedToast.success(`Timezone updated for ${name}`);
     } catch (err) {
       animatedToast.error(`Timezone update failed for ${name}`, {
+        description: err instanceof Error ? err.message : "Something went wrong.",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleWhatsappSave = async () => {
+    if (!editingUser) return;
+    const trimmed = whatsappInput.trim();
+    if (trimmed && !/^\+\d{7,15}$/.test(trimmed)) {
+      setWhatsappError("Use E.164 format e.g. +263771234567");
+      return;
+    }
+    setIsSaving(true);
+    setWhatsappError("");
+    const name = userName(editingUser);
+    try {
+      await setUserWhatsappNumber({ userId: editingUser._id, whatsappNumber: trimmed });
+      setEditingUser((prev) => prev ? { ...prev, whatsappNumber: trimmed || undefined } : prev);
+      animatedToast.success(`WhatsApp number updated for ${name}`);
+    } catch (err) {
+      setWhatsappError(err instanceof Error ? err.message : "Something went wrong.");
+      animatedToast.error(`WhatsApp update failed for ${name}`, {
         description: err instanceof Error ? err.message : "Something went wrong.",
       });
     } finally {
@@ -444,6 +474,34 @@ export default function UsersPage() {
                   ...TIMEZONES.map((tz) => ({ value: tz.value, label: tz.label })),
                 ]}
               />
+            </div>
+
+            {/* WhatsApp Number */}
+            <div className="space-y-2">
+              <Label>WhatsApp Number</Label>
+              <div className="flex gap-2">
+                <Input
+                  type="tel"
+                  placeholder="+263771234567"
+                  value={whatsappInput}
+                  onChange={(e) => { setWhatsappInput(e.target.value); setWhatsappError(""); }}
+                />
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleWhatsappSave}
+                  disabled={isSaving}
+                  className="shrink-0"
+                >
+                  {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+                </Button>
+              </div>
+              {whatsappError && (
+                <p className="text-xs text-red-500">{whatsappError}</p>
+              )}
+              <p className="text-xs text-text-muted">
+                E.164 format with country code. Used for WhatsApp notifications (reminders, daily digest).
+              </p>
             </div>
 
             {/* Active / Inactive with morph animation */}

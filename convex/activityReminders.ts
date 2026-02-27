@@ -6,6 +6,7 @@ import {
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { sendEmail } from "./email";
+import { sendWhatsApp } from "./whatsapp";
 
 // =====================
 // Formatting helpers
@@ -251,12 +252,12 @@ export const getLeadById = internalQuery({
 });
 
 /**
- * Return all active users that have an email and belong to an organization.
+ * Return all active users that have an email or whatsappNumber and belong to an organization.
  */
 export const getActiveUsers = internalQuery({
   handler: async (ctx) => {
     const users = await ctx.db.query("users").collect();
-    return users.filter((u) => u.isActive && u.orgId && u.email);
+    return users.filter((u) => u.isActive && u.orgId && (u.email || u.whatsappNumber));
   },
 });
 
@@ -342,7 +343,7 @@ export const processPreReminders = internalAction({
         }),
       ]);
 
-      if (!user || !user.email || !user.isActive) continue;
+      if (!user || !user.isActive || (!user.email && !user.whatsappNumber)) continue;
 
       const timezone = user.timezone || "UTC";
       const userName = user.fullName || user.name || "there";
@@ -350,25 +351,36 @@ export const processPreReminders = internalAction({
       const leadName = lead?.fullName || "Unknown";
       const typeLabel = activityTypeLabel(activity.type);
 
-      await sendEmail({
-        to: user.email,
-        subject: `Reminder: ${typeLabel} "${activity.title}" starts in 1 hour`,
-        html: `
-          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #2563eb;">Upcoming Activity Reminder</h2>
-            <p>Hi ${userName},</p>
-            <p>Please note your <strong>${typeLabel.toLowerCase()}</strong> &ldquo;<strong>${activity.title}</strong>&rdquo; is meant to start in an hour at <strong>${timeStr}</strong>.</p>
-            <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin: 16px 0;">
-              <p style="margin: 4px 0;"><strong>Activity:</strong> ${activity.title}</p>
-              <p style="margin: 4px 0;"><strong>Type:</strong> ${typeLabel}</p>
-              <p style="margin: 4px 0;"><strong>Scheduled:</strong> ${timeStr}</p>
-              <p style="margin: 4px 0;"><strong>Lead:</strong> ${leadName}</p>
+      // Send email notification
+      if (user.email) {
+        await sendEmail({
+          to: user.email,
+          subject: `Reminder: ${typeLabel} "${activity.title}" starts in 1 hour`,
+          html: `
+            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #2563eb;">Upcoming Activity Reminder</h2>
+              <p>Hi ${userName},</p>
+              <p>Please note your <strong>${typeLabel.toLowerCase()}</strong> &ldquo;<strong>${activity.title}</strong>&rdquo; is meant to start in an hour at <strong>${timeStr}</strong>.</p>
+              <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin: 16px 0;">
+                <p style="margin: 4px 0;"><strong>Activity:</strong> ${activity.title}</p>
+                <p style="margin: 4px 0;"><strong>Type:</strong> ${typeLabel}</p>
+                <p style="margin: 4px 0;"><strong>Scheduled:</strong> ${timeStr}</p>
+                <p style="margin: 4px 0;"><strong>Lead:</strong> ${leadName}</p>
+              </div>
+              <p style="color: #666; font-size: 14px;">Log in to SynCRM to view full details and prepare for your activity.</p>
             </div>
-            <p style="color: #666; font-size: 14px;">Log in to SynCRM to view full details and prepare for your activity.</p>
-          </div>
-        `,
-        text: `Hi ${userName}, please note your ${typeLabel.toLowerCase()} "${activity.title}" is meant to start in an hour at ${timeStr}. Lead: ${leadName}.`,
-      });
+          `,
+          text: `Hi ${userName}, please note your ${typeLabel.toLowerCase()} "${activity.title}" is meant to start in an hour at ${timeStr}. Lead: ${leadName}.`,
+        });
+      }
+
+      // Send WhatsApp notification
+      if (user.whatsappNumber) {
+        await sendWhatsApp({
+          to: user.whatsappNumber,
+          body: `⏰ *Upcoming Activity Reminder*\n\nHi ${userName}, your ${typeLabel.toLowerCase()} "${activity.title}" starts in 1 hour at ${timeStr}.\n\n📋 *Activity:* ${activity.title}\n📌 *Type:* ${typeLabel}\n🕐 *Scheduled:* ${timeStr}\n👤 *Lead:* ${leadName}\n\nLog in to SynCRM to view details.`,
+        });
+      }
 
       await ctx.runMutation(internal.activityReminders.recordReminder, {
         activityId: activity._id,
@@ -405,7 +417,7 @@ export const processOverdueReminders = internalAction({
         }),
       ]);
 
-      if (!user || !user.email || !user.isActive) continue;
+      if (!user || !user.isActive || (!user.email && !user.whatsappNumber)) continue;
 
       const timezone = user.timezone || "UTC";
       const userName = user.fullName || user.name || "there";
@@ -413,31 +425,42 @@ export const processOverdueReminders = internalAction({
       const leadName = lead?.fullName || "Unknown";
       const typeLabel = activityTypeLabel(activity.type);
 
-      await sendEmail({
-        to: user.email,
-        subject: `Follow-up needed: ${typeLabel} "${activity.title}" is overdue`,
-        html: `
-          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #dc2626;">Overdue Activity Reminder</h2>
-            <p>Hi ${userName},</p>
-            <p>Your <strong>${typeLabel.toLowerCase()}</strong> &ldquo;<strong>${activity.title}</strong>&rdquo; was scheduled for <strong>${timeStr}</strong> and is still open.</p>
-            <div style="background: #fef2f2; border-radius: 8px; padding: 16px; margin: 16px 0;">
-              <p style="margin: 4px 0;"><strong>Activity:</strong> ${activity.title}</p>
-              <p style="margin: 4px 0;"><strong>Type:</strong> ${typeLabel}</p>
-              <p style="margin: 4px 0;"><strong>Was scheduled for:</strong> ${timeStr}</p>
-              <p style="margin: 4px 0;"><strong>Lead:</strong> ${leadName}</p>
-              <p style="margin: 4px 0;"><strong>Status:</strong> <span style="color: #dc2626;">Still open</span></p>
+      // Send email notification
+      if (user.email) {
+        await sendEmail({
+          to: user.email,
+          subject: `Follow-up needed: ${typeLabel} "${activity.title}" is overdue`,
+          html: `
+            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #dc2626;">Overdue Activity Reminder</h2>
+              <p>Hi ${userName},</p>
+              <p>Your <strong>${typeLabel.toLowerCase()}</strong> &ldquo;<strong>${activity.title}</strong>&rdquo; was scheduled for <strong>${timeStr}</strong> and is still open.</p>
+              <div style="background: #fef2f2; border-radius: 8px; padding: 16px; margin: 16px 0;">
+                <p style="margin: 4px 0;"><strong>Activity:</strong> ${activity.title}</p>
+                <p style="margin: 4px 0;"><strong>Type:</strong> ${typeLabel}</p>
+                <p style="margin: 4px 0;"><strong>Was scheduled for:</strong> ${timeStr}</p>
+                <p style="margin: 4px 0;"><strong>Lead:</strong> ${leadName}</p>
+                <p style="margin: 4px 0;"><strong>Status:</strong> <span style="color: #dc2626;">Still open</span></p>
+              </div>
+              <p>Please check in and either:</p>
+              <ul>
+                <li>Mark the activity as completed with notes on what happened</li>
+                <li>Leave a progress update or comment</li>
+              </ul>
+              <p style="color: #666; font-size: 14px;">Log in to SynCRM to update this activity.</p>
             </div>
-            <p>Please check in and either:</p>
-            <ul>
-              <li>Mark the activity as completed with notes on what happened</li>
-              <li>Leave a progress update or comment</li>
-            </ul>
-            <p style="color: #666; font-size: 14px;">Log in to SynCRM to update this activity.</p>
-          </div>
-        `,
-        text: `Hi ${userName}, your ${typeLabel.toLowerCase()} "${activity.title}" was scheduled for ${timeStr} and is still open. Lead: ${leadName}. Please log in to SynCRM to update this activity.`,
-      });
+          `,
+          text: `Hi ${userName}, your ${typeLabel.toLowerCase()} "${activity.title}" was scheduled for ${timeStr} and is still open. Lead: ${leadName}. Please log in to SynCRM to update this activity.`,
+        });
+      }
+
+      // Send WhatsApp notification
+      if (user.whatsappNumber) {
+        await sendWhatsApp({
+          to: user.whatsappNumber,
+          body: `🚨 *Overdue Activity*\n\nHi ${userName}, your ${typeLabel.toLowerCase()} "${activity.title}" was scheduled for ${timeStr} and is still open.\n\n📋 *Activity:* ${activity.title}\n📌 *Type:* ${typeLabel}\n🕐 *Was scheduled for:* ${timeStr}\n👤 *Lead:* ${leadName}\n⚠️ *Status:* Still open\n\nPlease mark it as completed or leave a progress update in SynCRM.`,
+        });
+      }
 
       await ctx.runMutation(internal.activityReminders.recordReminder, {
         activityId: activity._id,
@@ -460,7 +483,7 @@ export const processDailyDigests = internalAction({
     );
 
     for (const user of users) {
-      if (!user.email) continue;
+      if (!user.email && !user.whatsappNumber) continue;
 
       const timezone = user.timezone || "UTC";
       const hour = getLocalHour(timezone);
@@ -545,46 +568,68 @@ export const processDailyDigests = internalAction({
         (a) => a.status === "completed"
       ).length;
 
-      await sendEmail({
-        to: user.email,
-        subject: `Your daily agenda for ${dateLabel} — ${todoCount} task${todoCount !== 1 ? "s" : ""} scheduled`,
-        html: `
-          <div style="font-family: sans-serif; max-width: 700px; margin: 0 auto;">
-            <h2 style="color: #2563eb;">Daily Agenda</h2>
-            <p>Good morning ${userName},</p>
-            <p>Here&rsquo;s your schedule for <strong>${dateLabel}</strong>:</p>
-            <p style="margin: 8px 0;">
-              <strong>${todoCount}</strong> to do &middot;
-              <strong>${completedCount}</strong> completed &middot;
-              <strong>${sorted.length}</strong> total
-            </p>
-            <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
-              <thead>
-                <tr style="background: #f3f4f6;">
-                  <th style="padding: 8px; text-align: left; border-bottom: 2px solid #d1d5db;">Time</th>
-                  <th style="padding: 8px; text-align: left; border-bottom: 2px solid #d1d5db;">Type</th>
-                  <th style="padding: 8px; text-align: left; border-bottom: 2px solid #d1d5db;">Activity</th>
-                  <th style="padding: 8px; text-align: left; border-bottom: 2px solid #d1d5db;">Lead</th>
-                  <th style="padding: 8px; text-align: left; border-bottom: 2px solid #d1d5db;">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${activityRows}
-              </tbody>
-            </table>
-            <p style="color: #666; font-size: 14px;">Log in to SynCRM to manage your activities and update your progress.</p>
-          </div>
-        `,
-        text: `Good morning ${userName}, here's your schedule for ${dateLabel}: ${sorted
+      // Send email notification
+      if (user.email) {
+        await sendEmail({
+          to: user.email,
+          subject: `Your daily agenda for ${dateLabel} — ${todoCount} task${todoCount !== 1 ? "s" : ""} scheduled`,
+          html: `
+            <div style="font-family: sans-serif; max-width: 700px; margin: 0 auto;">
+              <h2 style="color: #2563eb;">Daily Agenda</h2>
+              <p>Good morning ${userName},</p>
+              <p>Here&rsquo;s your schedule for <strong>${dateLabel}</strong>:</p>
+              <p style="margin: 8px 0;">
+                <strong>${todoCount}</strong> to do &middot;
+                <strong>${completedCount}</strong> completed &middot;
+                <strong>${sorted.length}</strong> total
+              </p>
+              <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+                <thead>
+                  <tr style="background: #f3f4f6;">
+                    <th style="padding: 8px; text-align: left; border-bottom: 2px solid #d1d5db;">Time</th>
+                    <th style="padding: 8px; text-align: left; border-bottom: 2px solid #d1d5db;">Type</th>
+                    <th style="padding: 8px; text-align: left; border-bottom: 2px solid #d1d5db;">Activity</th>
+                    <th style="padding: 8px; text-align: left; border-bottom: 2px solid #d1d5db;">Lead</th>
+                    <th style="padding: 8px; text-align: left; border-bottom: 2px solid #d1d5db;">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${activityRows}
+                </tbody>
+              </table>
+              <p style="color: #666; font-size: 14px;">Log in to SynCRM to manage your activities and update your progress.</p>
+            </div>
+          `,
+          text: `Good morning ${userName}, here's your schedule for ${dateLabel}: ${sorted
+            .map((a) => {
+              const lead = leads[a.leadId];
+              const timeStr = a.scheduledAt
+                ? formatTime(a.scheduledAt, timezone)
+                : "No time";
+              return `${timeStr} - ${activityTypeLabel(a.type)}: ${a.title} (Lead: ${lead?.fullName || "Unknown"})`;
+            })
+            .join("; ")}`,
+        });
+      }
+
+      // Send WhatsApp notification
+      if (user.whatsappNumber) {
+        const activityLines = sorted
           .map((a) => {
             const lead = leads[a.leadId];
             const timeStr = a.scheduledAt
               ? formatTime(a.scheduledAt, timezone)
               : "No time";
-            return `${timeStr} - ${activityTypeLabel(a.type)}: ${a.title} (Lead: ${lead?.fullName || "Unknown"})`;
+            const status = a.status === "completed" ? "Done" : "To Do";
+            return `  ${timeStr} - ${activityTypeLabel(a.type)}: ${a.title} (${lead?.fullName || "Unknown"}) [${status}]`;
           })
-          .join("; ")}`,
-      });
+          .join("\n");
+
+        await sendWhatsApp({
+          to: user.whatsappNumber,
+          body: `📅 *Daily Agenda — ${dateLabel}*\n\nGood morning ${userName}! Here's your schedule:\n\n📊 ${todoCount} to do · ${completedCount} completed · ${sorted.length} total\n\n${activityLines}\n\nLog in to SynCRM to manage your activities.`,
+        });
+      }
 
       await ctx.runMutation(internal.activityReminders.recordReminder, {
         reminderType: "daily_digest",

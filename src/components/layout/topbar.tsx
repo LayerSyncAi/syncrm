@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ChevronDown, Globe, LogOut, Search } from "lucide-react";
+import { ChevronDown, Globe, LogOut, MessageCircle, Search } from "lucide-react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -15,6 +15,7 @@ interface TopbarProps {
   userEmail?: string;
   orgName?: string;
   userTimezone?: string;
+  userWhatsappNumber?: string;
 }
 
 const titleMap: Record<string, string> = {
@@ -28,14 +29,19 @@ const titleMap: Record<string, string> = {
   "/app/admin/stages": "Stages",
 };
 
-export function Topbar({ userName, userEmail, orgName, userTimezone }: TopbarProps) {
+export function Topbar({ userName, userEmail, orgName, userTimezone, userWhatsappNumber }: TopbarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { signOut } = useAuthActions();
   const updateTimezone = useMutation(api.users.updateMyTimezone);
+  const updateWhatsappNumber = useMutation(api.users.updateMyWhatsappNumber);
   const [open, setOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showTimezone, setShowTimezone] = useState(false);
+  const [showWhatsapp, setShowWhatsapp] = useState(false);
+  const [whatsappInput, setWhatsappInput] = useState("");
+  const [whatsappError, setWhatsappError] = useState("");
+  const [isSavingWhatsapp, setIsSavingWhatsapp] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
   const title = useMemo(() => {
@@ -72,6 +78,24 @@ export function Topbar({ userName, userEmail, orgName, userTimezone }: TopbarPro
       console.error("Timezone update error:", error);
     }
     setShowTimezone(false);
+  };
+
+  const handleWhatsappSave = async () => {
+    const trimmed = whatsappInput.trim();
+    if (trimmed && !/^\+\d{7,15}$/.test(trimmed)) {
+      setWhatsappError("Use E.164 format e.g. +263771234567");
+      return;
+    }
+    setIsSavingWhatsapp(true);
+    setWhatsappError("");
+    try {
+      await updateWhatsappNumber({ whatsappNumber: trimmed });
+      setShowWhatsapp(false);
+    } catch (error) {
+      setWhatsappError(error instanceof Error ? error.message : "Failed to save");
+    } finally {
+      setIsSavingWhatsapp(false);
+    }
   };
 
   // Get initials for avatar
@@ -168,6 +192,52 @@ export function Topbar({ userName, userEmail, orgName, userTimezone }: TopbarPro
                       {tz.label}
                     </button>
                   ))}
+                </div>
+              )}
+              <button
+                onClick={() => {
+                  setShowWhatsapp((v) => !v);
+                  setWhatsappInput(userWhatsappNumber || "");
+                  setWhatsappError("");
+                }}
+                className="flex w-full items-center gap-2 rounded-[10px] px-3 py-2 text-sm text-text-muted hover:bg-row-hover"
+              >
+                <MessageCircle className="h-4 w-4" />
+                <span className="truncate">
+                  {userWhatsappNumber || "Set WhatsApp number"}
+                </span>
+              </button>
+              {showWhatsapp && (
+                <div className="border-t border-border px-3 py-2 space-y-2">
+                  <input
+                    type="tel"
+                    placeholder="+263771234567"
+                    value={whatsappInput}
+                    onChange={(e) => { setWhatsappInput(e.target.value); setWhatsappError(""); }}
+                    className="w-full rounded-[8px] border border-border-strong bg-transparent px-2 py-1.5 text-xs text-text placeholder:text-text-dim focus:outline-none focus:ring-1 focus:ring-primary-600"
+                  />
+                  {whatsappError && (
+                    <p className="text-xs text-red-500">{whatsappError}</p>
+                  )}
+                  <p className="text-[10px] text-text-dim">E.164 format with country code</p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleWhatsappSave}
+                      disabled={isSavingWhatsapp}
+                      className="flex-1 rounded-[8px] bg-primary-600 px-2 py-1 text-xs text-white hover:bg-primary-600/90 disabled:opacity-50"
+                    >
+                      {isSavingWhatsapp ? "Saving..." : "Save"}
+                    </button>
+                    {userWhatsappNumber && (
+                      <button
+                        onClick={() => { setWhatsappInput(""); handleWhatsappSave(); }}
+                        disabled={isSavingWhatsapp}
+                        className="rounded-[8px] border border-border-strong px-2 py-1 text-xs text-text-muted hover:bg-row-hover disabled:opacity-50"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
               <button
