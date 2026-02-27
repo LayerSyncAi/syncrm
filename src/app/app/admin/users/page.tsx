@@ -561,7 +561,7 @@ export default function UsersPage() {
           )}
 
           <div className="space-y-2">
-            <Label>Full Name *</Label>
+            <Label className="flex items-center gap-1">Full Name <span className="text-danger">*</span></Label>
             <Input
               placeholder="John Doe"
               value={formData.fullName}
@@ -570,7 +570,7 @@ export default function UsersPage() {
           </div>
 
           <div className="space-y-2">
-            <Label>Email *</Label>
+            <Label className="flex items-center gap-1">Email <span className="text-danger">*</span></Label>
             <Input
               type="email"
               placeholder="john@agency.com"

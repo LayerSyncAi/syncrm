@@ -585,7 +585,7 @@ export default function CommissionsPage() {
           )}
 
           <div className="space-y-2">
-            <Label>Name *</Label>
+            <Label className="flex items-center gap-1">Name <span className="text-danger">*</span></Label>
             <Input
               placeholder="e.g., Standard Shared Deal"
               value={formData.name}

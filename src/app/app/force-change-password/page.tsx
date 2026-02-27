@@ -83,8 +83,8 @@ export default function ForceChangePasswordPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <label className="text-xs font-medium text-text-muted">
-                New Password
+              <label className="text-xs font-medium text-text-muted flex items-center gap-1">
+                New Password <span className="text-danger">*</span>
               </label>
               <Input
                 type="password"
@@ -99,8 +99,8 @@ export default function ForceChangePasswordPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-medium text-text-muted">
-                Confirm Password
+              <label className="text-xs font-medium text-text-muted flex items-center gap-1">
+                Confirm Password <span className="text-danger">*</span>
               </label>
               <Input
                 type="password"

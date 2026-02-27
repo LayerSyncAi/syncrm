@@ -8,6 +8,7 @@ import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Modal } from "@/components/ui/modal";
 import { Textarea } from "@/components/ui/textarea";
@@ -178,58 +179,53 @@ export function TaskDetailModal({ open, onClose, task, onTaskUpdated, onTaskComp
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-1">
-            <Label className="text-text-muted text-xs">Lead</Label>
-            <p className="text-sm font-medium">
-              {task.lead?.fullName || "Unknown lead"}
-            </p>
-            {task.lead?.phone && (
-              <p className="text-xs text-text-muted">{task.lead.phone}</p>
-            )}
+          <div className="space-y-2">
+            <Label>Lead</Label>
+            <Input
+              value={task.lead ? `${task.lead.fullName}${task.lead.phone ? ` (${task.lead.phone})` : ""}` : "Unknown lead"}
+              readOnly
+            />
           </div>
 
-          <div className="space-y-1">
-            <Label className="text-text-muted text-xs">Assigned To</Label>
-            <p className="text-sm font-medium">
-              {task.assignedTo?.fullName || task.assignedTo?.name || task.assignedTo?.email || "Unassigned"}
-            </p>
+          <div className="space-y-2">
+            <Label>Assigned To</Label>
+            <Input
+              value={task.assignedTo?.fullName || task.assignedTo?.name || task.assignedTo?.email || "Unassigned"}
+              readOnly
+            />
           </div>
 
           {task.scheduledAt && (
-            <div className="space-y-1">
-              <Label className="text-text-muted text-xs">Scheduled</Label>
-              <p className="text-sm">{formatDateTime(task.scheduledAt)}</p>
+            <div className="space-y-2">
+              <Label>Scheduled</Label>
+              <Input value={formatDateTime(task.scheduledAt)} readOnly />
             </div>
           )}
 
-          <div className="space-y-1">
-            <Label className="text-text-muted text-xs">Created</Label>
-            <p className="text-sm">{formatDateTime(task.createdAt)}</p>
+          <div className="space-y-2">
+            <Label>Created</Label>
+            <Input value={formatDateTime(task.createdAt)} readOnly />
           </div>
 
           {task.completedAt && (
-            <div className="space-y-1">
-              <Label className="text-text-muted text-xs">Completed</Label>
-              <p className="text-sm">{formatDateTime(task.completedAt)}</p>
+            <div className="space-y-2">
+              <Label>Completed</Label>
+              <Input value={formatDateTime(task.completedAt)} readOnly />
             </div>
           )}
         </div>
 
         {task.description && (
           <div className="space-y-2">
-            <Label className="text-text-muted text-xs">Description</Label>
-            <div className="rounded-[10px] border border-border-strong bg-card-bg/40 p-3">
-              <p className="text-sm whitespace-pre-wrap">{task.description}</p>
-            </div>
+            <Label>Description</Label>
+            <Textarea value={task.description} readOnly />
           </div>
         )}
 
         {task.status === "completed" && task.completionNotes && (
           <div className="space-y-2">
-            <Label className="text-text-muted text-xs">Completion Notes</Label>
-            <div className="rounded-[10px] border border-success/20 bg-success/5 p-3">
-              <p className="text-sm whitespace-pre-wrap">{task.completionNotes}</p>
-            </div>
+            <Label>Completion Notes</Label>
+            <Textarea value={task.completionNotes} readOnly />
           </div>
         )}
 

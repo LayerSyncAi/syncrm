@@ -472,7 +472,7 @@ export default function StagesPage() {
           )}
 
           <div className="space-y-2">
-            <Label>Stage Name *</Label>
+            <Label className="flex items-center gap-1">Stage Name <span className="text-danger">*</span></Label>
             <Input
               placeholder="e.g., New Lead, Qualified, Closed"
               value={formData.name}
