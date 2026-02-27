@@ -1,8 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+
+const FloatingLines = dynamic(() => import("@/components/ui/floating-lines"), {
+  ssr: false,
+});
 import { useAuth } from "@/hooks/useAuth";
 import { motion, useInView, useScroll, useTransform } from "framer-motion";
 import {
@@ -662,8 +667,23 @@ export default function LandingPage() {
       </AnimatedSection>
 
       {/* ── CTA ──────────────────────────────────────────────────── */}
-      <AnimatedSection className="bg-content-bg py-24 sm:py-32">
-        <div className="mx-auto max-w-3xl px-6 text-center">
+      <AnimatedSection className="relative overflow-hidden bg-content-bg py-24 sm:py-32">
+        {/* Floating lines background */}
+        <div className="absolute inset-0 z-0">
+          <FloatingLines
+            linesGradient={["#ECA400", "#F59E0B", "#D97706", "#B45309"]}
+            enabledWaves={["top", "middle", "bottom"]}
+            lineCount={[4, 6, 4]}
+            lineDistance={[8, 5, 8]}
+            animationSpeed={0.6}
+            interactive
+            parallax
+            parallaxStrength={0.15}
+            mixBlendMode="screen"
+          />
+        </div>
+
+        <div className="relative z-10 mx-auto max-w-3xl px-6 text-center">
           <motion.div
             variants={fadeUp}
             custom={0}
