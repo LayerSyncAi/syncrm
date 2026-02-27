@@ -260,48 +260,51 @@ export default function FloatingLines({
   const targetParallaxRef = useRef<Vector2>(new Vector2(0, 0));
   const currentParallaxRef = useRef<Vector2>(new Vector2(0, 0));
 
-  // Stabilize object/array props to avoid infinite re-renders
-  const enabledWavesKey = JSON.stringify(enabledWaves);
-  const lineCountKey = JSON.stringify(lineCount);
-  const lineDistanceKey = JSON.stringify(lineDistance);
-  const topWavePosKey = JSON.stringify(topWavePosition);
-  const middleWavePosKey = JSON.stringify(middleWavePosition);
-  const bottomWavePosKey = JSON.stringify(bottomWavePosition);
-  const gradientKey = JSON.stringify(linesGradient);
+  // Store props in a ref so the effect reads them once on mount
+  const propsRef = useRef({
+    linesGradient,
+    enabledWaves,
+    lineCount,
+    lineDistance,
+    topWavePosition,
+    middleWavePosition,
+    bottomWavePosition,
+    animationSpeed,
+    interactive,
+    bendRadius,
+    bendStrength,
+    mouseDamping,
+    parallax,
+    parallaxStrength,
+  });
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
-    const parsedEnabledWaves: Array<"top" | "middle" | "bottom"> = JSON.parse(enabledWavesKey);
-    const parsedLineCount: number | number[] = JSON.parse(lineCountKey);
-    const parsedLineDistance: number | number[] = JSON.parse(lineDistanceKey);
-    const parsedTopWavePos: WavePosition | undefined = topWavePosKey !== "undefined" ? JSON.parse(topWavePosKey) : undefined;
-    const parsedMiddleWavePos: WavePosition | undefined = middleWavePosKey !== "undefined" ? JSON.parse(middleWavePosKey) : undefined;
-    const parsedBottomWavePos: WavePosition = bottomWavePosKey !== "undefined" ? JSON.parse(bottomWavePosKey) : { x: 2.0, y: -0.7, rotate: -1 };
-    const parsedGradient: string[] | undefined = gradientKey !== "undefined" ? JSON.parse(gradientKey) : undefined;
+    const props = propsRef.current;
 
     const getLineCount = (waveType: "top" | "middle" | "bottom"): number => {
-      if (typeof parsedLineCount === "number") return parsedLineCount;
-      if (!parsedEnabledWaves.includes(waveType)) return 0;
-      const index = parsedEnabledWaves.indexOf(waveType);
-      return parsedLineCount[index] ?? 6;
+      if (typeof props.lineCount === "number") return props.lineCount;
+      if (!props.enabledWaves.includes(waveType)) return 0;
+      const index = props.enabledWaves.indexOf(waveType);
+      return props.lineCount[index] ?? 6;
     };
 
     const getLineDistance = (waveType: "top" | "middle" | "bottom"): number => {
-      if (typeof parsedLineDistance === "number") return parsedLineDistance;
-      if (!parsedEnabledWaves.includes(waveType)) return 0.1;
-      const index = parsedEnabledWaves.indexOf(waveType);
-      return parsedLineDistance[index] ?? 0.1;
+      if (typeof props.lineDistance === "number") return props.lineDistance;
+      if (!props.enabledWaves.includes(waveType)) return 0.1;
+      const index = props.enabledWaves.indexOf(waveType);
+      return props.lineDistance[index] ?? 0.1;
     };
 
-    const topLC = parsedEnabledWaves.includes("top") ? getLineCount("top") : 0;
-    const middleLC = parsedEnabledWaves.includes("middle") ? getLineCount("middle") : 0;
-    const bottomLC = parsedEnabledWaves.includes("bottom") ? getLineCount("bottom") : 0;
+    const topLC = props.enabledWaves.includes("top") ? getLineCount("top") : 0;
+    const middleLC = props.enabledWaves.includes("middle") ? getLineCount("middle") : 0;
+    const bottomLC = props.enabledWaves.includes("bottom") ? getLineCount("bottom") : 0;
 
-    const topLD = parsedEnabledWaves.includes("top") ? getLineDistance("top") * 0.01 : 0.01;
-    const middleLD = parsedEnabledWaves.includes("middle") ? getLineDistance("middle") * 0.01 : 0.01;
-    const bottomLD = parsedEnabledWaves.includes("bottom") ? getLineDistance("bottom") * 0.01 : 0.01;
+    const topLD = props.enabledWaves.includes("top") ? getLineDistance("top") * 0.01 : 0.01;
+    const middleLD = props.enabledWaves.includes("middle") ? getLineDistance("middle") * 0.01 : 0.01;
+    const bottomLD = props.enabledWaves.includes("bottom") ? getLineDistance("bottom") * 0.01 : 0.01;
 
     const scene = new Scene();
     const camera = new OrthographicCamera(-1, 1, 1, -1, 0, 1);
@@ -321,10 +324,10 @@ export default function FloatingLines({
     const uniforms = {
       iTime: { value: 0 },
       iResolution: { value: new Vector3(1, 1, 1) },
-      animationSpeed: { value: animationSpeed },
-      enableTop: { value: parsedEnabledWaves.includes("top") },
-      enableMiddle: { value: parsedEnabledWaves.includes("middle") },
-      enableBottom: { value: parsedEnabledWaves.includes("bottom") },
+      animationSpeed: { value: props.animationSpeed },
+      enableTop: { value: props.enabledWaves.includes("top") },
+      enableMiddle: { value: props.enabledWaves.includes("middle") },
+      enableBottom: { value: props.enabledWaves.includes("bottom") },
       topLineCount: { value: topLC },
       middleLineCount: { value: middleLC },
       bottomLineCount: { value: bottomLC },
@@ -333,32 +336,32 @@ export default function FloatingLines({
       bottomLineDistance: { value: bottomLD },
       topWavePosition: {
         value: new Vector3(
-          parsedTopWavePos?.x ?? 10.0,
-          parsedTopWavePos?.y ?? 0.5,
-          parsedTopWavePos?.rotate ?? -0.4
+          props.topWavePosition?.x ?? 10.0,
+          props.topWavePosition?.y ?? 0.5,
+          props.topWavePosition?.rotate ?? -0.4
         ),
       },
       middleWavePosition: {
         value: new Vector3(
-          parsedMiddleWavePos?.x ?? 5.0,
-          parsedMiddleWavePos?.y ?? 0.0,
-          parsedMiddleWavePos?.rotate ?? 0.2
+          props.middleWavePosition?.x ?? 5.0,
+          props.middleWavePosition?.y ?? 0.0,
+          props.middleWavePosition?.rotate ?? 0.2
         ),
       },
       bottomWavePosition: {
         value: new Vector3(
-          parsedBottomWavePos.x,
-          parsedBottomWavePos.y,
-          parsedBottomWavePos.rotate
+          props.bottomWavePosition.x,
+          props.bottomWavePosition.y,
+          props.bottomWavePosition.rotate
         ),
       },
       iMouse: { value: new Vector2(-1000, -1000) },
-      interactive: { value: interactive },
-      bendRadius: { value: bendRadius },
-      bendStrength: { value: bendStrength },
+      interactive: { value: props.interactive },
+      bendRadius: { value: props.bendRadius },
+      bendStrength: { value: props.bendStrength },
       bendInfluence: { value: 0 },
-      parallax: { value: parallax },
-      parallaxStrength: { value: parallaxStrength },
+      parallax: { value: props.parallax },
+      parallaxStrength: { value: props.parallaxStrength },
       parallaxOffset: { value: new Vector2(0, 0) },
       lineGradient: {
         value: Array.from(
@@ -369,8 +372,8 @@ export default function FloatingLines({
       lineGradientCount: { value: 0 },
     };
 
-    if (parsedGradient && parsedGradient.length > 0) {
-      const stops = parsedGradient.slice(0, MAX_GRADIENT_STOPS);
+    if (props.linesGradient && props.linesGradient.length > 0) {
+      const stops = props.linesGradient.slice(0, MAX_GRADIENT_STOPS);
       uniforms.lineGradientCount.value = stops.length;
       stops.forEach((hex, i) => {
         const color = hexToVec3(hex);
@@ -416,14 +419,14 @@ export default function FloatingLines({
       targetMouseRef.current.set(x * dpr, (rect.height - y) * dpr);
       targetInfluenceRef.current = 1.0;
 
-      if (parallax) {
+      if (props.parallax) {
         const centerX = rect.width / 2;
         const centerY = rect.height / 2;
         const offsetX = (x - centerX) / rect.width;
         const offsetY = -(y - centerY) / rect.height;
         targetParallaxRef.current.set(
-          offsetX * parallaxStrength,
-          offsetY * parallaxStrength
+          offsetX * props.parallaxStrength,
+          offsetY * props.parallaxStrength
         );
       }
     };
@@ -432,7 +435,7 @@ export default function FloatingLines({
       targetInfluenceRef.current = 0.0;
     };
 
-    if (interactive) {
+    if (props.interactive) {
       renderer.domElement.addEventListener("pointermove", handlePointerMove);
       renderer.domElement.addEventListener("pointerleave", handlePointerLeave);
     }
@@ -441,19 +444,19 @@ export default function FloatingLines({
     const renderLoop = () => {
       uniforms.iTime.value = clock.getElapsedTime();
 
-      if (interactive) {
-        currentMouseRef.current.lerp(targetMouseRef.current, mouseDamping);
+      if (props.interactive) {
+        currentMouseRef.current.lerp(targetMouseRef.current, props.mouseDamping);
         uniforms.iMouse.value.copy(currentMouseRef.current);
         currentInfluenceRef.current +=
           (targetInfluenceRef.current - currentInfluenceRef.current) *
-          mouseDamping;
+          props.mouseDamping;
         uniforms.bendInfluence.value = currentInfluenceRef.current;
       }
 
-      if (parallax) {
+      if (props.parallax) {
         currentParallaxRef.current.lerp(
           targetParallaxRef.current,
-          mouseDamping
+          props.mouseDamping
         );
         uniforms.parallaxOffset.value.copy(currentParallaxRef.current);
       }
@@ -468,7 +471,7 @@ export default function FloatingLines({
       if (ro) {
         ro.disconnect();
       }
-      if (interactive) {
+      if (props.interactive) {
         renderer.domElement.removeEventListener(
           "pointermove",
           handlePointerMove
@@ -485,23 +488,9 @@ export default function FloatingLines({
         renderer.domElement.parentElement.removeChild(renderer.domElement);
       }
     };
+    // Props are read from propsRef — this effect runs once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    enabledWavesKey,
-    lineCountKey,
-    lineDistanceKey,
-    topWavePosKey,
-    middleWavePosKey,
-    bottomWavePosKey,
-    gradientKey,
-    animationSpeed,
-    interactive,
-    bendRadius,
-    bendStrength,
-    mouseDamping,
-    parallax,
-    parallaxStrength,
-  ]);
+  }, []);
 
   return (
     <div
