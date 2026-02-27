@@ -6,13 +6,17 @@ import { useState, FormEvent, useEffect } from "react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useMutation } from "convex/react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
 import { Check, Eye, EyeOff, Loader2 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { authToasts } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import {
+  AuthLayout,
+  containerVariants,
+  itemVariants,
+} from "@/components/auth/auth-layout";
 
 type AuthMode = "signIn" | "signUp";
 type SubmitState = "idle" | "submitting" | "success";
@@ -35,7 +39,6 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Debug logging
   useEffect(() => {
     if (process.env.NODE_ENV === "development") {
       console.log("[LoginPage] Auth state:", {
@@ -51,7 +54,6 @@ export default function LoginPage() {
     setSubmitState("submitting");
 
     try {
-      // Validation for signup mode
       if (mode === "signUp") {
         if (password !== confirmPassword) {
           setError("Passwords do not match");
@@ -98,7 +100,6 @@ export default function LoginPage() {
         console.log("[LoginPage] Navigating to /app/dashboard");
       }
 
-      // #9: Show success checkmark briefly before redirect
       setSubmitState("success");
       await new Promise((resolve) => setTimeout(resolve, 600));
       router.replace("/app/dashboard");
@@ -108,7 +109,11 @@ export default function LoginPage() {
       let errorMessage: string;
       if (err instanceof Error) {
         const message = err.message.toLowerCase();
-        if (message.includes("invalid") || message.includes("password") || message.includes("credentials")) {
+        if (
+          message.includes("invalid") ||
+          message.includes("password") ||
+          message.includes("credentials")
+        ) {
           errorMessage = "Invalid email or password";
         } else if (message.includes("exists") || message.includes("already")) {
           errorMessage = "An account with this email already exists";
@@ -130,287 +135,297 @@ export default function LoginPage() {
         authToasts.signupFailed(errorMessage);
       }
       setSubmitState("idle");
-      // #10: Shake card on server error
       setShake(true);
     }
   };
 
   if (authLoading) {
     return (
-      <main className="min-h-screen bg-content-bg flex items-center justify-center px-6">
-        <div className="flex flex-col items-center gap-4">
+      <AuthLayout>
+        <div className="flex flex-col items-center gap-4 py-20">
           <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
           <p className="text-sm text-text-muted">Loading...</p>
         </div>
-      </main>
+      </AuthLayout>
     );
   }
 
   const isDisabled = submitState !== "idle";
 
   return (
-    <main className="min-h-screen bg-content-bg flex items-center justify-center px-6">
-      {/* #7: Card entrance — spring from below */}
+    <AuthLayout>
       <motion.div
-        initial={{ opacity: 0, y: 40 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ type: "spring", stiffness: 200, damping: 20 }}
-        className="w-full max-w-md"
+        animate={shake ? { x: [0, -10, 10, -8, 8, -4, 4, 0] } : {}}
+        transition={{ duration: 0.5 }}
+        onAnimationComplete={() => setShake(false)}
       >
-        {/* #10: Shake wrapper on server error */}
         <motion.div
-          animate={shake ? { x: [0, -10, 10, -8, 8, -4, 4, 0] } : {}}
-          transition={{ duration: 0.5 }}
-          onAnimationComplete={() => setShake(false)}
+          variants={containerVariants}
+          initial="initial"
+          animate="animate"
         >
-          <Card>
-            <CardHeader>
-              <div className="space-y-1">
-                <p className="text-xs uppercase tracking-[0.2em] text-text-dim">
-                  SynCRM
-                </p>
-                <h1 className="text-xl font-semibold">
-                  {mode === "signIn" ? "Sign in" : "Create account"}
-                </h1>
-                <p className="text-sm text-text-muted">
-                  {mode === "signIn"
-                    ? "Use your credentials to access the pipeline."
-                    : "Register your organization and create an admin account."}
-                </p>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {mode === "signUp" && (
-                  <>
-                    <div className="space-y-2">
-                      <label className="text-xs font-medium text-text-muted">
-                        Organization Name
-                      </label>
-                      <Input
-                        type="text"
-                        placeholder="Acme Realty"
-                        value={orgName}
-                        onChange={(e) => setOrgName(e.target.value)}
-                        required
-                        disabled={isDisabled}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-medium text-text-muted">
-                        Full Name
-                      </label>
-                      <Input
-                        type="text"
-                        placeholder="John Doe"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        required
-                        disabled={isDisabled}
-                      />
-                    </div>
-                  </>
-                )}
-                <div className="space-y-2">
+          {/* Header */}
+          <motion.div variants={itemVariants} className="mb-1">
+            <span className="text-xs uppercase tracking-[0.2em] text-text-dim">
+              {mode === "signIn" ? "Welcome back" : "Get started"}
+            </span>
+          </motion.div>
+          <motion.div variants={itemVariants} className="mb-1">
+            <h1 className="text-2xl font-bold text-text">
+              {mode === "signIn" ? "Sign in" : "Create account"}
+            </h1>
+          </motion.div>
+          <motion.div variants={itemVariants} className="mb-8">
+            <p className="text-sm text-text-muted">
+              {mode === "signIn"
+                ? "Use your credentials to access the pipeline."
+                : "Register your organization and create an admin account."}
+            </p>
+          </motion.div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {mode === "signUp" && (
+              <>
+                <motion.div variants={itemVariants} className="space-y-2">
                   <label className="text-xs font-medium text-text-muted">
-                    Email
+                    Organization Name
                   </label>
                   <Input
-                    type="email"
-                    placeholder="you@agency.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    type="text"
+                    placeholder="Acme Realty"
+                    value={orgName}
+                    onChange={(e) => setOrgName(e.target.value)}
                     required
                     disabled={isDisabled}
                   />
-                </div>
-
-                {/* #11: Password with visibility toggle + bounce */}
-                <div className="space-y-2">
+                </motion.div>
+                <motion.div variants={itemVariants} className="space-y-2">
                   <label className="text-xs font-medium text-text-muted">
-                    Password
+                    Full Name
                   </label>
-                  <div className="relative">
-                    <Input
-                      type={showPassword ? "text" : "password"}
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      minLength={8}
-                      disabled={isDisabled}
-                      className="pr-10"
-                    />
-                    <motion.button
-                      type="button"
-                      onClick={() => setShowPassword((v) => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-text-dim hover:text-text-muted"
-                      tabIndex={-1}
-                      aria-label={showPassword ? "Hide password" : "Show password"}
-                    >
-                      <motion.div
-                        key={showPassword ? "visible" : "hidden"}
-                        initial={{ scale: 0.8 }}
-                        animate={{ scale: [0.8, 1.1, 1] }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        {showPassword ? (
-                          <EyeOff className="h-4 w-4" />
-                        ) : (
-                          <Eye className="h-4 w-4" />
-                        )}
-                      </motion.div>
-                    </motion.button>
-                  </div>
-                </div>
+                  <Input
+                    type="text"
+                    placeholder="John Doe"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                    disabled={isDisabled}
+                  />
+                </motion.div>
+              </>
+            )}
 
-                {mode === "signUp" && (
-                  <div className="space-y-2">
-                    <label className="text-xs font-medium text-text-muted">
-                      Confirm Password
-                    </label>
-                    <div className="relative">
-                      <Input
-                        type={showConfirmPassword ? "text" : "password"}
-                        placeholder="••••••••"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        required
-                        minLength={8}
-                        disabled={isDisabled}
-                        className="pr-10"
-                      />
-                      <motion.button
-                        type="button"
-                        onClick={() => setShowConfirmPassword((v) => !v)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-text-dim hover:text-text-muted"
-                        tabIndex={-1}
-                        aria-label={showConfirmPassword ? "Hide password" : "Show password"}
-                      >
-                        <motion.div
-                          key={showConfirmPassword ? "visible" : "hidden"}
-                          initial={{ scale: 0.8 }}
-                          animate={{ scale: [0.8, 1.1, 1] }}
-                          transition={{ duration: 0.2 }}
-                        >
-                          {showConfirmPassword ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                        </motion.div>
-                      </motion.button>
-                    </div>
-                  </div>
-                )}
+            <motion.div variants={itemVariants} className="space-y-2">
+              <label className="text-xs font-medium text-text-muted">
+                Email
+              </label>
+              <Input
+                type="email"
+                placeholder="you@agency.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                disabled={isDisabled}
+              />
+            </motion.div>
 
-                {/* #10: Error slides in with AnimatePresence */}
-                <AnimatePresence>
-                  {error && (
+            <motion.div variants={itemVariants} className="space-y-2">
+              <label className="text-xs font-medium text-text-muted">
+                Password
+              </label>
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={8}
+                  disabled={isDisabled}
+                  className="pr-10"
+                />
+                <motion.button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-dim hover:text-text-muted"
+                  tabIndex={-1}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  <motion.div
+                    key={showPassword ? "visible" : "hidden"}
+                    initial={{ scale: 0.8 }}
+                    animate={{ scale: [0.8, 1.1, 1] }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </motion.div>
+                </motion.button>
+              </div>
+            </motion.div>
+
+            {mode === "signUp" && (
+              <motion.div variants={itemVariants} className="space-y-2">
+                <label className="text-xs font-medium text-text-muted">
+                  Confirm Password
+                </label>
+                <div className="relative">
+                  <Input
+                    type={showConfirmPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    minLength={8}
+                    disabled={isDisabled}
+                    className="pr-10"
+                  />
+                  <motion.button
+                    type="button"
+                    onClick={() => setShowConfirmPassword((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-dim hover:text-text-muted"
+                    tabIndex={-1}
+                    aria-label={
+                      showConfirmPassword ? "Hide password" : "Show password"
+                    }
+                  >
                     <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
+                      key={showConfirmPassword ? "visible" : "hidden"}
+                      initial={{ scale: 0.8 }}
+                      animate={{ scale: [0.8, 1.1, 1] }}
                       transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
                     >
-                      <div className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg p-3">
-                        {error}
-                      </div>
+                      {showConfirmPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
                     </motion.div>
+                  </motion.button>
+                </div>
+              </motion.div>
+            )}
+
+            <AnimatePresence>
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg p-3">
+                    {error}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <motion.div
+              variants={itemVariants}
+              className="flex items-center justify-between text-xs text-text-dim"
+            >
+              {mode === "signIn" ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode("signUp");
+                      setError(null);
+                    }}
+                    disabled={isDisabled}
+                    className="text-primary-600 hover:underline disabled:opacity-50"
+                  >
+                    Create an account
+                  </button>
+                  <Link
+                    href="/forgot-password"
+                    className="text-text-muted hover:underline"
+                  >
+                    Forgot password?
+                  </Link>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("signIn");
+                    setError(null);
+                  }}
+                  disabled={isDisabled}
+                  className="text-primary-600 hover:underline disabled:opacity-50"
+                >
+                  Already have an account? Sign in
+                </button>
+              )}
+            </motion.div>
+
+            <motion.div variants={itemVariants}>
+              <motion.button
+                type="submit"
+                disabled={isDisabled}
+                className={cn(
+                  "relative inline-flex h-10 w-full items-center justify-center rounded-[10px] text-sm font-medium text-white transition-colors duration-300 disabled:cursor-not-allowed overflow-hidden",
+                  submitState === "success"
+                    ? "bg-green-500"
+                    : "bg-primary-600 hover:bg-primary shadow-[0_0_0_4px_rgba(236,164,0,0.12)] disabled:opacity-50"
+                )}
+                whileTap={
+                  submitState === "idle" ? { scale: 0.98 } : undefined
+                }
+              >
+                <AnimatePresence mode="wait">
+                  {submitState === "idle" && (
+                    <motion.span
+                      key="idle"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      {mode === "signIn" ? "Sign in" : "Create account"}
+                    </motion.span>
+                  )}
+                  {submitState === "submitting" && (
+                    <motion.span
+                      key="submitting"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.15 }}
+                      className="flex items-center"
+                    >
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {mode === "signIn"
+                        ? "Signing in..."
+                        : "Creating account..."}
+                    </motion.span>
+                  )}
+                  {submitState === "success" && (
+                    <motion.span
+                      key="success"
+                      initial={{ opacity: 0, scale: 0.5 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{
+                        type: "spring" as const,
+                        stiffness: 300,
+                        damping: 20,
+                      }}
+                    >
+                      <Check className="h-5 w-5" />
+                    </motion.span>
                   )}
                 </AnimatePresence>
-
-                <div className="flex items-center justify-between text-xs text-text-dim">
-                  {mode === "signIn" ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setMode("signUp");
-                          setError(null);
-                        }}
-                        disabled={isDisabled}
-                        className="text-primary-600 hover:underline disabled:opacity-50"
-                      >
-                        Create an account
-                      </button>
-                      <Link
-                        href="/forgot-password"
-                        className="text-text-muted hover:underline"
-                      >
-                        Forgot password?
-                      </Link>
-                    </>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMode("signIn");
-                        setError(null);
-                      }}
-                      disabled={isDisabled}
-                      className="text-primary-600 hover:underline disabled:opacity-50"
-                    >
-                      Already have an account? Sign in
-                    </button>
-                  )}
-                </div>
-
-                {/* #9: Submit button — morphs between idle / submitting / success */}
-                <motion.button
-                  type="submit"
-                  disabled={isDisabled}
-                  className={cn(
-                    "relative inline-flex h-10 w-full items-center justify-center rounded-[10px] text-sm font-medium text-white transition-colors duration-300 disabled:cursor-not-allowed overflow-hidden",
-                    submitState === "success"
-                      ? "bg-green-500"
-                      : "bg-primary-600 hover:bg-primary shadow-[0_0_0_4px_rgba(236,164,0,0.12)] disabled:opacity-50"
-                  )}
-                  whileTap={submitState === "idle" ? { scale: 0.98 } : undefined}
-                >
-                  <AnimatePresence mode="wait">
-                    {submitState === "idle" && (
-                      <motion.span
-                        key="idle"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        transition={{ duration: 0.15 }}
-                      >
-                        {mode === "signIn" ? "Sign in" : "Create account"}
-                      </motion.span>
-                    )}
-                    {submitState === "submitting" && (
-                      <motion.span
-                        key="submitting"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        transition={{ duration: 0.15 }}
-                        className="flex items-center"
-                      >
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        {mode === "signIn" ? "Signing in..." : "Creating account..."}
-                      </motion.span>
-                    )}
-                    {submitState === "success" && (
-                      <motion.span
-                        key="success"
-                        initial={{ opacity: 0, scale: 0.5 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                      >
-                        <Check className="h-5 w-5" />
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
-                </motion.button>
-              </form>
-            </CardContent>
-          </Card>
+              </motion.button>
+            </motion.div>
+          </form>
         </motion.div>
       </motion.div>
-    </main>
+    </AuthLayout>
   );
 }
