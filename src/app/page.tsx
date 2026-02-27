@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { motion, useInView } from "framer-motion";
+import { motion, useInView, useScroll, useTransform } from "framer-motion";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -61,78 +61,64 @@ const stagger = {
 /*  Data                                                               */
 /* ------------------------------------------------------------------ */
 
+const CARD_HEIGHT = 500;
+
 const features = [
   {
     icon: Waypoints,
     title: "Pipeline Management",
     description:
       "Visualize every deal across customizable stages. Drag leads through your pipeline and never lose track of a prospect.",
-    short: "Drag deals through customizable stages",
-    gradient: "from-amber-400 to-orange-400",
-    textColor: "text-orange-50",
+    ctaClass: "bg-amber-300",
   },
   {
     icon: Target,
     title: "Lead Scoring",
     description:
       "Automatically score and prioritize leads based on configurable criteria so your team focuses on what converts.",
-    short: "Auto-prioritize leads that convert",
-    gradient: "from-violet-400 to-indigo-400",
-    textColor: "text-indigo-50",
+    ctaClass: "bg-violet-300",
   },
   {
     icon: Building2,
     title: "Property Matching",
     description:
       "Smart matching suggests ideal properties for each lead based on budget, preferences, and location.",
-    short: "Smart property suggestions for every lead",
-    gradient: "from-emerald-400 to-green-400",
-    textColor: "text-green-50",
+    ctaClass: "bg-emerald-300",
   },
   {
     icon: ClipboardList,
     title: "Task & Activity Tracking",
     description:
       "Schedule follow-ups, log calls, and track every interaction. Overdue alerts ensure nothing falls through the cracks.",
-    short: "Schedule, track, and never miss follow-ups",
-    gradient: "from-rose-400 to-pink-400",
-    textColor: "text-pink-50",
+    ctaClass: "bg-rose-300",
   },
   {
     icon: Users,
     title: "Team Collaboration",
     description:
       "Role-based access for admins and agents. Assign leads, track performance, and manage commissions in one place.",
-    short: "Admin & agent roles with full control",
-    gradient: "from-sky-400 to-blue-400",
-    textColor: "text-blue-50",
+    ctaClass: "bg-sky-300",
   },
   {
     icon: FileSpreadsheet,
     title: "Import & Export",
     description:
       "Bulk import leads from CSV with smart duplicate detection. Export filtered data to CSV or Excel in seconds.",
-    short: "CSV import with smart duplicate detection",
-    gradient: "from-red-400 to-orange-400",
-    textColor: "text-orange-50",
+    ctaClass: "bg-orange-300",
   },
   {
     icon: Merge,
     title: "Duplicate Detection & Merge",
     description:
       "Automatically flag duplicate contacts by email or phone and merge them cleanly with full audit trails.",
-    short: "Find and merge duplicate contacts cleanly",
-    gradient: "from-teal-400 to-cyan-400",
-    textColor: "text-cyan-50",
+    ctaClass: "bg-teal-300",
   },
   {
     icon: BarChart3,
     title: "Dashboard Analytics",
     description:
       "Real-time conversion funnels, pipeline velocity, and agent performance metrics at a glance.",
-    short: "Funnels, velocity, and performance metrics",
-    gradient: "from-fuchsia-400 to-purple-400",
-    textColor: "text-purple-50",
+    ctaClass: "bg-fuchsia-300",
   },
 ];
 
@@ -376,48 +362,76 @@ function HeroLogos() {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Bouncy feature cards                                               */
+/*  Sticky scroll feature cards                                        */
 /* ------------------------------------------------------------------ */
 
-function BounceCard({
-  className,
-  children,
+function StickyCard({
+  position,
+  feature,
+  scrollYProgress,
 }: {
-  className: string;
-  children: React.ReactNode;
+  position: number;
+  feature: (typeof features)[number];
+  scrollYProgress: ReturnType<typeof useScroll>["scrollYProgress"];
 }) {
+  const scaleFromPct = (position - 1) / features.length;
+  const y = useTransform(scrollYProgress, [scaleFromPct, 1], [0, -CARD_HEIGHT]);
+  const isOdd = position % 2 === 1;
+  const Icon = feature.icon;
+
   return (
     <motion.div
-      whileHover={{ scale: 0.95, rotate: "-1deg" }}
-      className={`group relative min-h-[300px] cursor-pointer overflow-hidden rounded-2xl bg-surface-2 p-8 ${className}`}
+      style={{
+        height: CARD_HEIGHT,
+        y: position === features.length ? undefined : y,
+        background: isOdd ? "#1f2a44" : "white",
+        color: isOdd ? "white" : "#1f2a44",
+      }}
+      className="sticky top-14 flex w-full origin-top flex-col items-center justify-center px-4"
     >
-      {children}
+      <Icon className="mb-4 h-10 w-10" />
+      <h3 className="mb-6 text-center text-4xl font-semibold md:text-6xl">
+        {feature.title}
+      </h3>
+      <p className="mb-8 max-w-lg text-center text-sm md:text-base">
+        {feature.description}
+      </p>
+      <Link
+        href="/login"
+        className={`flex items-center gap-2 rounded px-6 py-4 text-base font-medium uppercase text-[#1f2a44] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 md:text-lg ${feature.ctaClass} ${
+          isOdd
+            ? "shadow-[4px_4px_0px_white] hover:shadow-[8px_8px_0px_white]"
+            : "shadow-[4px_4px_0px_#1f2a44] hover:shadow-[8px_8px_0px_#1f2a44]"
+        }`}
+      >
+        <span>Learn more</span>
+        <ArrowRight className="h-4 w-4" />
+      </Link>
     </motion.div>
   );
 }
 
-function CardTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <h3 className="mx-auto text-center text-2xl font-semibold md:text-3xl">
-      {children}
-    </h3>
-  );
-}
+function StickyFeatures() {
+  const ref = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ["start start", "end start"],
+  });
 
-function FeatureCardOverlay({ index }: { index: number }) {
-  const feature = features[index];
-  const Icon = feature.icon;
   return (
-    <div
-      className={`absolute bottom-0 left-4 right-4 top-32 translate-y-8 rounded-t-2xl bg-gradient-to-br ${feature.gradient} p-4 transition-transform duration-[250ms] group-hover:translate-y-4 group-hover:rotate-[2deg]`}
-    >
-      <Icon className={`mx-auto mb-3 h-8 w-8 ${feature.textColor}`} />
-      <span
-        className={`block text-center font-semibold ${feature.textColor}`}
-      >
-        {feature.short}
-      </span>
-    </div>
+    <>
+      <div ref={ref} id="features" className="relative scroll-mt-14">
+        {features.map((feature, idx) => (
+          <StickyCard
+            key={feature.title}
+            feature={feature}
+            scrollYProgress={scrollYProgress}
+            position={idx + 1}
+          />
+        ))}
+      </div>
+      <div className="h-screen bg-[#1f2a44]" />
+    </>
   );
 }
 
@@ -527,79 +541,8 @@ export default function LandingPage() {
         <HeroLogos />
       </section>
 
-      {/* ── Breathing spacer ─────────────────────────────────────── */}
-      <div className="h-6 bg-content-bg" />
-
-      {/* ── Features ─────────────────────────────────────────────── */}
-      <section id="features" className="scroll-mt-20 bg-content-bg px-4 py-24 sm:py-32">
-        <div className="mx-auto max-w-7xl">
-          {/* Header */}
-          <div className="mb-10 flex flex-col items-start justify-between gap-4 md:flex-row md:items-end md:px-8">
-            <h2 className="max-w-xl text-4xl font-bold md:text-5xl">
-              Grow faster with our{" "}
-              <span className="text-text-dim">all-in-one CRM</span>
-            </h2>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                window.location.href = "/login";
-              }}
-              className="whitespace-nowrap rounded-lg bg-primary-600 px-5 py-2.5 font-medium text-white shadow-xl transition-colors hover:bg-primary"
-            >
-              Get started
-            </motion.button>
-          </div>
-
-          {/* Row 1 — Pipeline Management (4) + Lead Scoring (8) */}
-          <div className="mb-4 grid grid-cols-12 gap-4">
-            <BounceCard className="col-span-12 md:col-span-4">
-              <CardTitle>{features[0].title}</CardTitle>
-              <FeatureCardOverlay index={0} />
-            </BounceCard>
-            <BounceCard className="col-span-12 md:col-span-8">
-              <CardTitle>{features[1].title}</CardTitle>
-              <FeatureCardOverlay index={1} />
-            </BounceCard>
-          </div>
-
-          {/* Row 2 — Property Matching (8) + Task & Activity (4) */}
-          <div className="mb-4 grid grid-cols-12 gap-4">
-            <BounceCard className="col-span-12 md:col-span-8">
-              <CardTitle>{features[2].title}</CardTitle>
-              <FeatureCardOverlay index={2} />
-            </BounceCard>
-            <BounceCard className="col-span-12 md:col-span-4">
-              <CardTitle>{features[3].title}</CardTitle>
-              <FeatureCardOverlay index={3} />
-            </BounceCard>
-          </div>
-
-          {/* Row 3 — Team Collaboration (4) + Import & Export (8) */}
-          <div className="mb-4 grid grid-cols-12 gap-4">
-            <BounceCard className="col-span-12 md:col-span-4">
-              <CardTitle>{features[4].title}</CardTitle>
-              <FeatureCardOverlay index={4} />
-            </BounceCard>
-            <BounceCard className="col-span-12 md:col-span-8">
-              <CardTitle>{features[5].title}</CardTitle>
-              <FeatureCardOverlay index={5} />
-            </BounceCard>
-          </div>
-
-          {/* Row 4 — Duplicate Detection (8) + Dashboard Analytics (4) */}
-          <div className="grid grid-cols-12 gap-4">
-            <BounceCard className="col-span-12 md:col-span-8">
-              <CardTitle>{features[6].title}</CardTitle>
-              <FeatureCardOverlay index={6} />
-            </BounceCard>
-            <BounceCard className="col-span-12 md:col-span-4">
-              <CardTitle>{features[7].title}</CardTitle>
-              <FeatureCardOverlay index={7} />
-            </BounceCard>
-          </div>
-        </div>
-      </section>
+      {/* ── Features (sticky scroll cards) ──────────────────────── */}
+      <StickyFeatures />
 
       {/* ── Benefits ─────────────────────────────────────────────── */}
       <AnimatedSection className="bg-card-bg py-24 sm:py-32">
