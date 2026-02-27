@@ -371,6 +371,30 @@ export const bulkMatchToasts = {
     }),
 };
 
+// ── Documents ─────────────────────────────────────────────
+
+export const documentToasts = {
+  uploaded: (name: string) =>
+    animatedToast.success("Document uploaded", {
+      description: `"${name}" has been uploaded.`,
+    }),
+
+  uploadFailed: (detail?: string) =>
+    animatedToast.error("Upload failed", {
+      description: detail || "Something went wrong. Please try again.",
+    }),
+
+  deleted: (name: string) =>
+    animatedToast.success("Document deleted", {
+      description: `"${name}" has been removed.`,
+    }),
+
+  deleteFailed: (detail?: string) =>
+    animatedToast.error("Failed to delete document", {
+      description: detail || "Something went wrong. Please try again.",
+    }),
+};
+
 // ── Locations ─────────────────────────────────────────────
 
 export const locationToasts = {
