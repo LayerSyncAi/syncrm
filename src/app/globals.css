@@ -283,22 +283,10 @@ a {
 }
 
 /* Table action-button hover: colour inversion */
-.action-btn {
-  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
-}
-
 .action-btn:hover {
-  background-color: var(--text) !important;
-  color: #ffffff !important;
-  border-color: var(--text) !important;
-}
-
-.action-btn-danger {
-  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+  @apply bg-text text-white border-text;
 }
 
 .action-btn-danger:hover {
-  background-color: #ef4444 !important;
-  color: #ffffff !important;
-  border-color: #ef4444 !important;
+  @apply bg-red-500 text-white border-red-500;
 }
