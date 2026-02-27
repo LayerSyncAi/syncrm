@@ -20,6 +20,7 @@ import {
 import { authToasts } from "@/lib/toast";
 import {
   AuthLayout,
+  RequiredLabel,
   containerVariants,
   itemVariants,
 } from "@/components/auth/auth-layout";
@@ -58,16 +59,18 @@ function ResetPasswordContent() {
           }}
           className="flex flex-col items-center text-center"
         >
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-100 mb-5">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-100 mb-6">
             <AlertTriangle className="h-7 w-7 text-red-600" />
           </div>
-          <h1 className="text-2xl font-bold text-text mb-2">Invalid link</h1>
+          <h1 className="text-3xl font-bold text-text mb-2">Invalid link</h1>
           <p className="text-sm text-text-muted max-w-xs">
             This password reset link is invalid or missing.
           </p>
           <div className="w-full mt-8">
             <Link href="/forgot-password">
-              <Button className="w-full">Request new reset link</Button>
+              <Button className="w-full h-11 font-semibold">
+                Request new reset link
+              </Button>
             </Link>
           </div>
         </motion.div>
@@ -101,17 +104,19 @@ function ResetPasswordContent() {
           }}
           className="flex flex-col items-center text-center"
         >
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-100 mb-5">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-100 mb-6">
             <AlertTriangle className="h-7 w-7 text-red-600" />
           </div>
-          <h1 className="text-2xl font-bold text-text mb-2">Link expired</h1>
+          <h1 className="text-3xl font-bold text-text mb-2">Link expired</h1>
           <p className="text-sm text-text-muted max-w-xs">
             {tokenValidation.error ||
               "This password reset link is invalid or has expired."}
           </p>
           <div className="w-full mt-8">
             <Link href="/forgot-password">
-              <Button className="w-full">Request new reset link</Button>
+              <Button className="w-full h-11 font-semibold">
+                Request new reset link
+              </Button>
             </Link>
           </div>
         </motion.div>
@@ -180,11 +185,11 @@ function ResetPasswordContent() {
                 damping: 20,
                 delay: 0.1,
               }}
-              className="flex h-14 w-14 items-center justify-center rounded-full bg-green-100 mb-5"
+              className="flex h-14 w-14 items-center justify-center rounded-full bg-green-100 mb-6"
             >
               <CheckCircle className="h-7 w-7 text-green-600" />
             </motion.div>
-            <h1 className="text-2xl font-bold text-text mb-2">
+            <h1 className="text-3xl font-bold text-text mb-2">
               Password reset!
             </h1>
             <p className="text-sm text-text-muted max-w-xs">
@@ -193,7 +198,7 @@ function ResetPasswordContent() {
             </p>
             <div className="w-full mt-8">
               <Link href="/login">
-                <Button className="w-full">Sign in</Button>
+                <Button className="w-full h-11 font-semibold">Sign in</Button>
               </Link>
             </div>
           </motion.div>
@@ -218,19 +223,14 @@ function ResetPasswordContent() {
                 {/* Icon */}
                 <motion.div
                   variants={itemVariants}
-                  className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-600/10 mb-5"
+                  className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-600/10 mb-6"
                 >
                   <Key className="h-6 w-6 text-primary-600" />
                 </motion.div>
 
                 {/* Header */}
-                <motion.div variants={itemVariants} className="mb-1">
-                  <span className="text-xs uppercase tracking-[0.2em] text-text-dim">
-                    SynCRM
-                  </span>
-                </motion.div>
-                <motion.div variants={itemVariants} className="mb-1">
-                  <h1 className="text-2xl font-bold text-text">
+                <motion.div variants={itemVariants} className="mb-2">
+                  <h1 className="text-3xl font-bold text-text">
                     Set new password
                   </h1>
                 </motion.div>
@@ -241,11 +241,9 @@ function ResetPasswordContent() {
                 </motion.div>
 
                 {/* Form */}
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <motion.div variants={itemVariants} className="space-y-2">
-                    <label className="text-xs font-medium text-text-muted">
-                      New Password
-                    </label>
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  <motion.div variants={itemVariants} className="space-y-1.5">
+                    <RequiredLabel>New Password</RequiredLabel>
                     <div className="relative">
                       <Input
                         type={showPassword ? "text" : "password"}
@@ -282,10 +280,8 @@ function ResetPasswordContent() {
                     </div>
                   </motion.div>
 
-                  <motion.div variants={itemVariants} className="space-y-2">
-                    <label className="text-xs font-medium text-text-muted">
-                      Confirm Password
-                    </label>
+                  <motion.div variants={itemVariants} className="space-y-1.5">
+                    <RequiredLabel>Confirm Password</RequiredLabel>
                     <div className="relative">
                       <Input
                         type={showConfirmPassword ? "text" : "password"}
@@ -342,7 +338,7 @@ function ResetPasswordContent() {
 
                   <motion.div variants={itemVariants}>
                     <Button
-                      className="w-full"
+                      className="w-full h-11 font-semibold"
                       type="submit"
                       disabled={isLoading}
                     >

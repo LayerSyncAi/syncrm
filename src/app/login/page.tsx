@@ -14,6 +14,7 @@ import { authToasts } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import {
   AuthLayout,
+  RequiredLabel,
   containerVariants,
   itemVariants,
 } from "@/components/auth/auth-layout";
@@ -165,26 +166,21 @@ export default function LoginPage() {
           animate="animate"
         >
           {/* Header */}
-          <motion.div variants={itemVariants} className="mb-1">
-            <span className="text-xs uppercase tracking-[0.2em] text-text-dim">
-              {mode === "signIn" ? "Welcome back" : "Get started"}
-            </span>
-          </motion.div>
-          <motion.div variants={itemVariants} className="mb-1">
-            <h1 className="text-2xl font-bold text-text">
-              {mode === "signIn" ? "Sign in" : "Create account"}
+          <motion.div variants={itemVariants} className="mb-2">
+            <h1 className="text-3xl font-bold text-text">
+              {mode === "signIn" ? "Sign in to your account" : "Create your account"}
             </h1>
           </motion.div>
           <motion.div variants={itemVariants} className="mb-8">
             <p className="text-sm text-text-muted">
               {mode === "signIn"
-                ? "Use your credentials to access the pipeline."
+                ? "Welcome back! Enter your credentials to access your pipeline."
                 : "Register your organization and create an admin account."}
             </p>
           </motion.div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <AnimatePresence>
               {mode === "signUp" && (
                 <motion.div
@@ -193,12 +189,10 @@ export default function LoginPage() {
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.25 }}
-                  className="overflow-hidden space-y-4"
+                  className="overflow-hidden space-y-5"
                 >
-                  <div className="space-y-2">
-                    <label className="text-xs font-medium text-text-muted">
-                      Organization Name
-                    </label>
+                  <div className="space-y-1.5">
+                    <RequiredLabel>Organization Name</RequiredLabel>
                     <Input
                       type="text"
                       placeholder="Acme Realty"
@@ -208,10 +202,8 @@ export default function LoginPage() {
                       disabled={isDisabled}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-medium text-text-muted">
-                      Full Name
-                    </label>
+                  <div className="space-y-1.5">
+                    <RequiredLabel>Full Name</RequiredLabel>
                     <Input
                       type="text"
                       placeholder="John Doe"
@@ -225,10 +217,8 @@ export default function LoginPage() {
               )}
             </AnimatePresence>
 
-            <motion.div variants={itemVariants} className="space-y-2">
-              <label className="text-xs font-medium text-text-muted">
-                Email
-              </label>
+            <motion.div variants={itemVariants} className="space-y-1.5">
+              <RequiredLabel>Email</RequiredLabel>
               <Input
                 type="email"
                 placeholder="you@agency.com"
@@ -239,10 +229,8 @@ export default function LoginPage() {
               />
             </motion.div>
 
-            <motion.div variants={itemVariants} className="space-y-2">
-              <label className="text-xs font-medium text-text-muted">
-                Password
-              </label>
+            <motion.div variants={itemVariants} className="space-y-1.5">
+              <RequiredLabel>Password</RequiredLabel>
               <div className="relative">
                 <Input
                   type={showPassword ? "text" : "password"}
@@ -287,10 +275,8 @@ export default function LoginPage() {
                   transition={{ duration: 0.25 }}
                   className="overflow-hidden"
                 >
-                  <div className="space-y-2">
-                    <label className="text-xs font-medium text-text-muted">
-                      Confirm Password
-                    </label>
+                  <div className="space-y-1.5">
+                    <RequiredLabel>Confirm Password</RequiredLabel>
                     <div className="relative">
                       <Input
                         type={showConfirmPassword ? "text" : "password"}
@@ -348,51 +334,12 @@ export default function LoginPage() {
               )}
             </AnimatePresence>
 
-            <motion.div
-              variants={itemVariants}
-              className="flex items-center justify-between text-xs text-text-dim"
-            >
-              {mode === "signIn" ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMode("signUp");
-                      setError(null);
-                    }}
-                    disabled={isDisabled}
-                    className="text-primary-600 hover:underline disabled:opacity-50"
-                  >
-                    Create an account
-                  </button>
-                  <Link
-                    href="/forgot-password"
-                    className="text-text-muted hover:underline"
-                  >
-                    Forgot password?
-                  </Link>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode("signIn");
-                    setError(null);
-                  }}
-                  disabled={isDisabled}
-                  className="text-primary-600 hover:underline disabled:opacity-50"
-                >
-                  Already have an account? Sign in
-                </button>
-              )}
-            </motion.div>
-
             <motion.div variants={itemVariants}>
               <motion.button
                 type="submit"
                 disabled={isDisabled}
                 className={cn(
-                  "relative inline-flex h-10 w-full items-center justify-center rounded-[10px] text-sm font-medium text-white transition-colors duration-300 disabled:cursor-not-allowed overflow-hidden",
+                  "relative inline-flex h-11 w-full items-center justify-center rounded-[10px] text-sm font-semibold text-white transition-colors duration-300 disabled:cursor-not-allowed overflow-hidden",
                   submitState === "success"
                     ? "bg-green-500"
                     : "bg-primary-600 hover:bg-primary shadow-[0_0_0_4px_rgba(236,164,0,0.12)] disabled:opacity-50"
@@ -444,6 +391,45 @@ export default function LoginPage() {
                   )}
                 </AnimatePresence>
               </motion.button>
+            </motion.div>
+
+            <motion.div
+              variants={itemVariants}
+              className="flex items-center justify-between text-sm"
+            >
+              {mode === "signIn" ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode("signUp");
+                      setError(null);
+                    }}
+                    disabled={isDisabled}
+                    className="text-primary-600 font-medium hover:underline disabled:opacity-50"
+                  >
+                    Create an account
+                  </button>
+                  <Link
+                    href="/forgot-password"
+                    className="text-text-muted hover:underline"
+                  >
+                    Forgot password?
+                  </Link>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("signIn");
+                    setError(null);
+                  }}
+                  disabled={isDisabled}
+                  className="text-primary-600 font-medium hover:underline disabled:opacity-50"
+                >
+                  Already have an account? Sign in
+                </button>
+              )}
             </motion.div>
           </form>
         </motion.div>

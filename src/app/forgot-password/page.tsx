@@ -11,6 +11,7 @@ import { ArrowLeft, CheckCircle, Loader2, Mail } from "lucide-react";
 import { authToasts } from "@/lib/toast";
 import {
   AuthLayout,
+  RequiredLabel,
   containerVariants,
   itemVariants,
 } from "@/components/auth/auth-layout";
@@ -69,11 +70,11 @@ export default function ForgotPasswordPage() {
                   damping: 20,
                   delay: 0.1,
                 }}
-                className="flex h-14 w-14 items-center justify-center rounded-full bg-green-100 mb-5"
+                className="flex h-14 w-14 items-center justify-center rounded-full bg-green-100 mb-6"
               >
                 <CheckCircle className="h-7 w-7 text-green-600" />
               </motion.div>
-              <h1 className="text-2xl font-bold text-text mb-2">
+              <h1 className="text-3xl font-bold text-text mb-2">
                 Check your email
               </h1>
               <p className="text-sm text-text-muted max-w-xs">
@@ -124,19 +125,14 @@ export default function ForgotPasswordPage() {
                 {/* Icon */}
                 <motion.div
                   variants={itemVariants}
-                  className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-600/10 mb-5"
+                  className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-600/10 mb-6"
                 >
                   <Mail className="h-6 w-6 text-primary-600" />
                 </motion.div>
 
                 {/* Header */}
-                <motion.div variants={itemVariants} className="mb-1">
-                  <span className="text-xs uppercase tracking-[0.2em] text-text-dim">
-                    SynCRM
-                  </span>
-                </motion.div>
-                <motion.div variants={itemVariants} className="mb-1">
-                  <h1 className="text-2xl font-bold text-text">
+                <motion.div variants={itemVariants} className="mb-2">
+                  <h1 className="text-3xl font-bold text-text">
                     Forgot password?
                   </h1>
                 </motion.div>
@@ -147,11 +143,9 @@ export default function ForgotPasswordPage() {
                 </motion.div>
 
                 {/* Form */}
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <motion.div variants={itemVariants} className="space-y-2">
-                    <label className="text-xs font-medium text-text-muted">
-                      Email
-                    </label>
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  <motion.div variants={itemVariants} className="space-y-1.5">
+                    <RequiredLabel>Email</RequiredLabel>
                     <Input
                       type="email"
                       placeholder="you@agency.com"
@@ -180,7 +174,7 @@ export default function ForgotPasswordPage() {
 
                   <motion.div variants={itemVariants}>
                     <Button
-                      className="w-full"
+                      className="w-full h-11 font-semibold"
                       type="submit"
                       disabled={isLoading}
                     >
