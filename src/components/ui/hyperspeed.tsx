@@ -1017,8 +1017,8 @@ class App {
       10000
     );
     this.camera.position.z = -5;
-    this.camera.position.y = 12;
-    this.camera.position.x = -6;
+    this.camera.position.y = 7;
+    this.camera.position.x = 0;
 
     this.scene = new THREE.Scene();
     this.scene.background = null;
