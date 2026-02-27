@@ -667,9 +667,9 @@ export default function LandingPage() {
       </AnimatedSection>
 
       {/* ── CTA ──────────────────────────────────────────────────── */}
-      <AnimatedSection className="relative overflow-hidden bg-white py-24 sm:py-32">
+      <AnimatedSection className="isolate relative overflow-hidden bg-white py-24 sm:py-32">
         {/* Floating lines background */}
-        <div className="absolute inset-0 z-0 pointer-events-none">
+        <div className="absolute inset-0 opacity-60 pointer-events-none" style={{ zIndex: 0 }}>
           <FloatingLines
             linesGradient={["#ECA400", "#F59E0B", "#D97706", "#B45309"]}
             enabledWaves={["top", "middle", "bottom"]}
@@ -681,7 +681,7 @@ export default function LandingPage() {
           />
         </div>
 
-        <div className="relative z-10 mx-auto max-w-3xl px-6 text-center">
+        <div className="relative mx-auto max-w-3xl px-6 text-center" style={{ zIndex: 1 }}>
           <motion.div
             variants={fadeUp}
             custom={0}
