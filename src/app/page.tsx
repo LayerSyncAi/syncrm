@@ -7,17 +7,33 @@ import { useAuth } from "@/hooks/useAuth";
 import { motion, useInView } from "framer-motion";
 import {
   ArrowRight,
+  ArrowUpRight,
   BarChart3,
+  Bell,
+  Briefcase,
+  Building,
   Building2,
   CheckCircle2,
+  ChevronDown,
   ClipboardList,
+  Compass,
+  Crown,
   FileSpreadsheet,
+  House,
+  Key,
+  Landmark,
+  LayoutDashboard,
   Loader2,
   Lock,
+  MapPin,
   Merge,
-  MousePointerClick,
+  Search,
+  Shield,
   Sparkles,
+  Star,
   Target,
+  Trophy,
+  User,
   Users,
   Waypoints,
   Zap,
@@ -39,15 +55,6 @@ const fadeUp = {
 const stagger = {
   hidden: {},
   visible: { transition: { staggerChildren: 0.08 } },
-};
-
-const scaleIn = {
-  hidden: { opacity: 0, scale: 0.85 },
-  visible: (i: number) => ({
-    opacity: 1,
-    scale: 1,
-    transition: { delay: i * 0.08, type: "spring" as const, stiffness: 200, damping: 20 },
-  }),
 };
 
 /* ------------------------------------------------------------------ */
@@ -115,6 +122,236 @@ const benefits = [
 ];
 
 /* ------------------------------------------------------------------ */
+/*  Hero sub-components                                                */
+/* ------------------------------------------------------------------ */
+
+function HeroCopy() {
+  return (
+    <>
+      <div className="mb-3 rounded-full bg-text/10">
+        <Link
+          href="/login"
+          className="flex origin-top-left items-center rounded-full border border-text/20 bg-card-bg p-0.5 text-sm transition-transform hover:-rotate-2"
+        >
+          <span className="rounded-full bg-primary-600 px-2.5 py-0.5 font-medium text-white">
+            NEW
+          </span>
+          <span className="ml-1.5 mr-1 inline-block text-text-muted">
+            The CRM built for real estate teams
+          </span>
+          <ArrowUpRight className="mr-2 inline-block h-3.5 w-3.5 text-text-muted" />
+        </Link>
+      </div>
+
+      <h1 className="max-w-4xl text-center text-4xl font-black leading-[1.15] text-text md:text-6xl md:leading-[1.15]">
+        Manage your entire real estate{" "}
+        <span
+          className="bg-clip-text text-transparent"
+          style={{
+            backgroundImage:
+              "linear-gradient(135deg, #eca400 0%, #d89500 50%, #b07a00 100%)",
+          }}
+        >
+          pipeline
+        </span>{" "}
+        in one place
+      </h1>
+
+      <p className="mx-auto my-4 max-w-3xl text-center text-base leading-relaxed text-text-muted md:my-6 md:text-xl md:leading-relaxed">
+        SynCRM helps real estate teams track leads, match properties, and close
+        deals faster — with beautiful dashboards, smart scoring, and real-time
+        collaboration.
+      </p>
+
+      <Link
+        href="/login"
+        className="rounded-lg bg-primary-600 px-5 py-3 text-sm font-bold uppercase text-white shadow-[0_4px_16px_rgba(236,164,0,0.3)] transition-colors hover:bg-primary"
+      >
+        Get Started —{" "}
+        <span className="font-normal">no CC required</span>
+      </Link>
+    </>
+  );
+}
+
+function HeroMockupScreen() {
+  return (
+    <div className="absolute bottom-0 left-1/2 h-36 w-[calc(100vw_-_56px)] max-w-[1100px] -translate-x-1/2 overflow-hidden rounded-t-xl bg-[#1f2a44] p-0.5">
+      {/* Browser chrome */}
+      <div className="flex items-center justify-between px-2 py-1">
+        <div className="flex items-center gap-0.5">
+          <span className="size-2 rounded-full bg-red-400" />
+          <span className="size-2 rounded-full bg-yellow-400" />
+          <span className="size-2 rounded-full bg-green-400" />
+        </div>
+        <span className="rounded bg-[#2d3a56] px-2 py-0.5 text-xs text-zinc-100">
+          app.syncrm.com
+        </span>
+        <ChevronDown className="h-3.5 w-3.5 text-white/60" />
+      </div>
+
+      {/* App content */}
+      <div className="relative z-0 grid h-full w-full grid-cols-[100px,_1fr] overflow-hidden rounded-t-lg bg-card-bg md:grid-cols-[150px,_1fr]">
+        {/* Sidebar */}
+        <div className="h-full border-r border-border p-2">
+          <div className="flex items-center gap-1.5">
+            <div className="flex h-5 w-5 items-center justify-center rounded bg-primary-600">
+              <Sparkles className="h-3 w-3 text-white" />
+            </div>
+            <span className="text-[10px] font-semibold">
+              Syn<span className="text-primary-600">CRM</span>
+            </span>
+          </div>
+          <div className="mt-3 space-y-1.5">
+            <span className="flex items-center gap-1.5 text-xs text-primary-600">
+              <LayoutDashboard className="h-3 w-3" />
+              <span>Dashboard</span>
+            </span>
+            <span className="flex items-center gap-1.5 text-xs text-text-dim">
+              <Users className="h-3 w-3" />
+              <span>Leads</span>
+            </span>
+            <span className="flex items-center gap-1.5 text-xs text-text-dim">
+              <Building2 className="h-3 w-3" />
+              <span>Properties</span>
+            </span>
+            <span className="flex items-center gap-1.5 text-xs text-text-dim">
+              <ClipboardList className="h-3 w-3" />
+              <span>Tasks</span>
+            </span>
+          </div>
+        </div>
+
+        {/* Main area */}
+        <div className="relative z-0 p-2">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="flex items-center gap-1 rounded bg-surface-2 px-1.5 py-1 pr-8 text-xs text-text-dim">
+              <Search className="h-3 w-3" />
+              Search...
+            </span>
+            <div className="flex items-center gap-1.5">
+              <Bell className="h-4 w-4 text-primary-600" />
+              <User className="h-4 w-4 text-text-dim" />
+            </div>
+          </div>
+          <div className="h-full rounded-xl border border-dashed border-border-strong bg-surface-2/50" />
+        </div>
+
+        {/* Bottom fade */}
+        <div className="absolute bottom-0 left-0 right-0 top-0 z-10 bg-gradient-to-b from-white/0 to-white" />
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Logo ticker sub-components                                         */
+/* ------------------------------------------------------------------ */
+
+function TranslateWrapper({
+  children,
+  reverse,
+}: {
+  children: React.ReactNode;
+  reverse?: boolean;
+}) {
+  return (
+    <motion.div
+      initial={{ translateX: reverse ? "-100%" : "0%" }}
+      animate={{ translateX: reverse ? "0%" : "-100%" }}
+      transition={{ duration: 50, repeat: Infinity, ease: "linear" }}
+      className="flex px-2"
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+function LogoItem({
+  Icon,
+  name,
+}: {
+  Icon: React.ComponentType<{ className?: string }>;
+  name: string;
+}) {
+  return (
+    <span className="flex items-center justify-center gap-3 px-4 py-2 md:py-4">
+      <Icon className="h-5 w-5 shrink-0 text-primary-600 md:h-6 md:w-6" />
+      <span className="whitespace-nowrap text-lg font-semibold uppercase text-text md:text-xl">
+        {name}
+      </span>
+    </span>
+  );
+}
+
+function LogoItemsTop() {
+  return (
+    <>
+      <LogoItem Icon={Building2} name="Apex Realty" />
+      <LogoItem Icon={House} name="HomeFirst" />
+      <LogoItem Icon={MapPin} name="CityScope" />
+      <LogoItem Icon={Key} name="KeyStone" />
+      <LogoItem Icon={Landmark} name="Meridian" />
+      <LogoItem Icon={Crown} name="Royal Estates" />
+      <LogoItem Icon={Briefcase} name="Premier" />
+      <LogoItem Icon={Star} name="Starlight" />
+      <LogoItem Icon={Shield} name="TrustHaven" />
+      <LogoItem Icon={Compass} name="Compass RE" />
+    </>
+  );
+}
+
+function LogoItemsBottom() {
+  return (
+    <>
+      <LogoItem Icon={Building} name="Harbor" />
+      <LogoItem Icon={Trophy} name="Elite Realty" />
+      <LogoItem Icon={Target} name="Pinnacle" />
+      <LogoItem Icon={House} name="NestFinder" />
+      <LogoItem Icon={MapPin} name="UrbanEdge" />
+      <LogoItem Icon={Landmark} name="Heritage" />
+      <LogoItem Icon={Building2} name="Skyline" />
+      <LogoItem Icon={Key} name="OpenDoor" />
+      <LogoItem Icon={Crown} name="Prestige" />
+      <LogoItem Icon={Shield} name="SafeHarbor" />
+    </>
+  );
+}
+
+function HeroLogos() {
+  return (
+    <div className="relative -mt-2 -rotate-1 scale-[1.01] border-y-2 border-text/20 bg-card-bg">
+      <div className="relative z-0 flex overflow-hidden border-b-2 border-text/20">
+        <TranslateWrapper>
+          <LogoItemsTop />
+        </TranslateWrapper>
+        <TranslateWrapper>
+          <LogoItemsTop />
+        </TranslateWrapper>
+        <TranslateWrapper>
+          <LogoItemsTop />
+        </TranslateWrapper>
+      </div>
+      <div className="relative z-0 flex overflow-hidden">
+        <TranslateWrapper reverse>
+          <LogoItemsBottom />
+        </TranslateWrapper>
+        <TranslateWrapper reverse>
+          <LogoItemsBottom />
+        </TranslateWrapper>
+        <TranslateWrapper reverse>
+          <LogoItemsBottom />
+        </TranslateWrapper>
+      </div>
+
+      {/* Side fades */}
+      <div className="pointer-events-none absolute bottom-0 left-0 top-0 z-10 w-32 bg-gradient-to-r from-white to-white/0" />
+      <div className="pointer-events-none absolute bottom-0 right-0 top-0 z-10 w-32 bg-gradient-to-l from-white to-white/0" />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  Section wrapper with viewport animation                            */
 /* ------------------------------------------------------------------ */
 
@@ -144,7 +381,7 @@ function AnimatedSection({
 /*  Page                                                               */
 /* ------------------------------------------------------------------ */
 
-export default function Home() {
+export default function LandingPage() {
   const router = useRouter();
   const { isAuthenticated, isLoading } = useAuth();
   const [isRedirecting, setIsRedirecting] = useState(false);
@@ -181,9 +418,9 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-content-bg overflow-x-hidden">
+    <main className="min-h-screen overflow-x-hidden bg-content-bg">
       {/* ── Navbar ────────────────────────────────────────────────── */}
-      <nav className="sticky top-0 z-50 backdrop-blur-md bg-content-bg/80 border-b border-border">
+      <nav className="sticky top-0 z-50 border-b border-border bg-card-bg/80 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
           <Link href="/" className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-600">
@@ -196,13 +433,13 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <Link
               href="/login"
-              className="text-sm font-medium text-text-muted hover:text-text transition-colors"
+              className="text-sm font-medium text-text-muted transition-colors hover:text-text"
             >
               Sign in
             </Link>
             <Link
               href="/login"
-              className="inline-flex items-center gap-1.5 rounded-[10px] bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-[0_0_0_4px_rgba(236,164,0,0.12)] hover:bg-primary transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-[10px] bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-[0_0_0_4px_rgba(236,164,0,0.12)] transition-colors hover:bg-primary"
             >
               Get Started
               <ArrowRight className="h-3.5 w-3.5" />
@@ -212,204 +449,32 @@ export default function Home() {
       </nav>
 
       {/* ── Hero ─────────────────────────────────────────────────── */}
-      <section className="relative isolate pt-20 pb-24 sm:pt-28 sm:pb-32">
-        {/* Decorative gradient blobs */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 h-[520px] w-[720px] rounded-full opacity-30"
-          style={{
-            background:
-              "radial-gradient(ellipse at center, rgba(236,164,0,0.25) 0%, rgba(236,164,0,0.08) 40%, transparent 70%)",
-          }}
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute top-40 -left-32 h-64 w-64 rounded-full opacity-20"
-          style={{
-            background:
-              "radial-gradient(circle, rgba(2,132,199,0.3) 0%, transparent 70%)",
-          }}
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute top-60 -right-32 h-72 w-72 rounded-full opacity-20"
-          style={{
-            background:
-              "radial-gradient(circle, rgba(22,163,74,0.2) 0%, transparent 70%)",
-          }}
-        />
-
-        <div className="mx-auto max-w-3xl px-6 text-center relative">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-600/10 px-3 py-1 text-xs font-medium text-primary-600 ring-1 ring-primary-600/20 mb-6">
-              <Zap className="h-3 w-3" />
-              Built for real estate teams
-            </span>
-          </motion.div>
-
-          <motion.h1
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-            className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.1] mt-4"
-          >
-            Your pipeline,{" "}
-            <span className="relative">
-              <span
-                className="bg-clip-text text-transparent"
-                style={{
-                  backgroundImage:
-                    "linear-gradient(135deg, #eca400 0%, #d89500 50%, #b07a00 100%)",
-                }}
-              >
-                perfectly in sync
-              </span>
-              <motion.span
-                aria-hidden
-                className="absolute -bottom-1 left-0 h-[3px] rounded-full bg-primary-600/40"
-                initial={{ width: 0 }}
-                animate={{ width: "100%" }}
-                transition={{ duration: 0.8, delay: 0.7, ease: "easeOut" }}
-              />
-            </span>
-          </motion.h1>
-
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="mt-6 text-lg sm:text-xl text-text-muted max-w-2xl mx-auto leading-relaxed"
-          >
-            SynCRM is the modern CRM built for real estate agencies. Manage leads,
-            match properties, track activities, and close deals faster — all in one
-            beautiful, real-time platform.
-          </motion.p>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.5 }}
-            className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
-          >
-            <Link
-              href="/login"
-              className="group inline-flex items-center gap-2 rounded-[12px] bg-primary-600 px-6 py-3 text-base font-semibold text-white shadow-[0_0_0_4px_rgba(236,164,0,0.12),0_8px_24px_rgba(236,164,0,0.2)] hover:bg-primary hover:shadow-[0_0_0_4px_rgba(236,164,0,0.18),0_12px_32px_rgba(236,164,0,0.25)] transition-all duration-200"
-            >
-              Start Free
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-            </Link>
-            <Link
-              href="#features"
-              className="inline-flex items-center gap-2 rounded-[12px] border border-border-strong px-6 py-3 text-base font-medium text-text-muted hover:bg-card-bg hover:text-text transition-all duration-200"
-            >
-              <MousePointerClick className="h-4 w-4" />
-              See Features
-            </Link>
-          </motion.div>
+      <section className="overflow-hidden bg-card-bg">
+        <div className="relative flex flex-col items-center justify-center px-6 pb-52 pt-16 sm:px-12 md:pb-60 md:pt-28">
+          <HeroCopy />
+          <HeroMockupScreen />
         </div>
-
-        {/* ── Hero visual: mock dashboard card ───────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 60 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          className="mx-auto mt-16 max-w-5xl px-6"
-        >
-          <div className="rounded-[16px] border border-border bg-card-bg shadow-[0_20px_60px_rgba(15,23,42,0.08)] overflow-hidden">
-            {/* Top bar mock */}
-            <div className="flex items-center gap-2 border-b border-border px-5 py-3">
-              <span className="h-3 w-3 rounded-full bg-danger/60" />
-              <span className="h-3 w-3 rounded-full bg-warning/60" />
-              <span className="h-3 w-3 rounded-full bg-success/60" />
-              <span className="ml-3 text-xs text-text-dim">SynCRM — Dashboard</span>
-            </div>
-            {/* Content mock */}
-            <div className="grid grid-cols-4 gap-4 p-6">
-              {[
-                { label: "Active Leads", value: "247", color: "text-info" },
-                { label: "Properties", value: "1,024", color: "text-success" },
-                { label: "This Month", value: "38", color: "text-primary-600" },
-                { label: "Conversion", value: "24%", color: "text-warning" },
-              ].map((stat, i) => (
-                <motion.div
-                  key={stat.label}
-                  custom={i}
-                  variants={scaleIn}
-                  initial="hidden"
-                  animate="visible"
-                  className="rounded-[12px] border border-border bg-surface-2/50 p-4"
-                >
-                  <p className="text-xs text-text-dim">{stat.label}</p>
-                  <p className={`mt-1 text-2xl font-bold ${stat.color}`}>
-                    {stat.value}
-                  </p>
-                </motion.div>
-              ))}
-            </div>
-            {/* Pipeline mock */}
-            <div className="px-6 pb-6">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="h-1 flex-1 rounded-full bg-info/20 overflow-hidden">
-                  <motion.div
-                    className="h-full rounded-full bg-info"
-                    initial={{ width: 0 }}
-                    animate={{ width: "80%" }}
-                    transition={{ duration: 1.2, delay: 1 }}
-                  />
-                </div>
-                <div className="h-1 flex-1 rounded-full bg-primary-600/20 overflow-hidden">
-                  <motion.div
-                    className="h-full rounded-full bg-primary-600"
-                    initial={{ width: 0 }}
-                    animate={{ width: "55%" }}
-                    transition={{ duration: 1.2, delay: 1.15 }}
-                  />
-                </div>
-                <div className="h-1 flex-1 rounded-full bg-success/20 overflow-hidden">
-                  <motion.div
-                    className="h-full rounded-full bg-success"
-                    initial={{ width: 0 }}
-                    animate={{ width: "35%" }}
-                    transition={{ duration: 1.2, delay: 1.3 }}
-                  />
-                </div>
-                <div className="h-1 flex-1 rounded-full bg-warning/20 overflow-hidden">
-                  <motion.div
-                    className="h-full rounded-full bg-warning"
-                    initial={{ width: 0 }}
-                    animate={{ width: "20%" }}
-                    transition={{ duration: 1.2, delay: 1.45 }}
-                  />
-                </div>
-              </div>
-              <div className="flex justify-between text-[11px] text-text-dim">
-                <span>New Inquiry</span>
-                <span>Qualifying</span>
-                <span>Negotiation</span>
-                <span>Closed Won</span>
-              </div>
-            </div>
-          </div>
-        </motion.div>
+        <HeroLogos />
       </section>
 
+      {/* ── Breathing spacer ─────────────────────────────────────── */}
+      <div className="h-6 bg-content-bg" />
+
       {/* ── Features ─────────────────────────────────────────────── */}
-      <AnimatedSection
-        className="py-24 sm:py-32 bg-card-bg border-y border-border"
-      >
-        <div id="features" className="mx-auto max-w-6xl px-6 scroll-mt-20">
-          <motion.div variants={fadeUp} custom={0} className="text-center max-w-2xl mx-auto mb-16">
+      <AnimatedSection className="bg-content-bg py-24 sm:py-32">
+        <div id="features" className="mx-auto max-w-6xl scroll-mt-20 px-6">
+          <motion.div
+            variants={fadeUp}
+            custom={0}
+            className="mx-auto mb-16 max-w-2xl text-center"
+          >
             <span className="text-xs font-semibold uppercase tracking-[0.2em] text-primary-600">
               Features
             </span>
-            <h2 className="mt-3 text-3xl sm:text-4xl font-bold tracking-tight">
+            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
               Everything you need to manage your pipeline
             </h2>
-            <p className="mt-4 text-text-muted text-base leading-relaxed">
+            <p className="mt-4 text-base leading-relaxed text-text-muted">
               From first contact to closed deal, SynCRM gives your team the tools to
               stay organized, move fast, and win more business.
             </p>
@@ -421,13 +486,13 @@ export default function Home() {
                 key={feature.title}
                 custom={i}
                 variants={fadeUp}
-                className="group relative rounded-[14px] border border-border bg-content-bg p-6 hover:border-primary-600/30 hover:shadow-[0_8px_30px_rgba(236,164,0,0.08)] transition-all duration-300"
+                className="group relative rounded-[14px] border border-border bg-card-bg p-6 transition-all duration-300 hover:border-primary-600/30 hover:shadow-[0_8px_30px_rgba(236,164,0,0.08)]"
               >
-                <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-[10px] bg-primary-600/10 text-primary-600 group-hover:bg-primary-600 group-hover:text-white transition-colors duration-300">
+                <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-[10px] bg-primary-600/10 text-primary-600 transition-colors duration-300 group-hover:bg-primary-600 group-hover:text-white">
                   <feature.icon className="h-5 w-5" />
                 </div>
-                <h3 className="text-sm font-semibold mb-2">{feature.title}</h3>
-                <p className="text-sm text-text-muted leading-relaxed">
+                <h3 className="mb-2 text-sm font-semibold">{feature.title}</h3>
+                <p className="text-sm leading-relaxed text-text-muted">
                   {feature.description}
                 </p>
               </motion.div>
@@ -437,9 +502,9 @@ export default function Home() {
       </AnimatedSection>
 
       {/* ── Benefits ─────────────────────────────────────────────── */}
-      <AnimatedSection className="py-24 sm:py-32">
+      <AnimatedSection className="bg-card-bg py-24 sm:py-32">
         <div className="mx-auto max-w-6xl px-6">
-          <div className="grid gap-16 lg:grid-cols-2 items-center">
+          <div className="grid items-center gap-16 lg:grid-cols-2">
             {/* Left: text */}
             <div>
               <motion.span
@@ -452,14 +517,14 @@ export default function Home() {
               <motion.h2
                 variants={fadeUp}
                 custom={1}
-                className="mt-3 text-3xl sm:text-4xl font-bold tracking-tight"
+                className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl"
               >
                 Built to help you close more deals
               </motion.h2>
               <motion.p
                 variants={fadeUp}
                 custom={2}
-                className="mt-4 text-text-muted text-base leading-relaxed"
+                className="mt-4 text-base leading-relaxed text-text-muted"
               >
                 Every feature is designed around the way real estate teams actually
                 work — fast-paced, relationship-driven, and always on the move.
@@ -472,7 +537,7 @@ export default function Home() {
                     variants={fadeUp}
                     className="flex items-start gap-3"
                   >
-                    <CheckCircle2 className="mt-0.5 h-5 w-5 flex-shrink-0 text-success" />
+                    <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-success" />
                     <span className="text-sm leading-relaxed">{benefit}</span>
                   </motion.li>
                 ))}
@@ -481,10 +546,10 @@ export default function Home() {
 
             {/* Right: visual card */}
             <motion.div variants={fadeUp} custom={2}>
-              <div className="rounded-[16px] border border-border bg-card-bg shadow-[0_16px_48px_rgba(15,23,42,0.06)] p-6">
-                <div className="flex items-center gap-3 mb-5">
-                  <div className="h-9 w-9 rounded-[10px] bg-primary-600/10 flex items-center justify-center">
-                    <Lock className="h-4.5 w-4.5 text-primary-600" />
+              <div className="rounded-[16px] border border-border bg-content-bg p-6 shadow-[0_16px_48px_rgba(15,23,42,0.06)]">
+                <div className="mb-5 flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-primary-600/10">
+                    <Lock className="h-4 w-4 text-primary-600" />
                   </div>
                   <div>
                     <p className="text-sm font-semibold">Role-Based Access</p>
@@ -495,14 +560,32 @@ export default function Home() {
                 </div>
                 <div className="space-y-3">
                   {[
-                    { role: "Admin", perms: ["Full dashboard", "User management", "Lead scoring config", "Commission tracking"], color: "bg-primary-600" },
-                    { role: "Agent", perms: ["Assigned leads", "Tasks & follow-ups", "Property suggestions", "Activity logging"], color: "bg-info" },
+                    {
+                      role: "Admin",
+                      perms: [
+                        "Full dashboard",
+                        "User management",
+                        "Lead scoring config",
+                        "Commission tracking",
+                      ],
+                      color: "bg-primary-600",
+                    },
+                    {
+                      role: "Agent",
+                      perms: [
+                        "Assigned leads",
+                        "Tasks & follow-ups",
+                        "Property suggestions",
+                        "Activity logging",
+                      ],
+                      color: "bg-info",
+                    },
                   ].map((r) => (
                     <div
                       key={r.role}
-                      className="rounded-[12px] border border-border bg-surface-2/50 p-4"
+                      className="rounded-[12px] border border-border bg-card-bg p-4"
                     >
-                      <div className="flex items-center gap-2 mb-2">
+                      <div className="mb-2 flex items-center gap-2">
                         <span
                           className={`inline-block h-2 w-2 rounded-full ${r.color}`}
                         />
@@ -512,7 +595,7 @@ export default function Home() {
                         {r.perms.map((p) => (
                           <span
                             key={p}
-                            className="rounded-full bg-card-bg border border-border px-2.5 py-0.5 text-[11px] text-text-muted"
+                            className="rounded-full border border-border bg-surface-2/50 px-2.5 py-0.5 text-[11px] text-text-muted"
                           >
                             {p}
                           </span>
@@ -528,26 +611,26 @@ export default function Home() {
       </AnimatedSection>
 
       {/* ── CTA ──────────────────────────────────────────────────── */}
-      <AnimatedSection className="py-24 sm:py-32 bg-card-bg border-y border-border">
+      <AnimatedSection className="bg-content-bg py-24 sm:py-32">
         <div className="mx-auto max-w-3xl px-6 text-center">
           <motion.div
             variants={fadeUp}
             custom={0}
-            className="inline-flex h-14 w-14 items-center justify-center rounded-[14px] bg-primary-600/10 mb-6"
+            className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-[14px] bg-primary-600/10"
           >
             <Sparkles className="h-7 w-7 text-primary-600" />
           </motion.div>
           <motion.h2
             variants={fadeUp}
             custom={1}
-            className="text-3xl sm:text-4xl font-bold tracking-tight"
+            className="text-3xl font-bold tracking-tight sm:text-4xl"
           >
             Ready to sync your pipeline?
           </motion.h2>
           <motion.p
             variants={fadeUp}
             custom={2}
-            className="mt-4 text-text-muted text-base leading-relaxed max-w-xl mx-auto"
+            className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-text-muted"
           >
             Join real estate teams who use SynCRM to stay organized, collaborate
             better, and close deals faster. Set up your workspace in minutes.
@@ -555,11 +638,11 @@ export default function Home() {
           <motion.div
             variants={fadeUp}
             custom={3}
-            className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
+            className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row"
           >
             <Link
               href="/login"
-              className="group inline-flex items-center gap-2 rounded-[12px] bg-primary-600 px-8 py-3.5 text-base font-semibold text-white shadow-[0_0_0_4px_rgba(236,164,0,0.12),0_8px_24px_rgba(236,164,0,0.2)] hover:bg-primary hover:shadow-[0_0_0_4px_rgba(236,164,0,0.18),0_12px_32px_rgba(236,164,0,0.25)] transition-all duration-200"
+              className="group inline-flex items-center gap-2 rounded-[12px] bg-primary-600 px-8 py-3.5 text-base font-semibold text-white shadow-[0_0_0_4px_rgba(236,164,0,0.12),0_8px_24px_rgba(236,164,0,0.2)] transition-all duration-200 hover:bg-primary hover:shadow-[0_0_0_4px_rgba(236,164,0,0.18),0_12px_32px_rgba(236,164,0,0.25)]"
             >
               Get Started — It&apos;s Free
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
@@ -569,8 +652,8 @@ export default function Home() {
       </AnimatedSection>
 
       {/* ── Footer ───────────────────────────────────────────────── */}
-      <footer className="py-10 border-t border-border">
-        <div className="mx-auto max-w-6xl px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <footer className="border-t border-border py-10">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 sm:flex-row">
           <div className="flex items-center gap-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary-600">
               <Sparkles className="h-3.5 w-3.5 text-white" />
