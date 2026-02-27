@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,7 +14,14 @@ import { Input } from "@/components/ui/input";
 import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
-import { DataTable, ColumnDef } from "@/components/ui/data-table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Loader2,
   Plus,
@@ -24,6 +31,16 @@ import {
 } from "lucide-react";
 import { TIMEZONES } from "@/lib/timezones";
 import { animatedToast } from "@/components/ui/animated-toaster";
+
+const listVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.04 } },
+};
+
+const rowVariants = {
+  hidden: { opacity: 0, x: -8 },
+  show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+} as const;
 
 // ── Types ──────────────────────────────────────────────────
 
@@ -268,90 +285,6 @@ export default function UsersPage() {
       })
     : [];
 
-  type UserRow = (typeof sortedUsers)[number];
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- user._id is stable for the session
-  const usersColumns: ColumnDef<UserRow>[] = useMemo(
-    () => [
-      {
-        id: "user",
-        header: "User",
-        searchable: true,
-        accessor: (u) => u.fullName || u.name || "",
-        cell: (u) => {
-          const isCurrentUser = u._id === user._id;
-          return (
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-600/20 text-xs font-medium text-primary-600">
-                {getInitials(u.fullName, u.name, u.email)}
-              </div>
-              <div>
-                <p className="font-medium">
-                  {u.fullName || u.name || "Unknown"}
-                  {isCurrentUser && (
-                    <span className="ml-2 text-xs text-text-muted">(you)</span>
-                  )}
-                </p>
-                <p className="text-xs text-text-muted capitalize">{u.role}</p>
-              </div>
-            </div>
-          );
-        },
-      },
-      {
-        id: "email",
-        header: "Email",
-        searchable: true,
-        accessor: (u) => u.email || "",
-        cell: (u) => (
-          <span className="text-text-muted">{u.email || "\u2014"}</span>
-        ),
-      },
-      {
-        id: "status",
-        header: "Status",
-        searchable: true,
-        accessor: (u) => (u.isActive ? "Active" : "Inactive"),
-        cell: (u) => (
-          <div className="flex items-center gap-2">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={u.isActive ? "active" : "inactive"}
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.8, opacity: 0 }}
-                transition={{ type: "spring", stiffness: 400, damping: 25 }}
-              >
-                <Badge variant={u.isActive ? "default" : "secondary"}>
-                  {u.isActive ? "Active" : "Inactive"}
-                </Badge>
-              </motion.div>
-            </AnimatePresence>
-            {u.resetPasswordOnNextLogin && (
-              <Badge variant="warning">Password reset pending</Badge>
-            )}
-          </div>
-        ),
-      },
-      {
-        id: "actions",
-        header: "",
-        headerClassName: "text-right w-20",
-        cellClassName: "text-right",
-        cell: (u) => (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => openEditModal(u)}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-        ),
-      },
-    ],
-    [user._id],
-  );
-
   // ── Render ─────────────────────────────────────────────
 
   return (
@@ -376,22 +309,100 @@ export default function UsersPage() {
       </div>
 
       {/* Table */}
-      <DataTable
-        columns={usersColumns}
-        data={sortedUsers.length > 0 ? sortedUsers : undefined}
-        loading={users === undefined}
-        keyAccessor={(u) => u._id}
-        emptyMessage="No users found."
-        emptyAction={
+      {users === undefined ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+        </div>
+      ) : sortedUsers.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-12">
+          <p className="text-sm text-text-muted mb-4">No users found</p>
           <Button onClick={openCreateDrawer}>
             <Plus className="mr-2 h-4 w-4" />
             Create your first user
           </Button>
-        }
-        rowClassName={
-          flashingRows.size > 0 ? undefined : undefined
-        }
-      />
+        </div>
+      ) : (
+        <div className="rounded-lg border border-border overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>User</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right w-20" />
+              </TableRow>
+            </TableHeader>
+            <motion.tbody variants={listVariants} initial="hidden" animate="show">
+              {sortedUsers.map((u) => {
+                const isCurrentUser = u._id === user._id;
+                const flashType = flashingRows.get(u._id);
+                const flashClass = flashType === "activate"
+                  ? "row-flash-activate"
+                  : flashType === "deactivate"
+                    ? "row-flash-deactivate"
+                    : "";
+                return (
+                  <motion.tr
+                    key={u._id}
+                    variants={rowVariants}
+                    layout
+                    className={`h-11 border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)] ${flashClass}`}
+                  >
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-600/20 text-xs font-medium text-primary-600">
+                          {getInitials(u.fullName, u.name, u.email)}
+                        </div>
+                        <div>
+                          <p className="font-medium">
+                            {u.fullName || u.name || "Unknown"}
+                            {isCurrentUser && (
+                              <span className="ml-2 text-xs text-text-muted">(you)</span>
+                            )}
+                          </p>
+                          <p className="text-xs text-text-muted capitalize">{u.role}</p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-text-muted">
+                      {u.email || "\u2014"}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <AnimatePresence mode="wait">
+                          <motion.div
+                            key={u.isActive ? "active" : "inactive"}
+                            initial={{ scale: 0.8, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.8, opacity: 0 }}
+                            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                          >
+                            <Badge variant={u.isActive ? "default" : "secondary"}>
+                              {u.isActive ? "Active" : "Inactive"}
+                            </Badge>
+                          </motion.div>
+                        </AnimatePresence>
+                        {u.resetPasswordOnNextLogin && (
+                          <Badge variant="warning">Password reset pending</Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openEditModal(u)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </motion.tr>
+                );
+              })}
+            </motion.tbody>
+          </Table>
+        </div>
+      )}
 
       {/* ── Edit User Modal ─────────────────────────────── */}
       <Modal

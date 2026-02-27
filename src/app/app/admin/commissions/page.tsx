@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,7 +14,14 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { RightDrawer } from "@/components/common/right-drawer";
 import { Modal } from "@/components/ui/modal";
-import { DataTable, ColumnDef } from "@/components/ui/data-table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Loader2,
   Plus,
@@ -71,6 +78,11 @@ const defaultFormData: ConfigFormData = {
   isDefault: true,
 };
 
+const listVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.04 } },
+};
+
 const rowVariants = {
   hidden: { opacity: 0, x: -8 },
   show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
@@ -102,169 +114,6 @@ export default function CommissionsPage() {
   const [formData, setFormData] = useState<ConfigFormData>(defaultFormData);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const handleStatusChange = async (commissionId: Id<"dealCommissions">, newStatus: CommissionStatus) => {
-    try {
-      await updateCommissionStatus({ commissionId, status: newStatus });
-      commissionToasts.statusUpdated(newStatus);
-    } catch (err) {
-      commissionToasts.statusUpdateFailed(err instanceof Error ? err.message : undefined);
-    }
-  };
-
-  // Commission column definitions for DataTable
-  type DealCommission = NonNullable<typeof dealCommissions>[number];
-
-  const commissionsColumns = useMemo<ColumnDef<DealCommission>[]>(
-    () => [
-      {
-        id: "lead",
-        header: "Lead",
-        searchable: true,
-        accessor: (c) => c.leadName,
-        cell: (c) => <span className="font-medium">{c.leadName}</span>,
-      },
-      {
-        id: "property",
-        header: "Property",
-        searchable: true,
-        accessor: (c) => c.propertyTitle || "",
-        cell: (c) =>
-          c.propertyTitle ? (
-            <span className="text-sm">{c.propertyTitle}</span>
-          ) : (
-            <span className="text-text-muted">&mdash;</span>
-          ),
-      },
-      {
-        id: "dealValue",
-        header: "Deal Value",
-        searchable: true,
-        accessor: (c) =>
-          new Intl.NumberFormat("en-US", {
-            style: "currency",
-            currency: c.dealCurrency,
-            minimumFractionDigits: 0,
-          }).format(c.dealValue),
-        cell: (c) =>
-          new Intl.NumberFormat("en-US", {
-            style: "currency",
-            currency: c.dealCurrency,
-            minimumFractionDigits: 0,
-          }).format(c.dealValue),
-      },
-      {
-        id: "contactOwner",
-        header: "Contact Owner",
-        searchable: true,
-        accessor: (c) => c.contactOwnerName || c.leadAgentName,
-        cell: (c) => {
-          const fmt = (amount: number) =>
-            new Intl.NumberFormat("en-US", {
-              style: "currency",
-              currency: c.dealCurrency,
-              minimumFractionDigits: 0,
-            }).format(amount);
-          return (
-            <div>
-              <div className="text-sm">{c.contactOwnerName || c.leadAgentName}</div>
-              <div className="text-xs text-text-muted">
-                {c.leadAgentPercent}% = {fmt(c.leadAgentAmount)}
-              </div>
-            </div>
-          );
-        },
-      },
-      {
-        id: "propertyOwner",
-        header: "Property Owner",
-        searchable: true,
-        accessor: (c) => c.propertyOwnerName || c.propertyAgentName,
-        cell: (c) => {
-          if (c.propertyAgentName === "—") {
-            return <span className="text-text-muted">&mdash;</span>;
-          }
-          const fmt = (amount: number) =>
-            new Intl.NumberFormat("en-US", {
-              style: "currency",
-              currency: c.dealCurrency,
-              minimumFractionDigits: 0,
-            }).format(amount);
-          return (
-            <div>
-              <div className="text-sm">{c.propertyOwnerName || c.propertyAgentName}</div>
-              <div className="text-xs text-text-muted">
-                {c.propertyAgentPercent}% = {fmt(c.propertyAgentAmount)}
-              </div>
-            </div>
-          );
-        },
-      },
-      {
-        id: "company",
-        header: "Company",
-        searchable: true,
-        accessor: (c) => `${c.companyPercent}%`,
-        cell: (c) => {
-          const fmt = (amount: number) =>
-            new Intl.NumberFormat("en-US", {
-              style: "currency",
-              currency: c.dealCurrency,
-              minimumFractionDigits: 0,
-            }).format(amount);
-          return (
-            <div className="text-xs text-text-muted">
-              {c.companyPercent}% = {fmt(c.companyAmount)}
-            </div>
-          );
-        },
-      },
-      {
-        id: "status",
-        header: "Status",
-        searchable: true,
-        accessor: (c) => c.status,
-        cell: (c) => (
-          <>
-            {c.status === "pending" && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-                <Clock className="h-3 w-3" /> Pending
-              </span>
-            )}
-            {c.status === "approved" && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
-                <CheckCircle className="h-3 w-3" /> Approved
-              </span>
-            )}
-            {c.status === "paid" && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                <CheckCircle className="h-3 w-3" /> Paid
-              </span>
-            )}
-          </>
-        ),
-      },
-      {
-        id: "actions",
-        header: "Actions",
-        headerClassName: "text-right",
-        cellClassName: "text-right",
-        cell: (c) => (
-          <Select
-            value={c.status}
-            onChange={(e) => handleStatusChange(c._id, e.target.value as CommissionStatus)}
-            className="h-8 w-28 text-xs"
-          >
-            <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="paid">Paid</option>
-          </Select>
-        ),
-      },
-    ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [handleStatusChange]
-  );
 
   // Seed defaults on first load
   useEffect(() => {
@@ -403,6 +252,15 @@ export default function CommissionsPage() {
       setDeleteConfirmOpen(false);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleStatusChange = async (commissionId: Id<"dealCommissions">, newStatus: CommissionStatus) => {
+    try {
+      await updateCommissionStatus({ commissionId, status: newStatus });
+      commissionToasts.statusUpdated(newStatus);
+    } catch (err) {
+      commissionToasts.statusUpdateFailed(err instanceof Error ? err.message : undefined);
     }
   };
 
@@ -601,12 +459,103 @@ export default function CommissionsPage() {
                 </p>
               </div>
             ) : (
-              <DataTable
-                columns={commissionsColumns}
-                data={dealCommissions}
-                keyAccessor={(c) => c._id}
-                emptyMessage="No deal commissions found."
-              />
+              <div className="rounded-lg border border-border overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Lead</TableHead>
+                      <TableHead>Property</TableHead>
+                      <TableHead>Deal Value</TableHead>
+                      <TableHead>Contact Owner</TableHead>
+                      <TableHead>Property Owner</TableHead>
+                      <TableHead>Company</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <motion.tbody variants={listVariants} initial="hidden" animate="show">
+                    {dealCommissions.map((commission) => {
+                      const fmt = (amount: number) =>
+                        new Intl.NumberFormat("en-US", {
+                          style: "currency",
+                          currency: commission.dealCurrency,
+                          minimumFractionDigits: 0,
+                        }).format(amount);
+
+                      return (
+                        <motion.tr
+                          key={commission._id}
+                          variants={rowVariants}
+                          className="h-11 border-b border-[rgba(148,163,184,0.1)] transition-colors duration-150 hover:bg-row-hover"
+                        >
+                          <TableCell className="font-medium">{commission.leadName}</TableCell>
+                          <TableCell>
+                            {commission.propertyTitle ? (
+                              <span className="text-sm">{commission.propertyTitle}</span>
+                            ) : (
+                              <span className="text-text-muted">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell>{fmt(commission.dealValue)}</TableCell>
+                          <TableCell>
+                            <div>
+                              <div className="text-sm">{commission.contactOwnerName || commission.leadAgentName}</div>
+                              <div className="text-xs text-text-muted">
+                                {commission.leadAgentPercent}% = {fmt(commission.leadAgentAmount)}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {commission.propertyAgentName !== "—" ? (
+                              <div>
+                                <div className="text-sm">{commission.propertyOwnerName || commission.propertyAgentName}</div>
+                                <div className="text-xs text-text-muted">
+                                  {commission.propertyAgentPercent}% = {fmt(commission.propertyAgentAmount)}
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-text-muted">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-xs text-text-muted">
+                              {commission.companyPercent}% = {fmt(commission.companyAmount)}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {commission.status === "pending" && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                                <Clock className="h-3 w-3" /> Pending
+                              </span>
+                            )}
+                            {commission.status === "approved" && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                                <CheckCircle className="h-3 w-3" /> Approved
+                              </span>
+                            )}
+                            {commission.status === "paid" && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                                <CheckCircle className="h-3 w-3" /> Paid
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Select
+                              value={commission.status}
+                              onChange={(e) => handleStatusChange(commission._id, e.target.value as CommissionStatus)}
+                              className="h-8 w-28 text-xs"
+                            >
+                              <option value="pending">Pending</option>
+                              <option value="approved">Approved</option>
+                              <option value="paid">Paid</option>
+                            </Select>
+                          </TableCell>
+                        </motion.tr>
+                      );
+                    })}
+                  </motion.tbody>
+                </Table>
+              </div>
             )}
           </motion.div>
         )}

@@ -14,8 +14,14 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { RightDrawer } from "@/components/common/right-drawer";
 import { Modal } from "@/components/ui/modal";
-import { TableCell } from "@/components/ui/table";
-import { DataTable, ColumnDef } from "@/components/ui/data-table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Loader2,
   Plus,
@@ -27,6 +33,16 @@ import {
   XCircle,
 } from "lucide-react";
 import { stageToasts } from "@/lib/toast";
+
+const listVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.04 } },
+};
+
+const rowVariants = {
+  hidden: { opacity: 0, x: -8 },
+  show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+};
 
 /* ── Drag handle component ──────────────────────────── */
 function DragHandle({ dragControls }: { dragControls: ReturnType<typeof useDragControls> }) {
@@ -346,73 +362,6 @@ export default function StagesPage() {
     .filter(Boolean) as NonNullable<typeof stages>[number][];
   const stageToDeleteName = stages?.find((s) => s._id === stageToDelete)?.name;
 
-  type Stage = NonNullable<typeof stages>[number];
-  const stagesColumns: ColumnDef<Stage>[] = [
-    {
-      id: "drag",
-      header: "",
-      headerClassName: "w-12",
-      cellClassName: "w-12",
-      cell: () => null, // Rendered by StageRow directly
-    },
-    {
-      id: "order",
-      header: "Order",
-      headerClassName: "w-16",
-      accessor: (s) => s.order,
-      searchable: false,
-      cell: () => null,
-    },
-    {
-      id: "name",
-      header: "Name",
-      accessor: (s) => s.name,
-      searchable: true,
-      cell: () => null,
-    },
-    {
-      id: "description",
-      header: "Description",
-      accessor: (s) => s.description || "",
-      searchable: true,
-      headerClassName: "hidden md:table-cell",
-      cellClassName: "hidden md:table-cell",
-      cell: () => null,
-    },
-    {
-      id: "action",
-      header: "Action",
-      accessor: (s) => s.action || "",
-      searchable: true,
-      headerClassName: "hidden lg:table-cell",
-      cellClassName: "hidden lg:table-cell",
-      cell: () => null,
-    },
-    {
-      id: "terminal",
-      header: "Terminal",
-      accessor: (s) => (s.isTerminal ? "Yes" : "No"),
-      searchable: true,
-      headerClassName: "w-24",
-      cell: () => null,
-    },
-    {
-      id: "outcome",
-      header: "Outcome",
-      accessor: (s) => s.terminalOutcome || "",
-      searchable: true,
-      headerClassName: "w-24",
-      cell: () => null,
-    },
-    {
-      id: "actions",
-      header: "Actions",
-      headerClassName: "w-28 text-right",
-      cellClassName: "text-right",
-      cell: () => null,
-    },
-  ];
-
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -446,37 +395,54 @@ export default function StagesPage() {
         </div>
       )}
 
-      <DataTable
-        columns={stagesColumns}
-        data={stages === undefined ? undefined : sortedStages.length === 0 ? [] : sortedStages}
-        loading={stages === undefined}
-        keyAccessor={(s) => s._id}
-        emptyMessage="No pipeline stages configured"
-        emptyAction={
+      {stages === undefined ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+        </div>
+      ) : sortedStages.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-12">
+          <p className="text-sm text-text-muted mb-4">
+            No pipeline stages configured
+          </p>
           <Button onClick={openCreateDrawer}>
             <Plus className="mr-2 h-4 w-4" />
             Add your first stage
           </Button>
-        }
-        renderBody={(data) => (
-          <Reorder.Group
-            as="tbody"
-            axis="y"
-            values={localOrder}
-            onReorder={handleDragReorder}
-          >
-            {data.map((stage, index) => (
-              <StageRow
-                key={stage._id}
-                stage={stage}
-                index={index}
-                onEdit={openEditDrawer}
-                onDelete={openDeleteConfirm}
-              />
-            ))}
-          </Reorder.Group>
-        )}
-      />
+        </div>
+      ) : (
+        <div className="rounded-lg border border-border overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-12" />
+                <TableHead className="w-16">Order</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead className="hidden md:table-cell">Description</TableHead>
+                <TableHead className="hidden lg:table-cell">Action</TableHead>
+                <TableHead className="w-24">Terminal</TableHead>
+                <TableHead className="w-24">Outcome</TableHead>
+                <TableHead className="w-28 text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <Reorder.Group
+              as="tbody"
+              axis="y"
+              values={localOrder}
+              onReorder={handleDragReorder}
+            >
+              {sortedStages.map((stage, index) => (
+                <StageRow
+                  key={stage._id}
+                  stage={stage}
+                  index={index}
+                  onEdit={openEditDrawer}
+                  onDelete={openDeleteConfirm}
+                />
+              ))}
+            </Reorder.Group>
+          </Table>
+        </div>
+      )}
 
       {/* Create/Edit Drawer */}
       <RightDrawer

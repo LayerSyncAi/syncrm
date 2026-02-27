@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Modal } from "@/components/ui/modal";
 import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 import { Textarea } from "@/components/ui/textarea";
-import { DataTable, ColumnDef } from "@/components/ui/data-table";
+import { Table, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { parseCurrencyInput } from "@/lib/currency";
 import { ConfirmDeleteDialog } from "@/components/common/confirm-delete-dialog";
@@ -26,6 +26,16 @@ import { UserPlus, Eye, Trash2 } from "lucide-react";
 
 const propertyTabs = ["Details", "Sharing", "Documentation", "Gallery"] as const;
 type PropertyTab = (typeof propertyTabs)[number];
+
+const listVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.04 } },
+};
+
+const rowVariants = {
+  hidden: { opacity: 0, x: -8 },
+  show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+} as const;
 
 const gridVariants = {
   hidden: {},
@@ -271,123 +281,6 @@ export default function PropertiesPage() {
   const isAdmin = currentUser?.role === "admin";
   // Allow editing if admin or the property creator
   const canEditProperty = isAdmin || (selectedProperty?.createdByUserId != null && selectedProperty?.createdByUserId === currentUser?._id);
-
-  const hasFilters = !!(debouncedSearch || listingTypeFilter || statusFilter || typeFilter || debouncedLocation || priceMin);
-
-  const propertiesColumns: ColumnDef<Property>[] = React.useMemo(
-    () => [
-      {
-        id: "title",
-        header: "Title",
-        searchable: true,
-        accessor: (p) => p.title,
-        cell: (p) => <span className="font-medium">{p.title}</span>,
-      },
-      {
-        id: "type",
-        header: "Type",
-        searchable: true,
-        accessor: (p) => formatType(p.type),
-        cell: (p) => formatType(p.type),
-      },
-      {
-        id: "listing",
-        header: "Listing",
-        searchable: true,
-        accessor: (p) => formatListingType(p.listingType),
-        cell: (p) => formatListingType(p.listingType),
-      },
-      {
-        id: "price",
-        header: "Price",
-        searchable: true,
-        accessor: (p) => formatPrice(p.price, p.currency),
-        cell: (p) => formatPrice(p.price, p.currency),
-      },
-      {
-        id: "location",
-        header: "Location",
-        searchable: true,
-        accessor: (p) => p.location,
-        cell: (p) => p.location,
-      },
-      {
-        id: "area",
-        header: "Area (m²)",
-        searchable: true,
-        accessor: (p) => p.area,
-        cell: (p) => p.area,
-        headerClassName: "text-right",
-        cellClassName: "text-right",
-      },
-      {
-        id: "status",
-        header: "Status",
-        searchable: true,
-        accessor: (p) => formatStatus(p.status),
-        cell: (p) => formatStatus(p.status),
-      },
-      {
-        id: "addedBy",
-        header: "Added by",
-        searchable: true,
-        accessor: (p) => p.createdByName || "System",
-        cell: (p) => (
-          <span className="text-sm text-text-muted">
-            {p.createdByName || "System"}
-          </span>
-        ),
-      },
-      {
-        id: "action",
-        header: "Action",
-        searchable: false,
-        headerClassName: "text-right",
-        cellClassName: "text-right",
-        cell: (property) => (
-          <div className="flex justify-end gap-1.5">
-            <Tooltip content="Add Lead">
-              <Link
-                href={`/app/leads/new?propertyId=${property._id}&interestType=${property.listingType === "sale" ? "buy" : "rent"}`}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <Button
-                  variant="secondary"
-                  className="action-btn h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
-                  style={{ transitionDelay: "0ms" }}
-                >
-                  <UserPlus className="h-4 w-4" />
-                </Button>
-              </Link>
-            </Tooltip>
-            <Tooltip content="View">
-              <Button
-                variant="secondary"
-                className="action-btn h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
-                style={{ transitionDelay: "50ms" }}
-                onClick={() => setSelectedProperty(property)}
-              >
-                <Eye className="h-4 w-4" />
-              </Button>
-            </Tooltip>
-            {(isAdmin || property.createdByUserId === currentUser?._id) && (
-              <Tooltip content="Delete">
-                <Button
-                  variant="secondary"
-                  className="action-btn-danger h-9 w-9 p-0 text-red-500 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
-                  style={{ transitionDelay: "100ms" }}
-                  onClick={() => setDeleteTarget(property)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </Tooltip>
-            )}
-          </div>
-        ),
-      },
-    ],
-    [isAdmin, currentUser]
-  );
 
   // Validation functions
   const validateTitle = (value: string): string | undefined => {
@@ -711,13 +604,99 @@ export default function PropertiesPage() {
       </div>
 
       {viewMode === "list" ? (
-        <DataTable
-          columns={propertiesColumns}
-          data={properties}
-          keyAccessor={(p) => p._id}
-          emptyMessage={hasFilters ? "No properties match your filters" : "No properties yet. Create one to get started."}
-          rowClassName="cursor-pointer"
-        />
+        <Table>
+          <thead>
+            <tr>
+              <TableHead>Title</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Listing</TableHead>
+              <TableHead>Price</TableHead>
+              <TableHead>Location</TableHead>
+              <TableHead className="text-right">Area (m²)</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Added by</TableHead>
+              <TableHead className="text-right">Action</TableHead>
+            </tr>
+          </thead>
+          {!properties ? (
+            <tbody>
+              <TableRow>
+                <TableCell colSpan={9} className="text-center text-text-muted">
+                  Loading properties...
+                </TableCell>
+              </TableRow>
+            </tbody>
+          ) : properties.length === 0 ? (
+            <tbody>
+              <TableRow>
+                <TableCell colSpan={9} className="text-center text-text-muted">
+                  {debouncedSearch || listingTypeFilter || statusFilter || typeFilter || debouncedLocation || priceMin
+                    ? "No properties match your filters"
+                    : "No properties yet. Create one to get started."}
+                </TableCell>
+              </TableRow>
+            </tbody>
+          ) : (
+            <motion.tbody variants={listVariants} initial="hidden" animate="show" key="data">
+              {properties.map((property: Property) => (
+                <motion.tr
+                  key={property._id}
+                  variants={rowVariants}
+                  className="group h-11 cursor-pointer border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)]"
+                >
+                  <TableCell className="font-medium">{property.title}</TableCell>
+                  <TableCell>{formatType(property.type)}</TableCell>
+                  <TableCell>{formatListingType(property.listingType)}</TableCell>
+                  <TableCell>{formatPrice(property.price, property.currency)}</TableCell>
+                  <TableCell>{property.location}</TableCell>
+                  <TableCell className="text-right">{property.area}</TableCell>
+                  <TableCell>{formatStatus(property.status)}</TableCell>
+                  <TableCell className="text-sm text-text-muted">{property.createdByName || "System"}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1.5">
+                      <Tooltip content="Add Lead">
+                        <Link
+                          href={`/app/leads/new?propertyId=${property._id}&interestType=${property.listingType === "sale" ? "buy" : "rent"}`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Button
+                            variant="secondary"
+                            className="action-btn h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
+                            style={{ transitionDelay: "0ms" }}
+                          >
+                            <UserPlus className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                      </Tooltip>
+                      <Tooltip content="View">
+                        <Button
+                          variant="secondary"
+                          className="action-btn h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
+                          style={{ transitionDelay: "50ms" }}
+                          onClick={() => setSelectedProperty(property)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </Tooltip>
+                      {(isAdmin || property.createdByUserId === currentUser?._id) && (
+                        <Tooltip content="Delete">
+                          <Button
+                            variant="secondary"
+                            className="action-btn-danger h-9 w-9 p-0 text-red-500 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
+                            style={{ transitionDelay: "100ms" }}
+                            onClick={() => setDeleteTarget(property)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </Tooltip>
+                      )}
+                    </div>
+                  </TableCell>
+                </motion.tr>
+              ))}
+            </motion.tbody>
+          )}
+        </Table>
       ) : !properties ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <div className="col-span-full text-center text-text-muted py-8">
