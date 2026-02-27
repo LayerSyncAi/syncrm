@@ -672,35 +672,49 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
             </h3>
             <div className="grid gap-3">
               <div className="grid gap-3 md:grid-cols-2">
-                <StaggeredDropDown
-                  value={activityType}
-                  onChange={(val) => setActivityType(val as typeof activityType)}
-                  options={[
-                    { value: "call", label: "Call" },
-                    { value: "whatsapp", label: "WhatsApp" },
-                    { value: "email", label: "Email" },
-                    { value: "meeting", label: "Meeting" },
-                    { value: "viewing", label: "Viewing" },
-                    { value: "note", label: "Note" },
-                  ]}
-                />
-                <Input
-                  placeholder="Title"
-                  value={activityTitle}
-                  onChange={(e) => setActivityTitle(e.target.value)}
+                <div className="space-y-2">
+                  <Label>Type</Label>
+                  <StaggeredDropDown
+                    value={activityType}
+                    onChange={(val) => setActivityType(val as typeof activityType)}
+                    options={[
+                      { value: "call", label: "Call" },
+                      { value: "whatsapp", label: "WhatsApp" },
+                      { value: "email", label: "Email" },
+                      { value: "meeting", label: "Meeting" },
+                      { value: "viewing", label: "Viewing" },
+                      { value: "note", label: "Note" },
+                    ]}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1">
+                    Title <span className="text-danger">*</span>
+                  </Label>
+                  <Input
+                    placeholder="Title"
+                    value={activityTitle}
+                    onChange={(e) => setActivityTitle(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Schedule</Label>
+                <FlipCalendar
+                  value={activityScheduledAt}
+                  onChange={setActivityScheduledAt}
+                  showTime
+                  placeholder="Schedule date/time (optional)"
                 />
               </div>
-              <FlipCalendar
-                value={activityScheduledAt}
-                onChange={setActivityScheduledAt}
-                showTime
-                placeholder="Schedule date/time (optional)"
-              />
-              <Textarea
-                value={activityDescription}
-                onChange={(e) => setActivityDescription(e.target.value)}
-                placeholder="Description..."
-              />
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <Textarea
+                  value={activityDescription}
+                  onChange={(e) => setActivityDescription(e.target.value)}
+                  placeholder="Description..."
+                />
+              </div>
               <div className="flex justify-end">
                 <Button
                   onClick={handleCreateActivity}
@@ -1193,9 +1207,7 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
             {viewProperty.description && (
               <div className="space-y-2">
                 <Label>Description</Label>
-                <div className="rounded-[10px] border border-border-strong bg-card-bg/40 p-3">
-                  <p className="text-sm whitespace-pre-wrap">{viewProperty.description}</p>
-                </div>
+                <Textarea value={viewProperty.description} readOnly />
               </div>
             )}
           </motion.div>
