@@ -242,6 +242,9 @@ export const moveStage = mutation({
       updated.closeReason = args.closeReason ?? "";
       if (args.dealValue !== undefined) updated.dealValue = args.dealValue;
       if (args.dealCurrency !== undefined) updated.dealCurrency = args.dealCurrency;
+    } else {
+      updated.closedAt = undefined;
+      updated.closeReason = undefined;
     }
     await ctx.db.patch(args.leadId, updated);
 

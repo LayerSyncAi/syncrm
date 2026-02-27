@@ -884,13 +884,15 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
             />
           </div>
           {/* #22b: Drawer property list stagger */}
-          <motion.div variants={drawerItemContainerVariants} initial="hidden" animate="show" className="space-y-2 max-h-[360px] overflow-y-auto">
-            {filteredProperties?.filter((p) => !attachedPropertyIds.has(p._id)).map((property) => {
+          <div className="space-y-2 max-h-[360px] overflow-y-auto">
+            {filteredProperties?.filter((p) => !attachedPropertyIds.has(p._id)).map((property, index) => {
               const isSelected = selectedPropertyIds.has(property._id);
               return (
                 <motion.label
                   key={property._id}
-                  variants={drawerItemVariants}
+                  initial={{ opacity: 0, x: 12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 24, delay: index * 0.04 }}
                   className={`flex items-center gap-3 rounded-[10px] border p-3 text-sm cursor-pointer transition-colors ${
                     isSelected
                       ? "border-primary/40 bg-primary/5 text-text"
@@ -915,7 +917,7 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
             {filteredProperties?.filter((p) => !attachedPropertyIds.has(p._id)).length === 0 && (
               <p className="text-text-muted text-sm py-4">No properties available to attach.</p>
             )}
-          </motion.div>
+          </div>
         </div>
       </RightDrawer>
 
