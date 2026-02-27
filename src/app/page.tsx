@@ -404,6 +404,23 @@ function CardTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
+function FeatureCardOverlay({ index }: { index: number }) {
+  const feature = features[index];
+  const Icon = feature.icon;
+  return (
+    <div
+      className={`absolute bottom-0 left-4 right-4 top-32 translate-y-8 rounded-t-2xl bg-gradient-to-br ${feature.gradient} p-4 transition-transform duration-[250ms] group-hover:translate-y-4 group-hover:rotate-[2deg]`}
+    >
+      <Icon className={`mx-auto mb-3 h-8 w-8 ${feature.textColor}`} />
+      <span
+        className={`block text-center font-semibold ${feature.textColor}`}
+      >
+        {feature.short}
+      </span>
+    </div>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /*  Section wrapper with viewport animation                            */
 /* ------------------------------------------------------------------ */
@@ -538,21 +555,11 @@ export default function LandingPage() {
           <div className="mb-4 grid grid-cols-12 gap-4">
             <BounceCard className="col-span-12 md:col-span-4">
               <CardTitle>{features[0].title}</CardTitle>
-              <div className={`absolute bottom-0 left-4 right-4 top-32 translate-y-8 rounded-t-2xl bg-gradient-to-br ${features[0].gradient} p-4 transition-transform duration-[250ms] group-hover:translate-y-4 group-hover:rotate-[2deg]`}>
-                <features[0].icon className={`mx-auto mb-3 h-8 w-8 ${features[0].textColor}`} />
-                <span className={`block text-center font-semibold ${features[0].textColor}`}>
-                  {features[0].short}
-                </span>
-              </div>
+              <FeatureCardOverlay index={0} />
             </BounceCard>
             <BounceCard className="col-span-12 md:col-span-8">
               <CardTitle>{features[1].title}</CardTitle>
-              <div className={`absolute bottom-0 left-4 right-4 top-32 translate-y-8 rounded-t-2xl bg-gradient-to-br ${features[1].gradient} p-4 transition-transform duration-[250ms] group-hover:translate-y-4 group-hover:rotate-[2deg]`}>
-                <features[1].icon className={`mx-auto mb-3 h-8 w-8 ${features[1].textColor}`} />
-                <span className={`block text-center font-semibold ${features[1].textColor}`}>
-                  {features[1].short}
-                </span>
-              </div>
+              <FeatureCardOverlay index={1} />
             </BounceCard>
           </div>
 
@@ -560,21 +567,11 @@ export default function LandingPage() {
           <div className="mb-4 grid grid-cols-12 gap-4">
             <BounceCard className="col-span-12 md:col-span-8">
               <CardTitle>{features[2].title}</CardTitle>
-              <div className={`absolute bottom-0 left-4 right-4 top-32 translate-y-8 rounded-t-2xl bg-gradient-to-br ${features[2].gradient} p-4 transition-transform duration-[250ms] group-hover:translate-y-4 group-hover:rotate-[2deg]`}>
-                <features[2].icon className={`mx-auto mb-3 h-8 w-8 ${features[2].textColor}`} />
-                <span className={`block text-center font-semibold ${features[2].textColor}`}>
-                  {features[2].short}
-                </span>
-              </div>
+              <FeatureCardOverlay index={2} />
             </BounceCard>
             <BounceCard className="col-span-12 md:col-span-4">
               <CardTitle>{features[3].title}</CardTitle>
-              <div className={`absolute bottom-0 left-4 right-4 top-32 translate-y-8 rounded-t-2xl bg-gradient-to-br ${features[3].gradient} p-4 transition-transform duration-[250ms] group-hover:translate-y-4 group-hover:rotate-[2deg]`}>
-                <features[3].icon className={`mx-auto mb-3 h-8 w-8 ${features[3].textColor}`} />
-                <span className={`block text-center font-semibold ${features[3].textColor}`}>
-                  {features[3].short}
-                </span>
-              </div>
+              <FeatureCardOverlay index={3} />
             </BounceCard>
           </div>
 
@@ -582,21 +579,11 @@ export default function LandingPage() {
           <div className="mb-4 grid grid-cols-12 gap-4">
             <BounceCard className="col-span-12 md:col-span-4">
               <CardTitle>{features[4].title}</CardTitle>
-              <div className={`absolute bottom-0 left-4 right-4 top-32 translate-y-8 rounded-t-2xl bg-gradient-to-br ${features[4].gradient} p-4 transition-transform duration-[250ms] group-hover:translate-y-4 group-hover:rotate-[2deg]`}>
-                <features[4].icon className={`mx-auto mb-3 h-8 w-8 ${features[4].textColor}`} />
-                <span className={`block text-center font-semibold ${features[4].textColor}`}>
-                  {features[4].short}
-                </span>
-              </div>
+              <FeatureCardOverlay index={4} />
             </BounceCard>
             <BounceCard className="col-span-12 md:col-span-8">
               <CardTitle>{features[5].title}</CardTitle>
-              <div className={`absolute bottom-0 left-4 right-4 top-32 translate-y-8 rounded-t-2xl bg-gradient-to-br ${features[5].gradient} p-4 transition-transform duration-[250ms] group-hover:translate-y-4 group-hover:rotate-[2deg]`}>
-                <features[5].icon className={`mx-auto mb-3 h-8 w-8 ${features[5].textColor}`} />
-                <span className={`block text-center font-semibold ${features[5].textColor}`}>
-                  {features[5].short}
-                </span>
-              </div>
+              <FeatureCardOverlay index={5} />
             </BounceCard>
           </div>
 
@@ -604,21 +591,11 @@ export default function LandingPage() {
           <div className="grid grid-cols-12 gap-4">
             <BounceCard className="col-span-12 md:col-span-8">
               <CardTitle>{features[6].title}</CardTitle>
-              <div className={`absolute bottom-0 left-4 right-4 top-32 translate-y-8 rounded-t-2xl bg-gradient-to-br ${features[6].gradient} p-4 transition-transform duration-[250ms] group-hover:translate-y-4 group-hover:rotate-[2deg]`}>
-                <features[6].icon className={`mx-auto mb-3 h-8 w-8 ${features[6].textColor}`} />
-                <span className={`block text-center font-semibold ${features[6].textColor}`}>
-                  {features[6].short}
-                </span>
-              </div>
+              <FeatureCardOverlay index={6} />
             </BounceCard>
             <BounceCard className="col-span-12 md:col-span-4">
               <CardTitle>{features[7].title}</CardTitle>
-              <div className={`absolute bottom-0 left-4 right-4 top-32 translate-y-8 rounded-t-2xl bg-gradient-to-br ${features[7].gradient} p-4 transition-transform duration-[250ms] group-hover:translate-y-4 group-hover:rotate-[2deg]`}>
-                <features[7].icon className={`mx-auto mb-3 h-8 w-8 ${features[7].textColor}`} />
-                <span className={`block text-center font-semibold ${features[7].textColor}`}>
-                  {features[7].short}
-                </span>
-              </div>
+              <FeatureCardOverlay index={7} />
             </BounceCard>
           </div>
         </div>
