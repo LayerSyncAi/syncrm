@@ -127,7 +127,9 @@ export function CurrencyInput({
             "h-10 w-full rounded-[10px] border bg-transparent px-3 text-sm text-text outline-none transition duration-150 placeholder:text-text-dim focus:ring-4",
             hasError
               ? "border-danger focus:ring-danger/20"
-              : "border-border-strong focus:ring-[rgba(59,130,246,0.18)]"
+              : "border-border-strong focus:ring-[rgba(59,130,246,0.18)]",
+            disabled &&
+              "bg-gray-100 text-text-muted cursor-default focus:ring-0 focus:border-border-strong"
           )}
         />
       </div>
