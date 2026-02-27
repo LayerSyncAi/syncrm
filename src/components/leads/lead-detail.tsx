@@ -876,10 +876,10 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
               value={matchType}
               onChange={(val) => setMatchType(val as typeof matchType)}
               options={[
-                { value: "requested", label: "Requested" },
-                { value: "suggested", label: "Suggested" },
-                { value: "viewed", label: "Viewed" },
-                { value: "offered", label: "Offered" },
+                { value: "requested", label: "Requested", description: "Client asked about this property" },
+                { value: "suggested", label: "Suggested", description: "Agent recommended to the client" },
+                { value: "viewed", label: "Viewed", description: "Client visited or viewed the property" },
+                { value: "offered", label: "Offered", description: "Formally offered to the client" },
               ]}
             />
           </div>
