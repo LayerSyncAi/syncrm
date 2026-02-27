@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Modal } from "@/components/ui/modal";
 import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 import { Textarea } from "@/components/ui/textarea";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { FlipCalendar } from "@/components/ui/flip-calendar";
 import { RightDrawer } from "@/components/common/right-drawer";
 import { useRequireAuth } from "@/hooks/useAuth";
@@ -1166,44 +1167,106 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
             )}
 
             <div className="grid gap-4 md:grid-cols-2">
+              {/* Title */}
               <div className="space-y-2 md:col-span-2">
-                <Label>Title</Label>
+                <Label className="flex items-center gap-1">
+                  Title <span className="text-danger">*</span>
+                </Label>
                 <Input value={viewProperty.title} readOnly />
               </div>
+
+              {/* Type */}
               <div className="space-y-2">
                 <Label>Type</Label>
-                <Input value={formatPropertyType(viewProperty.type)} readOnly />
+                <StaggeredDropDown
+                  value={viewProperty.type}
+                  onChange={() => {}}
+                  disabled
+                  options={[
+                    { value: "house", label: "House" },
+                    { value: "apartment", label: "Apartment" },
+                    { value: "land", label: "Land" },
+                    { value: "commercial", label: "Commercial" },
+                    { value: "other", label: "Other" },
+                  ]}
+                />
               </div>
+
+              {/* Listing */}
               <div className="space-y-2">
                 <Label>Listing</Label>
-                <Input value={viewProperty.listingType === "sale" ? "Sale" : "Rent"} readOnly />
+                <StaggeredDropDown
+                  value={viewProperty.listingType}
+                  onChange={() => {}}
+                  disabled
+                  options={[
+                    { value: "sale", label: "Sale" },
+                    { value: "rent", label: "Rent" },
+                  ]}
+                />
               </div>
+
+              {/* Price */}
               <div className="space-y-2">
-                <Label>Price</Label>
-                <Input value={formatPrice(viewProperty.price, viewProperty.currency)} readOnly />
+                <Label className="flex items-center gap-1">
+                  Price <span className="text-danger">*</span>
+                </Label>
+                <CurrencyInput
+                  value={viewProperty.price.toString()}
+                  onChange={() => {}}
+                  currency={viewProperty.currency}
+                  onCurrencyChange={() => {}}
+                  disabled
+                />
               </div>
+
+              {/* Location */}
               <div className="space-y-2">
-                <Label>Location</Label>
+                <Label className="flex items-center gap-1">
+                  Location <span className="text-danger">*</span>
+                </Label>
                 <Input value={viewProperty.location} readOnly />
               </div>
+
+              {/* Area */}
               <div className="space-y-2">
-                <Label>Area (m²)</Label>
+                <Label className="flex items-center gap-1">
+                  Area (m²) <span className="text-danger">*</span>
+                </Label>
                 <Input value={viewProperty.area?.toString() || "-"} readOnly />
               </div>
+
+              {/* Bedrooms */}
               <div className="space-y-2">
                 <Label>Bedrooms</Label>
                 <Input value={viewProperty.bedrooms?.toString() || "-"} readOnly />
               </div>
+
+              {/* Bathrooms */}
               <div className="space-y-2">
                 <Label>Bathrooms</Label>
                 <Input value={viewProperty.bathrooms?.toString() || "-"} readOnly />
               </div>
+
+              {/* Status */}
               <div className="space-y-2">
                 <Label>Status</Label>
-                <Input value={formatPropertyStatus(viewProperty.status)} readOnly />
+                <StaggeredDropDown
+                  value={viewProperty.status}
+                  onChange={() => {}}
+                  disabled
+                  options={[
+                    { value: "available", label: "Available" },
+                    { value: "under_offer", label: "Under Offer" },
+                    { value: "let", label: "Let" },
+                    { value: "sold", label: "Sold" },
+                    { value: "off_market", label: "Off Market" },
+                  ]}
+                />
               </div>
             </div>
 
+            {/* Description */}
             {viewProperty.description && (
               <div className="space-y-2">
                 <Label>Description</Label>
