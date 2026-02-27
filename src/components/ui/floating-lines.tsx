@@ -178,10 +178,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     }
   }
 
-  // Use line brightness as alpha so the background shows through
-  float brightness = max(col.r, max(col.g, col.b));
-  float alpha = clamp(brightness * 2.0, 0.0, 1.0);
-  fragColor = vec4(col, alpha);
+  fragColor = vec4(col, 1.0);
 }
 
 void main() {
@@ -214,6 +211,7 @@ type FloatingLinesProps = {
   mouseDamping?: number;
   parallax?: boolean;
   parallaxStrength?: number;
+  mixBlendMode?: React.CSSProperties["mixBlendMode"];
 };
 
 function hexToVec3(hex: string): Vector3 {
@@ -251,6 +249,7 @@ export default function FloatingLines({
   mouseDamping = 0.05,
   parallax = true,
   parallaxStrength = 0.2,
+  mixBlendMode = "screen",
 }: FloatingLinesProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const targetMouseRef = useRef<Vector2>(new Vector2(-1000, -1000));
@@ -312,10 +311,8 @@ export default function FloatingLines({
 
     const renderer = new WebGLRenderer({
       antialias: true,
-      alpha: true,
-      premultipliedAlpha: false,
+      alpha: false,
     });
-    renderer.setClearColor(0x000000, 0);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.domElement.style.width = "100%";
     renderer.domElement.style.height = "100%";
@@ -385,7 +382,6 @@ export default function FloatingLines({
       uniforms,
       vertexShader,
       fragmentShader,
-      transparent: true,
     });
     const geometry = new PlaneGeometry(2, 2);
     const mesh = new Mesh(geometry, material);
@@ -496,6 +492,7 @@ export default function FloatingLines({
     <div
       ref={containerRef}
       className="w-full h-full relative overflow-hidden pointer-events-none"
+      style={{ mixBlendMode }}
     />
   );
 }

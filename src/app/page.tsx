@@ -667,9 +667,9 @@ export default function LandingPage() {
       </AnimatedSection>
 
       {/* ── CTA ──────────────────────────────────────────────────── */}
-      <AnimatedSection className="isolate relative overflow-hidden bg-white py-24 sm:py-32">
-        {/* Floating lines background */}
-        <div className="absolute inset-0 opacity-60 pointer-events-none" style={{ zIndex: 0 }}>
+      <AnimatedSection className="relative overflow-hidden bg-[#080808] py-24 sm:py-32">
+        {/* Floating lines — opaque black canvas, blended via mix-blend-mode: screen */}
+        <div className="absolute inset-0 pointer-events-none">
           <FloatingLines
             linesGradient={["#ECA400", "#F59E0B", "#D97706", "#B45309"]}
             enabledWaves={["top", "middle", "bottom"]}
@@ -678,28 +678,29 @@ export default function LandingPage() {
             animationSpeed={0.6}
             interactive={false}
             parallax={false}
+            mixBlendMode="screen"
           />
         </div>
 
-        <div className="relative mx-auto max-w-3xl px-6 text-center" style={{ zIndex: 1 }}>
+        <div className="relative z-10 mx-auto max-w-3xl px-6 text-center">
           <motion.div
             variants={fadeUp}
             custom={0}
-            className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-[14px] bg-primary-600/10"
+            className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-600/10 ring-1 ring-primary-600/20"
           >
-            <Sparkles className="h-7 w-7 text-primary-600" />
+            <Sparkles className="h-7 w-7 text-primary-500" />
           </motion.div>
           <motion.h2
             variants={fadeUp}
             custom={1}
-            className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl"
+            className="text-3xl font-bold tracking-tight text-white sm:text-5xl"
           >
             Ready to sync your pipeline?
           </motion.h2>
           <motion.p
             variants={fadeUp}
             custom={2}
-            className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-gray-600"
+            className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-white/70"
           >
             Join real estate teams who use SynCRM to stay organized, collaborate
             better, and close deals faster. Set up your workspace in minutes.
@@ -711,7 +712,7 @@ export default function LandingPage() {
           >
             <Link
               href="/login"
-              className="group inline-flex items-center gap-2 rounded-[12px] bg-gray-900 px-8 py-3.5 text-base font-semibold text-white shadow-lg transition-all duration-200 hover:bg-gray-800"
+              className="group inline-flex items-center gap-2 rounded-[12px] bg-primary-600 px-8 py-3.5 text-base font-semibold text-white shadow-[0_0_24px_rgba(236,164,0,0.3)] transition-all duration-200 hover:bg-primary hover:shadow-[0_0_32px_rgba(236,164,0,0.45)]"
             >
               Get Started — It&apos;s Free
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
