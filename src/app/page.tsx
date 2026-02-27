@@ -67,48 +67,72 @@ const features = [
     title: "Pipeline Management",
     description:
       "Visualize every deal across customizable stages. Drag leads through your pipeline and never lose track of a prospect.",
+    short: "Drag deals through customizable stages",
+    gradient: "from-amber-400 to-orange-400",
+    textColor: "text-orange-50",
   },
   {
     icon: Target,
     title: "Lead Scoring",
     description:
       "Automatically score and prioritize leads based on configurable criteria so your team focuses on what converts.",
+    short: "Auto-prioritize leads that convert",
+    gradient: "from-violet-400 to-indigo-400",
+    textColor: "text-indigo-50",
   },
   {
     icon: Building2,
     title: "Property Matching",
     description:
       "Smart matching suggests ideal properties for each lead based on budget, preferences, and location.",
+    short: "Smart property suggestions for every lead",
+    gradient: "from-emerald-400 to-green-400",
+    textColor: "text-green-50",
   },
   {
     icon: ClipboardList,
     title: "Task & Activity Tracking",
     description:
       "Schedule follow-ups, log calls, and track every interaction. Overdue alerts ensure nothing falls through the cracks.",
+    short: "Schedule, track, and never miss follow-ups",
+    gradient: "from-rose-400 to-pink-400",
+    textColor: "text-pink-50",
   },
   {
     icon: Users,
     title: "Team Collaboration",
     description:
       "Role-based access for admins and agents. Assign leads, track performance, and manage commissions in one place.",
+    short: "Admin & agent roles with full control",
+    gradient: "from-sky-400 to-blue-400",
+    textColor: "text-blue-50",
   },
   {
     icon: FileSpreadsheet,
     title: "Import & Export",
     description:
       "Bulk import leads from CSV with smart duplicate detection. Export filtered data to CSV or Excel in seconds.",
+    short: "CSV import with smart duplicate detection",
+    gradient: "from-red-400 to-orange-400",
+    textColor: "text-orange-50",
   },
   {
     icon: Merge,
     title: "Duplicate Detection & Merge",
     description:
       "Automatically flag duplicate contacts by email or phone and merge them cleanly with full audit trails.",
+    short: "Find and merge duplicate contacts cleanly",
+    gradient: "from-teal-400 to-cyan-400",
+    textColor: "text-cyan-50",
   },
   {
     icon: BarChart3,
     title: "Dashboard Analytics",
     description:
       "Real-time conversion funnels, pipeline velocity, and agent performance metrics at a glance.",
+    short: "Funnels, velocity, and performance metrics",
+    gradient: "from-fuchsia-400 to-purple-400",
+    textColor: "text-purple-50",
   },
 ];
 
@@ -352,6 +376,35 @@ function HeroLogos() {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Bouncy feature cards                                               */
+/* ------------------------------------------------------------------ */
+
+function BounceCard({
+  className,
+  children,
+}: {
+  className: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <motion.div
+      whileHover={{ scale: 0.95, rotate: "-1deg" }}
+      className={`group relative min-h-[300px] cursor-pointer overflow-hidden rounded-2xl bg-surface-2 p-8 ${className}`}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+function CardTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <h3 className="mx-auto text-center text-2xl font-semibold md:text-3xl">
+      {children}
+    </h3>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  Section wrapper with viewport animation                            */
 /* ------------------------------------------------------------------ */
 
@@ -461,45 +514,115 @@ export default function LandingPage() {
       <div className="h-6 bg-content-bg" />
 
       {/* ── Features ─────────────────────────────────────────────── */}
-      <AnimatedSection className="bg-content-bg py-24 sm:py-32">
-        <div id="features" className="mx-auto max-w-6xl scroll-mt-20 px-6">
-          <motion.div
-            variants={fadeUp}
-            custom={0}
-            className="mx-auto mb-16 max-w-2xl text-center"
-          >
-            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-primary-600">
-              Features
-            </span>
-            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
-              Everything you need to manage your pipeline
+      <section id="features" className="scroll-mt-20 bg-content-bg px-4 py-24 sm:py-32">
+        <div className="mx-auto max-w-7xl">
+          {/* Header */}
+          <div className="mb-10 flex flex-col items-start justify-between gap-4 md:flex-row md:items-end md:px-8">
+            <h2 className="max-w-xl text-4xl font-bold md:text-5xl">
+              Grow faster with our{" "}
+              <span className="text-text-dim">all-in-one CRM</span>
             </h2>
-            <p className="mt-4 text-base leading-relaxed text-text-muted">
-              From first contact to closed deal, SynCRM gives your team the tools to
-              stay organized, move fast, and win more business.
-            </p>
-          </motion.div>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => {
+                window.location.href = "/login";
+              }}
+              className="whitespace-nowrap rounded-lg bg-primary-600 px-5 py-2.5 font-medium text-white shadow-xl transition-colors hover:bg-primary"
+            >
+              Get started
+            </motion.button>
+          </div>
 
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {features.map((feature, i) => (
-              <motion.div
-                key={feature.title}
-                custom={i}
-                variants={fadeUp}
-                className="group relative rounded-[14px] border border-border bg-card-bg p-6 transition-all duration-300 hover:border-primary-600/30 hover:shadow-[0_8px_30px_rgba(236,164,0,0.08)]"
-              >
-                <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-[10px] bg-primary-600/10 text-primary-600 transition-colors duration-300 group-hover:bg-primary-600 group-hover:text-white">
-                  <feature.icon className="h-5 w-5" />
-                </div>
-                <h3 className="mb-2 text-sm font-semibold">{feature.title}</h3>
-                <p className="text-sm leading-relaxed text-text-muted">
-                  {feature.description}
-                </p>
-              </motion.div>
-            ))}
+          {/* Row 1 — Pipeline Management (4) + Lead Scoring (8) */}
+          <div className="mb-4 grid grid-cols-12 gap-4">
+            <BounceCard className="col-span-12 md:col-span-4">
+              <CardTitle>{features[0].title}</CardTitle>
+              <div className={`absolute bottom-0 left-4 right-4 top-32 translate-y-8 rounded-t-2xl bg-gradient-to-br ${features[0].gradient} p-4 transition-transform duration-[250ms] group-hover:translate-y-4 group-hover:rotate-[2deg]`}>
+                <features[0].icon className={`mx-auto mb-3 h-8 w-8 ${features[0].textColor}`} />
+                <span className={`block text-center font-semibold ${features[0].textColor}`}>
+                  {features[0].short}
+                </span>
+              </div>
+            </BounceCard>
+            <BounceCard className="col-span-12 md:col-span-8">
+              <CardTitle>{features[1].title}</CardTitle>
+              <div className={`absolute bottom-0 left-4 right-4 top-32 translate-y-8 rounded-t-2xl bg-gradient-to-br ${features[1].gradient} p-4 transition-transform duration-[250ms] group-hover:translate-y-4 group-hover:rotate-[2deg]`}>
+                <features[1].icon className={`mx-auto mb-3 h-8 w-8 ${features[1].textColor}`} />
+                <span className={`block text-center font-semibold ${features[1].textColor}`}>
+                  {features[1].short}
+                </span>
+              </div>
+            </BounceCard>
+          </div>
+
+          {/* Row 2 — Property Matching (8) + Task & Activity (4) */}
+          <div className="mb-4 grid grid-cols-12 gap-4">
+            <BounceCard className="col-span-12 md:col-span-8">
+              <CardTitle>{features[2].title}</CardTitle>
+              <div className={`absolute bottom-0 left-4 right-4 top-32 translate-y-8 rounded-t-2xl bg-gradient-to-br ${features[2].gradient} p-4 transition-transform duration-[250ms] group-hover:translate-y-4 group-hover:rotate-[2deg]`}>
+                <features[2].icon className={`mx-auto mb-3 h-8 w-8 ${features[2].textColor}`} />
+                <span className={`block text-center font-semibold ${features[2].textColor}`}>
+                  {features[2].short}
+                </span>
+              </div>
+            </BounceCard>
+            <BounceCard className="col-span-12 md:col-span-4">
+              <CardTitle>{features[3].title}</CardTitle>
+              <div className={`absolute bottom-0 left-4 right-4 top-32 translate-y-8 rounded-t-2xl bg-gradient-to-br ${features[3].gradient} p-4 transition-transform duration-[250ms] group-hover:translate-y-4 group-hover:rotate-[2deg]`}>
+                <features[3].icon className={`mx-auto mb-3 h-8 w-8 ${features[3].textColor}`} />
+                <span className={`block text-center font-semibold ${features[3].textColor}`}>
+                  {features[3].short}
+                </span>
+              </div>
+            </BounceCard>
+          </div>
+
+          {/* Row 3 — Team Collaboration (4) + Import & Export (8) */}
+          <div className="mb-4 grid grid-cols-12 gap-4">
+            <BounceCard className="col-span-12 md:col-span-4">
+              <CardTitle>{features[4].title}</CardTitle>
+              <div className={`absolute bottom-0 left-4 right-4 top-32 translate-y-8 rounded-t-2xl bg-gradient-to-br ${features[4].gradient} p-4 transition-transform duration-[250ms] group-hover:translate-y-4 group-hover:rotate-[2deg]`}>
+                <features[4].icon className={`mx-auto mb-3 h-8 w-8 ${features[4].textColor}`} />
+                <span className={`block text-center font-semibold ${features[4].textColor}`}>
+                  {features[4].short}
+                </span>
+              </div>
+            </BounceCard>
+            <BounceCard className="col-span-12 md:col-span-8">
+              <CardTitle>{features[5].title}</CardTitle>
+              <div className={`absolute bottom-0 left-4 right-4 top-32 translate-y-8 rounded-t-2xl bg-gradient-to-br ${features[5].gradient} p-4 transition-transform duration-[250ms] group-hover:translate-y-4 group-hover:rotate-[2deg]`}>
+                <features[5].icon className={`mx-auto mb-3 h-8 w-8 ${features[5].textColor}`} />
+                <span className={`block text-center font-semibold ${features[5].textColor}`}>
+                  {features[5].short}
+                </span>
+              </div>
+            </BounceCard>
+          </div>
+
+          {/* Row 4 — Duplicate Detection (8) + Dashboard Analytics (4) */}
+          <div className="grid grid-cols-12 gap-4">
+            <BounceCard className="col-span-12 md:col-span-8">
+              <CardTitle>{features[6].title}</CardTitle>
+              <div className={`absolute bottom-0 left-4 right-4 top-32 translate-y-8 rounded-t-2xl bg-gradient-to-br ${features[6].gradient} p-4 transition-transform duration-[250ms] group-hover:translate-y-4 group-hover:rotate-[2deg]`}>
+                <features[6].icon className={`mx-auto mb-3 h-8 w-8 ${features[6].textColor}`} />
+                <span className={`block text-center font-semibold ${features[6].textColor}`}>
+                  {features[6].short}
+                </span>
+              </div>
+            </BounceCard>
+            <BounceCard className="col-span-12 md:col-span-4">
+              <CardTitle>{features[7].title}</CardTitle>
+              <div className={`absolute bottom-0 left-4 right-4 top-32 translate-y-8 rounded-t-2xl bg-gradient-to-br ${features[7].gradient} p-4 transition-transform duration-[250ms] group-hover:translate-y-4 group-hover:rotate-[2deg]`}>
+                <features[7].icon className={`mx-auto mb-3 h-8 w-8 ${features[7].textColor}`} />
+                <span className={`block text-center font-semibold ${features[7].textColor}`}>
+                  {features[7].short}
+                </span>
+              </div>
+            </BounceCard>
           </div>
         </div>
-      </AnimatedSection>
+      </section>
 
       {/* ── Benefits ─────────────────────────────────────────────── */}
       <AnimatedSection className="bg-card-bg py-24 sm:py-32">
