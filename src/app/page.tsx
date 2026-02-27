@@ -386,6 +386,7 @@ function StickyCard({
         y: position === features.length ? undefined : y,
         background: isOdd ? "#1f2a44" : "white",
         color: isOdd ? "white" : "#1f2a44",
+        zIndex: position,
       }}
       className="sticky top-14 flex w-full origin-top flex-col items-center justify-center px-4"
     >
@@ -502,7 +503,7 @@ export default function LandingPage() {
   }
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-content-bg">
+    <main className="min-h-screen overflow-x-clip bg-content-bg">
       {/* ── Navbar ────────────────────────────────────────────────── */}
       <nav className="sticky top-0 z-50 border-b border-border bg-card-bg/80 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
