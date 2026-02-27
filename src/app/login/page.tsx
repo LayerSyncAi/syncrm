@@ -185,36 +185,45 @@ export default function LoginPage() {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            {mode === "signUp" && (
-              <>
-                <motion.div variants={itemVariants} className="space-y-2">
-                  <label className="text-xs font-medium text-text-muted">
-                    Organization Name
-                  </label>
-                  <Input
-                    type="text"
-                    placeholder="Acme Realty"
-                    value={orgName}
-                    onChange={(e) => setOrgName(e.target.value)}
-                    required
-                    disabled={isDisabled}
-                  />
+            <AnimatePresence>
+              {mode === "signUp" && (
+                <motion.div
+                  key="signup-fields-top"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="overflow-hidden space-y-4"
+                >
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-text-muted">
+                      Organization Name
+                    </label>
+                    <Input
+                      type="text"
+                      placeholder="Acme Realty"
+                      value={orgName}
+                      onChange={(e) => setOrgName(e.target.value)}
+                      required
+                      disabled={isDisabled}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-text-muted">
+                      Full Name
+                    </label>
+                    <Input
+                      type="text"
+                      placeholder="John Doe"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      required
+                      disabled={isDisabled}
+                    />
+                  </div>
                 </motion.div>
-                <motion.div variants={itemVariants} className="space-y-2">
-                  <label className="text-xs font-medium text-text-muted">
-                    Full Name
-                  </label>
-                  <Input
-                    type="text"
-                    placeholder="John Doe"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                    disabled={isDisabled}
-                  />
-                </motion.div>
-              </>
-            )}
+              )}
+            </AnimatePresence>
 
             <motion.div variants={itemVariants} className="space-y-2">
               <label className="text-xs font-medium text-text-muted">
@@ -268,47 +277,60 @@ export default function LoginPage() {
               </div>
             </motion.div>
 
-            {mode === "signUp" && (
-              <motion.div variants={itemVariants} className="space-y-2">
-                <label className="text-xs font-medium text-text-muted">
-                  Confirm Password
-                </label>
-                <div className="relative">
-                  <Input
-                    type={showConfirmPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                    minLength={8}
-                    disabled={isDisabled}
-                    className="pr-10"
-                  />
-                  <motion.button
-                    type="button"
-                    onClick={() => setShowConfirmPassword((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-dim hover:text-text-muted"
-                    tabIndex={-1}
-                    aria-label={
-                      showConfirmPassword ? "Hide password" : "Show password"
-                    }
-                  >
-                    <motion.div
-                      key={showConfirmPassword ? "visible" : "hidden"}
-                      initial={{ scale: 0.8 }}
-                      animate={{ scale: [0.8, 1.1, 1] }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      {showConfirmPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </motion.div>
-                  </motion.button>
-                </div>
-              </motion.div>
-            )}
+            <AnimatePresence>
+              {mode === "signUp" && (
+                <motion.div
+                  key="signup-confirm-pw"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="overflow-hidden"
+                >
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-text-muted">
+                      Confirm Password
+                    </label>
+                    <div className="relative">
+                      <Input
+                        type={showConfirmPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        required
+                        minLength={8}
+                        disabled={isDisabled}
+                        className="pr-10"
+                      />
+                      <motion.button
+                        type="button"
+                        onClick={() => setShowConfirmPassword((v) => !v)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-text-dim hover:text-text-muted"
+                        tabIndex={-1}
+                        aria-label={
+                          showConfirmPassword
+                            ? "Hide password"
+                            : "Show password"
+                        }
+                      >
+                        <motion.div
+                          key={showConfirmPassword ? "visible" : "hidden"}
+                          initial={{ scale: 0.8 }}
+                          animate={{ scale: [0.8, 1.1, 1] }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          {showConfirmPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </motion.div>
+                      </motion.button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             <AnimatePresence>
               {error && (
