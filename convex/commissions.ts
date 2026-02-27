@@ -221,23 +221,31 @@ export const listDealCommissions = query({
     }
 
     // Enrich
-    const [leads, users] = await Promise.all([
+    const [leads, users, properties] = await Promise.all([
       ctx.db.query("leads").withIndex("by_org", (q) => q.eq("orgId", user.orgId)).collect(),
       ctx.db.query("users").withIndex("by_org", (q) => q.eq("orgId", user.orgId)).collect(),
+      ctx.db.query("properties").withIndex("by_org", (q) => q.eq("orgId", user.orgId)).collect(),
     ]);
 
     const leadMap = new Map(leads.map((l) => [l._id, l]));
     const userMap = new Map(users.map((u) => [u._id, u]));
+    const propertyMap = new Map(properties.map((p) => [p._id, p]));
 
     return commissions.map((commission) => {
       const lead = leadMap.get(commission.leadId);
       const propAgent = commission.propertyAgentUserId ? userMap.get(commission.propertyAgentUserId) : null;
       const leadAgent = userMap.get(commission.leadAgentUserId);
+      const property = commission.propertyId ? propertyMap.get(commission.propertyId) : null;
+      const leadOwner = lead?.ownerUserId ? userMap.get(lead.ownerUserId) : null;
+      const propertyCreator = property?.createdByUserId ? userMap.get(property.createdByUserId) : null;
       return {
         ...commission,
         leadName: lead?.fullName || "Unknown",
         propertyAgentName: propAgent?.fullName || propAgent?.name || "—",
         leadAgentName: leadAgent?.fullName || leadAgent?.name || "Unknown",
+        propertyTitle: property?.title || null,
+        contactOwnerName: leadOwner?.fullName || leadOwner?.name || null,
+        propertyOwnerName: propertyCreator?.fullName || propertyCreator?.name || null,
       };
     });
   },

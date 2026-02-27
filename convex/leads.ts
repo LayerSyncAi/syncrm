@@ -325,7 +325,7 @@ export const moveStage = mutation({
           .withIndex("by_lead", (q) => q.eq("leadId", args.leadId))
           .collect();
 
-        let scenario: "own_property_own_lead" | "company_property" = "company_property";
+        let scenario: "own_property_own_lead" | "company_property" | "shared_deal" = "company_property";
         let propertyAgentId: Id<"users"> | undefined;
         let propertyId: Id<"properties"> | undefined;
 
@@ -342,6 +342,8 @@ export const moveStage = mutation({
               propertyId = match.propertyId;
               if (property.createdByUserId) {
                 propertyAgentId = property.createdByUserId;
+                // Different agent created this property — treat as shared deal
+                scenario = "shared_deal";
               }
             }
           }
@@ -351,9 +353,15 @@ export const moveStage = mutation({
           (c) => c.scenario === scenario && c.isDefault
         ) || configs.find((c) => c.scenario === scenario);
 
-        const propPercent = config?.propertyAgentPercent ?? (scenario === "own_property_own_lead" ? 0 : 0);
-        const leadPercent = config?.leadAgentPercent ?? (scenario === "own_property_own_lead" ? 70 : 50);
-        const compPercent = config?.companyPercent ?? (scenario === "own_property_own_lead" ? 30 : 50);
+        const defaultSplits = {
+          own_property_own_lead: { prop: 0, lead: 70, company: 30 },
+          shared_deal: { prop: 40, lead: 40, company: 20 },
+          company_property: { prop: 0, lead: 50, company: 50 },
+        };
+        const defaults = defaultSplits[scenario];
+        const propPercent = config?.propertyAgentPercent ?? defaults.prop;
+        const leadPercent = config?.leadAgentPercent ?? defaults.lead;
+        const compPercent = config?.companyPercent ?? defaults.company;
 
         await ctx.db.insert("dealCommissions", {
           leadId: args.leadId,
