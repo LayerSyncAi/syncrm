@@ -254,7 +254,7 @@ function SupplementalContent() {
 
 export function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <main className="grid h-screen grid-cols-1 md:grid-cols-[1fr,_400px] lg:grid-cols-[1fr,_600px] bg-[#1f2a44]">
+    <main className="grid h-screen grid-cols-1 md:grid-cols-[1fr_400px] lg:grid-cols-[1fr_600px] bg-[#1f2a44]">
       {/* Left — scrollable form side */}
       <div className="relative bg-content-bg overflow-y-auto flex flex-col">
         <Link
