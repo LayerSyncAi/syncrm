@@ -21,6 +21,8 @@ import { ImageUpload, ImageItem, serializeImages, deserializeImages } from "@/co
 import { propertyToasts } from "@/lib/toast";
 import { DocumentManager } from "@/components/documents/document-manager";
 import { PropertyShare } from "@/components/properties/property-share";
+import { Tooltip } from "@/components/ui/tooltip";
+import { UserPlus, Eye, Trash2 } from "lucide-react";
 
 const propertyTabs = ["Details", "Sharing", "Documentation", "Gallery"] as const;
 type PropertyTab = (typeof propertyTabs)[number];
@@ -640,7 +642,7 @@ export default function PropertiesPage() {
                 <motion.tr
                   key={property._id}
                   variants={rowVariants}
-                  className="h-11 cursor-pointer border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)]"
+                  className="group h-11 cursor-pointer border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)]"
                 >
                   <TableCell className="font-medium">{property.title}</TableCell>
                   <TableCell>{formatType(property.type)}</TableCell>
@@ -651,29 +653,42 @@ export default function PropertiesPage() {
                   <TableCell>{formatStatus(property.status)}</TableCell>
                   <TableCell className="text-sm text-text-muted">{property.createdByName || "System"}</TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Link
-                        href={`/app/leads/new?propertyId=${property._id}&interestType=${property.listingType === "sale" ? "buy" : "rent"}`}
-                      >
-                        <Button variant="secondary" className="h-9 px-3">
-                          + Lead
-                        </Button>
-                      </Link>
-                      <Button
-                        variant="secondary"
-                        className="h-9 px-3"
-                        onClick={() => setSelectedProperty(property)}
-                      >
-                        View
-                      </Button>
-                      {(isAdmin || property.createdByUserId === currentUser?._id) && (
+                    <div className="flex justify-end gap-1.5">
+                      <Tooltip content="Add Lead">
+                        <Link
+                          href={`/app/leads/new?propertyId=${property._id}&interestType=${property.listingType === "sale" ? "buy" : "rent"}`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Button
+                            variant="secondary"
+                            className="h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
+                            style={{ transitionDelay: "0ms" }}
+                          >
+                            <UserPlus className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                      </Tooltip>
+                      <Tooltip content="View">
                         <Button
                           variant="secondary"
-                          className="h-9 px-3 text-red-500 hover:text-red-600"
-                          onClick={() => setDeleteTarget(property)}
+                          className="h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
+                          style={{ transitionDelay: "50ms" }}
+                          onClick={() => setSelectedProperty(property)}
                         >
-                          Delete
+                          <Eye className="h-4 w-4" />
                         </Button>
+                      </Tooltip>
+                      {(isAdmin || property.createdByUserId === currentUser?._id) && (
+                        <Tooltip content="Delete">
+                          <Button
+                            variant="secondary"
+                            className="h-9 w-9 p-0 text-red-500 hover:text-red-600 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
+                            style={{ transitionDelay: "100ms" }}
+                            onClick={() => setDeleteTarget(property)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </Tooltip>
                       )}
                     </div>
                   </TableCell>
@@ -776,29 +791,35 @@ export default function PropertiesPage() {
                       <span>{property.area} m²</span>
                     </div>
                   </div>
-                  <div className="mt-auto flex justify-end gap-2">
-                    <Link
-                      href={`/app/leads/new?propertyId=${property._id}&interestType=${property.listingType === "sale" ? "buy" : "rent"}`}
-                    >
-                      <Button variant="secondary" className="h-9 px-3">
-                        + Lead
-                      </Button>
-                    </Link>
-                    <Button
-                      variant="secondary"
-                      className="h-9 px-3"
-                      onClick={() => setSelectedProperty(property)}
-                    >
-                      View
-                    </Button>
-                    {isAdmin && (
+                  <div className="mt-auto flex justify-end gap-1.5">
+                    <Tooltip content="Add Lead">
+                      <Link
+                        href={`/app/leads/new?propertyId=${property._id}&interestType=${property.listingType === "sale" ? "buy" : "rent"}`}
+                      >
+                        <Button variant="secondary" className="h-9 w-9 p-0">
+                          <UserPlus className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                    </Tooltip>
+                    <Tooltip content="View">
                       <Button
                         variant="secondary"
-                        className="h-9 px-3 text-red-500 hover:text-red-600"
-                        onClick={() => setDeleteTarget(property)}
+                        className="h-9 w-9 p-0"
+                        onClick={() => setSelectedProperty(property)}
                       >
-                        Delete
+                        <Eye className="h-4 w-4" />
                       </Button>
+                    </Tooltip>
+                    {(isAdmin || property.createdByUserId === currentUser?._id) && (
+                      <Tooltip content="Delete">
+                        <Button
+                          variant="secondary"
+                          className="h-9 w-9 p-0 text-red-500 hover:text-red-600"
+                          onClick={() => setDeleteTarget(property)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </Tooltip>
                     )}
                   </div>
                 </CardContent>
