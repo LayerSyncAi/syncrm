@@ -1003,7 +1003,7 @@ class App {
       0.1,
       10000
     );
-    this.camera.position.z = -5;
+    this.camera.position.z = 5;
     this.camera.position.y = 5;
     this.camera.position.x = 25;
 
