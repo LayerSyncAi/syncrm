@@ -17,17 +17,17 @@ const tableContainerVariants = {
 const columnVariants = {
   hidden: { opacity: 0, y: -12 },
   show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
-};
+} as const;
 
 const rowVariants = {
   hidden: { opacity: 0, x: -8 },
   show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
-};
+} as const;
 
 const pricePerSqmVariants = {
   hidden: { opacity: 0, y: 12 },
   show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24, delay: 0.3 } },
-};
+} as const;
 
 interface PropertyComparisonProps {
   open: boolean;

@@ -35,7 +35,7 @@ const listVariants = {
 const rowVariants = {
   hidden: { opacity: 0, x: -8 },
   show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
-};
+} as const;
 
 const gridVariants = {
   hidden: {},
@@ -45,7 +45,7 @@ const gridVariants = {
 const gridItemVariants = {
   hidden: { opacity: 0, y: 16 },
   show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
-};
+} as const;
 
 type PropertyType = "house" | "apartment" | "land" | "commercial" | "other";
 type ListingType = "rent" | "sale";
@@ -176,7 +176,7 @@ const sheetPanelVariants = {
   hidden: { y: "100%" },
   visible: { y: 0, transition: { type: "spring", stiffness: 300, damping: 30 } },
   exit: { y: "100%", transition: { type: "spring", stiffness: 300, damping: 30 } },
-};
+} as const;
 
 export default function PropertiesPage() {
   const currentUser = useQuery(api.users.getMeRequired);

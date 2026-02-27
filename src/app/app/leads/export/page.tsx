@@ -24,7 +24,7 @@ const sectionVariants = {
 const sectionItemVariants = {
   hidden: { opacity: 0, y: 16 },
   show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
-};
+} as const;
 
 const ALL_FIELDS = [
   { key: "fullName", label: "Full Name" },

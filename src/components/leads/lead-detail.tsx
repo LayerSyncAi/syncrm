@@ -43,7 +43,7 @@ const timelineContainerVariants = {
 const timelineItemVariants = {
   hidden: { opacity: 0, y: 12 },
   show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
-};
+} as const;
 
 const matchCardContainerVariants = {
   hidden: {},
@@ -53,13 +53,13 @@ const matchCardContainerVariants = {
 const matchCardItemVariants = {
   hidden: { opacity: 0, x: -10 },
   show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
-};
+} as const;
 
 const tabContentVariants = {
   initial: { opacity: 0, y: 8 },
   animate: { opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } },
   exit: { opacity: 0, y: -8, transition: { duration: 0.15 } },
-};
+} as const;
 
 const drawerItemContainerVariants = {
   hidden: {},
@@ -69,7 +69,7 @@ const drawerItemContainerVariants = {
 const drawerItemVariants = {
   hidden: { opacity: 0, x: 12 },
   show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
-};
+} as const;
 
 interface LeadDetailProps {
   leadId: Id<"leads">;

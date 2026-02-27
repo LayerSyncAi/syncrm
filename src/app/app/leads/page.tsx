@@ -24,7 +24,7 @@ const listVariants = {
 const rowVariants = {
   hidden: { opacity: 0, x: -8 },
   show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
-};
+} as const;
 
 const BulkMatching = lazy(() =>
   import("@/components/leads/bulk-matching").then((m) => ({ default: m.BulkMatching }))
