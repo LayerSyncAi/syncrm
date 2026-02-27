@@ -669,17 +669,15 @@ export default function LandingPage() {
       {/* ── CTA ──────────────────────────────────────────────────── */}
       <AnimatedSection className="relative overflow-hidden bg-content-bg py-24 sm:py-32">
         {/* Floating lines background */}
-        <div className="absolute inset-0 z-0">
+        <div className="absolute inset-0 z-0 pointer-events-none">
           <FloatingLines
             linesGradient={["#ECA400", "#F59E0B", "#D97706", "#B45309"]}
             enabledWaves={["top", "middle", "bottom"]}
             lineCount={[4, 6, 4]}
             lineDistance={[8, 5, 8]}
             animationSpeed={0.6}
-            interactive
-            parallax
-            parallaxStrength={0.15}
-            mixBlendMode="screen"
+            interactive={false}
+            parallax={false}
           />
         </div>
 
