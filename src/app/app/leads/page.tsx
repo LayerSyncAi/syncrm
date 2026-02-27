@@ -13,6 +13,8 @@ import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 import { Table, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { useRequireAuth } from "@/hooks/useAuth";
 import { leadToasts } from "@/lib/toast";
+import { Tooltip } from "@/components/ui/tooltip";
+import { Eye } from "lucide-react";
 
 const listVariants = {
   hidden: {},
@@ -252,7 +254,7 @@ export default function LeadsPage() {
               <motion.tr
                 key={lead._id}
                 variants={rowVariants}
-                className="h-11 border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)]"
+                className="group h-11 border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)]"
               >
                 <TableCell>
                   <Link
@@ -297,12 +299,20 @@ export default function LeadsPage() {
                 </TableCell>
                 <TableCell>{lead.ownerName}</TableCell>
                 <TableCell>{formatDate(lead.updatedAt)}</TableCell>
-                <TableCell>
-                  <Link href={`/app/leads/${lead._id}`}>
-                    <Button variant="secondary" className="h-9 px-3">
-                      View
-                    </Button>
-                  </Link>
+                <TableCell className="text-right">
+                  <div className="flex justify-end">
+                    <Tooltip content="View">
+                      <Link href={`/app/leads/${lead._id}`} onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          variant="secondary"
+                          className="h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
+                          style={{ transitionDelay: "0ms" }}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                    </Tooltip>
+                  </div>
                 </TableCell>
               </motion.tr>
             ))}
