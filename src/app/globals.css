@@ -284,11 +284,15 @@ a {
 
 /* Table action-button hover: colour inversion */
 .action-btn:hover {
-  @apply bg-text text-white border-text;
+  background-color: var(--text);
+  color: white;
+  border-color: var(--text);
 }
 
 .action-btn-danger:hover {
-  @apply bg-red-500 text-white border-red-500;
+  background-color: #ef4444;
+  color: white;
+  border-color: #ef4444;
 }
 
 /* Sidebar active-tab underline: shimmer sweeps left → right */
