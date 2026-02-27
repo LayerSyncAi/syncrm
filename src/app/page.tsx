@@ -689,21 +689,23 @@ export default function LandingPage() {
           >
             <Sparkles className="h-7 w-7 text-primary-600" />
           </motion.div>
-          <motion.h2
-            variants={fadeUp}
-            custom={1}
-            className="text-3xl font-bold tracking-tight text-white sm:text-4xl drop-shadow-[0_2px_12px_rgba(0,0,0,0.5)]"
-          >
-            Ready to sync your pipeline?
-          </motion.h2>
-          <motion.p
-            variants={fadeUp}
-            custom={2}
-            className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-white/70 drop-shadow-[0_1px_8px_rgba(0,0,0,0.5)]"
-          >
-            Join real estate teams who use SynCRM to stay organized, collaborate
-            better, and close deals faster. Set up your workspace in minutes.
-          </motion.p>
+          <div className="mx-auto inline-block max-w-2xl rounded-2xl bg-black/50 px-8 py-6 backdrop-blur-sm">
+            <motion.h2
+              variants={fadeUp}
+              custom={1}
+              className="text-3xl font-bold tracking-tight text-white sm:text-4xl drop-shadow-[0_2px_12px_rgba(0,0,0,0.5)]"
+            >
+              Ready to sync your pipeline?
+            </motion.h2>
+            <motion.p
+              variants={fadeUp}
+              custom={2}
+              className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-white/80 drop-shadow-[0_1px_8px_rgba(0,0,0,0.5)]"
+            >
+              Join real estate teams who use SynCRM to stay organized, collaborate
+              better, and close deals faster. Set up your workspace in minutes.
+            </motion.p>
+          </div>
           <motion.div
             variants={fadeUp}
             custom={3}
