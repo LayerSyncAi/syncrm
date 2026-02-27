@@ -120,6 +120,13 @@ const features = [
       "Real-time conversion funnels, pipeline velocity, and agent performance metrics at a glance.",
     ctaClass: "bg-fuchsia-300",
   },
+  {
+    icon: Lock,
+    title: "Admin & Agent Access",
+    description:
+      "Full admin control over users, lead scoring, commissions, and pipeline stages — while agents get a focused view of their assigned leads, tasks, and property suggestions.",
+    ctaClass: "bg-primary-600/80",
+  },
 ];
 
 const benefits = [
