@@ -492,28 +492,6 @@ export default function LandingPage() {
     }
   }, [isAuthenticated, isLoading, router]);
 
-  if (isLoading) {
-    return (
-      <main className="min-h-screen bg-content-bg flex items-center justify-center px-6">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
-          <p className="text-sm text-text-muted">Checking authentication...</p>
-        </div>
-      </main>
-    );
-  }
-
-  if (isAuthenticated || isRedirecting) {
-    return (
-      <main className="min-h-screen bg-content-bg flex items-center justify-center px-6">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
-          <p className="text-sm text-text-muted">Redirecting to dashboard...</p>
-        </div>
-      </main>
-    );
-  }
-
   const hyperspeedOptions = useMemo(
     () => ({
       distortion: "turbulentDistortion" as const,
@@ -552,6 +530,28 @@ export default function LandingPage() {
     }),
     []
   );
+
+  if (isLoading) {
+    return (
+      <main className="min-h-screen bg-content-bg flex items-center justify-center px-6">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+          <p className="text-sm text-text-muted">Checking authentication...</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (isAuthenticated || isRedirecting) {
+    return (
+      <main className="min-h-screen bg-content-bg flex items-center justify-center px-6">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+          <p className="text-sm text-text-muted">Redirecting to dashboard...</p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen overflow-x-clip bg-content-bg">
