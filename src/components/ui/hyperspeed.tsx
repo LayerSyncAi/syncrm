@@ -950,20 +950,6 @@ const roadVertex = `
   }
 `;
 
-function resizeRendererToDisplaySize(
-  renderer: THREE.WebGLRenderer,
-  setSize: (width: number, height: number, updateStyle: boolean) => void
-) {
-  const canvas = renderer.domElement;
-  const width = canvas.clientWidth;
-  const height = canvas.clientHeight;
-  const needResize = canvas.width !== width || canvas.height !== height;
-  if (needResize) {
-    setSize(width, height, false);
-  }
-  return needResize;
-}
-
 class App {
   container: HTMLElement;
   options: HyperspeedOptions;
@@ -986,6 +972,7 @@ class App {
   speedUp: number;
   timeOffset: number;
   private boundOnWindowResize: () => void;
+  private lookAtTarget: THREE.Vector3;
 
   constructor(container: HTMLElement, options: HyperspeedOptions) {
     this.options = options;
@@ -1006,7 +993,7 @@ class App {
       container.offsetHeight,
       false
     );
-    this.renderer.setPixelRatio(window.devicePixelRatio);
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.composer = new EffectComposer(this.renderer);
     container.appendChild(this.renderer.domElement);
 
@@ -1070,6 +1057,7 @@ class App {
     this.onTouchEnd = this.onTouchEnd.bind(this);
     this.onContextMenu = this.onContextMenu.bind(this);
 
+    this.lookAtTarget = new THREE.Vector3();
     this.boundOnWindowResize = this.onWindowResize.bind(this);
     window.addEventListener("resize", this.boundOnWindowResize);
   }
@@ -1225,13 +1213,12 @@ class App {
       this.options.distortion.getJS
     ) {
       const distortion = this.options.distortion.getJS(0.025, time);
-      this.camera.lookAt(
-        new THREE.Vector3(
-          this.camera.position.x + distortion.x,
-          this.camera.position.y + distortion.y,
-          this.camera.position.z + distortion.z
-        )
+      this.lookAtTarget.set(
+        this.camera.position.x + distortion.x,
+        this.camera.position.y + distortion.y,
+        this.camera.position.z + distortion.z
       );
+      this.camera.lookAt(this.lookAtTarget);
       updateCamera = true;
     }
 
@@ -1273,14 +1260,9 @@ class App {
 
   tick() {
     if (this.disposed || !this) return;
-    if (resizeRendererToDisplaySize(this.renderer, this.setSize)) {
-      const canvas = this.renderer.domElement;
-      this.camera.aspect = canvas.clientWidth / canvas.clientHeight;
-      this.camera.updateProjectionMatrix();
-    }
     const delta = this.clock.getDelta();
-    this.render(delta);
     this.update(delta);
+    this.render(delta);
     requestAnimationFrame(this.tick);
   }
 }
