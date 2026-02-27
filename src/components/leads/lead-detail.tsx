@@ -876,25 +876,27 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
               value={matchType}
               onChange={(val) => setMatchType(val as typeof matchType)}
               options={[
-                { value: "requested", label: "Requested" },
-                { value: "suggested", label: "Suggested" },
-                { value: "viewed", label: "Viewed" },
-                { value: "offered", label: "Offered" },
+                { value: "requested", label: "Requested", description: "Client asked about this property" },
+                { value: "suggested", label: "Suggested", description: "Agent recommended to the client" },
+                { value: "viewed", label: "Viewed", description: "Client visited or viewed the property" },
+                { value: "offered", label: "Offered", description: "Formally offered to the client" },
               ]}
             />
           </div>
           {/* #22b: Drawer property list stagger */}
-          <motion.div variants={drawerItemContainerVariants} initial="hidden" animate="show" className="space-y-2 max-h-[360px] overflow-y-auto">
-            {filteredProperties?.filter((p) => !attachedPropertyIds.has(p._id)).map((property) => {
+          <div className="space-y-2 max-h-[360px] overflow-y-auto">
+            {filteredProperties?.filter((p) => !attachedPropertyIds.has(p._id)).map((property, index) => {
               const isSelected = selectedPropertyIds.has(property._id);
               return (
                 <motion.label
                   key={property._id}
-                  variants={drawerItemVariants}
+                  initial={{ opacity: 0, x: 12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 24, delay: index * 0.04 }}
                   className={`flex items-center gap-3 rounded-[10px] border p-3 text-sm cursor-pointer transition-colors ${
                     isSelected
-                      ? "border-primary/40 bg-primary/5"
-                      : "border-border-strong hover:bg-card-bg/50"
+                      ? "border-primary/40 bg-primary/5 text-text"
+                      : "border-border-strong bg-card-bg text-text hover:bg-card-bg/50"
                   }`}
                 >
                   <input
@@ -904,7 +906,7 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
                     className="rounded border-border shrink-0"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium">{property.title}</p>
+                    <p className="font-medium text-text">{property.title}</p>
                     <p className="text-xs text-text-muted">
                       {property.listingType === "sale" ? "Sale" : "Rent"} &middot; {property.location}
                     </p>
@@ -915,7 +917,7 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
             {filteredProperties?.filter((p) => !attachedPropertyIds.has(p._id)).length === 0 && (
               <p className="text-text-muted text-sm py-4">No properties available to attach.</p>
             )}
-          </motion.div>
+          </div>
         </div>
       </RightDrawer>
 

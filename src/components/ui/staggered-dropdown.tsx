@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 export interface DropdownOption {
   value: string;
   label: string;
+  description?: string;
 }
 
 export interface StaggeredDropDownProps {
@@ -204,19 +205,25 @@ export function StaggeredDropDown({
                 setOpen(false);
               }}
               className={cn(
-                "flex cursor-pointer items-center gap-2 rounded-[8px] px-2.5 py-2 text-xs font-medium whitespace-nowrap transition-colors",
+                "flex cursor-pointer items-center gap-2 rounded-[8px] px-2.5 py-2 text-xs font-medium transition-colors",
+                option.description ? "whitespace-normal" : "whitespace-nowrap",
                 isSelected
-                  ? "bg-primary/10 text-primary"
-                  : "text-text hover:bg-primary/5 hover:text-primary"
+                  ? "bg-primary/10 text-primary-600"
+                  : "text-text hover:bg-primary/5 hover:text-primary-600"
               )}
             >
               <motion.span
                 variants={actionIconVariants}
-                className="shrink-0"
+                className="shrink-0 self-start mt-0.5"
               >
                 {isSelected ? checkIcon : <span className="h-3.5 w-3.5" />}
               </motion.span>
-              <span className="truncate">{option.label}</span>
+              <div className="min-w-0">
+                <span className="truncate block">{option.label}</span>
+                {option.description && (
+                  <span className="block text-[10px] font-normal text-text-muted mt-0.5">{option.description}</span>
+                )}
+              </div>
             </motion.li>
           );
         })}

@@ -464,96 +464,95 @@ export default function CommissionsPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Lead</TableHead>
+                      <TableHead>Property</TableHead>
                       <TableHead>Deal Value</TableHead>
-                      <TableHead>Property Agent</TableHead>
-                      <TableHead>Lead Agent</TableHead>
+                      <TableHead>Contact Owner</TableHead>
+                      <TableHead>Property Owner</TableHead>
                       <TableHead>Company</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <motion.tbody variants={listVariants} initial="hidden" animate="show">
-                    {dealCommissions.map((commission) => (
-                      <motion.tr
-                        key={commission._id}
-                        variants={rowVariants}
-                        className="h-11 border-b border-[rgba(148,163,184,0.1)] transition-colors duration-150 hover:bg-row-hover"
-                      >
-                        <TableCell className="font-medium">{commission.leadName}</TableCell>
-                        <TableCell>
-                          {new Intl.NumberFormat("en-US", {
-                            style: "currency",
-                            currency: commission.dealCurrency,
-                            minimumFractionDigits: 0,
-                          }).format(commission.dealValue)}
-                        </TableCell>
-                        <TableCell>
-                          {commission.propertyAgentName !== "—" ? (
+                    {dealCommissions.map((commission) => {
+                      const fmt = (amount: number) =>
+                        new Intl.NumberFormat("en-US", {
+                          style: "currency",
+                          currency: commission.dealCurrency,
+                          minimumFractionDigits: 0,
+                        }).format(amount);
+
+                      return (
+                        <motion.tr
+                          key={commission._id}
+                          variants={rowVariants}
+                          className="h-11 border-b border-[rgba(148,163,184,0.1)] transition-colors duration-150 hover:bg-row-hover"
+                        >
+                          <TableCell className="font-medium">{commission.leadName}</TableCell>
+                          <TableCell>
+                            {commission.propertyTitle ? (
+                              <span className="text-sm">{commission.propertyTitle}</span>
+                            ) : (
+                              <span className="text-text-muted">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell>{fmt(commission.dealValue)}</TableCell>
+                          <TableCell>
                             <div>
-                              <div className="text-sm">{commission.propertyAgentName}</div>
+                              <div className="text-sm">{commission.contactOwnerName || commission.leadAgentName}</div>
                               <div className="text-xs text-text-muted">
-                                {commission.propertyAgentPercent}% = {new Intl.NumberFormat("en-US", {
-                                  style: "currency",
-                                  currency: commission.dealCurrency,
-                                  minimumFractionDigits: 0,
-                                }).format(commission.propertyAgentAmount)}
+                                {commission.leadAgentPercent}% = {fmt(commission.leadAgentAmount)}
                               </div>
                             </div>
-                          ) : (
-                            <span className="text-text-muted">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <div className="text-sm">{commission.leadAgentName}</div>
+                          </TableCell>
+                          <TableCell>
+                            {commission.propertyAgentName !== "—" ? (
+                              <div>
+                                <div className="text-sm">{commission.propertyOwnerName || commission.propertyAgentName}</div>
+                                <div className="text-xs text-text-muted">
+                                  {commission.propertyAgentPercent}% = {fmt(commission.propertyAgentAmount)}
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-text-muted">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
                             <div className="text-xs text-text-muted">
-                              {commission.leadAgentPercent}% = {new Intl.NumberFormat("en-US", {
-                                style: "currency",
-                                currency: commission.dealCurrency,
-                                minimumFractionDigits: 0,
-                              }).format(commission.leadAgentAmount)}
+                              {commission.companyPercent}% = {fmt(commission.companyAmount)}
                             </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-xs text-text-muted">
-                            {commission.companyPercent}% = {new Intl.NumberFormat("en-US", {
-                              style: "currency",
-                              currency: commission.dealCurrency,
-                              minimumFractionDigits: 0,
-                            }).format(commission.companyAmount)}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {commission.status === "pending" && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-                              <Clock className="h-3 w-3" /> Pending
-                            </span>
-                          )}
-                          {commission.status === "approved" && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
-                              <CheckCircle className="h-3 w-3" /> Approved
-                            </span>
-                          )}
-                          {commission.status === "paid" && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                              <CheckCircle className="h-3 w-3" /> Paid
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Select
-                            value={commission.status}
-                            onChange={(e) => handleStatusChange(commission._id, e.target.value as CommissionStatus)}
-                            className="h-8 w-28 text-xs"
-                          >
-                            <option value="pending">Pending</option>
-                            <option value="approved">Approved</option>
-                            <option value="paid">Paid</option>
-                          </Select>
-                        </TableCell>
-                      </motion.tr>
-                    ))}
+                          </TableCell>
+                          <TableCell>
+                            {commission.status === "pending" && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                                <Clock className="h-3 w-3" /> Pending
+                              </span>
+                            )}
+                            {commission.status === "approved" && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                                <CheckCircle className="h-3 w-3" /> Approved
+                              </span>
+                            )}
+                            {commission.status === "paid" && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                                <CheckCircle className="h-3 w-3" /> Paid
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Select
+                              value={commission.status}
+                              onChange={(e) => handleStatusChange(commission._id, e.target.value as CommissionStatus)}
+                              className="h-8 w-28 text-xs"
+                            >
+                              <option value="pending">Pending</option>
+                              <option value="approved">Approved</option>
+                              <option value="paid">Paid</option>
+                            </Select>
+                          </TableCell>
+                        </motion.tr>
+                      );
+                    })}
                   </motion.tbody>
                 </Table>
               </div>
