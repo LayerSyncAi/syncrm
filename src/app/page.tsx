@@ -667,7 +667,7 @@ export default function LandingPage() {
       </AnimatedSection>
 
       {/* ── CTA ──────────────────────────────────────────────────── */}
-      <AnimatedSection className="relative overflow-hidden bg-content-bg py-24 sm:py-32">
+      <AnimatedSection className="relative overflow-hidden bg-[#0a0a0a] py-24 sm:py-32">
         {/* Floating lines background */}
         <div className="absolute inset-0 z-0 pointer-events-none">
           <FloatingLines
