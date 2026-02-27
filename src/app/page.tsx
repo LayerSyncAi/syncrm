@@ -438,7 +438,7 @@ function StickyFeatures() {
           />
         ))}
       </div>
-      <div className="h-screen bg-[#1f2a44]" />
+      <div className="h-14 bg-[#1f2a44]" />
     </>
   );
 }
