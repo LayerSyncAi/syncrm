@@ -667,7 +667,7 @@ export default function LandingPage() {
       </AnimatedSection>
 
       {/* ── CTA ──────────────────────────────────────────────────── */}
-      <AnimatedSection className="relative overflow-hidden bg-[#0a0a0a] py-24 sm:py-32">
+      <AnimatedSection className="relative overflow-hidden bg-white py-24 sm:py-32">
         {/* Floating lines background */}
         <div className="absolute inset-0 z-0 pointer-events-none">
           <FloatingLines
@@ -689,23 +689,21 @@ export default function LandingPage() {
           >
             <Sparkles className="h-7 w-7 text-primary-600" />
           </motion.div>
-          <div className="mx-auto inline-block max-w-2xl rounded-2xl bg-black/50 px-8 py-6 backdrop-blur-sm">
-            <motion.h2
-              variants={fadeUp}
-              custom={1}
-              className="text-3xl font-bold tracking-tight text-white sm:text-4xl drop-shadow-[0_2px_12px_rgba(0,0,0,0.5)]"
-            >
-              Ready to sync your pipeline?
-            </motion.h2>
-            <motion.p
-              variants={fadeUp}
-              custom={2}
-              className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-white/80 drop-shadow-[0_1px_8px_rgba(0,0,0,0.5)]"
-            >
-              Join real estate teams who use SynCRM to stay organized, collaborate
-              better, and close deals faster. Set up your workspace in minutes.
-            </motion.p>
-          </div>
+          <motion.h2
+            variants={fadeUp}
+            custom={1}
+            className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl"
+          >
+            Ready to sync your pipeline?
+          </motion.h2>
+          <motion.p
+            variants={fadeUp}
+            custom={2}
+            className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-gray-600"
+          >
+            Join real estate teams who use SynCRM to stay organized, collaborate
+            better, and close deals faster. Set up your workspace in minutes.
+          </motion.p>
           <motion.div
             variants={fadeUp}
             custom={3}
@@ -713,7 +711,7 @@ export default function LandingPage() {
           >
             <Link
               href="/login"
-              className="group inline-flex items-center gap-2 rounded-[12px] bg-primary-600 px-8 py-3.5 text-base font-semibold text-white shadow-[0_0_0_4px_rgba(236,164,0,0.12),0_8px_24px_rgba(236,164,0,0.2)] transition-all duration-200 hover:bg-primary hover:shadow-[0_0_0_4px_rgba(236,164,0,0.18),0_12px_32px_rgba(236,164,0,0.25)]"
+              className="group inline-flex items-center gap-2 rounded-[12px] bg-gray-900 px-8 py-3.5 text-base font-semibold text-white shadow-lg transition-all duration-200 hover:bg-gray-800"
             >
               Get Started — It&apos;s Free
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
