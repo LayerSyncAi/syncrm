@@ -91,27 +91,14 @@ function NavItem({
         />
       )}
 
-      {/* Gradient underline — intense left, fades to nothing right */}
+      {/* Gradient underline — intense left, fades right, with sweeping glow */}
       {active && (
         <motion.div
           layoutId={`${pillId}-underline`}
-          className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full"
-          style={{
-            background: "linear-gradient(to right, #eca400, rgba(236, 164, 0, 0.4) 50%, transparent)",
-          }}
+          className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full sidebar-underline"
           transition={{ type: "spring", stiffness: 350, damping: 30 }}
         >
-          {/* Glow effect */}
-          <motion.div
-            className="absolute inset-0 rounded-full"
-            style={{
-              background: "linear-gradient(to right, #eca400, transparent 60%)",
-              filter: "blur(3px)",
-              opacity: 0.5,
-            }}
-            animate={{ opacity: [0.3, 0.6, 0.3] }}
-            transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-          />
+          <div className="absolute inset-0 rounded-full sidebar-underline-glow" style={{ filter: "blur(3px)" }} />
         </motion.div>
       )}
 
