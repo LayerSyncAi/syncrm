@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import Link from "next/link";
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { motion, useMotionValue, animate } from "framer-motion";
@@ -90,10 +91,20 @@ const stageItemVariants = {
   },
 };
 
+const DISTRIBUTION_COLORS = [
+  "bg-danger",    // Cold
+  "bg-orange-500",  // Cool
+  "bg-warning",   // Warm
+  "bg-primary",   // Hot
+  "bg-success",   // On Fire
+];
+
 export default function DashboardPage() {
   const dashboardData = useQuery(api.leads.dashboardStats, {});
+  const scoreData = useQuery(api.leads.dashboardScoreStats, {});
 
   const isLoading = dashboardData === undefined;
+  const isScoreLoading = scoreData === undefined;
 
   const stats = dashboardData
     ? [
@@ -106,6 +117,8 @@ export default function DashboardPage() {
 
   const stageBreakdown = dashboardData?.stageBreakdown ?? [];
   const monthlyProgress = dashboardData?.monthlyProgress ?? 0;
+
+  const maxDistCount = Math.max(...(scoreData?.distribution.map((d) => d.count) ?? [1]));
 
   return (
     <div className="space-y-6">
@@ -182,6 +195,248 @@ export default function DashboardPage() {
               </Card>
             </motion.div>
           ))}
+        </motion.div>
+      )}
+
+      {/* Lead Score Insights section */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Score Distribution */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 24, delay: 0.2 }}
+        >
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
+                    Lead Score Distribution
+                  </h3>
+                  {!isScoreLoading && scoreData && (
+                    <p className="mt-1 text-xs text-text-dim">
+                      {scoreData.scoredCount} of {scoreData.totalActive} leads scored
+                      {scoreData.scoredCount > 0 && (
+                        <> &middot; Avg: <span className="font-medium text-text-muted">{scoreData.overallAvg}</span></>
+                      )}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {isScoreLoading ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <StageRowSkeleton key={i} />
+                  ))}
+                </div>
+              ) : !scoreData || scoreData.totalActive === 0 ? (
+                <p className="text-sm text-text-muted text-center py-4">
+                  No leads to display
+                </p>
+              ) : (
+                <motion.div
+                  variants={stageContainerVariants}
+                  initial="hidden"
+                  animate="show"
+                  className="space-y-3"
+                >
+                  {scoreData.distribution.map((bucket, index) => (
+                    <motion.div
+                      key={bucket.label}
+                      variants={stageItemVariants}
+                      className="group"
+                    >
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="flex items-center gap-2">
+                          <span className={`inline-block h-2 w-2 rounded-full ${DISTRIBUTION_COLORS[index]}`} />
+                          <span>{bucket.label}</span>
+                          <span className="text-xs text-text-dim">({bucket.range})</span>
+                        </span>
+                        <span className="text-text-muted font-medium">
+                          <AnimatedCounter value={bucket.count} />
+                        </span>
+                      </div>
+                      <div className="mt-1 h-2 rounded-full bg-border overflow-hidden">
+                        <motion.div
+                          className={`h-2 rounded-full ${DISTRIBUTION_COLORS[index]} relative overflow-hidden`}
+                          initial={{ width: 0 }}
+                          animate={{
+                            width: `${maxDistCount > 0 ? (bucket.count / maxDistCount) * 100 : 0}%`,
+                          }}
+                          transition={{
+                            type: "spring",
+                            stiffness: 80,
+                            damping: 20,
+                            delay: 0.3 + index * 0.06,
+                          }}
+                        >
+                          <div className="shimmer-overlay" />
+                        </motion.div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Avg Score by Stage */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 24, delay: 0.3 }}
+        >
+          <Card>
+            <CardHeader>
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
+                Avg Score by Stage
+              </h3>
+            </CardHeader>
+            <CardContent>
+              {isScoreLoading ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <StageRowSkeleton key={i} />
+                  ))}
+                </div>
+              ) : !scoreData || scoreData.avgScoreByStage.length === 0 ? (
+                <p className="text-sm text-text-muted text-center py-4">
+                  No stage data yet
+                </p>
+              ) : (
+                <motion.div
+                  variants={stageContainerVariants}
+                  initial="hidden"
+                  animate="show"
+                  className="space-y-3"
+                >
+                  {scoreData.avgScoreByStage
+                    .filter((s) => s.count > 0)
+                    .map((stage, index) => {
+                      const color =
+                        stage.avgScore >= 70
+                          ? "bg-success"
+                          : stage.avgScore >= 40
+                            ? "bg-warning"
+                            : "bg-danger";
+                      return (
+                        <motion.div
+                          key={stage.id}
+                          variants={stageItemVariants}
+                        >
+                          <div className="flex items-center justify-between text-sm">
+                            <span>{stage.name}</span>
+                            <span className="flex items-center gap-2 text-text-muted">
+                              <span className="text-xs">({stage.count} leads)</span>
+                              <span className="font-medium">
+                                <AnimatedCounter value={stage.avgScore} />
+                              </span>
+                            </span>
+                          </div>
+                          <div className="mt-1 h-2 rounded-full bg-border overflow-hidden">
+                            <motion.div
+                              className={`h-2 rounded-full ${color} relative overflow-hidden`}
+                              initial={{ width: 0 }}
+                              animate={{ width: `${stage.avgScore}%` }}
+                              transition={{
+                                type: "spring",
+                                stiffness: 80,
+                                damping: 20,
+                                delay: 0.4 + index * 0.06,
+                              }}
+                            >
+                              <div className="shimmer-overlay" />
+                            </motion.div>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                </motion.div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+
+      {/* Top Unworked High-Score Leads */}
+      {!isScoreLoading && scoreData && scoreData.topUnworked.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 24, delay: 0.4 }}
+        >
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
+                    Top Unworked Leads
+                  </h3>
+                  <p className="mt-1 text-xs text-text-dim">
+                    High-scoring leads with no activity in the last 7 days
+                  </p>
+                </div>
+                <Link
+                  href="/app/leads"
+                  className="text-xs text-primary hover:underline"
+                >
+                  View all
+                </Link>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <motion.div
+                variants={stageContainerVariants}
+                initial="hidden"
+                animate="show"
+                className="space-y-2"
+              >
+                {scoreData.topUnworked.map((lead, index) => {
+                  const scoreColor =
+                    lead.score >= 70
+                      ? "text-success"
+                      : lead.score >= 40
+                        ? "text-warning"
+                        : "text-danger";
+                  const dotColor =
+                    lead.score >= 70
+                      ? "bg-success"
+                      : lead.score >= 40
+                        ? "bg-warning"
+                        : "bg-danger";
+                  return (
+                    <motion.div key={lead._id} variants={stageItemVariants}>
+                      <Link
+                        href={`/app/leads/${lead._id}`}
+                        className="flex items-center justify-between rounded-lg px-3 py-2 -mx-3 transition-colors hover:bg-row-hover"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${scoreColor} ${dotColor}/15`}>
+                            <span className={`inline-block h-1.5 w-1.5 rounded-full ${dotColor}`} />
+                            {lead.score}
+                          </span>
+                          <div>
+                            <span className="text-sm font-medium hover:text-primary">
+                              {lead.fullName}
+                            </span>
+                            <p className="text-xs text-text-dim">
+                              Owner: {lead.ownerName}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-xs text-text-dim">
+                          Needs attention
+                        </span>
+                      </Link>
+                    </motion.div>
+                  );
+                })}
+              </motion.div>
+            </CardContent>
+          </Card>
         </motion.div>
       )}
 
