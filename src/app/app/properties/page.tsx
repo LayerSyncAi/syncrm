@@ -20,8 +20,9 @@ import { ConfirmDeleteDialog } from "@/components/common/confirm-delete-dialog";
 import { ImageUpload, ImageItem, serializeImages, deserializeImages } from "@/components/ui/image-upload";
 import { propertyToasts } from "@/lib/toast";
 import { DocumentManager } from "@/components/documents/document-manager";
+import { PropertyShare } from "@/components/properties/property-share";
 
-const propertyTabs = ["Details", "Documentation", "Gallery"] as const;
+const propertyTabs = ["Details", "Sharing", "Documentation", "Gallery"] as const;
 type PropertyTab = (typeof propertyTabs)[number];
 
 const listVariants = {
@@ -62,6 +63,8 @@ type Property = {
   status: PropertyStatus;
   description: string;
   images: string[];
+  createdByUserId?: Id<"users">;
+  createdByName?: string;
   createdAt: number;
   updatedAt: number;
 };
@@ -274,6 +277,8 @@ export default function PropertiesPage() {
   const [imagesError, setImagesError] = React.useState<string | undefined>();
 
   const isAdmin = currentUser?.role === "admin";
+  // Allow editing if admin or the property creator
+  const canEditProperty = isAdmin || (selectedProperty?.createdByUserId != null && selectedProperty?.createdByUserId === currentUser?._id);
 
   // Validation functions
   const validateTitle = (value: string): string | undefined => {
@@ -499,28 +504,26 @@ export default function PropertiesPage() {
               Cards
             </Button>
           </div>
-          {isAdmin && (
-            <Link
-              href="/app/properties/new"
-              className="group flex h-10 items-center gap-2 rounded-full bg-border pl-3 pr-4 transition-all duration-300 ease-in-out hover:bg-primary hover:pl-2 hover:text-white active:bg-primary-600"
-            >
-              <span className="flex items-center justify-center overflow-hidden rounded-full bg-primary p-1 text-white transition-all duration-300 group-hover:bg-white">
-                <svg
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  className="h-0 w-0 transition-all duration-300 group-hover:h-4 group-hover:w-4 group-hover:text-primary"
-                >
-                  <path
-                    d="M8 3v10M3 8h10"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </span>
-              <span className="text-sm font-medium">New Property</span>
-            </Link>
-          )}
+          <Link
+            href="/app/properties/new"
+            className="group flex h-10 items-center gap-2 rounded-full bg-border pl-3 pr-4 transition-all duration-300 ease-in-out hover:bg-primary hover:pl-2 hover:text-white active:bg-primary-600"
+          >
+            <span className="flex items-center justify-center overflow-hidden rounded-full bg-primary p-1 text-white transition-all duration-300 group-hover:bg-white">
+              <svg
+                viewBox="0 0 16 16"
+                fill="none"
+                className="h-0 w-0 transition-all duration-300 group-hover:h-4 group-hover:w-4 group-hover:text-primary"
+              >
+                <path
+                  d="M8 3v10M3 8h10"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </span>
+            <span className="text-sm font-medium">New Property</span>
+          </Link>
         </div>
       </div>
 
@@ -609,13 +612,14 @@ export default function PropertiesPage() {
               <TableHead>Location</TableHead>
               <TableHead className="text-right">Area (m²)</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Added by</TableHead>
               <TableHead className="text-right">Action</TableHead>
             </tr>
           </thead>
           {!properties ? (
             <tbody>
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-text-muted">
+                <TableCell colSpan={9} className="text-center text-text-muted">
                   Loading properties...
                 </TableCell>
               </TableRow>
@@ -623,7 +627,7 @@ export default function PropertiesPage() {
           ) : properties.length === 0 ? (
             <tbody>
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-text-muted">
+                <TableCell colSpan={9} className="text-center text-text-muted">
                   {debouncedSearch || listingTypeFilter || statusFilter || typeFilter || debouncedLocation || priceMin
                     ? "No properties match your filters"
                     : "No properties yet. Create one to get started."}
@@ -645,6 +649,7 @@ export default function PropertiesPage() {
                   <TableCell>{property.location}</TableCell>
                   <TableCell className="text-right">{property.area}</TableCell>
                   <TableCell>{formatStatus(property.status)}</TableCell>
+                  <TableCell className="text-sm text-text-muted">{property.createdByName || "System"}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Link
@@ -661,7 +666,7 @@ export default function PropertiesPage() {
                       >
                         View
                       </Button>
-                      {isAdmin && (
+                      {(isAdmin || property.createdByUserId === currentUser?._id) && (
                         <Button
                           variant="secondary"
                           className="h-9 px-3 text-red-500 hover:text-red-600"
@@ -816,7 +821,7 @@ export default function PropertiesPage() {
               <Button variant="secondary" onClick={closeModal} disabled={isSaving}>
                 Cancel
               </Button>
-              {isAdmin && (
+              {(isAdmin || selectedProperty?.createdByUserId === currentUser?._id) && (
                 <Button onClick={handleSave} disabled={isSaving}>
                   {isSaving ? "Saving..." : "Save changes"}
                 </Button>
@@ -887,7 +892,7 @@ export default function PropertiesPage() {
                       value={title.value}
                       onChange={(e) => handleFieldChange("title", e.target.value, validateTitle)}
                       onBlur={() => handleFieldBlur("title", validateTitle)}
-                      readOnly={!isAdmin}
+                      readOnly={!canEditProperty}
                       error={title.touched && !!title.error}
                     />
                   </div>
@@ -898,7 +903,7 @@ export default function PropertiesPage() {
                     <StaggeredDropDown
                       value={type}
                       onChange={(val) => setType(val as PropertyType)}
-                      disabled={!isAdmin}
+                      disabled={!canEditProperty}
                       options={[
                         { value: "house", label: "House" },
                         { value: "apartment", label: "Apartment" },
@@ -915,7 +920,7 @@ export default function PropertiesPage() {
                     <StaggeredDropDown
                       value={listingType}
                       onChange={(val) => setListingType(val as ListingType)}
-                      disabled={!isAdmin}
+                      disabled={!canEditProperty}
                       options={[
                         { value: "sale", label: "Sale" },
                         { value: "rent", label: "Rent" },
@@ -937,7 +942,7 @@ export default function PropertiesPage() {
                       placeholder="0"
                       error={price.touched ? price.error : undefined}
                       touched={price.touched}
-                      disabled={!isAdmin}
+                      disabled={!canEditProperty}
                     />
                   </div>
 
@@ -955,7 +960,7 @@ export default function PropertiesPage() {
                         setLocation(val);
                         setLocationError(validateLocation(val));
                       }}
-                      disabled={!isAdmin}
+                      disabled={!canEditProperty}
                       placeholder="Select a location..."
                       options={[
                         { value: "", label: "Select a location..." },
@@ -977,7 +982,7 @@ export default function PropertiesPage() {
                       value={area.value}
                       onChange={(e) => handleFieldChange("area", e.target.value, validateArea)}
                       onBlur={() => handleFieldBlur("area", validateArea)}
-                      readOnly={!isAdmin}
+                      readOnly={!canEditProperty}
                       error={area.touched && !!area.error}
                     />
                   </div>
@@ -989,7 +994,7 @@ export default function PropertiesPage() {
                       type="number"
                       value={bedrooms}
                       onChange={(e) => setBedrooms(e.target.value)}
-                      readOnly={!isAdmin}
+                      readOnly={!canEditProperty}
                     />
                   </div>
 
@@ -1000,7 +1005,7 @@ export default function PropertiesPage() {
                       type="number"
                       value={bathrooms}
                       onChange={(e) => setBathrooms(e.target.value)}
-                      readOnly={!isAdmin}
+                      readOnly={!canEditProperty}
                     />
                   </div>
 
@@ -1010,7 +1015,7 @@ export default function PropertiesPage() {
                     <StaggeredDropDown
                       value={status}
                       onChange={(val) => setStatus(val as PropertyStatus)}
-                      disabled={!isAdmin}
+                      disabled={!canEditProperty}
                       options={[
                         { value: "available", label: "Available" },
                         { value: "under_offer", label: "Under Offer" },
@@ -1029,9 +1034,23 @@ export default function PropertiesPage() {
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     rows={3}
-                    readOnly={!isAdmin}
+                    readOnly={!canEditProperty}
                   />
                 </div>
+              </motion.div>
+            )}
+
+            {propertyTab === "Sharing" && selectedProperty && currentUser && (
+              <motion.div
+                key="sharing"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } }}
+                exit={{ opacity: 0, y: -8, transition: { duration: 0.15 } }}
+              >
+                <PropertyShare
+                  propertyId={selectedProperty._id}
+                  currentUserId={currentUser._id}
+                />
               </motion.div>
             )}
 
@@ -1065,7 +1084,7 @@ export default function PropertiesPage() {
                   onChange={handleImagesChange}
                   minImages={2}
                   maxImages={10}
-                  disabled={!isAdmin}
+                  disabled={!canEditProperty}
                   error={imagesError}
                 />
               </motion.div>

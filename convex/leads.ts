@@ -217,6 +217,8 @@ export const moveStage = mutation({
     leadId: v.id("leads"),
     stageId: v.id("pipelineStages"),
     closeReason: v.optional(v.string()),
+    dealValue: v.optional(v.number()),
+    dealCurrency: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserWithOrg(ctx);
@@ -230,15 +232,155 @@ export const moveStage = mutation({
     }
     assertOrgAccess(stage, user.orgId);
 
+    const now = Date.now();
     const updated: Record<string, unknown> = {
       stageId: args.stageId,
-      updatedAt: Date.now(),
+      updatedAt: now,
     };
     if (stage.isTerminal) {
-      updated.closedAt = Date.now();
+      updated.closedAt = now;
       updated.closeReason = args.closeReason ?? "";
+      if (args.dealValue !== undefined) updated.dealValue = args.dealValue;
+      if (args.dealCurrency !== undefined) updated.dealCurrency = args.dealCurrency;
     }
     await ctx.db.patch(args.leadId, updated);
+
+    // Auto-generate commission records when deal is won
+    if (stage.isTerminal && stage.terminalOutcome === "won" && args.dealValue && args.dealValue > 0) {
+      const dealCurrency = args.dealCurrency || "USD";
+
+      // Check if there are active property shares for this lead
+      const shares = await ctx.db
+        .query("propertyShares")
+        .withIndex("by_lead", (q) => q.eq("leadId", args.leadId))
+        .collect();
+
+      const activeShares = shares.filter(
+        (s) => s.status === "active" && (!s.orgId || s.orgId === user.orgId)
+      );
+
+      // Get commission configs for the org
+      const configs = await ctx.db
+        .query("commissionConfigs")
+        .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+        .collect();
+
+      if (activeShares.length > 0) {
+        // Shared deal scenario
+        const sharedConfig = configs.find(
+          (c) => c.scenario === "shared_deal" && c.isDefault
+        ) || configs.find((c) => c.scenario === "shared_deal");
+
+        for (const share of activeShares) {
+          // Mark share as closed won
+          await ctx.db.patch(share._id, {
+            status: "closed_won",
+            dealValue: args.dealValue,
+            dealCurrency,
+            closedAt: now,
+            updatedAt: now,
+          });
+
+          // Create commission record
+          const propPercent = sharedConfig?.propertyAgentPercent ?? 40;
+          const leadPercent = sharedConfig?.leadAgentPercent ?? 40;
+          const compPercent = sharedConfig?.companyPercent ?? 20;
+
+          await ctx.db.insert("dealCommissions", {
+            leadId: args.leadId,
+            propertyId: share.propertyId,
+            propertyShareId: share._id,
+            commissionConfigId: sharedConfig?._id,
+            dealValue: args.dealValue,
+            dealCurrency,
+            propertyAgentUserId: share.sharedByUserId,
+            propertyAgentPercent: propPercent,
+            propertyAgentAmount: (args.dealValue * propPercent) / 100,
+            leadAgentUserId: share.sharedWithUserId,
+            leadAgentPercent: leadPercent,
+            leadAgentAmount: (args.dealValue * leadPercent) / 100,
+            companyPercent: compPercent,
+            companyAmount: (args.dealValue * compPercent) / 100,
+            status: "pending",
+            orgId: user.orgId,
+            createdAt: now,
+          });
+        }
+      } else {
+        // No shares - check if lead owner has their own property match
+        const matches = await ctx.db
+          .query("leadPropertyMatches")
+          .withIndex("by_lead", (q) => q.eq("leadId", args.leadId))
+          .collect();
+
+        let scenario: "own_property_own_lead" | "company_property" = "company_property";
+        let propertyAgentId: Id<"users"> | undefined;
+        let propertyId: Id<"properties"> | undefined;
+
+        if (matches.length > 0) {
+          // Check if the lead owner also created the matched property
+          for (const match of matches) {
+            const property = await ctx.db.get(match.propertyId);
+            if (property?.createdByUserId === lead.ownerUserId) {
+              scenario = "own_property_own_lead";
+              propertyId = match.propertyId;
+              break;
+            }
+            if (property) {
+              propertyId = match.propertyId;
+              if (property.createdByUserId) {
+                propertyAgentId = property.createdByUserId;
+              }
+            }
+          }
+        }
+
+        const config = configs.find(
+          (c) => c.scenario === scenario && c.isDefault
+        ) || configs.find((c) => c.scenario === scenario);
+
+        const propPercent = config?.propertyAgentPercent ?? (scenario === "own_property_own_lead" ? 0 : 0);
+        const leadPercent = config?.leadAgentPercent ?? (scenario === "own_property_own_lead" ? 70 : 50);
+        const compPercent = config?.companyPercent ?? (scenario === "own_property_own_lead" ? 30 : 50);
+
+        await ctx.db.insert("dealCommissions", {
+          leadId: args.leadId,
+          propertyId,
+          commissionConfigId: config?._id,
+          dealValue: args.dealValue,
+          dealCurrency,
+          propertyAgentUserId: scenario === "own_property_own_lead" ? undefined : propertyAgentId,
+          propertyAgentPercent: propPercent,
+          propertyAgentAmount: (args.dealValue * propPercent) / 100,
+          leadAgentUserId: lead.ownerUserId,
+          leadAgentPercent: leadPercent,
+          leadAgentAmount: (args.dealValue * leadPercent) / 100,
+          companyPercent: compPercent,
+          companyAmount: (args.dealValue * compPercent) / 100,
+          status: "pending",
+          orgId: user.orgId,
+          createdAt: now,
+        });
+      }
+    }
+
+    // If deal is lost, mark active shares as closed_lost
+    if (stage.isTerminal && stage.terminalOutcome === "lost") {
+      const shares = await ctx.db
+        .query("propertyShares")
+        .withIndex("by_lead", (q) => q.eq("leadId", args.leadId))
+        .collect();
+
+      for (const share of shares) {
+        if (share.status === "active" && (!share.orgId || share.orgId === user.orgId)) {
+          await ctx.db.patch(share._id, {
+            status: "closed_lost",
+            closedAt: now,
+            updatedAt: now,
+          });
+        }
+      }
+    }
   },
 });
 

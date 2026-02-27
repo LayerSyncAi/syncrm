@@ -10,6 +10,7 @@ import {
   ClipboardList,
   ChevronLeft,
   ChevronRight,
+  DollarSign,
   Download,
   LayoutDashboard,
   Shield,
@@ -39,6 +40,7 @@ const adminItems = [
   { label: "Roles", href: "/app/admin/roles", icon: Shield },
   { label: "Stages", href: "/app/admin/stages", icon: Waypoints },
   { label: "Lead Scoring", href: "/app/admin/lead-scoring", icon: Star },
+  { label: "Commissions", href: "/app/admin/commissions", icon: DollarSign },
 ];
 
 interface SidebarProps {

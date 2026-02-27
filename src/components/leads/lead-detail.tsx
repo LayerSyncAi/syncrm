@@ -146,6 +146,8 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [contactDetailsOpen, setContactDetailsOpen] = useState(false);
   const [closeReason, setCloseReason] = useState("");
+  const [dealValue, setDealValue] = useState("");
+  const [dealCurrency, setDealCurrency] = useState("USD");
   const [notes, setNotes] = useState("");
   const [notesInitialized, setNotesInitialized] = useState(false);
   const [isSavingNotes, setIsSavingNotes] = useState(false);
@@ -204,17 +206,20 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
   const handleStageChange = useCallback(async (newStageId: Id<"pipelineStages">) => {
     const stage = stages?.find((s) => s._id === newStageId);
     try {
+      const parsedDealValue = dealValue ? parseFloat(dealValue.replace(/[^0-9.]/g, "")) : undefined;
       await moveStage({
         leadId,
         stageId: newStageId,
         closeReason: stage?.isTerminal ? closeReason : undefined,
+        dealValue: stage?.isTerminal && stage?.terminalOutcome === "won" ? parsedDealValue : undefined,
+        dealCurrency: stage?.isTerminal && stage?.terminalOutcome === "won" ? dealCurrency : undefined,
       });
       leadToasts.stageMoved(stage?.name || "new stage");
     } catch (error) {
       console.error("Failed to update stage:", error);
       leadToasts.stageMoveFailed(error instanceof Error ? error.message : undefined);
     }
-  }, [stages, moveStage, leadId, closeReason]);
+  }, [stages, moveStage, leadId, closeReason, dealValue, dealCurrency]);
 
   const handleSaveNotes = useCallback(async () => {
     setIsSavingNotes(true);
@@ -501,12 +506,36 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
             options={stages?.map((s) => ({ value: s._id, label: s.name })) ?? []}
           />
           {stages?.find((s) => s._id === lead.stageId)?.isTerminal && (
-            <Input
-              placeholder="Close reason"
-              value={closeReason}
-              onChange={(e) => setCloseReason(e.target.value)}
-              className="max-w-xs"
-            />
+            <>
+              <Input
+                placeholder="Close reason"
+                value={closeReason}
+                onChange={(e) => setCloseReason(e.target.value)}
+                className="max-w-xs"
+              />
+              {stages?.find((s) => s._id === lead.stageId)?.terminalOutcome === "won" && (
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    placeholder="Deal value"
+                    value={dealValue}
+                    onChange={(e) => setDealValue(e.target.value)}
+                    className="max-w-[140px]"
+                  />
+                  <select
+                    value={dealCurrency}
+                    onChange={(e) => setDealCurrency(e.target.value)}
+                    className="h-10 rounded-[10px] border border-border-strong bg-transparent px-2 text-sm text-text outline-none"
+                  >
+                    <option value="USD">USD</option>
+                    <option value="ZWL">ZWL</option>
+                    <option value="ZAR">ZAR</option>
+                    <option value="GBP">GBP</option>
+                    <option value="EUR">EUR</option>
+                  </select>
+                </div>
+              )}
+            </>
           )}
         </div>
       </Card>
