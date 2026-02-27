@@ -15,6 +15,7 @@ import { Modal } from "@/components/ui/modal";
 import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 import { Textarea } from "@/components/ui/textarea";
 import { CurrencyInput } from "@/components/ui/currency-input";
+import { ImageUpload, type ImageItem } from "@/components/ui/image-upload";
 import { FlipCalendar } from "@/components/ui/flip-calendar";
 import { RightDrawer } from "@/components/common/right-drawer";
 import { useRequireAuth } from "@/hooks/useAuth";
@@ -33,6 +34,8 @@ const DocumentManager = lazy(() =>
 );
 
 const tabs = ["Timeline", "Documents", "Matched Properties", "Suggested", "Notes"] as const;
+const viewPropertyTabs = ["Details", "Documentation", "Gallery"] as const;
+type ViewPropertyTab = (typeof viewPropertyTabs)[number];
 
 // --- #18–25 animation variants ---
 
@@ -177,6 +180,7 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
 
   // View property modal state
   const [viewPropertyId, setViewPropertyId] = useState<string | null>(null);
+  const [viewPropertyTab, setViewPropertyTab] = useState<ViewPropertyTab>("Details");
 
   // Timeline celebration state
   const [celebratingIds, setCelebratingIds] = useState<Set<string>>(new Set());
@@ -1134,146 +1138,205 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
         open={viewPropertyId !== null}
         title={viewProperty ? `Property: ${viewProperty.title}` : "Loading property..."}
         description="Read-only view of property details."
-        onClose={() => setViewPropertyId(null)}
+        onClose={() => { setViewPropertyId(null); setViewPropertyTab("Details"); }}
         footer={
           <div className="flex justify-end">
-            <Button onClick={() => setViewPropertyId(null)}>Close</Button>
+            <Button variant="secondary" onClick={() => { setViewPropertyId(null); setViewPropertyTab("Details"); }}>Close</Button>
           </div>
         }
       >
         {viewProperty ? (
-          <motion.div
-            className="space-y-6"
-            initial={{ opacity: 0, scale: 0.95, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ type: "spring", stiffness: 300, damping: 24, delay: 0.05 }}
-          >
-            {/* Images */}
-            {viewProperty.images?.length > 0 && (
-              <div className="space-y-2">
-                <div className="aspect-[4/3] w-full overflow-hidden rounded-[12px] border border-border-strong">
-                  <img src={viewProperty.images[0]} alt={viewProperty.title} className="h-full w-full object-cover" />
-                </div>
-                {viewProperty.images.length > 1 && (
-                  <div className="flex gap-2 overflow-x-auto pb-1">
-                    {viewProperty.images.slice(1).map((img: string, i: number) => (
-                      <div key={i} className="h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-border-strong">
-                        <img src={img} alt={`${viewProperty.title} ${i + 2}`} className="h-full w-full object-cover" />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="grid gap-4 md:grid-cols-2">
-              {/* Title */}
-              <div className="space-y-2 md:col-span-2">
-                <Label className="flex items-center gap-1">
-                  Title <span className="text-danger">*</span>
-                </Label>
-                <Input value={viewProperty.title} readOnly />
-              </div>
-
-              {/* Type */}
-              <div className="space-y-2">
-                <Label>Type</Label>
-                <StaggeredDropDown
-                  value={viewProperty.type}
-                  onChange={() => {}}
-                  disabled
-                  options={[
-                    { value: "house", label: "House" },
-                    { value: "apartment", label: "Apartment" },
-                    { value: "land", label: "Land" },
-                    { value: "commercial", label: "Commercial" },
-                    { value: "other", label: "Other" },
-                  ]}
-                />
-              </div>
-
-              {/* Listing */}
-              <div className="space-y-2">
-                <Label>Listing</Label>
-                <StaggeredDropDown
-                  value={viewProperty.listingType}
-                  onChange={() => {}}
-                  disabled
-                  options={[
-                    { value: "sale", label: "Sale" },
-                    { value: "rent", label: "Rent" },
-                  ]}
-                />
-              </div>
-
-              {/* Price */}
-              <div className="space-y-2">
-                <Label className="flex items-center gap-1">
-                  Price <span className="text-danger">*</span>
-                </Label>
-                <CurrencyInput
-                  value={viewProperty.price.toString()}
-                  onChange={() => {}}
-                  currency={viewProperty.currency}
-                  onCurrencyChange={() => {}}
-                  disabled
-                />
-              </div>
-
-              {/* Location */}
-              <div className="space-y-2">
-                <Label className="flex items-center gap-1">
-                  Location <span className="text-danger">*</span>
-                </Label>
-                <Input value={viewProperty.location} readOnly />
-              </div>
-
-              {/* Area */}
-              <div className="space-y-2">
-                <Label className="flex items-center gap-1">
-                  Area (m²) <span className="text-danger">*</span>
-                </Label>
-                <Input value={viewProperty.area?.toString() || "-"} readOnly />
-              </div>
-
-              {/* Bedrooms */}
-              <div className="space-y-2">
-                <Label>Bedrooms</Label>
-                <Input value={viewProperty.bedrooms?.toString() || "-"} readOnly />
-              </div>
-
-              {/* Bathrooms */}
-              <div className="space-y-2">
-                <Label>Bathrooms</Label>
-                <Input value={viewProperty.bathrooms?.toString() || "-"} readOnly />
-              </div>
-
-              {/* Status */}
-              <div className="space-y-2">
-                <Label>Status</Label>
-                <StaggeredDropDown
-                  value={viewProperty.status}
-                  onChange={() => {}}
-                  disabled
-                  options={[
-                    { value: "available", label: "Available" },
-                    { value: "under_offer", label: "Under Offer" },
-                    { value: "let", label: "Let" },
-                    { value: "sold", label: "Sold" },
-                    { value: "off_market", label: "Off Market" },
-                  ]}
-                />
+          <div className="space-y-5">
+            {/* Tab bar */}
+            <div className="border-b border-border">
+              <div className="flex gap-6 relative">
+                {viewPropertyTabs.map((tab) => (
+                  <button
+                    key={tab}
+                    className={`relative pb-3 text-sm font-medium transition-colors duration-150 ${
+                      viewPropertyTab === tab
+                        ? "text-text"
+                        : "text-text-muted hover:text-text"
+                    }`}
+                    onClick={() => setViewPropertyTab(tab)}
+                  >
+                    {tab}
+                    {viewPropertyTab === tab && (
+                      <motion.div
+                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
+                        layoutId="view-property-tab-indicator"
+                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                      />
+                    )}
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* Description */}
-            {viewProperty.description && (
-              <div className="space-y-2">
-                <Label>Description</Label>
-                <Textarea value={viewProperty.description} readOnly />
-              </div>
-            )}
-          </motion.div>
+            {/* Tab content */}
+            <AnimatePresence mode="wait">
+              {viewPropertyTab === "Details" && (
+                <motion.div
+                  key="details"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } }}
+                  exit={{ opacity: 0, y: -8, transition: { duration: 0.15 } }}
+                  className="space-y-6"
+                >
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {/* Title */}
+                    <div className="space-y-2 md:col-span-2">
+                      <Label className="flex items-center gap-1">
+                        Title <span className="text-danger">*</span>
+                      </Label>
+                      <Input value={viewProperty.title} readOnly />
+                    </div>
+
+                    {/* Type */}
+                    <div className="space-y-2">
+                      <Label>Type</Label>
+                      <StaggeredDropDown
+                        value={viewProperty.type}
+                        onChange={() => {}}
+                        disabled
+                        options={[
+                          { value: "house", label: "House" },
+                          { value: "apartment", label: "Apartment" },
+                          { value: "land", label: "Land" },
+                          { value: "commercial", label: "Commercial" },
+                          { value: "other", label: "Other" },
+                        ]}
+                      />
+                    </div>
+
+                    {/* Listing */}
+                    <div className="space-y-2">
+                      <Label>Listing</Label>
+                      <StaggeredDropDown
+                        value={viewProperty.listingType}
+                        onChange={() => {}}
+                        disabled
+                        options={[
+                          { value: "sale", label: "Sale" },
+                          { value: "rent", label: "Rent" },
+                        ]}
+                      />
+                    </div>
+
+                    {/* Price */}
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-1">
+                        Price <span className="text-danger">*</span>
+                      </Label>
+                      <CurrencyInput
+                        value={viewProperty.price.toString()}
+                        onChange={() => {}}
+                        currency={viewProperty.currency}
+                        onCurrencyChange={() => {}}
+                        disabled
+                      />
+                    </div>
+
+                    {/* Location */}
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-1">
+                        Location <span className="text-danger">*</span>
+                      </Label>
+                      <Input value={viewProperty.location} readOnly />
+                    </div>
+
+                    {/* Area */}
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-1">
+                        Area (m²) <span className="text-danger">*</span>
+                      </Label>
+                      <Input value={viewProperty.area?.toString() || "-"} readOnly />
+                    </div>
+
+                    {/* Bedrooms */}
+                    <div className="space-y-2">
+                      <Label>Bedrooms</Label>
+                      <Input value={viewProperty.bedrooms?.toString() || "-"} readOnly />
+                    </div>
+
+                    {/* Bathrooms */}
+                    <div className="space-y-2">
+                      <Label>Bathrooms</Label>
+                      <Input value={viewProperty.bathrooms?.toString() || "-"} readOnly />
+                    </div>
+
+                    {/* Status */}
+                    <div className="space-y-2">
+                      <Label>Status</Label>
+                      <StaggeredDropDown
+                        value={viewProperty.status}
+                        onChange={() => {}}
+                        disabled
+                        options={[
+                          { value: "available", label: "Available" },
+                          { value: "under_offer", label: "Under Offer" },
+                          { value: "let", label: "Let" },
+                          { value: "sold", label: "Sold" },
+                          { value: "off_market", label: "Off Market" },
+                        ]}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  {viewProperty.description && (
+                    <div className="space-y-2">
+                      <Label>Description</Label>
+                      <Textarea value={viewProperty.description} readOnly />
+                    </div>
+                  )}
+                </motion.div>
+              )}
+
+              {viewPropertyTab === "Documentation" && (
+                <motion.div
+                  key="documentation"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } }}
+                  exit={{ opacity: 0, y: -8, transition: { duration: 0.15 } }}
+                >
+                  <Suspense
+                    fallback={
+                      <div className="flex items-center justify-center py-12">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+                      </div>
+                    }
+                  >
+                    <DocumentManager
+                      propertyId={viewPropertyId as Id<"properties">}
+                      folders={["mandates_to_sell", "contracts", "id_copies", "proof_of_funds"]}
+                    />
+                  </Suspense>
+                </motion.div>
+              )}
+
+              {viewPropertyTab === "Gallery" && (
+                <motion.div
+                  key="gallery"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } }}
+                  exit={{ opacity: 0, y: -8, transition: { duration: 0.15 } }}
+                  className="space-y-2"
+                >
+                  <Label className="flex items-center gap-1">
+                    Images <span className="text-danger">*</span>
+                  </Label>
+                  <ImageUpload
+                    images={(viewProperty.images || []).map((url: string) => ({ url }))}
+                    onChange={() => {}}
+                    minImages={2}
+                    maxImages={10}
+                    disabled
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         ) : (
           <div className="flex items-center justify-center py-8">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
