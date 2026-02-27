@@ -158,6 +158,11 @@ export const attachPropertyToLead = mutation({
     const property = await ctx.db.get(args.propertyId);
     if (!property) throw new Error("Property not found");
     assertOrgAccess(property, user.orgId);
+    if (property.status === "sold" || property.status === "off_market") {
+      throw new Error(
+        `Cannot attach a property that is ${property.status === "sold" ? "sold" : "off market"}`
+      );
+    }
     return ctx.db.insert("leadPropertyMatches", {
       leadId: args.leadId,
       propertyId: args.propertyId,
@@ -243,6 +248,7 @@ export const suggestPropertiesForLead = query({
     }
 
     const scoredProperties = properties
+      .filter((property) => property.status !== "sold" && property.status !== "off_market")
       .filter((property) => !attachedPropertyIds.has(property._id))
       .map((property) => {
         const scoreBreakdown = calculateMatchScore(lead, property);

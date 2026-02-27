@@ -56,8 +56,6 @@ export default function NewPropertyPage() {
   const [isSaving, setIsSaving] = React.useState(false);
   const [formError, setFormError] = React.useState("");
 
-  const isAdmin = currentUser?.role === "admin";
-
   // Validation functions
   const validateTitle = (value: string): string | undefined => {
     if (!value.trim()) return "Title is required";
@@ -187,23 +185,12 @@ export default function NewPropertyPage() {
     }
   };
 
-  // Redirect non-admins
-  React.useEffect(() => {
-    if (currentUser && !isAdmin) {
-      router.push("/app/properties");
-    }
-  }, [currentUser, isAdmin, router]);
-
   if (!currentUser) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
     );
-  }
-
-  if (!isAdmin) {
-    return null;
   }
 
   return (

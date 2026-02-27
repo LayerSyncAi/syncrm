@@ -85,6 +85,9 @@ export default defineSchema({
     ownerUserId: v.id("users"),
     closedAt: v.optional(v.number()),
     closeReason: v.optional(v.string()),
+    // Deal value when closed
+    dealValue: v.optional(v.number()),
+    dealCurrency: v.optional(v.string()),
     // Scoring
     score: v.optional(v.number()),
     lastScoredAt: v.optional(v.number()),
@@ -160,12 +163,94 @@ export default defineSchema({
     ),
     description: v.string(),
     images: v.array(v.string()),
+    createdByUserId: v.optional(v.id("users")),
     orgId: v.optional(v.id("organizations")),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_location", ["location"])
     .index("by_filters", ["type", "listingType", "status"])
+    .index("by_org", ["orgId"])
+    .index("by_creator", ["createdByUserId"]),
+  // Property shares: Agent A shares a property with Agent B (who has a matching lead)
+  propertyShares: defineTable({
+    propertyId: v.id("properties"),
+    leadId: v.id("leads"),
+    // Agent A: the property holder who initiates the share
+    sharedByUserId: v.id("users"),
+    // Agent B: the lead holder who receives the property to close the deal
+    sharedWithUserId: v.id("users"),
+    status: v.union(
+      v.literal("active"),
+      v.literal("closed_won"),
+      v.literal("closed_lost"),
+      v.literal("cancelled")
+    ),
+    dealValue: v.optional(v.number()),
+    dealCurrency: v.optional(v.string()),
+    closedAt: v.optional(v.number()),
+    notes: v.optional(v.string()),
+    orgId: v.optional(v.id("organizations")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_property", ["propertyId"])
+    .index("by_lead", ["leadId"])
+    .index("by_shared_by", ["sharedByUserId"])
+    .index("by_shared_with", ["sharedWithUserId"])
+    .index("by_org", ["orgId"]),
+  // Commission split configuration: admin-defined scenarios
+  commissionConfigs: defineTable({
+    name: v.string(),
+    description: v.optional(v.string()),
+    // The scenario this config applies to
+    scenario: v.union(
+      v.literal("shared_deal"),        // Property shared between agents
+      v.literal("own_property_own_lead"), // Agent closes own property with own lead
+      v.literal("company_property")     // Company-listed property, agent brings lead
+    ),
+    // Percentage splits (should sum to 100)
+    propertyAgentPercent: v.number(),  // Agent A (property holder)
+    leadAgentPercent: v.number(),      // Agent B (lead holder / closer)
+    companyPercent: v.number(),        // Company cut
+    isDefault: v.boolean(),
+    orgId: v.optional(v.id("organizations")),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_scenario", ["scenario"])
+    .index("by_org", ["orgId"]),
+  // Commission records generated when a deal closes
+  dealCommissions: defineTable({
+    leadId: v.id("leads"),
+    propertyId: v.optional(v.id("properties")),
+    propertyShareId: v.optional(v.id("propertyShares")),
+    commissionConfigId: v.optional(v.id("commissionConfigs")),
+    dealValue: v.number(),
+    dealCurrency: v.string(),
+    // Agent A (property holder)
+    propertyAgentUserId: v.optional(v.id("users")),
+    propertyAgentPercent: v.number(),
+    propertyAgentAmount: v.number(),
+    // Agent B (lead holder / closer)
+    leadAgentUserId: v.id("users"),
+    leadAgentPercent: v.number(),
+    leadAgentAmount: v.number(),
+    // Company
+    companyPercent: v.number(),
+    companyAmount: v.number(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("paid")
+    ),
+    orgId: v.optional(v.id("organizations")),
+    createdAt: v.number(),
+  })
+    .index("by_lead", ["leadId"])
+    .index("by_property_agent", ["propertyAgentUserId"])
+    .index("by_lead_agent", ["leadAgentUserId"])
     .index("by_org", ["orgId"]),
   leadPropertyMatches: defineTable({
     leadId: v.id("leads"),

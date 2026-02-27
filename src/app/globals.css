@@ -281,3 +281,12 @@ a {
 .toast-info-pulse {
   animation: toast-info-pulse 0.8s ease-in-out 0.1s 1;
 }
+
+/* Table action-button hover: colour inversion */
+.action-btn:hover {
+  @apply bg-text text-white border-text;
+}
+
+.action-btn-danger:hover {
+  @apply bg-red-500 text-white border-red-500;
+}

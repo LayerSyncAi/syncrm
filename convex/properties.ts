@@ -1,6 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { getCurrentUserWithOrg, requireAdmin, assertOrgAccess } from "./helpers";
+import { getCurrentUserWithOrg, assertOrgAccess } from "./helpers";
 
 export const list = query({
   args: {
@@ -36,7 +36,7 @@ export const list = query({
       .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
       .collect();
 
-    return properties.filter((property) => {
+    const filtered = properties.filter((property) => {
       if (args.location && !property.location.toLowerCase().includes(args.location.toLowerCase())) {
         return false;
       }
@@ -59,6 +59,21 @@ export const list = query({
         return false;
       }
       return true;
+    });
+
+    // Enrich with creator info
+    const users = await ctx.db
+      .query("users")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
+    const userMap = new Map(users.map((u) => [u._id, u]));
+
+    return filtered.map((property) => {
+      const creator = property.createdByUserId ? userMap.get(property.createdByUserId) : null;
+      return {
+        ...property,
+        createdByName: creator?.fullName || creator?.name || creator?.email || "System",
+      };
     });
   },
 });
@@ -91,14 +106,15 @@ export const create = mutation({
     images: v.array(v.string()),
   },
   handler: async (ctx, args) => {
-    const admin = await requireAdmin(ctx);
+    const user = await getCurrentUserWithOrg(ctx);
     if (args.images.length < 2) {
       throw new Error("At least 2 property images are required");
     }
     const timestamp = Date.now();
     return ctx.db.insert("properties", {
       ...args,
-      orgId: admin.orgId,
+      createdByUserId: user._id,
+      orgId: user.orgId,
       createdAt: timestamp,
       updatedAt: timestamp,
     });
@@ -138,10 +154,15 @@ export const update = mutation({
     images: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
-    const admin = await requireAdmin(ctx);
+    const user = await getCurrentUserWithOrg(ctx);
     const property = await ctx.db.get(args.propertyId);
     if (!property) throw new Error("Property not found");
-    assertOrgAccess(property, admin.orgId);
+    assertOrgAccess(property, user.orgId);
+
+    // Allow admins or the property creator to update
+    if (user.role !== "admin" && property.createdByUserId !== user._id) {
+      throw new Error("You can only edit properties you created");
+    }
 
     if (args.images !== undefined && args.images.length < 2) {
       throw new Error("At least 2 property images are required");
@@ -162,10 +183,16 @@ export const remove = mutation({
     propertyId: v.id("properties"),
   },
   handler: async (ctx, args) => {
-    const admin = await requireAdmin(ctx);
+    const user = await getCurrentUserWithOrg(ctx);
     const property = await ctx.db.get(args.propertyId);
     if (!property) throw new Error("Property not found");
-    assertOrgAccess(property, admin.orgId);
+    assertOrgAccess(property, user.orgId);
+
+    // Allow admins or the property creator to delete
+    if (user.role !== "admin" && property.createdByUserId !== user._id) {
+      throw new Error("You can only delete properties you created");
+    }
+
     await ctx.db.delete(args.propertyId);
   },
 });
@@ -227,6 +254,10 @@ export const getById = query({
     const property = await ctx.db.get(args.propertyId);
     if (!property) return null;
     if (property.orgId && property.orgId !== user.orgId) return null;
-    return property;
+    const creator = property.createdByUserId ? await ctx.db.get(property.createdByUserId) : null;
+    return {
+      ...property,
+      createdByName: creator?.fullName || creator?.name || creator?.email || "System",
+    };
   },
 });

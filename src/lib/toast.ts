@@ -395,6 +395,69 @@ export const documentToasts = {
     }),
 };
 
+// ── Property Sharing ─────────────────────────────────────
+
+export const propertyShareToasts = {
+  shared: (propertyTitle: string, agentName: string) =>
+    animatedToast.success("Property shared", {
+      description: `"${propertyTitle}" has been shared with ${agentName}.`,
+    }),
+
+  shareFailed: (detail?: string) =>
+    animatedToast.error("Failed to share property", {
+      description: detail || "Something went wrong. Please try again.",
+    }),
+
+  cancelled: () =>
+    animatedToast.success("Share cancelled", {
+      description: "The property share has been cancelled.",
+    }),
+
+  cancelFailed: (detail?: string) =>
+    animatedToast.error("Failed to cancel share", {
+      description: detail || "Something went wrong. Please try again.",
+    }),
+};
+
+// ── Commissions ──────────────────────────────────────────
+
+export const commissionToasts = {
+  configCreated: (name: string) =>
+    animatedToast.success("Commission config created", {
+      description: `"${name}" has been added.`,
+    }),
+
+  configUpdated: (name: string) =>
+    animatedToast.success("Commission config updated", {
+      description: `"${name}" has been saved.`,
+    }),
+
+  configDeleted: (name: string) =>
+    animatedToast.success("Commission config deleted", {
+      description: `"${name}" has been removed.`,
+    }),
+
+  configSaveFailed: (detail?: string) =>
+    animatedToast.error("Failed to save commission config", {
+      description: detail || "Something went wrong. Please try again.",
+    }),
+
+  configDeleteFailed: (detail?: string) =>
+    animatedToast.error("Failed to delete commission config", {
+      description: detail || "Something went wrong. Please try again.",
+    }),
+
+  statusUpdated: (status: string) =>
+    animatedToast.success("Commission status updated", {
+      description: `Commission marked as ${status}.`,
+    }),
+
+  statusUpdateFailed: (detail?: string) =>
+    animatedToast.error("Failed to update commission status", {
+      description: detail || "Something went wrong. Please try again.",
+    }),
+};
+
 // ── Locations ─────────────────────────────────────────────
 
 export const locationToasts = {
