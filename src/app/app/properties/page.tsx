@@ -661,7 +661,7 @@ export default function PropertiesPage() {
                         >
                           <Button
                             variant="secondary"
-                            className="h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
+                            className="action-btn h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
                             style={{ transitionDelay: "0ms" }}
                           >
                             <UserPlus className="h-4 w-4" />
@@ -671,7 +671,7 @@ export default function PropertiesPage() {
                       <Tooltip content="View">
                         <Button
                           variant="secondary"
-                          className="h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
+                          className="action-btn h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
                           style={{ transitionDelay: "50ms" }}
                           onClick={() => setSelectedProperty(property)}
                         >
@@ -682,7 +682,7 @@ export default function PropertiesPage() {
                         <Tooltip content="Delete">
                           <Button
                             variant="secondary"
-                            className="h-9 w-9 p-0 text-red-500 hover:text-red-600 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
+                            className="action-btn-danger h-9 w-9 p-0 text-red-500 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
                             style={{ transitionDelay: "100ms" }}
                             onClick={() => setDeleteTarget(property)}
                           >
@@ -796,7 +796,7 @@ export default function PropertiesPage() {
                       <Link
                         href={`/app/leads/new?propertyId=${property._id}&interestType=${property.listingType === "sale" ? "buy" : "rent"}`}
                       >
-                        <Button variant="secondary" className="h-9 w-9 p-0">
+                        <Button variant="secondary" className="action-btn h-9 w-9 p-0">
                           <UserPlus className="h-4 w-4" />
                         </Button>
                       </Link>
@@ -804,7 +804,7 @@ export default function PropertiesPage() {
                     <Tooltip content="View">
                       <Button
                         variant="secondary"
-                        className="h-9 w-9 p-0"
+                        className="action-btn h-9 w-9 p-0"
                         onClick={() => setSelectedProperty(property)}
                       >
                         <Eye className="h-4 w-4" />
@@ -814,7 +814,7 @@ export default function PropertiesPage() {
                       <Tooltip content="Delete">
                         <Button
                           variant="secondary"
-                          className="h-9 w-9 p-0 text-red-500 hover:text-red-600"
+                          className="action-btn-danger h-9 w-9 p-0 text-red-500"
                           onClick={() => setDeleteTarget(property)}
                         >
                           <Trash2 className="h-4 w-4" />

@@ -281,3 +281,24 @@ a {
 .toast-info-pulse {
   animation: toast-info-pulse 0.8s ease-in-out 0.1s 1;
 }
+
+/* Table action-button hover: colour inversion */
+.action-btn {
+  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.action-btn:hover {
+  background-color: var(--text) !important;
+  color: #ffffff !important;
+  border-color: var(--text) !important;
+}
+
+.action-btn-danger {
+  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.action-btn-danger:hover {
+  background-color: #ef4444 !important;
+  color: #ffffff !important;
+  border-color: #ef4444 !important;
+}

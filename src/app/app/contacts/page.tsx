@@ -406,7 +406,7 @@ export default function ContactsPage() {
                         <a href={`tel:${contact.phone}`} onClick={(e) => e.stopPropagation()}>
                           <Button
                             variant="secondary"
-                            className="h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
+                            className="action-btn h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
                             style={{ transitionDelay: "0ms" }}
                           >
                             <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
@@ -421,7 +421,7 @@ export default function ContactsPage() {
                         <a href={`mailto:${contact.email}`} onClick={(e) => e.stopPropagation()}>
                           <Button
                             variant="secondary"
-                            className="h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
+                            className="action-btn h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
                             style={{ transitionDelay: "50ms" }}
                           >
                             <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
@@ -435,7 +435,7 @@ export default function ContactsPage() {
                     <Tooltip content="Edit">
                       <Button
                         variant="secondary"
-                        className="h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
+                        className="action-btn h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
                         style={{ transitionDelay: "100ms" }}
                         onClick={() => setSelectedContact(contact)}
                       >
@@ -446,7 +446,7 @@ export default function ContactsPage() {
                       <Tooltip content="Delete">
                         <Button
                           variant="secondary"
-                          className="h-9 w-9 p-0 text-red-500 hover:text-red-600 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
+                          className="action-btn-danger h-9 w-9 p-0 text-red-500 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
                           style={{ transitionDelay: "150ms" }}
                           onClick={() => setDeleteTarget(contact)}
                         >
