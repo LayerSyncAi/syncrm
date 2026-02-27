@@ -18,12 +18,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { authToasts } from "@/lib/toast";
-import {
-  AuthLayout,
-  RequiredLabel,
-  containerVariants,
-  itemVariants,
-} from "@/components/auth/auth-layout";
+import { AuthLayout, RequiredLabel } from "@/components/auth/auth-layout";
 
 function ResetPasswordContent() {
   const router = useRouter();
@@ -205,164 +200,133 @@ function ResetPasswordContent() {
         ) : (
           <motion.div
             key="form"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
           >
             <motion.div
               animate={shake ? { x: [0, -10, 10, -8, 8, -4, 4, 0] } : {}}
               transition={{ duration: 0.5 }}
               onAnimationComplete={() => setShake(false)}
             >
-              <motion.div
-                variants={containerVariants}
-                initial="initial"
-                animate="animate"
-              >
-                {/* Icon */}
-                <motion.div
-                  variants={itemVariants}
-                  className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-600/10 mb-6"
-                >
-                  <Key className="h-6 w-6 text-primary-600" />
-                </motion.div>
+              {/* Icon */}
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-600/10 mb-6">
+                <Key className="h-6 w-6 text-primary-600" />
+              </div>
 
-                {/* Header */}
-                <motion.div variants={itemVariants} className="mb-2">
-                  <h1 className="text-3xl font-bold text-text">
-                    Set new password
-                  </h1>
-                </motion.div>
-                <motion.div variants={itemVariants} className="mb-8">
-                  <p className="text-sm text-text-muted">
-                    Your new password must be at least 8 characters.
-                  </p>
-                </motion.div>
+              {/* Header */}
+              <h1 className="text-3xl font-bold text-text mb-2">
+                Set new password
+              </h1>
+              <p className="text-sm text-text-muted mb-8">
+                Your new password must be at least 8 characters.
+              </p>
 
-                {/* Form */}
-                <form onSubmit={handleSubmit} className="space-y-5">
-                  <motion.div variants={itemVariants} className="space-y-1.5">
-                    <RequiredLabel>New Password</RequiredLabel>
-                    <div className="relative">
-                      <Input
-                        type={showPassword ? "text" : "password"}
-                        placeholder="••••••••"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        minLength={8}
-                        disabled={isLoading}
-                        className="pr-10"
-                      />
-                      <motion.button
-                        type="button"
-                        onClick={() => setShowPassword((v) => !v)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-text-dim hover:text-text-muted"
-                        tabIndex={-1}
-                        aria-label={
-                          showPassword ? "Hide password" : "Show password"
-                        }
-                      >
-                        <motion.div
-                          key={showPassword ? "visible" : "hidden"}
-                          initial={{ scale: 0.8 }}
-                          animate={{ scale: [0.8, 1.1, 1] }}
-                          transition={{ duration: 0.2 }}
-                        >
-                          {showPassword ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                        </motion.div>
-                      </motion.button>
-                    </div>
-                  </motion.div>
-
-                  <motion.div variants={itemVariants} className="space-y-1.5">
-                    <RequiredLabel>Confirm Password</RequiredLabel>
-                    <div className="relative">
-                      <Input
-                        type={showConfirmPassword ? "text" : "password"}
-                        placeholder="••••••••"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        required
-                        minLength={8}
-                        disabled={isLoading}
-                        className="pr-10"
-                      />
-                      <motion.button
-                        type="button"
-                        onClick={() => setShowConfirmPassword((v) => !v)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-text-dim hover:text-text-muted"
-                        tabIndex={-1}
-                        aria-label={
-                          showConfirmPassword
-                            ? "Hide password"
-                            : "Show password"
-                        }
-                      >
-                        <motion.div
-                          key={showConfirmPassword ? "visible" : "hidden"}
-                          initial={{ scale: 0.8 }}
-                          animate={{ scale: [0.8, 1.1, 1] }}
-                          transition={{ duration: 0.2 }}
-                        >
-                          {showConfirmPassword ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                        </motion.div>
-                      </motion.button>
-                    </div>
-                  </motion.div>
-
-                  <AnimatePresence>
-                    {error && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg p-3">
-                          {error}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  <motion.div variants={itemVariants}>
-                    <Button
-                      className="w-full h-11 font-semibold"
-                      type="submit"
+              {/* Form */}
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div className="space-y-1.5">
+                  <RequiredLabel>New Password</RequiredLabel>
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      minLength={8}
                       disabled={isLoading}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-text-dim hover:text-text-muted transition-colors"
+                      tabIndex={-1}
+                      aria-label={
+                        showPassword ? "Hide password" : "Show password"
+                      }
                     >
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Resetting...
-                        </>
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
                       ) : (
-                        "Reset password"
+                        <Eye className="h-4 w-4" />
                       )}
-                    </Button>
-                  </motion.div>
+                    </button>
+                  </div>
+                </div>
 
-                  <motion.div variants={itemVariants}>
-                    <Link href="/login">
-                      <Button variant="ghost" className="w-full">
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to login
-                      </Button>
-                    </Link>
-                  </motion.div>
-                </form>
-              </motion.div>
+                <div className="space-y-1.5">
+                  <RequiredLabel>Confirm Password</RequiredLabel>
+                  <div className="relative">
+                    <Input
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      required
+                      minLength={8}
+                      disabled={isLoading}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-text-dim hover:text-text-muted transition-colors"
+                      tabIndex={-1}
+                      aria-label={
+                        showConfirmPassword
+                          ? "Hide password"
+                          : "Show password"
+                      }
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <AnimatePresence>
+                  {error && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg p-3">
+                        {error}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <Button
+                  className="w-full h-11 font-semibold"
+                  type="submit"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Resetting...
+                    </>
+                  ) : (
+                    "Reset password"
+                  )}
+                </Button>
+
+                <Link href="/login">
+                  <Button variant="ghost" className="w-full">
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back to login
+                  </Button>
+                </Link>
+              </form>
             </motion.div>
           </motion.div>
         )}

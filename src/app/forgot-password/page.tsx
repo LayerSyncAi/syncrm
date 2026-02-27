@@ -9,12 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, CheckCircle, Loader2, Mail } from "lucide-react";
 import { authToasts } from "@/lib/toast";
-import {
-  AuthLayout,
-  RequiredLabel,
-  containerVariants,
-  itemVariants,
-} from "@/components/auth/auth-layout";
+import { AuthLayout, RequiredLabel } from "@/components/auth/auth-layout";
 
 export default function ForgotPasswordPage() {
   const requestReset = useAction(api.passwordReset.requestPasswordReset);
@@ -107,98 +102,81 @@ export default function ForgotPasswordPage() {
         ) : (
           <motion.div
             key="form"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
           >
             <motion.div
               animate={shake ? { x: [0, -10, 10, -8, 8, -4, 4, 0] } : {}}
               transition={{ duration: 0.5 }}
               onAnimationComplete={() => setShake(false)}
             >
-              <motion.div
-                variants={containerVariants}
-                initial="initial"
-                animate="animate"
-              >
-                {/* Icon */}
-                <motion.div
-                  variants={itemVariants}
-                  className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-600/10 mb-6"
-                >
-                  <Mail className="h-6 w-6 text-primary-600" />
-                </motion.div>
+              {/* Icon */}
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-600/10 mb-6">
+                <Mail className="h-6 w-6 text-primary-600" />
+              </div>
 
-                {/* Header */}
-                <motion.div variants={itemVariants} className="mb-2">
-                  <h1 className="text-3xl font-bold text-text">
-                    Forgot password?
-                  </h1>
-                </motion.div>
-                <motion.div variants={itemVariants} className="mb-8">
-                  <p className="text-sm text-text-muted">
-                    No worries, we&apos;ll send you reset instructions.
-                  </p>
-                </motion.div>
+              {/* Header */}
+              <h1 className="text-3xl font-bold text-text mb-2">
+                Forgot password?
+              </h1>
+              <p className="text-sm text-text-muted mb-8">
+                No worries, we&apos;ll send you reset instructions.
+              </p>
 
-                {/* Form */}
-                <form onSubmit={handleSubmit} className="space-y-5">
-                  <motion.div variants={itemVariants} className="space-y-1.5">
-                    <RequiredLabel>Email</RequiredLabel>
-                    <Input
-                      type="email"
-                      placeholder="you@agency.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      disabled={isLoading}
-                    />
-                  </motion.div>
+              {/* Form */}
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div className="space-y-1.5">
+                  <RequiredLabel>Email</RequiredLabel>
+                  <Input
+                    type="email"
+                    placeholder="you@agency.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    disabled={isLoading}
+                  />
+                </div>
 
-                  <AnimatePresence>
-                    {error && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg p-3">
-                          {error}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  <motion.div variants={itemVariants}>
-                    <Button
-                      className="w-full h-11 font-semibold"
-                      type="submit"
-                      disabled={isLoading}
+                <AnimatePresence>
+                  {error && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
                     >
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Sending...
-                        </>
-                      ) : (
-                        "Reset password"
-                      )}
-                    </Button>
-                  </motion.div>
+                      <div className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-lg p-3">
+                        {error}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
-                  <motion.div variants={itemVariants}>
-                    <Link href="/login">
-                      <Button variant="ghost" className="w-full">
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to login
-                      </Button>
-                    </Link>
-                  </motion.div>
-                </form>
-              </motion.div>
+                <Button
+                  className="w-full h-11 font-semibold"
+                  type="submit"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    "Reset password"
+                  )}
+                </Button>
+
+                <Link href="/login">
+                  <Button variant="ghost" className="w-full">
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back to login
+                  </Button>
+                </Link>
+              </form>
             </motion.div>
           </motion.div>
         )}

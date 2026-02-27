@@ -10,27 +10,6 @@ import {
   Building2,
 } from "lucide-react";
 
-/* ── Stagger animation variants (exported for use by auth pages) ── */
-
-export const containerVariants: Variants = {
-  initial: {},
-  animate: {
-    transition: {
-      staggerChildren: 0.12,
-      delayChildren: 0.1,
-    },
-  },
-};
-
-export const itemVariants: Variants = {
-  initial: { y: 20, opacity: 0 },
-  animate: {
-    y: 0,
-    opacity: 1,
-    transition: { type: "spring" as const, stiffness: 70, damping: 14 },
-  },
-};
-
 /* ── Required field label helper ── */
 
 export function RequiredLabel({ children }: { children: React.ReactNode }) {

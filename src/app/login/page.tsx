@@ -12,12 +12,7 @@ import { Check, Eye, EyeOff, Loader2 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { authToasts } from "@/lib/toast";
 import { cn } from "@/lib/utils";
-import {
-  AuthLayout,
-  RequiredLabel,
-  containerVariants,
-  itemVariants,
-} from "@/components/auth/auth-layout";
+import { AuthLayout, RequiredLabel } from "@/components/auth/auth-layout";
 
 type AuthMode = "signIn" | "signUp";
 type SubmitState = "idle" | "submitting" | "success";
@@ -155,29 +150,29 @@ export default function LoginPage() {
 
   return (
     <AuthLayout>
+      {/* Shake wrapper */}
       <motion.div
         animate={shake ? { x: [0, -10, 10, -8, 8, -4, 4, 0] } : {}}
         transition={{ duration: 0.5 }}
         onAnimationComplete={() => setShake(false)}
       >
+        {/* Single entrance animation */}
         <motion.div
-          variants={containerVariants}
-          initial="initial"
-          animate="animate"
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
         >
           {/* Header */}
-          <motion.div variants={itemVariants} className="mb-2">
-            <h1 className="text-3xl font-bold text-text">
-              {mode === "signIn" ? "Sign in to your account" : "Create your account"}
-            </h1>
-          </motion.div>
-          <motion.div variants={itemVariants} className="mb-8">
-            <p className="text-sm text-text-muted">
-              {mode === "signIn"
-                ? "Welcome back! Enter your credentials to access your pipeline."
-                : "Register your organization and create an admin account."}
-            </p>
-          </motion.div>
+          <h1 className="text-3xl font-bold text-text mb-2">
+            {mode === "signIn"
+              ? "Sign in to your account"
+              : "Create your account"}
+          </h1>
+          <p className="text-sm text-text-muted mb-8">
+            {mode === "signIn"
+              ? "Welcome back! Enter your credentials to access your pipeline."
+              : "Register your organization and create an admin account."}
+          </p>
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -217,7 +212,7 @@ export default function LoginPage() {
               )}
             </AnimatePresence>
 
-            <motion.div variants={itemVariants} className="space-y-1.5">
+            <div className="space-y-1.5">
               <RequiredLabel>Email</RequiredLabel>
               <Input
                 type="email"
@@ -227,9 +222,9 @@ export default function LoginPage() {
                 required
                 disabled={isDisabled}
               />
-            </motion.div>
+            </div>
 
-            <motion.div variants={itemVariants} className="space-y-1.5">
+            <div className="space-y-1.5">
               <RequiredLabel>Password</RequiredLabel>
               <div className="relative">
                 <Input
@@ -242,28 +237,21 @@ export default function LoginPage() {
                   disabled={isDisabled}
                   className="pr-10"
                 />
-                <motion.button
+                <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-dim hover:text-text-muted"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-dim hover:text-text-muted transition-colors"
                   tabIndex={-1}
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
-                  <motion.div
-                    key={showPassword ? "visible" : "hidden"}
-                    initial={{ scale: 0.8 }}
-                    animate={{ scale: [0.8, 1.1, 1] }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </motion.div>
-                </motion.button>
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
               </div>
-            </motion.div>
+            </div>
 
             <AnimatePresence>
               {mode === "signUp" && (
@@ -288,10 +276,10 @@ export default function LoginPage() {
                         disabled={isDisabled}
                         className="pr-10"
                       />
-                      <motion.button
+                      <button
                         type="button"
                         onClick={() => setShowConfirmPassword((v) => !v)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-text-dim hover:text-text-muted"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-text-dim hover:text-text-muted transition-colors"
                         tabIndex={-1}
                         aria-label={
                           showConfirmPassword
@@ -299,19 +287,12 @@ export default function LoginPage() {
                             : "Show password"
                         }
                       >
-                        <motion.div
-                          key={showConfirmPassword ? "visible" : "hidden"}
-                          initial={{ scale: 0.8 }}
-                          animate={{ scale: [0.8, 1.1, 1] }}
-                          transition={{ duration: 0.2 }}
-                        >
-                          {showConfirmPassword ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                        </motion.div>
-                      </motion.button>
+                        {showConfirmPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
                     </div>
                   </div>
                 </motion.div>
@@ -334,69 +315,64 @@ export default function LoginPage() {
               )}
             </AnimatePresence>
 
-            <motion.div variants={itemVariants}>
-              <motion.button
-                type="submit"
-                disabled={isDisabled}
-                className={cn(
-                  "relative inline-flex h-11 w-full items-center justify-center rounded-[10px] text-sm font-semibold text-white transition-colors duration-300 disabled:cursor-not-allowed overflow-hidden",
-                  submitState === "success"
-                    ? "bg-green-500"
-                    : "bg-primary-600 hover:bg-primary shadow-[0_0_0_4px_rgba(236,164,0,0.12)] disabled:opacity-50"
-                )}
-                whileTap={
-                  submitState === "idle" ? { scale: 0.98 } : undefined
-                }
-              >
-                <AnimatePresence mode="wait">
-                  {submitState === "idle" && (
-                    <motion.span
-                      key="idle"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.15 }}
-                    >
-                      {mode === "signIn" ? "Sign in" : "Create account"}
-                    </motion.span>
-                  )}
-                  {submitState === "submitting" && (
-                    <motion.span
-                      key="submitting"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.15 }}
-                      className="flex items-center"
-                    >
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {mode === "signIn"
-                        ? "Signing in..."
-                        : "Creating account..."}
-                    </motion.span>
-                  )}
-                  {submitState === "success" && (
-                    <motion.span
-                      key="success"
-                      initial={{ opacity: 0, scale: 0.5 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{
-                        type: "spring" as const,
-                        stiffness: 300,
-                        damping: 20,
-                      }}
-                    >
-                      <Check className="h-5 w-5" />
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </motion.button>
-            </motion.div>
-
-            <motion.div
-              variants={itemVariants}
-              className="flex items-center justify-between text-sm"
+            <motion.button
+              type="submit"
+              disabled={isDisabled}
+              className={cn(
+                "relative inline-flex h-11 w-full items-center justify-center rounded-[10px] text-sm font-semibold text-white transition-colors duration-300 disabled:cursor-not-allowed overflow-hidden",
+                submitState === "success"
+                  ? "bg-green-500"
+                  : "bg-primary-600 hover:bg-primary shadow-[0_0_0_4px_rgba(236,164,0,0.12)] disabled:opacity-50"
+              )}
+              whileTap={
+                submitState === "idle" ? { scale: 0.98 } : undefined
+              }
             >
+              <AnimatePresence mode="wait">
+                {submitState === "idle" && (
+                  <motion.span
+                    key="idle"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.15 }}
+                  >
+                    {mode === "signIn" ? "Sign in" : "Create account"}
+                  </motion.span>
+                )}
+                {submitState === "submitting" && (
+                  <motion.span
+                    key="submitting"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.15 }}
+                    className="flex items-center"
+                  >
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {mode === "signIn"
+                      ? "Signing in..."
+                      : "Creating account..."}
+                  </motion.span>
+                )}
+                {submitState === "success" && (
+                  <motion.span
+                    key="success"
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{
+                      type: "spring" as const,
+                      stiffness: 300,
+                      damping: 20,
+                    }}
+                  >
+                    <Check className="h-5 w-5" />
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </motion.button>
+
+            <div className="flex items-center justify-between text-sm">
               {mode === "signIn" ? (
                 <>
                   <button
@@ -430,7 +406,7 @@ export default function LoginPage() {
                   Already have an account? Sign in
                 </button>
               )}
-            </motion.div>
+            </div>
           </form>
         </motion.div>
       </motion.div>
