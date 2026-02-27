@@ -692,14 +692,14 @@ export default function LandingPage() {
           <motion.h2
             variants={fadeUp}
             custom={1}
-            className="text-3xl font-bold tracking-tight sm:text-4xl"
+            className="text-3xl font-bold tracking-tight text-text sm:text-4xl"
           >
             Ready to sync your pipeline?
           </motion.h2>
           <motion.p
             variants={fadeUp}
             custom={2}
-            className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-text-muted"
+            className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-text-dim"
           >
             Join real estate teams who use SynCRM to stay organized, collaborate
             better, and close deals faster. Set up your workspace in minutes.
