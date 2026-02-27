@@ -20,6 +20,11 @@ export const shareProperty = mutation({
     const property = await ctx.db.get(args.propertyId);
     if (!property) throw new Error("Property not found");
     assertOrgAccess(property, user.orgId);
+    if (property.status === "sold" || property.status === "off_market") {
+      throw new Error(
+        `Cannot share a property that is ${property.status === "sold" ? "sold" : "off market"}`
+      );
+    }
 
     const lead = await ctx.db.get(args.leadId);
     if (!lead) throw new Error("Lead not found");

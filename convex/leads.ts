@@ -281,6 +281,15 @@ export const moveStage = mutation({
             updatedAt: now,
           });
 
+          // Mark property as sold (sales) or off_market (rentals)
+          const property = await ctx.db.get(share.propertyId);
+          if (property) {
+            await ctx.db.patch(share.propertyId, {
+              status: property.listingType === "sale" ? "sold" : "off_market",
+              updatedAt: now,
+            });
+          }
+
           // Create commission record
           const propPercent = sharedConfig?.propertyAgentPercent ?? 40;
           const leadPercent = sharedConfig?.leadAgentPercent ?? 40;
@@ -361,6 +370,17 @@ export const moveStage = mutation({
           orgId: user.orgId,
           createdAt: now,
         });
+
+        // Mark the won property as sold (sales) or off_market (rentals)
+        if (propertyId) {
+          const wonProperty = await ctx.db.get(propertyId);
+          if (wonProperty) {
+            await ctx.db.patch(propertyId, {
+              status: wonProperty.listingType === "sale" ? "sold" : "off_market",
+              updatedAt: now,
+            });
+          }
+        }
       }
     }
 
