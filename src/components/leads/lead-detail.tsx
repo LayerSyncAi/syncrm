@@ -893,8 +893,8 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
                   variants={drawerItemVariants}
                   className={`flex items-center gap-3 rounded-[10px] border p-3 text-sm cursor-pointer transition-colors ${
                     isSelected
-                      ? "border-primary/40 bg-primary/5"
-                      : "border-border-strong hover:bg-card-bg/50"
+                      ? "border-primary/40 bg-primary/5 text-text"
+                      : "border-border-strong bg-card-bg text-text hover:bg-card-bg/50"
                   }`}
                 >
                   <input
@@ -904,7 +904,7 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
                     className="rounded border-border shrink-0"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium">{property.title}</p>
+                    <p className="font-medium text-text">{property.title}</p>
                     <p className="text-xs text-text-muted">
                       {property.listingType === "sale" ? "Sale" : "Rent"} &middot; {property.location}
                     </p>
