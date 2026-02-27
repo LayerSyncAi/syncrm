@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
-const FloatingLines = dynamic(() => import("@/components/ui/floating-lines"), {
+const Hyperspeed = dynamic(() => import("@/components/ui/hyperspeed"), {
   ssr: false,
 });
 import { useAuth } from "@/hooks/useAuth";
@@ -667,47 +667,74 @@ export default function LandingPage() {
       </AnimatedSection>
 
       {/* ── CTA ──────────────────────────────────────────────────── */}
-      <AnimatedSection className="relative overflow-hidden bg-[#080808] py-24 sm:py-32">
-        {/* Floating lines — opaque black canvas, blended via mix-blend-mode: screen */}
-        <div className="absolute inset-0 pointer-events-none">
-          <FloatingLines
-            linesGradient={["#ECA400", "#F59E0B", "#D97706", "#B45309"]}
-            enabledWaves={["top", "middle", "bottom"]}
-            lineCount={[4, 6, 4]}
-            lineDistance={[8, 5, 8]}
-            animationSpeed={0.6}
-            interactive={false}
-            parallax={false}
-            mixBlendMode="screen"
+      <section className="relative h-[600px] overflow-hidden bg-black">
+        {/* Hyperspeed background — SynCRM amber/gold palette */}
+        <div className="absolute inset-0">
+          <Hyperspeed
+            effectOptions={{
+              distortion: "turbulentDistortion",
+              length: 400,
+              roadWidth: 10,
+              islandWidth: 2,
+              lanesPerRoad: 3,
+              fov: 90,
+              fovSpeedUp: 150,
+              speedUp: 2,
+              carLightsFade: 0.4,
+              totalSideLightSticks: 20,
+              lightPairsPerRoadWay: 40,
+              shoulderLinesWidthPercentage: 0.05,
+              brokenLinesWidthPercentage: 0.1,
+              brokenLinesLengthPercentage: 0.5,
+              lightStickWidth: [0.12, 0.5],
+              lightStickHeight: [1.3, 1.7],
+              movingAwaySpeed: [60, 80],
+              movingCloserSpeed: [-120, -160],
+              carLightsLength: [400 * 0.03, 400 * 0.2],
+              carLightsRadius: [0.05, 0.14],
+              carWidthPercentage: [0.3, 0.5],
+              carShiftX: [-0.8, 0.8],
+              carFloorSeparation: [0, 5],
+              colors: {
+                roadColor: 0x080808,
+                islandColor: 0x0a0a0a,
+                background: 0x000000,
+                shoulderLines: 0x131313,
+                brokenLines: 0x131313,
+                leftCars: [0xeca400, 0xf59e0b, 0xd97706],
+                rightCars: [0xfbbf24, 0xb45309, 0x92400e],
+                sticks: 0xeca400,
+              },
+            }}
           />
         </div>
 
-        <div className="relative z-10 mx-auto max-w-3xl px-6 text-center">
-          <motion.div
-            variants={fadeUp}
-            custom={0}
-            className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-600/10 ring-1 ring-primary-600/20"
-          >
-            <Sparkles className="h-7 w-7 text-primary-500" />
-          </motion.div>
+        {/* Content overlay */}
+        <div className="relative z-10 flex h-full flex-col items-center justify-center px-6 text-center">
           <motion.h2
-            variants={fadeUp}
-            custom={1}
-            className="text-3xl font-bold tracking-tight text-white sm:text-5xl"
+            initial={{ opacity: 0, y: 32 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            className="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl"
           >
             Ready to sync your pipeline?
           </motion.h2>
           <motion.p
-            variants={fadeUp}
-            custom={2}
-            className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-white"
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.1, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-white/80"
           >
             Join real estate teams who use SynCRM to stay organized, collaborate
             better, and close deals faster. Set up your workspace in minutes.
           </motion.p>
           <motion.div
-            variants={fadeUp}
-            custom={3}
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row"
           >
             <Link
@@ -719,7 +746,7 @@ export default function LandingPage() {
             </Link>
           </motion.div>
         </div>
-      </AnimatedSection>
+      </section>
 
       {/* ── Footer ───────────────────────────────────────────────── */}
       <footer className="border-t border-border py-10">
