@@ -70,7 +70,7 @@ const containerVariants = {
 const itemVariants = {
   hidden: { opacity: 0, y: 8 },
   show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
-};
+} as const;
 
 export function DocumentManager({ leadId, propertyId, folders }: DocumentManagerProps) {
   const [activeFolder, setActiveFolder] = React.useState<Folder>(folders[0]);

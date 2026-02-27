@@ -21,7 +21,7 @@ const bulkStatContainerVariants = {
 const bulkStatItemVariants = {
   hidden: { opacity: 0, scale: 0.9 },
   show: { opacity: 1, scale: 1, transition: { type: "spring", stiffness: 300, damping: 24 } },
-};
+} as const;
 
 const bulkResultContainerVariants = {
   hidden: {},
@@ -31,7 +31,7 @@ const bulkResultContainerVariants = {
 const bulkResultItemVariants = {
   hidden: { opacity: 0, x: -10 },
   show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
-};
+} as const;
 
 interface BulkMatchingProps {
   open: boolean;

@@ -75,7 +75,7 @@ const cardVariants = {
     y: 0,
     transition: { type: "spring", stiffness: 300, damping: 24 },
   },
-};
+} as const;
 
 const stageContainerVariants = {
   hidden: {},
@@ -89,7 +89,7 @@ const stageItemVariants = {
     x: 0,
     transition: { type: "spring", stiffness: 300, damping: 24 },
   },
-};
+} as const;
 
 const DISTRIBUTION_COLORS = [
   "bg-danger",    // Cold

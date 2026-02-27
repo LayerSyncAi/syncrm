@@ -30,14 +30,14 @@ const resultCardVariants = {
 const resultItemVariants = {
   hidden: { opacity: 0, scale: 0.9 },
   show: { opacity: 1, scale: 1, transition: { type: "spring", stiffness: 300, damping: 24 } },
-};
+} as const;
 
 // #35: Step transition variants
 const stepVariants = {
   initial: { opacity: 0, x: 20 },
   animate: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
   exit: { opacity: 0, x: -20, transition: { duration: 0.15 } },
-};
+} as const;
 
 const LEAD_FIELDS: Array<{ key: string; label: string; required?: boolean }> = [
   { key: "fullName", label: "Full Name", required: true },

@@ -31,14 +31,14 @@ const conflictContainerVariants = {
 const conflictItemVariants = {
   hidden: { opacity: 0, y: 12 },
   show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
-};
+} as const;
 
 // #44: Step transition variants
 const mergeStepVariants = {
   initial: { opacity: 0, x: 24 },
   animate: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
   exit: { opacity: 0, x: -24, transition: { duration: 0.15 } },
-};
+} as const;
 
 // #45: Select table row stagger
 const selectTableVariants = {
@@ -49,7 +49,7 @@ const selectTableVariants = {
 const selectRowVariants = {
   hidden: { opacity: 0, x: -8 },
   show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
-};
+} as const;
 
 const MERGEABLE_FIELDS = [
   { key: "fullName", label: "Full Name" },

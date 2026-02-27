@@ -20,7 +20,7 @@ const suggestionContainerVariants = {
 const suggestionCardVariants = {
   hidden: { opacity: 0, y: 16 },
   show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
-};
+} as const;
 
 interface PropertySuggestionsProps {
   leadId: Id<"leads">;
