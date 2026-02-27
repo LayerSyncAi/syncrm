@@ -236,6 +236,28 @@ export default defineSchema({
   })
     .index("by_name", ["name"])
     .index("by_org", ["orgId"]),
+  documents: defineTable({
+    name: v.string(),
+    folder: v.union(
+      v.literal("mandates_to_sell"),
+      v.literal("contracts"),
+      v.literal("id_copies"),
+      v.literal("proof_of_funds"),
+      v.literal("lead_documentation")
+    ),
+    storageId: v.id("_storage"),
+    mimeType: v.string(),
+    size: v.number(), // bytes
+    // Polymorphic owner: exactly one of these should be set
+    leadId: v.optional(v.id("leads")),
+    propertyId: v.optional(v.id("properties")),
+    uploadedByUserId: v.id("users"),
+    orgId: v.optional(v.id("organizations")),
+    createdAt: v.number(),
+  })
+    .index("by_lead", ["leadId"])
+    .index("by_property", ["propertyId"])
+    .index("by_org", ["orgId"]),
   contacts: defineTable({
     name: v.string(),
     phone: v.string(),

@@ -19,6 +19,10 @@ import { parseCurrencyInput } from "@/lib/currency";
 import { ConfirmDeleteDialog } from "@/components/common/confirm-delete-dialog";
 import { ImageUpload, ImageItem, serializeImages, deserializeImages } from "@/components/ui/image-upload";
 import { propertyToasts } from "@/lib/toast";
+import { DocumentManager } from "@/components/documents/document-manager";
+
+const propertyTabs = ["Details", "Documentation", "Gallery"] as const;
+type PropertyTab = (typeof propertyTabs)[number];
 
 const listVariants = {
   hidden: {},
@@ -222,6 +226,7 @@ export default function PropertiesPage() {
   // UI state
   const [viewMode, setViewMode] = React.useState<"list" | "cards">("list");
   const [selectedProperty, setSelectedProperty] = React.useState<Property | null>(null);
+  const [propertyTab, setPropertyTab] = React.useState<PropertyTab>("Details");
   const [isSaving, setIsSaving] = React.useState(false);
   const [deleteTarget, setDeleteTarget] = React.useState<Property | null>(null);
   const [formError, setFormError] = React.useState("");
@@ -383,6 +388,7 @@ export default function PropertiesPage() {
 
   const closeModal = () => {
     setSelectedProperty(null);
+    setPropertyTab("Details");
     resetForm();
   };
 
@@ -805,198 +811,266 @@ export default function PropertiesPage() {
         description="Review the listing details and make updates as needed."
         onClose={closeModal}
         footer={
-          <div className="flex justify-end gap-2">
-            <Button variant="secondary" onClick={closeModal} disabled={isSaving}>
-              Cancel
-            </Button>
-            {isAdmin && (
-              <Button onClick={handleSave} disabled={isSaving}>
-                {isSaving ? "Saving..." : "Save changes"}
+          propertyTab === "Details" ? (
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={closeModal} disabled={isSaving}>
+                Cancel
               </Button>
-            )}
-          </div>
+              {isAdmin && (
+                <Button onClick={handleSave} disabled={isSaving}>
+                  {isSaving ? "Saving..." : "Save changes"}
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="flex justify-end">
+              <Button variant="secondary" onClick={closeModal}>
+                Close
+              </Button>
+            </div>
+          )
         }
       >
-        <div className="space-y-6">
-          {formError && (
-            <div className="rounded-lg bg-danger/10 p-4 text-danger text-sm">
-              {formError}
-            </div>
-          )}
-
-          {/* Images Section */}
-          <div className="space-y-2">
-            <Label className="flex items-center gap-1">
-              Images <span className="text-danger">*</span>
-            </Label>
-            <ImageUpload
-              images={images}
-              onChange={handleImagesChange}
-              minImages={2}
-              maxImages={10}
-              disabled={!isAdmin}
-              error={imagesError}
-            />
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            {/* Title */}
-            <div className="space-y-2 md:col-span-2">
-              <Label className="flex items-center gap-1">
-                Title <span className="text-danger">*</span>
-              </Label>
-              {title.touched && title.error && (
-                <p className="text-xs text-danger">{title.error}</p>
-              )}
-              <Input
-                value={title.value}
-                onChange={(e) => handleFieldChange("title", e.target.value, validateTitle)}
-                onBlur={() => handleFieldBlur("title", validateTitle)}
-                readOnly={!isAdmin}
-                error={title.touched && !!title.error}
-              />
-            </div>
-
-            {/* Type */}
-            <div className="space-y-2">
-              <Label>Type</Label>
-              <StaggeredDropDown
-                value={type}
-                onChange={(val) => setType(val as PropertyType)}
-                disabled={!isAdmin}
-                options={[
-                  { value: "house", label: "House" },
-                  { value: "apartment", label: "Apartment" },
-                  { value: "land", label: "Land" },
-                  { value: "commercial", label: "Commercial" },
-                  { value: "other", label: "Other" },
-                ]}
-              />
-            </div>
-
-            {/* Listing Type */}
-            <div className="space-y-2">
-              <Label>Listing</Label>
-              <StaggeredDropDown
-                value={listingType}
-                onChange={(val) => setListingType(val as ListingType)}
-                disabled={!isAdmin}
-                options={[
-                  { value: "sale", label: "Sale" },
-                  { value: "rent", label: "Rent" },
-                ]}
-              />
-            </div>
-
-            {/* Price */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-1">
-                Price <span className="text-danger">*</span>
-              </Label>
-              <CurrencyInput
-                value={price.value}
-                onChange={(val) => isAdmin && handleFieldChange("price", val, validatePrice)}
-                onBlur={() => handleFieldBlur("price", validatePrice)}
-                currency={currency}
-                onCurrencyChange={(c) => isAdmin && setCurrency(c)}
-                placeholder="0"
-                error={price.touched ? price.error : undefined}
-                touched={price.touched}
-                disabled={!isAdmin}
-              />
-            </div>
-
-            {/* Location */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-1">
-                Location <span className="text-danger">*</span>
-              </Label>
-              {locationError && (
-                <p className="text-xs text-danger">{locationError}</p>
-              )}
-              <StaggeredDropDown
-                value={location}
-                onChange={(val) => {
-                  setLocation(val);
-                  setLocationError(validateLocation(val));
-                }}
-                disabled={!isAdmin}
-                placeholder="Select a location..."
-                options={[
-                  { value: "", label: "Select a location..." },
-                  ...(locations?.map((loc) => ({ value: loc.name, label: loc.name })) ?? []),
-                ]}
-              />
-            </div>
-
-            {/* Area */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-1">
-                Area (m²) <span className="text-danger">*</span>
-              </Label>
-              {area.touched && area.error && (
-                <p className="text-xs text-danger">{area.error}</p>
-              )}
-              <Input
-                type="number"
-                value={area.value}
-                onChange={(e) => handleFieldChange("area", e.target.value, validateArea)}
-                onBlur={() => handleFieldBlur("area", validateArea)}
-                readOnly={!isAdmin}
-                error={area.touched && !!area.error}
-              />
-            </div>
-
-            {/* Bedrooms */}
-            <div className="space-y-2">
-              <Label>Bedrooms</Label>
-              <Input
-                type="number"
-                value={bedrooms}
-                onChange={(e) => setBedrooms(e.target.value)}
-                readOnly={!isAdmin}
-              />
-            </div>
-
-            {/* Bathrooms */}
-            <div className="space-y-2">
-              <Label>Bathrooms</Label>
-              <Input
-                type="number"
-                value={bathrooms}
-                onChange={(e) => setBathrooms(e.target.value)}
-                readOnly={!isAdmin}
-              />
-            </div>
-
-            {/* Status */}
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <StaggeredDropDown
-                value={status}
-                onChange={(val) => setStatus(val as PropertyStatus)}
-                disabled={!isAdmin}
-                options={[
-                  { value: "available", label: "Available" },
-                  { value: "under_offer", label: "Under Offer" },
-                  { value: "let", label: "Let" },
-                  { value: "sold", label: "Sold" },
-                  { value: "off_market", label: "Off Market" },
-                ]}
-              />
+        <div className="space-y-5">
+          {/* Property tab bar */}
+          <div className="border-b border-border">
+            <div className="flex gap-6 relative">
+              {propertyTabs.map((tab) => (
+                <button
+                  key={tab}
+                  className={`relative pb-3 text-sm font-medium transition-colors duration-150 ${
+                    propertyTab === tab
+                      ? "text-text"
+                      : "text-text-muted hover:text-text"
+                  }`}
+                  onClick={() => setPropertyTab(tab)}
+                >
+                  {tab}
+                  {propertyTab === tab && (
+                    <motion.div
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
+                      layoutId="property-tab-indicator"
+                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                    />
+                  )}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Description */}
-          <div className="space-y-2">
-            <Label>Description</Label>
-            <Textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-              readOnly={!isAdmin}
-            />
-          </div>
+          {/* Tab content */}
+          <AnimatePresence mode="wait">
+            {propertyTab === "Details" && (
+              <motion.div
+                key="details"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } }}
+                exit={{ opacity: 0, y: -8, transition: { duration: 0.15 } }}
+                className="space-y-6"
+              >
+                {formError && (
+                  <div className="rounded-lg bg-danger/10 p-4 text-danger text-sm">
+                    {formError}
+                  </div>
+                )}
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  {/* Title */}
+                  <div className="space-y-2 md:col-span-2">
+                    <Label className="flex items-center gap-1">
+                      Title <span className="text-danger">*</span>
+                    </Label>
+                    {title.touched && title.error && (
+                      <p className="text-xs text-danger">{title.error}</p>
+                    )}
+                    <Input
+                      value={title.value}
+                      onChange={(e) => handleFieldChange("title", e.target.value, validateTitle)}
+                      onBlur={() => handleFieldBlur("title", validateTitle)}
+                      readOnly={!isAdmin}
+                      error={title.touched && !!title.error}
+                    />
+                  </div>
+
+                  {/* Type */}
+                  <div className="space-y-2">
+                    <Label>Type</Label>
+                    <StaggeredDropDown
+                      value={type}
+                      onChange={(val) => setType(val as PropertyType)}
+                      disabled={!isAdmin}
+                      options={[
+                        { value: "house", label: "House" },
+                        { value: "apartment", label: "Apartment" },
+                        { value: "land", label: "Land" },
+                        { value: "commercial", label: "Commercial" },
+                        { value: "other", label: "Other" },
+                      ]}
+                    />
+                  </div>
+
+                  {/* Listing Type */}
+                  <div className="space-y-2">
+                    <Label>Listing</Label>
+                    <StaggeredDropDown
+                      value={listingType}
+                      onChange={(val) => setListingType(val as ListingType)}
+                      disabled={!isAdmin}
+                      options={[
+                        { value: "sale", label: "Sale" },
+                        { value: "rent", label: "Rent" },
+                      ]}
+                    />
+                  </div>
+
+                  {/* Price */}
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1">
+                      Price <span className="text-danger">*</span>
+                    </Label>
+                    <CurrencyInput
+                      value={price.value}
+                      onChange={(val) => isAdmin && handleFieldChange("price", val, validatePrice)}
+                      onBlur={() => handleFieldBlur("price", validatePrice)}
+                      currency={currency}
+                      onCurrencyChange={(c) => isAdmin && setCurrency(c)}
+                      placeholder="0"
+                      error={price.touched ? price.error : undefined}
+                      touched={price.touched}
+                      disabled={!isAdmin}
+                    />
+                  </div>
+
+                  {/* Location */}
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1">
+                      Location <span className="text-danger">*</span>
+                    </Label>
+                    {locationError && (
+                      <p className="text-xs text-danger">{locationError}</p>
+                    )}
+                    <StaggeredDropDown
+                      value={location}
+                      onChange={(val) => {
+                        setLocation(val);
+                        setLocationError(validateLocation(val));
+                      }}
+                      disabled={!isAdmin}
+                      placeholder="Select a location..."
+                      options={[
+                        { value: "", label: "Select a location..." },
+                        ...(locations?.map((loc) => ({ value: loc.name, label: loc.name })) ?? []),
+                      ]}
+                    />
+                  </div>
+
+                  {/* Area */}
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1">
+                      Area (m²) <span className="text-danger">*</span>
+                    </Label>
+                    {area.touched && area.error && (
+                      <p className="text-xs text-danger">{area.error}</p>
+                    )}
+                    <Input
+                      type="number"
+                      value={area.value}
+                      onChange={(e) => handleFieldChange("area", e.target.value, validateArea)}
+                      onBlur={() => handleFieldBlur("area", validateArea)}
+                      readOnly={!isAdmin}
+                      error={area.touched && !!area.error}
+                    />
+                  </div>
+
+                  {/* Bedrooms */}
+                  <div className="space-y-2">
+                    <Label>Bedrooms</Label>
+                    <Input
+                      type="number"
+                      value={bedrooms}
+                      onChange={(e) => setBedrooms(e.target.value)}
+                      readOnly={!isAdmin}
+                    />
+                  </div>
+
+                  {/* Bathrooms */}
+                  <div className="space-y-2">
+                    <Label>Bathrooms</Label>
+                    <Input
+                      type="number"
+                      value={bathrooms}
+                      onChange={(e) => setBathrooms(e.target.value)}
+                      readOnly={!isAdmin}
+                    />
+                  </div>
+
+                  {/* Status */}
+                  <div className="space-y-2">
+                    <Label>Status</Label>
+                    <StaggeredDropDown
+                      value={status}
+                      onChange={(val) => setStatus(val as PropertyStatus)}
+                      disabled={!isAdmin}
+                      options={[
+                        { value: "available", label: "Available" },
+                        { value: "under_offer", label: "Under Offer" },
+                        { value: "let", label: "Let" },
+                        { value: "sold", label: "Sold" },
+                        { value: "off_market", label: "Off Market" },
+                      ]}
+                    />
+                  </div>
+                </div>
+
+                {/* Description */}
+                <div className="space-y-2">
+                  <Label>Description</Label>
+                  <Textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    rows={3}
+                    readOnly={!isAdmin}
+                  />
+                </div>
+              </motion.div>
+            )}
+
+            {propertyTab === "Documentation" && selectedProperty && (
+              <motion.div
+                key="documentation"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } }}
+                exit={{ opacity: 0, y: -8, transition: { duration: 0.15 } }}
+              >
+                <DocumentManager
+                  propertyId={selectedProperty._id}
+                  folders={["mandates_to_sell", "contracts", "id_copies", "proof_of_funds"]}
+                />
+              </motion.div>
+            )}
+
+            {propertyTab === "Gallery" && (
+              <motion.div
+                key="gallery"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } }}
+                exit={{ opacity: 0, y: -8, transition: { duration: 0.15 } }}
+                className="space-y-2"
+              >
+                <Label className="flex items-center gap-1">
+                  Images <span className="text-danger">*</span>
+                </Label>
+                <ImageUpload
+                  images={images}
+                  onChange={handleImagesChange}
+                  minImages={2}
+                  maxImages={10}
+                  disabled={!isAdmin}
+                  error={imagesError}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </Modal>
 

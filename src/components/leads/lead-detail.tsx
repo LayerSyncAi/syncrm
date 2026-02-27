@@ -27,8 +27,11 @@ const PropertySuggestions = lazy(() =>
 const PropertyComparison = lazy(() =>
   import("./property-comparison").then((m) => ({ default: m.PropertyComparison }))
 );
+const DocumentManager = lazy(() =>
+  import("../documents/document-manager").then((m) => ({ default: m.DocumentManager }))
+);
 
-const tabs = ["Timeline", "Matched Properties", "Suggested", "Notes"] as const;
+const tabs = ["Timeline", "Documents", "Matched Properties", "Suggested", "Notes"] as const;
 
 // --- #18–25 animation variants ---
 
@@ -686,6 +689,23 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
               </motion.div>
             )}
           </Card>
+        </motion.div>
+      )}
+
+      {activeTab === "Documents" && (
+        <motion.div key="documents" variants={tabContentVariants} initial="initial" animate="animate" exit="exit">
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+              </div>
+            }
+          >
+            <DocumentManager
+              leadId={leadId}
+              folders={["lead_documentation", "id_copies", "proof_of_funds", "contracts", "mandates_to_sell"]}
+            />
+          </Suspense>
         </motion.div>
       )}
 
