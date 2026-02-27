@@ -82,13 +82,37 @@ function NavItem({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {/* Recommendation #2: Sliding active indicator pill */}
+      {/* Sliding active indicator pill */}
       {active && (
         <motion.div
           layoutId={pillId}
           className="absolute inset-0 rounded-[10px] bg-white/10"
           transition={{ type: "spring", stiffness: 350, damping: 30 }}
         />
+      )}
+
+      {/* Gradient underline — intense left, fades to nothing right */}
+      {active && (
+        <motion.div
+          layoutId={`${pillId}-underline`}
+          className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full"
+          style={{
+            background: "linear-gradient(to right, #eca400, rgba(236, 164, 0, 0.4) 50%, transparent)",
+          }}
+          transition={{ type: "spring", stiffness: 350, damping: 30 }}
+        >
+          {/* Glow effect */}
+          <motion.div
+            className="absolute inset-0 rounded-full"
+            style={{
+              background: "linear-gradient(to right, #eca400, transparent 60%)",
+              filter: "blur(3px)",
+              opacity: 0.5,
+            }}
+            animate={{ opacity: [0.3, 0.6, 0.3] }}
+            transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+          />
+        </motion.div>
       )}
 
       {/* Recommendation #1: Icon scales up when sidebar collapses */}
