@@ -3,28 +3,18 @@
 import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
 import Link from "next/link";
 import { useQuery, useMutation } from "convex/react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
-import { Table, TableCell, TableHead, TableRow } from "@/components/ui/table";
+import { DataTable, ColumnDef } from "@/components/ui/data-table";
 import { useRequireAuth } from "@/hooks/useAuth";
 import { leadToasts } from "@/lib/toast";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Eye, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
-
-const listVariants = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.04 } },
-};
-
-const rowVariants = {
-  hidden: { opacity: 0, x: -8 },
-  show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
-} as const;
 
 const BulkMatching = lazy(() =>
   import("@/components/leads/bulk-matching").then((m) => ({ default: m.BulkMatching }))
@@ -152,6 +142,126 @@ export default function LeadsPage() {
       return "";
     });
   }, []);
+
+  // Column definitions for DataTable
+  type Lead = NonNullable<typeof leads>[number];
+  const leadsColumns = useMemo<ColumnDef<Lead>[]>(
+    () => [
+      {
+        id: "contact",
+        header: "Contact",
+        accessor: (lead) => `${lead.fullName} ${lead.phone}`,
+        searchable: true,
+        cell: (lead) => (
+          <>
+            <Link
+              href={`/app/leads/${lead._id}`}
+              className="font-medium hover:text-primary"
+            >
+              {lead.fullName}
+            </Link>
+            <p className="text-xs text-text-muted">{lead.phone}</p>
+          </>
+        ),
+      },
+      {
+        id: "interest",
+        header: "Interest",
+        accessor: (lead) => lead.interestType,
+        searchable: true,
+        cell: (lead) => (
+          <span
+            className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+              lead.interestType === "buy"
+                ? "bg-primary/10 text-primary"
+                : "bg-info/10 text-info"
+            }`}
+          >
+            {lead.interestType === "buy" ? "Buy" : "Rent"}
+          </span>
+        ),
+      },
+      {
+        id: "score",
+        header: "Score",
+        accessor: (lead) => lead.score ?? null,
+        searchable: true,
+        headerContent: (
+          <button
+            onClick={toggleScoreSort}
+            className="inline-flex items-center gap-1 hover:text-primary transition-colors"
+          >
+            Score
+            {scoreSortDir === "" && <ArrowUpDown className="h-3 w-3 text-text-dim" />}
+            {scoreSortDir === "score_desc" && <ArrowDown className="h-3 w-3 text-primary" />}
+            {scoreSortDir === "score_asc" && <ArrowUp className="h-3 w-3 text-primary" />}
+          </button>
+        ),
+        cell: (lead) => <ScoreBadge score={lead.score} />,
+      },
+      {
+        id: "stage",
+        header: "Stage",
+        accessor: (lead) => lead.stageName,
+        searchable: true,
+        cell: (lead) => (
+          <StaggeredDropDown
+            value={lead.stageId}
+            onChange={(val) =>
+              handleStageChange(lead._id, val as Id<"pipelineStages">)
+            }
+            aria-label={`Update stage for ${lead.fullName}`}
+            portal
+            options={
+              stages?.map((stage) => ({
+                value: stage._id,
+                label: stage.name,
+              })) ?? []
+            }
+          />
+        ),
+      },
+      {
+        id: "owner",
+        header: "Owner",
+        accessor: (lead) => lead.ownerName,
+        searchable: true,
+        cell: (lead) => <>{lead.ownerName}</>,
+      },
+      {
+        id: "updated",
+        header: "Updated",
+        accessor: (lead) => formatDate(lead.updatedAt),
+        searchable: true,
+        cell: (lead) => <>{formatDate(lead.updatedAt)}</>,
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        cellClassName: "text-right",
+        headerClassName: "text-right",
+        cell: (lead) => (
+          <div className="flex justify-end">
+            <Tooltip content="View">
+              <Link
+                href={`/app/leads/${lead._id}`}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Button
+                  variant="secondary"
+                  className="action-btn h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
+                  style={{ transitionDelay: "0ms" }}
+                >
+                  <Eye className="h-4 w-4" />
+                </Button>
+              </Link>
+            </Tooltip>
+          </div>
+        ),
+      },
+    ],
+    [stages, scoreSortDir, toggleScoreSort, handleStageChange, formatDate]
+  );
 
   if (authLoading) {
     return (
@@ -287,112 +397,17 @@ export default function LeadsPage() {
         </div>
       </motion.div>
 
-      {leads === undefined ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-        </div>
-      ) : leads.length === 0 ? (
-        // #33: Empty state spring entrance
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ type: "spring", stiffness: 300, damping: 24 }}
-          className="text-center py-12"
-        >
-          <p className="text-text-muted">No leads found.</p>
+      <DataTable
+        columns={leadsColumns}
+        data={leads}
+        keyAccessor={(lead) => lead._id}
+        emptyMessage="No leads found."
+        emptyAction={
           <Link href="/app/leads/new">
-            <Button className="mt-4">Create your first lead</Button>
+            <Button>Create your first lead</Button>
           </Link>
-        </motion.div>
-      ) : (
-        <Table>
-          <thead>
-            <tr>
-              <TableHead>Contact</TableHead>
-              <TableHead>Interest</TableHead>
-              <TableHead>
-                <button
-                  onClick={toggleScoreSort}
-                  className="inline-flex items-center gap-1 hover:text-primary transition-colors"
-                >
-                  Score
-                  {scoreSortDir === "" && <ArrowUpDown className="h-3 w-3 text-text-dim" />}
-                  {scoreSortDir === "score_desc" && <ArrowDown className="h-3 w-3 text-primary" />}
-                  {scoreSortDir === "score_asc" && <ArrowUp className="h-3 w-3 text-primary" />}
-                </button>
-              </TableHead>
-              <TableHead>Stage</TableHead>
-              <TableHead>Owner</TableHead>
-              <TableHead>Updated</TableHead>
-              <TableHead>Actions</TableHead>
-            </tr>
-          </thead>
-          <motion.tbody variants={listVariants} initial="hidden" animate="show">
-            {leads.map((lead) => (
-              <motion.tr
-                key={lead._id}
-                variants={rowVariants}
-                className="group h-11 border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)]"
-              >
-                <TableCell>
-                  <Link
-                    href={`/app/leads/${lead._id}`}
-                    className="font-medium hover:text-primary"
-                  >
-                    {lead.fullName}
-                  </Link>
-                  <p className="text-xs text-text-muted">{lead.phone}</p>
-                </TableCell>
-                <TableCell>
-                  <span
-                    className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                      lead.interestType === "buy"
-                        ? "bg-primary/10 text-primary"
-                        : "bg-info/10 text-info"
-                    }`}
-                  >
-                    {lead.interestType === "buy" ? "Buy" : "Rent"}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <ScoreBadge score={lead.score} />
-                </TableCell>
-                <TableCell>
-                  <StaggeredDropDown
-                    value={lead.stageId}
-                    onChange={(val) =>
-                      handleStageChange(
-                        lead._id,
-                        val as Id<"pipelineStages">
-                      )
-                    }
-                    aria-label={`Update stage for ${lead.fullName}`}
-                    portal
-                    options={stages?.map((stage) => ({ value: stage._id, label: stage.name })) ?? []}
-                  />
-                </TableCell>
-                <TableCell>{lead.ownerName}</TableCell>
-                <TableCell>{formatDate(lead.updatedAt)}</TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end">
-                    <Tooltip content="View">
-                      <Link href={`/app/leads/${lead._id}`} onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          variant="secondary"
-                          className="action-btn h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
-                          style={{ transitionDelay: "0ms" }}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                    </Tooltip>
-                  </div>
-                </TableCell>
-              </motion.tr>
-            ))}
-          </motion.tbody>
-        </Table>
-      )}
+        }
+      />
 
       {bulkMatchingOpen && (
         <Suspense fallback={null}>

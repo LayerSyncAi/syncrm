@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef, lazy, Suspense } from "react";
 import Link from "next/link";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery } from "convex/react";
 import { motion, AnimatePresence, useMotionValue, animate } from "framer-motion";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
-import { Table, TableCell, TableHead, TableRow } from "@/components/ui/table";
+import { DataTable, ColumnDef } from "@/components/ui/data-table";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Eye, ExternalLink } from "lucide-react";
 import { useRequireAuth } from "@/hooks/useAuth";
@@ -48,16 +48,6 @@ const cardContainerVariants = {
 const cardItemVariants = {
   hidden: { opacity: 0, y: 16 },
   show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
-} as const;
-
-const listVariants = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.04 } },
-};
-
-const rowVariants = {
-  hidden: { opacity: 0, x: -8 },
-  show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
 } as const;
 
 const TaskDetailModal = lazy(() =>
@@ -190,17 +180,135 @@ export default function TasksPage() {
     }, 1600);
   }, []);
 
-  if (authLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return null;
-  }
+  const taskColumns: ColumnDef<TaskActivity>[] = useMemo(
+    () => [
+      {
+        id: "dateTime",
+        header: "Date/Time",
+        searchable: true,
+        accessor: (task) =>
+          task.scheduledAt
+            ? formatDateTime(task.scheduledAt)
+            : formatDateTime(task.createdAt),
+        cell: (task) => {
+          const overdue = isTaskOverdue(task);
+          return (
+            <div className="flex items-center gap-2 whitespace-nowrap">
+              {task.status === "todo" && task.scheduledAt && (
+                <DueDateRing scheduledAt={task.scheduledAt} createdAt={task.createdAt} />
+              )}
+              <span className={overdue ? "overdue-breathe text-danger font-medium" : ""}>
+                {task.scheduledAt
+                  ? formatDateTime(task.scheduledAt)
+                  : formatDateTime(task.createdAt)}
+              </span>
+            </div>
+          );
+        },
+      },
+      {
+        id: "title",
+        header: "Title",
+        searchable: true,
+        accessor: (task) => task.title,
+        cell: (task) => (
+          <div>
+            <p className="font-medium">{task.title}</p>
+            {task.description && (
+              <p className="text-xs text-text-muted line-clamp-1">
+                {task.description}
+              </p>
+            )}
+          </div>
+        ),
+      },
+      {
+        id: "type",
+        header: "Type",
+        searchable: true,
+        accessor: (task) => getActivityTypeLabel(task.type),
+        cell: (task) => (
+          <Badge className="bg-info/10 text-info">
+            {getActivityTypeLabel(task.type)}
+          </Badge>
+        ),
+      },
+      {
+        id: "lead",
+        header: "Lead",
+        searchable: true,
+        accessor: (task) => task.lead?.fullName ?? "Unknown",
+        cell: (task) =>
+          task.lead ? (
+            <div>
+              <p className="font-medium">{task.lead.fullName}</p>
+              <p className="text-xs text-text-muted">{task.lead.phone}</p>
+            </div>
+          ) : (
+            <span className="text-text-muted">Unknown</span>
+          ),
+      },
+      {
+        id: "status",
+        header: "Status",
+        searchable: true,
+        accessor: (task) => (task.status === "completed" ? "Completed" : "To Do"),
+        cell: (task) => {
+          const celebrating = celebratingIds.has(task._id);
+          return celebrating ? (
+            <div className="flex items-center gap-2">
+              <CelebrationCheck />
+              <span className="text-xs font-medium text-success">Done!</span>
+            </div>
+          ) : (
+            <Badge
+              className={
+                task.status === "completed"
+                  ? "bg-success/10 text-success"
+                  : "bg-warning/10 text-warning"
+              }
+            >
+              {task.status === "completed" ? "Completed" : "To Do"}
+            </Badge>
+          );
+        },
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        headerClassName: "text-right",
+        cellClassName: "text-right",
+        cell: (task) => (
+          <div className="flex justify-end gap-1.5">
+            <Tooltip content="View Details">
+              <Button
+                variant="secondary"
+                className="action-btn h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
+                style={{ transitionDelay: "0ms" }}
+                onClick={() => handleViewTask(task)}
+              >
+                <Eye className="h-4 w-4" />
+              </Button>
+            </Tooltip>
+            {task.lead && (
+              <Tooltip content="Open Lead">
+                <Link href={`/app/leads/${task.lead._id}`} onClick={(e) => e.stopPropagation()}>
+                  <Button
+                    variant="secondary"
+                    className="action-btn h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
+                    style={{ transitionDelay: "50ms" }}
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </Button>
+                </Link>
+              </Tooltip>
+            )}
+          </div>
+        ),
+      },
+    ],
+    [celebratingIds, handleViewTask]
+  );
 
   const { todoCount, completedCount } = useMemo(() => {
     if (!tasks) return { todoCount: 0, completedCount: 0 };
@@ -212,6 +320,18 @@ export default function TasksPage() {
     }
     return { todoCount: todo, completedCount: completed };
   }, [tasks]);
+
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="space-y-6">
@@ -283,129 +403,12 @@ export default function TasksPage() {
         </div>
       </Card>
 
-      {tasks === undefined ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-        </div>
-      ) : tasks.length === 0 ? (
-        <Card className="p-8 text-center">
-          <p className="text-text-muted">No tasks found matching your filters.</p>
-        </Card>
-      ) : (
-        <Table>
-          <thead>
-            <tr>
-              <TableHead>Date/Time</TableHead>
-              <TableHead>Title</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Lead</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Actions</TableHead>
-            </tr>
-          </thead>
-          <motion.tbody variants={listVariants} initial="hidden" animate="show">
-            {tasks.map((task) => {
-              const overdue = isTaskOverdue(task);
-              const celebrating = celebratingIds.has(task._id);
-              return (
-              <motion.tr
-                key={task._id}
-                variants={rowVariants}
-                layout
-                className={`group h-11 border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)] ${
-                  overdue ? "overdue-pulse" : ""
-                } ${celebrating ? "celebration-glow" : ""}`}
-              >
-                <TableCell className="whitespace-nowrap">
-                  <div className="flex items-center gap-2">
-                    {/* Due date proximity ring */}
-                    {task.status === "todo" && task.scheduledAt && (
-                      <DueDateRing scheduledAt={task.scheduledAt} createdAt={task.createdAt} />
-                    )}
-                    <span className={overdue ? "overdue-breathe text-danger font-medium" : ""}>
-                      {task.scheduledAt
-                        ? formatDateTime(task.scheduledAt)
-                        : formatDateTime(task.createdAt)}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div>
-                    <p className="font-medium">{task.title}</p>
-                    {task.description && (
-                      <p className="text-xs text-text-muted line-clamp-1">
-                        {task.description}
-                      </p>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge className="bg-info/10 text-info">
-                    {getActivityTypeLabel(task.type)}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  {task.lead ? (
-                    <div>
-                      <p className="font-medium">{task.lead.fullName}</p>
-                      <p className="text-xs text-text-muted">{task.lead.phone}</p>
-                    </div>
-                  ) : (
-                    <span className="text-text-muted">Unknown</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {/* Celebration checkmark or normal status badge */}
-                  {celebrating ? (
-                    <div className="flex items-center gap-2">
-                      <CelebrationCheck />
-                      <span className="text-xs font-medium text-success">Done!</span>
-                    </div>
-                  ) : (
-                    <Badge
-                      className={
-                        task.status === "completed"
-                          ? "bg-success/10 text-success"
-                          : "bg-warning/10 text-warning"
-                      }
-                    >
-                      {task.status === "completed" ? "Completed" : "To Do"}
-                    </Badge>
-                  )}
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-1.5">
-                    <Tooltip content="View Details">
-                      <Button
-                        variant="secondary"
-                        className="action-btn h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
-                        style={{ transitionDelay: "0ms" }}
-                        onClick={() => handleViewTask(task as TaskActivity)}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </Tooltip>
-                    {task.lead && (
-                      <Tooltip content="Open Lead">
-                        <Link href={`/app/leads/${task.lead._id}`} onClick={(e) => e.stopPropagation()}>
-                          <Button
-                            variant="secondary"
-                            className="action-btn h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
-                            style={{ transitionDelay: "50ms" }}
-                          >
-                            <ExternalLink className="h-4 w-4" />
-                          </Button>
-                        </Link>
-                      </Tooltip>
-                    )}
-                  </div>
-                </TableCell>
-              </motion.tr>
-              );
-            })}
-          </motion.tbody>
-        </Table>
-      )}
+      <DataTable
+        columns={taskColumns}
+        data={tasks}
+        keyAccessor={(task) => task._id}
+        emptyMessage="No tasks found."
+      />
 
       <AnimatePresence>
         {modalOpen && (

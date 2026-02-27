@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { useQuery, useMutation } from "convex/react";
-import { motion } from "framer-motion";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -11,22 +10,12 @@ import { Label } from "@/components/ui/label";
 import { Modal } from "@/components/ui/modal";
 import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 import { Textarea } from "@/components/ui/textarea";
-import { Table, TableCell, TableHead, TableRow } from "@/components/ui/table";
+import { DataTable, ColumnDef } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmDeleteDialog } from "@/components/common/confirm-delete-dialog";
 import { contactToasts } from "@/lib/toast";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Settings, Trash2 } from "lucide-react";
-
-const listVariants = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.04 } },
-};
-
-const rowVariants = {
-  hidden: { opacity: 0, x: -8 },
-  show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
-} as const;
 
 type ContactWithOwners = {
   _id: Id<"contacts">;
@@ -103,6 +92,120 @@ export default function ContactsPage() {
   const [ownerUserIds, setOwnerUserIds] = React.useState<Id<"users">[]>([]);
 
   const isAdmin = currentUser?.role === "admin";
+
+  const contactsColumns = React.useMemo<ColumnDef<ContactWithOwners>[]>(() => [
+    {
+      id: "name",
+      header: "Name",
+      accessor: (c) => c.name,
+      searchable: true,
+      cell: (c) => <p className="font-medium">{c.name}</p>,
+    },
+    {
+      id: "phone",
+      header: "Phone",
+      accessor: (c) => c.phone,
+      searchable: true,
+      cell: (c) => c.phone,
+    },
+    {
+      id: "email",
+      header: "Email",
+      accessor: (c) => c.email || "",
+      searchable: true,
+      cell: (c) => c.email || "-",
+    },
+    {
+      id: "company",
+      header: "Company",
+      accessor: (c) => c.company || "",
+      searchable: true,
+      cell: (c) => c.company || "-",
+    },
+    {
+      id: "owners",
+      header: "Owners",
+      accessor: (c) => c.ownerNames.join(", "),
+      searchable: true,
+      cell: (c) => (
+        <div className="flex flex-wrap gap-1">
+          {c.ownerNames.slice(0, 2).map((ownerName: string, i: number) => (
+            <Badge key={i} variant="secondary" className="text-xs">
+              {ownerName}
+            </Badge>
+          ))}
+          {c.ownerNames.length > 2 && (
+            <Badge variant="secondary" className="text-xs">
+              +{c.ownerNames.length - 2}
+            </Badge>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: "action",
+      header: "Action",
+      headerClassName: "text-right",
+      cellClassName: "text-right",
+      cell: (contact) => (
+        <div className="flex justify-end gap-1.5">
+          {contact.phone && (
+            <Tooltip content="Call">
+              <a href={`tel:${contact.phone}`} onClick={(e) => e.stopPropagation()}>
+                <Button
+                  variant="secondary"
+                  className="action-btn h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
+                  style={{ transitionDelay: "0ms" }}
+                >
+                  <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                    <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+                  </svg>
+                </Button>
+              </a>
+            </Tooltip>
+          )}
+          {contact.email && (
+            <Tooltip content="Email">
+              <a href={`mailto:${contact.email}`} onClick={(e) => e.stopPropagation()}>
+                <Button
+                  variant="secondary"
+                  className="action-btn h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
+                  style={{ transitionDelay: "50ms" }}
+                >
+                  <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                    <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                    <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                  </svg>
+                </Button>
+              </a>
+            </Tooltip>
+          )}
+          <Tooltip content="Edit">
+            <Button
+              variant="secondary"
+              className="action-btn h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
+              style={{ transitionDelay: "100ms" }}
+              onClick={() => setSelectedContact(contact)}
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+          </Tooltip>
+          {(isAdmin || (currentUser && contact.ownerUserIds.includes(currentUser._id))) && (
+            <Tooltip content="Delete">
+              <Button
+                variant="secondary"
+                className="action-btn-danger h-9 w-9 p-0 text-red-500 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
+                style={{ transitionDelay: "150ms" }}
+                onClick={() => setDeleteTarget(contact)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </Tooltip>
+          )}
+        </div>
+      ),
+    },
+  ], [currentUser, isAdmin]);
 
   // Validation functions
   const validateName = (value: string): string | undefined => {
@@ -341,126 +444,13 @@ export default function ContactsPage() {
         </div>
       </div>
 
-      <Table>
-        <thead>
-          <tr>
-            <TableHead>Name</TableHead>
-            <TableHead>Phone</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Company</TableHead>
-            <TableHead>Owners</TableHead>
-            <TableHead className="text-right">Action</TableHead>
-          </tr>
-        </thead>
-        {!contacts ? (
-          <tbody>
-            <TableRow>
-              <TableCell colSpan={6} className="text-center text-text-muted">
-                Loading contacts...
-              </TableCell>
-            </TableRow>
-          </tbody>
-        ) : contacts.length === 0 ? (
-          <tbody>
-            <TableRow>
-              <TableCell colSpan={6} className="text-center text-text-muted">
-                {debouncedSearch || ownerFilter
-                  ? "No contacts match your filters"
-                  : "No contacts yet. Create one to get started."}
-              </TableCell>
-            </TableRow>
-          </tbody>
-        ) : (
-          <motion.tbody variants={listVariants} initial="hidden" animate="show" key="data">
-            {contacts.map((contact: ContactWithOwners) => (
-              <motion.tr
-                key={contact._id}
-                variants={rowVariants}
-                className="group h-11 cursor-pointer border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)]"
-              >
-                <TableCell>
-                  <p className="font-medium">{contact.name}</p>
-                </TableCell>
-                <TableCell>{contact.phone}</TableCell>
-                <TableCell>{contact.email || "-"}</TableCell>
-                <TableCell>{contact.company || "-"}</TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap gap-1">
-                    {contact.ownerNames.slice(0, 2).map((ownerName: string, i: number) => (
-                      <Badge key={i} variant="secondary" className="text-xs">
-                        {ownerName}
-                      </Badge>
-                    ))}
-                    {contact.ownerNames.length > 2 && (
-                      <Badge variant="secondary" className="text-xs">
-                        +{contact.ownerNames.length - 2}
-                      </Badge>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-1.5">
-                    {/* Quick action fan-out buttons */}
-                    {contact.phone && (
-                      <Tooltip content="Call">
-                        <a href={`tel:${contact.phone}`} onClick={(e) => e.stopPropagation()}>
-                          <Button
-                            variant="secondary"
-                            className="action-btn h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
-                            style={{ transitionDelay: "0ms" }}
-                          >
-                            <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-                              <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
-                            </svg>
-                          </Button>
-                        </a>
-                      </Tooltip>
-                    )}
-                    {contact.email && (
-                      <Tooltip content="Email">
-                        <a href={`mailto:${contact.email}`} onClick={(e) => e.stopPropagation()}>
-                          <Button
-                            variant="secondary"
-                            className="action-btn h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
-                            style={{ transitionDelay: "50ms" }}
-                          >
-                            <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-                              <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
-                              <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
-                            </svg>
-                          </Button>
-                        </a>
-                      </Tooltip>
-                    )}
-                    <Tooltip content="Edit">
-                      <Button
-                        variant="secondary"
-                        className="action-btn h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
-                        style={{ transitionDelay: "100ms" }}
-                        onClick={() => setSelectedContact(contact)}
-                      >
-                        <Settings className="h-4 w-4" />
-                      </Button>
-                    </Tooltip>
-                    {(isAdmin || contact.ownerUserIds.includes(currentUser._id)) && (
-                      <Tooltip content="Delete">
-                        <Button
-                          variant="secondary"
-                          className="action-btn-danger h-9 w-9 p-0 text-red-500 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
-                          style={{ transitionDelay: "150ms" }}
-                          onClick={() => setDeleteTarget(contact)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </Tooltip>
-                    )}
-                  </div>
-                </TableCell>
-              </motion.tr>
-            ))}
-          </motion.tbody>
-        )}
-      </Table>
+      <DataTable
+        columns={contactsColumns}
+        data={contacts}
+        keyAccessor={(c) => c._id}
+        emptyMessage={debouncedSearch || ownerFilter ? "No contacts match your filters" : "No contacts yet. Create one to get started."}
+        rowClassName="cursor-pointer"
+      />
 
       {/* Create/Edit Modal */}
       <Modal
