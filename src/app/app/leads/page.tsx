@@ -14,7 +14,7 @@ import { Table, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { useRequireAuth } from "@/hooks/useAuth";
 import { leadToasts } from "@/lib/toast";
 import { Tooltip } from "@/components/ui/tooltip";
-import { Eye } from "lucide-react";
+import { Eye, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 
 const listVariants = {
   hidden: {},
@@ -30,6 +30,34 @@ const BulkMatching = lazy(() =>
   import("@/components/leads/bulk-matching").then((m) => ({ default: m.BulkMatching }))
 );
 
+function ScoreBadge({ score }: { score: number | undefined }) {
+  if (score === undefined || score === null) {
+    return (
+      <span className="inline-flex items-center rounded-full bg-border px-2 py-0.5 text-xs text-text-dim">
+        --
+      </span>
+    );
+  }
+
+  const color =
+    score >= 70
+      ? "bg-success/15 text-success"
+      : score >= 40
+        ? "bg-warning/15 text-warning"
+        : "bg-danger/15 text-danger";
+
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${color}`}>
+      <span
+        className={`inline-block h-1.5 w-1.5 rounded-full ${
+          score >= 70 ? "bg-success" : score >= 40 ? "bg-warning" : "bg-danger"
+        }`}
+      />
+      {score}
+    </span>
+  );
+}
+
 export default function LeadsPage() {
   const { user, isLoading: authLoading, isAdmin } = useRequireAuth();
 
@@ -39,8 +67,12 @@ export default function LeadsPage() {
   const [areaFilter, setAreaFilter] = useState("");
   const [searchFilter, setSearchFilter] = useState("");
   const [ownerFilter, setOwnerFilter] = useState<string>("");
+  const [scoreFilter, setScoreFilter] = useState<string>("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [debouncedArea, setDebouncedArea] = useState("");
+
+  // Sort state
+  const [scoreSortDir, setScoreSortDir] = useState<"" | "score_asc" | "score_desc">("");
 
   // Bulk matching modal state
   const [bulkMatchingOpen, setBulkMatchingOpen] = useState(false);
@@ -55,6 +87,17 @@ export default function LeadsPage() {
     const timer = setTimeout(() => setDebouncedArea(areaFilter), 300);
     return () => clearTimeout(timer);
   }, [areaFilter]);
+
+  // Derive score range from filter
+  const scoreRange = useMemo(() => {
+    switch (scoreFilter) {
+      case "high": return { scoreMin: 70, scoreMax: undefined };
+      case "medium": return { scoreMin: 40, scoreMax: 69 };
+      case "low": return { scoreMin: 0, scoreMax: 39 };
+      case "unscored": return { scoreMin: 0, scoreMax: 0 };
+      default: return { scoreMin: undefined, scoreMax: undefined };
+    }
+  }, [scoreFilter]);
 
   // Queries
   const stages = useQuery(api.stages.list);
@@ -71,6 +114,9 @@ export default function LeadsPage() {
     preferredAreaKeyword: debouncedArea || undefined,
     q: debouncedSearch || undefined,
     ownerUserId: ownerFilter ? (ownerFilter as Id<"users">) : undefined,
+    scoreMin: scoreRange.scoreMin,
+    scoreMax: scoreRange.scoreMax,
+    sortBy: scoreSortDir || undefined,
   });
 
   // Mutations
@@ -98,6 +144,14 @@ export default function LeadsPage() {
       year: "numeric",
     });
   };
+
+  const toggleScoreSort = useCallback(() => {
+    setScoreSortDir((prev) => {
+      if (prev === "") return "score_desc";
+      if (prev === "score_desc") return "score_asc";
+      return "";
+    });
+  }, []);
 
   if (authLoading) {
     return (
@@ -163,7 +217,7 @@ export default function LeadsPage() {
         transition={{ type: "spring", stiffness: 300, damping: 24, delay: 0.06 }}
         className="rounded-[12px] border border-border-strong bg-card-bg p-4"
       >
-        <div className="grid gap-3 md:grid-cols-4 xl:grid-cols-5">
+        <div className="grid gap-3 md:grid-cols-4 xl:grid-cols-6">
           <div className="space-y-2">
             <Label>Stage</Label>
             <StaggeredDropDown
@@ -184,6 +238,20 @@ export default function LeadsPage() {
                 { value: "", label: "Rent / Buy" },
                 { value: "rent", label: "Rent" },
                 { value: "buy", label: "Buy" },
+              ]}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Lead Score</Label>
+            <StaggeredDropDown
+              value={scoreFilter}
+              onChange={(val) => setScoreFilter(val)}
+              options={[
+                { value: "", label: "All scores" },
+                { value: "high", label: "Hot (70+)" },
+                { value: "medium", label: "Warm (40–69)" },
+                { value: "low", label: "Cold (0–39)" },
+                { value: "unscored", label: "Not scored" },
               ]}
             />
           </div>
@@ -242,7 +310,17 @@ export default function LeadsPage() {
             <tr>
               <TableHead>Contact</TableHead>
               <TableHead>Interest</TableHead>
-              <TableHead>Preferred Areas</TableHead>
+              <TableHead>
+                <button
+                  onClick={toggleScoreSort}
+                  className="inline-flex items-center gap-1 hover:text-primary transition-colors"
+                >
+                  Score
+                  {scoreSortDir === "" && <ArrowUpDown className="h-3 w-3 text-text-dim" />}
+                  {scoreSortDir === "score_desc" && <ArrowDown className="h-3 w-3 text-primary" />}
+                  {scoreSortDir === "score_asc" && <ArrowUp className="h-3 w-3 text-primary" />}
+                </button>
+              </TableHead>
               <TableHead>Stage</TableHead>
               <TableHead>Owner</TableHead>
               <TableHead>Updated</TableHead>
@@ -277,11 +355,7 @@ export default function LeadsPage() {
                   </span>
                 </TableCell>
                 <TableCell>
-                  <p className="text-sm text-text-muted max-w-[150px] truncate">
-                    {lead.preferredAreas.length > 0
-                      ? lead.preferredAreas.join(", ")
-                      : "None specified"}
-                  </p>
+                  <ScoreBadge score={lead.score} />
                 </TableCell>
                 <TableCell>
                   <StaggeredDropDown

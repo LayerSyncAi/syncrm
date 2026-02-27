@@ -134,6 +134,88 @@ export const computeScorePreview = query({
   },
 });
 
+export const getScoreBreakdown = query({
+  args: { leadId: v.id("leads") },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserWithOrg(ctx);
+    const lead = await ctx.db.get(args.leadId);
+    if (!lead) return null;
+    if (lead.orgId && lead.orgId !== user.orgId) return null;
+
+    // Get org's scoring config
+    const configs = await ctx.db
+      .query("leadScoreConfig")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
+    const criteria =
+      configs.length > 0
+        ? configs.sort((a, b) => b.updatedAt - a.updatedAt)[0].criteria
+        : DEFAULT_CRITERIA;
+
+    const activities = await ctx.db
+      .query("activities")
+      .withIndex("by_lead", (q) => q.eq("leadId", args.leadId))
+      .collect();
+
+    const now = Date.now();
+    const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+
+    const breakdown: Array<{ key: string; label: string; points: number; maxPoints: number; met: boolean }> = [];
+    let totalScore = 0;
+    let maxPossible = 0;
+
+    for (const criterion of criteria) {
+      if (!criterion.enabled) continue;
+
+      maxPossible += criterion.weight;
+      let met = false;
+      switch (criterion.key) {
+        case "has_email":
+          met = !!lead.email && lead.email.trim().length > 0;
+          break;
+        case "has_budget":
+          met = lead.budgetMin !== undefined || lead.budgetMax !== undefined;
+          break;
+        case "has_preferred_areas":
+          met = lead.preferredAreas.length > 0;
+          break;
+        case "has_notes":
+          met = lead.notes.trim().length > 0;
+          break;
+        case "activity_count":
+          met = activities.length >= (criterion.threshold || 0);
+          break;
+        case "budget_min":
+          met = (lead.budgetMin || 0) >= (criterion.threshold || 0);
+          break;
+        case "recent_activity":
+          met = activities.some((a) => a.createdAt >= sevenDaysAgo);
+          break;
+        default:
+          break;
+      }
+
+      const points = met ? criterion.weight : 0;
+      totalScore += points;
+      breakdown.push({
+        key: criterion.key,
+        label: criterion.label,
+        points,
+        maxPoints: criterion.weight,
+        met,
+      });
+    }
+
+    return {
+      totalScore,
+      maxPossible,
+      breakdown,
+      lastScoredAt: lead.lastScoredAt,
+      storedScore: lead.score,
+    };
+  },
+});
+
 export const recomputeAllScores = mutation({
   handler: async (ctx) => {
     const user = await requireAdmin(ctx);

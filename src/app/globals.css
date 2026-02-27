@@ -290,3 +290,36 @@ a {
 .action-btn-danger:hover {
   @apply bg-red-500 text-white border-red-500;
 }
+
+/* Sidebar active-tab underline: shimmer sweeps left → right */
+@keyframes sidebar-underline-sweep {
+  0% {
+    background-position: -100% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.sidebar-underline {
+  background: linear-gradient(
+    to right,
+    #eca400,
+    rgba(236, 164, 0, 0.4) 40%,
+    transparent 80%
+  );
+  background-size: 100% 100%;
+}
+
+.sidebar-underline-glow {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(236, 164, 0, 0.7) 30%,
+    #eca400 50%,
+    rgba(236, 164, 0, 0.7) 70%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: sidebar-underline-sweep 2.5s ease-in-out infinite;
+}

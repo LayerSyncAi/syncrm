@@ -82,13 +82,24 @@ function NavItem({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {/* Recommendation #2: Sliding active indicator pill */}
+      {/* Sliding active indicator pill */}
       {active && (
         <motion.div
           layoutId={pillId}
           className="absolute inset-0 rounded-[10px] bg-white/10"
           transition={{ type: "spring", stiffness: 350, damping: 30 }}
         />
+      )}
+
+      {/* Gradient underline — intense left, fades right, with sweeping glow */}
+      {active && (
+        <motion.div
+          layoutId={`${pillId}-underline`}
+          className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full sidebar-underline"
+          transition={{ type: "spring", stiffness: 350, damping: 30 }}
+        >
+          <div className="absolute inset-0 rounded-full sidebar-underline-glow" style={{ filter: "blur(3px)" }} />
+        </motion.div>
       )}
 
       {/* Recommendation #1: Icon scales up when sidebar collapses */}
@@ -136,6 +147,8 @@ function NavItem({
 
 export const Sidebar = memo(function Sidebar({ isAdmin, collapsed, onToggle, orgName }: SidebarProps) {
   const pathname = usePathname();
+  const [ioExpanded, setIoExpanded] = useState(false);
+  const [adminExpanded, setAdminExpanded] = useState(false);
 
   return (
     <aside
@@ -174,53 +187,114 @@ export const Sidebar = memo(function Sidebar({ isAdmin, collapsed, onToggle, org
         ))}
       </nav>
       <div className="mt-4 space-y-1 border-t border-white/20 pt-4">
-        <AnimatePresence>
-          {!collapsed && (
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.12 }}
-              className="px-3 text-[11px] font-medium uppercase tracking-[0.14em] text-white/70"
-            >
-              Import / Export
-            </motion.p>
-          )}
-        </AnimatePresence>
-        {importExportItems.map((item) => (
-          <NavItem
-            key={item.href}
-            item={item}
-            active={pathname.startsWith(item.href)}
-            collapsed={collapsed}
-            pillId="nav-pill-io"
-          />
-        ))}
-      </div>
-      {isAdmin ? (
-        <div className="mt-4 space-y-1 border-t border-white/20 pt-4">
-          <AnimatePresence>
-            {!collapsed && (
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.12 }}
-                className="px-3 text-[11px] font-medium uppercase tracking-[0.14em] text-white/70"
-              >
-                Admin
-              </motion.p>
-            )}
-          </AnimatePresence>
-          {adminItems.map((item) => (
+        {collapsed ? (
+          /* When sidebar is collapsed, show items directly (with hover tooltips) */
+          importExportItems.map((item) => (
             <NavItem
               key={item.href}
               item={item}
               active={pathname.startsWith(item.href)}
               collapsed={collapsed}
-              pillId="nav-pill-admin"
+              pillId="nav-pill-io"
             />
-          ))}
+          ))
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => setIoExpanded((p) => !p)}
+              className="flex w-full items-center justify-between rounded-[10px] px-3 py-1.5 transition-colors duration-150 hover:bg-white/10"
+            >
+              <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/70">
+                Import / Export
+              </span>
+              <motion.div
+                animate={{ rotate: ioExpanded ? 180 : 0 }}
+                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              >
+                <ChevronRight className="h-3 w-3 rotate-90 text-white/50" />
+              </motion.div>
+            </button>
+            <AnimatePresence initial={false}>
+              {ioExpanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="overflow-hidden"
+                >
+                  <div className="space-y-1">
+                    {importExportItems.map((item) => (
+                      <NavItem
+                        key={item.href}
+                        item={item}
+                        active={pathname.startsWith(item.href)}
+                        collapsed={collapsed}
+                        pillId="nav-pill-io"
+                      />
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </>
+        )}
+      </div>
+      {isAdmin ? (
+        <div className="mt-4 space-y-1 border-t border-white/20 pt-4">
+          {collapsed ? (
+            adminItems.map((item) => (
+              <NavItem
+                key={item.href}
+                item={item}
+                active={pathname.startsWith(item.href)}
+                collapsed={collapsed}
+                pillId="nav-pill-admin"
+              />
+            ))
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => setAdminExpanded((p) => !p)}
+                className="flex w-full items-center justify-between rounded-[10px] px-3 py-1.5 transition-colors duration-150 hover:bg-white/10"
+              >
+                <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/70">
+                  Admin
+                </span>
+                <motion.div
+                  animate={{ rotate: adminExpanded ? 180 : 0 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                >
+                  <ChevronRight className="h-3 w-3 rotate-90 text-white/50" />
+                </motion.div>
+              </button>
+              <AnimatePresence initial={false}>
+                {adminExpanded && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2, ease: "easeOut" }}
+                    className="overflow-hidden"
+                  >
+                    <div className="space-y-1">
+                      {adminItems.map((item) => (
+                        <NavItem
+                          key={item.href}
+                          item={item}
+                          active={pathname.startsWith(item.href)}
+                          collapsed={collapsed}
+                          pillId="nav-pill-admin"
+                        />
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </>
+          )}
         </div>
       ) : null}
     </aside>

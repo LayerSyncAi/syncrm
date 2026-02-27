@@ -180,11 +180,15 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
   // Timeline celebration state
   const [celebratingIds, setCelebratingIds] = useState<Set<string>>(new Set());
 
+  // Score breakdown expand state
+  const [scoreExpanded, setScoreExpanded] = useState(false);
+
   // Queries - conditionally skip properties query when drawer is closed
   const leadData = useQuery(api.leads.getById, { leadId });
   const stages = useQuery(api.stages.list);
   const activities = useQuery(api.activities.listForLead, { leadId });
   const matches = useQuery(api.matches.listForLead, { leadId });
+  const scoreBreakdown = useQuery(api.leadScoring.getScoreBreakdown, { leadId });
   // Load properties when attach drawer or property view modal is open
   const properties = useQuery(api.properties.list, (drawerOpen || viewPropertyId) ? {} : "skip");
   const viewProperty = viewPropertyId ? properties?.find((p) => p._id === viewPropertyId) : null;
@@ -476,26 +480,108 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
               </Button>
             </div>
           </div>
-          <div className="min-w-[200px]">
-            <div className="flex items-center justify-between text-xs text-text-muted">
-              <span>Stage progress</span>
-              <span>{stageProgress}%</span>
+          <div className="min-w-[200px] space-y-4">
+            <div>
+              <div className="flex items-center justify-between text-xs text-text-muted">
+                <span>Stage progress</span>
+                <span>{stageProgress}%</span>
+              </div>
+              {/* #20: Stage progress bar with spring fill + shimmer */}
+              <div className="mt-2 h-2 rounded-full bg-border overflow-hidden">
+                <motion.div
+                  className={`h-2 rounded-full relative overflow-hidden ${
+                    lead.closedAt && stage?.terminalOutcome === "lost"
+                      ? "bg-danger"
+                      : "bg-primary"
+                  }`}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${stageProgress}%` }}
+                  transition={{ type: "spring", stiffness: 80, damping: 20, delay: 0.3 }}
+                >
+                  <div className="shimmer-overlay" />
+                </motion.div>
+              </div>
             </div>
-            {/* #20: Stage progress bar with spring fill + shimmer */}
-            <div className="mt-2 h-2 rounded-full bg-border overflow-hidden">
-              <motion.div
-                className={`h-2 rounded-full relative overflow-hidden ${
-                  lead.closedAt && stage?.terminalOutcome === "lost"
-                    ? "bg-danger"
-                    : "bg-primary"
-                }`}
-                initial={{ width: 0 }}
-                animate={{ width: `${stageProgress}%` }}
-                transition={{ type: "spring", stiffness: 80, damping: 20, delay: 0.3 }}
-              >
-                <div className="shimmer-overlay" />
-              </motion.div>
-            </div>
+            {/* Lead score with expandable breakdown */}
+            {scoreBreakdown && (
+              <div>
+                <button
+                  onClick={() => setScoreExpanded((p) => !p)}
+                  className="w-full text-left"
+                >
+                  <div className="flex items-center justify-between text-xs text-text-muted">
+                    <span className="flex items-center gap-1.5">
+                      Lead Score
+                      <svg
+                        className={`h-3 w-3 transition-transform duration-200 ${scoreExpanded ? "rotate-180" : ""}`}
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                      </svg>
+                    </span>
+                    <span
+                      className={`font-semibold ${
+                        scoreBreakdown.totalScore >= 70
+                          ? "text-success"
+                          : scoreBreakdown.totalScore >= 40
+                            ? "text-warning"
+                            : "text-danger"
+                      }`}
+                    >
+                      {scoreBreakdown.totalScore}/{scoreBreakdown.maxPossible}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 h-2 rounded-full bg-border overflow-hidden">
+                    <motion.div
+                      className={`h-2 rounded-full relative overflow-hidden ${
+                        scoreBreakdown.totalScore >= 70
+                          ? "bg-success"
+                          : scoreBreakdown.totalScore >= 40
+                            ? "bg-warning"
+                            : "bg-danger"
+                      }`}
+                      initial={{ width: 0 }}
+                      animate={{
+                        width: `${scoreBreakdown.maxPossible > 0 ? (scoreBreakdown.totalScore / scoreBreakdown.maxPossible) * 100 : 0}%`,
+                      }}
+                      transition={{ type: "spring", stiffness: 80, damping: 20, delay: 0.5 }}
+                    >
+                      <div className="shimmer-overlay" />
+                    </motion.div>
+                  </div>
+                </button>
+                <AnimatePresence>
+                  {scoreExpanded && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2, ease: "easeOut" }}
+                      className="overflow-hidden"
+                    >
+                      <div className="mt-2 space-y-1">
+                        {scoreBreakdown.breakdown.map((item) => (
+                          <div key={item.key} className="flex items-center justify-between text-xs">
+                            <span className="flex items-center gap-1.5 text-text-muted">
+                              {item.met ? (
+                                <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" />
+                              ) : (
+                                <span className="inline-block h-1.5 w-1.5 rounded-full bg-border" />
+                              )}
+                              {item.label}
+                            </span>
+                            <span className={item.met ? "font-medium text-success" : "text-text-dim"}>
+                              {item.points}/{item.maxPoints}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
           </div>
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-3">

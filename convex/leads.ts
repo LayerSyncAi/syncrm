@@ -92,6 +92,9 @@ export const list = query({
     preferredAreaKeyword: v.optional(v.string()),
     q: v.optional(v.string()),
     ownerUserId: v.optional(v.id("users")),
+    scoreMin: v.optional(v.number()),
+    scoreMax: v.optional(v.number()),
+    sortBy: v.optional(v.union(v.literal("score_asc"), v.literal("score_desc"))),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserWithOrg(ctx);
@@ -135,6 +138,13 @@ export const list = query({
           return false;
         }
       }
+      // Score range filtering
+      if (args.scoreMin !== undefined) {
+        if ((lead.score ?? 0) < args.scoreMin) return false;
+      }
+      if (args.scoreMax !== undefined) {
+        if ((lead.score ?? 0) > args.scoreMax) return false;
+      }
       return true;
     });
 
@@ -146,7 +156,7 @@ export const list = query({
     const stageMap = new Map(stages.map((s) => [s._id, s]));
     const userMap = new Map(users.map((u) => [u._id, u]));
 
-    return filtered.map((lead) => {
+    const enriched = filtered.map((lead) => {
       const owner = userMap.get(lead.ownerUserId);
       const stage = stageMap.get(lead.stageId);
       return {
@@ -156,6 +166,15 @@ export const list = query({
         stageOrder: stage?.order ?? 0,
       };
     });
+
+    // Sort by score if requested
+    if (args.sortBy === "score_desc") {
+      enriched.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+    } else if (args.sortBy === "score_asc") {
+      enriched.sort((a, b) => (a.score ?? 0) - (b.score ?? 0));
+    }
+
+    return enriched;
   },
 });
 
@@ -581,6 +600,125 @@ export const dashboardStats = query({
       },
       stageBreakdown,
       monthlyProgress: overallProgress,
+    };
+  },
+});
+
+export const dashboardScoreStats = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUserWithOrg(ctx);
+    const isAdmin = user.role === "admin";
+
+    let scoped = await ctx.db
+      .query("leads")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
+
+    if (!isAdmin) {
+      scoped = scoped.filter((l) => l.ownerUserId === user._id);
+    }
+
+    const activeLeads = scoped.filter((l) => !l.isArchived);
+
+    // Score distribution buckets: 0-19 (Cold), 20-39 (Cool), 40-59 (Warm), 60-79 (Hot), 80-100 (On Fire)
+    const distribution = [
+      { label: "Cold", range: "0–19", min: 0, max: 19, count: 0 },
+      { label: "Cool", range: "20–39", min: 20, max: 39, count: 0 },
+      { label: "Warm", range: "40–59", min: 40, max: 59, count: 0 },
+      { label: "Hot", range: "60–79", min: 60, max: 79, count: 0 },
+      { label: "On Fire", range: "80–100", min: 80, max: 100, count: 0 },
+    ];
+
+    let scoredCount = 0;
+    let totalScore = 0;
+
+    for (const lead of activeLeads) {
+      const score = lead.score ?? 0;
+      if (lead.score !== undefined) {
+        scoredCount++;
+        totalScore += score;
+      }
+      for (const bucket of distribution) {
+        if (score >= bucket.min && score <= bucket.max) {
+          bucket.count++;
+          break;
+        }
+      }
+    }
+
+    // Average score by stage
+    const stages = await ctx.db
+      .query("pipelineStages")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
+    stages.sort((a, b) => a.order - b.order);
+
+    const stageScoreMap = new Map<string, { total: number; count: number }>();
+    for (const lead of activeLeads) {
+      const entry = stageScoreMap.get(lead.stageId) ?? { total: 0, count: 0 };
+      entry.total += lead.score ?? 0;
+      entry.count++;
+      stageScoreMap.set(lead.stageId, entry);
+    }
+
+    const avgScoreByStage = stages.map((stage) => {
+      const entry = stageScoreMap.get(stage._id);
+      return {
+        id: stage._id,
+        name: stage.name,
+        avgScore: entry && entry.count > 0 ? Math.round(entry.total / entry.count) : 0,
+        count: entry?.count ?? 0,
+      };
+    });
+
+    // Top unworked leads: high score but no activity in the last 7 days
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const openLeads = activeLeads.filter((l) => !l.closedAt);
+
+    // Fetch activities for open leads to find unworked ones
+    const leadActivityMap = new Map<string, number>();
+    for (const lead of openLeads) {
+      const activities = await ctx.db
+        .query("activities")
+        .withIndex("by_lead", (q) => q.eq("leadId", lead._id))
+        .collect();
+      const recentCount = activities.filter((a) => a.createdAt >= sevenDaysAgo).length;
+      leadActivityMap.set(lead._id, recentCount);
+    }
+
+    const users = await ctx.db
+      .query("users")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
+    const userMap = new Map(users.map((u) => [u._id, u]));
+
+    const topUnworked = openLeads
+      .filter((l) => (leadActivityMap.get(l._id) ?? 0) === 0)
+      .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+      .slice(0, 5)
+      .map((l) => {
+        const owner = userMap.get(l.ownerUserId);
+        return {
+          _id: l._id,
+          fullName: l.fullName,
+          score: l.score ?? 0,
+          ownerName: owner?.fullName || owner?.name || owner?.email || "Unknown",
+          lastScoredAt: l.lastScoredAt,
+        };
+      });
+
+    return {
+      distribution: distribution.map((d) => ({
+        label: d.label,
+        range: d.range,
+        count: d.count,
+      })),
+      avgScoreByStage,
+      topUnworked,
+      overallAvg: scoredCount > 0 ? Math.round(totalScore / scoredCount) : 0,
+      scoredCount,
+      totalActive: activeLeads.length,
     };
   },
 });
