@@ -700,7 +700,7 @@ export default function LandingPage() {
           <motion.p
             variants={fadeUp}
             custom={2}
-            className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-white/70"
+            className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-white"
           >
             Join real estate teams who use SynCRM to stay organized, collaborate
             better, and close deals faster. Set up your workspace in minutes.
