@@ -91,13 +91,18 @@ export function Topbar({ userName, userEmail, orgName, userTimezone }: TopbarPro
           : "border-border bg-card-bg"
       )}
     >
-      <div className="flex items-center gap-4">
+      <div className="flex min-w-0 flex-1 items-center gap-4">
         <h1 className="text-lg font-semibold">{title}</h1>
         <span className="rounded-full border border-border-strong px-3 py-1 text-xs text-text-muted">
           Live
         </span>
       </div>
-      <div className="flex items-center gap-3">
+      {orgName && (
+        <div className="hidden flex-1 items-center justify-center sm:flex">
+          <span className="text-sm font-medium text-text-muted">{orgName}</span>
+        </div>
+      )}
+      <div className="flex min-w-0 flex-1 items-center justify-end gap-3">
         <div className="relative">
           <button
             className="flex items-center gap-2 rounded-[10px] border border-border-strong px-3 py-2 text-sm text-text"
