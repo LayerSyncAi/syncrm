@@ -160,10 +160,11 @@ export default function NewLeadPage() {
   const stages = useQuery(api.stages.list);
   const locations = useQuery(api.locations.list);
   const users = useQuery(api.users.listForAssignment);
-  const contacts = useQuery(
+  const contactsResult = useQuery(
     api.contacts.list,
     user ? { q: debouncedContactSearch || undefined } : "skip"
   );
+  const contacts = contactsResult?.items;
 
   // Property search query - only active when section is open
   const listingTypeForSearch = interestType === "buy" ? "sale" as const : "rent" as const;
