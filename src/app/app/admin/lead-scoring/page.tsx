@@ -404,7 +404,7 @@ export default function LeadScoringPage() {
                 className="mb-4"
               >
                 <option value="">Select a lead to preview...</option>
-                {leads?.slice(0, 50).map((lead) => (
+                {leads?.items?.slice(0, 50).map((lead) => (
                   <option key={lead._id} value={lead._id}>
                     {lead.fullName} ({lead.phone})
                   </option>

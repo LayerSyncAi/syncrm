@@ -102,9 +102,10 @@ export default function MergeLeadsPage() {
   );
 
   const filteredLeads = useMemo(() => {
-    if (!allLeads || !searchQuery.trim()) return allLeads || [];
+    const items = allLeads?.items;
+    if (!items || !searchQuery.trim()) return items || [];
     const q = searchQuery.toLowerCase();
-    return allLeads.filter(
+    return items.filter(
       (l) =>
         l.fullName.toLowerCase().includes(q) ||
         l.phone.includes(q) ||

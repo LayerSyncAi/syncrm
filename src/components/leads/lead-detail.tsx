@@ -88,7 +88,7 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
   const scoreBreakdown = useQuery(api.leadScoring.getScoreBreakdown, { leadId });
   const properties = useQuery(api.properties.list, (drawerOpen || viewPropertyId) ? {} : "skip");
   // Support both paginated response shape and legacy array shape
-  const propertiesArray: Array<{ _id: string; title: string; listingType: string; location: string; [k: string]: unknown }> =
+  const propertiesArray: Array<{ _id: Id<"properties">; title: string; listingType: string; location: string; [k: string]: unknown }> =
     (properties as any)?.items ?? (Array.isArray(properties) ? properties : []);
   const viewProperty = viewPropertyId ? propertiesArray.find((p) => p._id === viewPropertyId) ?? null : null;
 
