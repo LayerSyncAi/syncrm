@@ -109,13 +109,15 @@ export const list = query({
         .query("leads")
         .withIndex("by_owner", (q) => q.eq("ownerUserId", user._id));
     } else if (args.ownerUserId) {
+      const ownerUserId = args.ownerUserId;
       baseQuery = ctx.db
         .query("leads")
-        .withIndex("by_owner", (q) => q.eq("ownerUserId", args.ownerUserId));
+        .withIndex("by_owner", (q) => q.eq("ownerUserId", ownerUserId));
     } else if (args.stageId) {
+      const stageId = args.stageId;
       baseQuery = ctx.db
         .query("leads")
-        .withIndex("by_stage", (q) => q.eq("stageId", args.stageId));
+        .withIndex("by_stage", (q) => q.eq("stageId", stageId));
     } else {
       baseQuery = ctx.db
         .query("leads")
