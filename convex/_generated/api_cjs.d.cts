@@ -29,6 +29,7 @@ import type * as organizations from "../organizations.js";
 import type * as passwordReset from "../passwordReset.js";
 import type * as properties from "../properties.js";
 import type * as propertyShares from "../propertyShares.js";
+import type * as rateLimit from "../rateLimit.js";
 import type * as stages from "../stages.js";
 import type * as storage from "../storage.js";
 import type * as users from "../users.js";
@@ -61,6 +62,7 @@ declare const fullApi: ApiFromModules<{
   passwordReset: typeof passwordReset;
   properties: typeof properties;
   propertyShares: typeof propertyShares;
+  rateLimit: typeof rateLimit;
   stages: typeof stages;
   storage: typeof storage;
   users: typeof users;
