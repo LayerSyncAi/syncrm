@@ -7,6 +7,8 @@ import { Topbar } from "@/components/layout/topbar";
 import { useAuth } from "@/hooks/useAuth";
 import { Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ErrorBoundary } from "@/components/common/error-boundary";
+import { StaticDataProvider } from "@/components/providers/static-data-provider";
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   // Middleware handles auth redirects - if we get here, user should be authenticated
@@ -120,13 +122,16 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const isAdmin = user.role === "admin";
 
   return (
+    <StaticDataProvider>
     <div className="min-h-screen bg-content-bg">
-      <Sidebar
-        isAdmin={isAdmin}
-        collapsed={collapsed}
-        onToggle={() => setCollapsed((prev) => !prev)}
-        orgName={org?.name}
-      />
+      <ErrorBoundary sectionName="Sidebar">
+        <Sidebar
+          isAdmin={isAdmin}
+          collapsed={collapsed}
+          onToggle={() => setCollapsed((prev) => !prev)}
+          orgName={org?.name}
+        />
+      </ErrorBoundary>
       <div
         className="transition-[margin] duration-200"
         style={{
@@ -136,8 +141,13 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         }}
       >
         <Topbar userName={userName} userEmail={user.email || undefined} orgName={org?.name} userTimezone={user.timezone || undefined} />
-        <div className="px-6 py-6">{children}</div>
+        <div className="px-6 py-6">
+          <ErrorBoundary sectionName="Page Content">
+            {children}
+          </ErrorBoundary>
+        </div>
       </div>
     </div>
+    </StaticDataProvider>
   );
 }

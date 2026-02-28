@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useQuery, useMutation } from "convex/react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -154,11 +155,14 @@ function ParallaxImage({ src, alt, layoutId, onClick }: { src: string; alt: stri
           className="h-full w-full object-cover transition-transform duration-300 ease-out will-change-transform"
         />
       ) : (
-        <img
-          ref={imgRef}
+        <Image
+          ref={imgRef as any}
           src={src}
           alt={alt}
+          fill
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           className="h-full w-full object-cover transition-transform duration-300 ease-out will-change-transform"
+          loading="lazy"
         />
       )}
     </div>
@@ -1181,7 +1185,9 @@ export default function PropertiesPage() {
                       className="rounded-xl border border-border-strong bg-surface-2/40 p-4 space-y-3"
                     >
                       {prop.images?.[0] && (
-                        <img src={prop.images[0]} alt={prop.title} className="w-full aspect-[4/3] rounded-lg object-cover" />
+                        <div className="relative w-full aspect-[4/3]">
+                          <Image src={prop.images[0]} alt={prop.title} fill sizes="(max-width: 768px) 100vw, 33vw" className="rounded-lg object-cover" loading="lazy" />
+                        </div>
                       )}
                       <h4 className="text-sm font-semibold text-text">{prop.title}</h4>
                       <div className="space-y-1 text-xs text-text-muted">

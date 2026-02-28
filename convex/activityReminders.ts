@@ -152,20 +152,31 @@ function activityTypeLabel(type: string): string {
 
 /**
  * Get todo activities with scheduledAt in the pre-reminder window (50–70 min from now).
+ * Uses the by_next_reminder index to query only due activities in batches
+ * instead of scanning all todo activities.
  */
 export const getUpcomingActivities = internalQuery({
   handler: async (ctx) => {
     const now = Date.now();
     const windowStart = now + 50 * 60 * 1000;
     const windowEnd = now + 70 * 60 * 1000;
+    // nextReminderAt = scheduledAt - 60min, so pre-reminder window maps to
+    // nextReminderAt between (now - 10min) and (now + 10min)
+    const reminderWindowStart = windowStart - 60 * 60 * 1000;
+    const reminderWindowEnd = windowEnd - 60 * 60 * 1000;
 
+    // Use index-based query: only fetch activities with nextReminderAt in range
     const activities = await ctx.db
       .query("activities")
-      .withIndex("by_status", (q) => q.eq("status", "todo"))
+      .withIndex("by_next_reminder", (q) =>
+        q.gte("nextReminderAt", reminderWindowStart).lte("nextReminderAt", reminderWindowEnd)
+      )
       .collect();
 
+    // Filter to only uncompleted activities with valid scheduledAt
     return activities.filter(
       (a) =>
+        a.status === "todo" &&
         a.scheduledAt &&
         a.scheduledAt >= windowStart &&
         a.scheduledAt <= windowEnd
@@ -175,20 +186,27 @@ export const getUpcomingActivities = internalQuery({
 
 /**
  * Get todo activities that are overdue (scheduledAt was 50+ min ago, up to 24 h).
+ * Uses the by_next_reminder index for efficient batched querying.
  */
 export const getOverdueActivities = internalQuery({
   handler: async (ctx) => {
     const now = Date.now();
     const overdueSince = now - 50 * 60 * 1000;
     const maxLookback = now - 24 * 60 * 60 * 1000;
+    // nextReminderAt for overdue: activities whose pre-reminder was due 1h50m to 25h ago
+    const reminderLookback = maxLookback - 60 * 60 * 1000;
+    const reminderCutoff = overdueSince - 60 * 60 * 1000;
 
     const activities = await ctx.db
       .query("activities")
-      .withIndex("by_status", (q) => q.eq("status", "todo"))
+      .withIndex("by_next_reminder", (q) =>
+        q.gte("nextReminderAt", reminderLookback).lte("nextReminderAt", reminderCutoff)
+      )
       .collect();
 
     return activities.filter(
       (a) =>
+        a.status === "todo" &&
         a.scheduledAt &&
         a.scheduledAt <= overdueSince &&
         a.scheduledAt >= maxLookback
@@ -270,19 +288,18 @@ export const getUserDayActivities = internalQuery({
     dayEnd: v.number(),
   },
   handler: async (ctx, args) => {
+    // Use compound index to narrow by assignee + scheduledAt range
     const activities = await ctx.db
       .query("activities")
       .withIndex("by_assignee_status", (q) =>
-        q.eq("assignedToUserId", args.userId)
+        q
+          .eq("assignedToUserId", args.userId)
+          .gte("scheduledAt", args.dayStart)
+          .lt("scheduledAt", args.dayEnd)
       )
       .collect();
 
-    return activities.filter(
-      (a) =>
-        a.scheduledAt &&
-        a.scheduledAt >= args.dayStart &&
-        a.scheduledAt < args.dayEnd
-    );
+    return activities;
   },
 });
 

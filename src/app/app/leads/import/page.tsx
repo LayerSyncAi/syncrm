@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../../../../convex/_generated/api";
@@ -18,9 +18,10 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { parseCSV, generateCSV, downloadBlob } from "@/lib/csv";
+import { generateCSV, downloadBlob } from "@/lib/csv";
 import { Upload, AlertTriangle, CheckCircle, XCircle, FileDown } from "lucide-react";
 import { importToasts } from "@/lib/toast";
+import type { CsvWorkerResult } from "@/workers/csv-parse.worker";
 
 const resultCardVariants = {
   hidden: {},
@@ -102,6 +103,28 @@ export default function LeadImportPage() {
   } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const workerRef = useRef<Worker | null>(null);
+
+  // Initialize Web Worker for CSV parsing (offloads heavy parsing from main thread)
+  useEffect(() => {
+    workerRef.current = new Worker(
+      new URL("@/workers/csv-parse.worker.ts", import.meta.url)
+    );
+    workerRef.current.onmessage = (e: MessageEvent<CsvWorkerResult>) => {
+      const result = e.data;
+      if (result.type === "parsed") {
+        setCsvHeaders(result.headers);
+        setCsvRows(result.rows);
+        setColumnMap(result.autoMap);
+        setStep("mapping");
+      } else if (result.type === "error") {
+        setError(result.message);
+      }
+    };
+    return () => {
+      workerRef.current?.terminate();
+    };
+  }, []);
 
   // Duplicate check query
   const mappedPreviewRows = getMappedRows(csvRows.slice(0, 20), csvHeaders, columnMap);
@@ -126,38 +149,9 @@ export default function LeadImportPage() {
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result as string;
-      const parsed = parseCSV(text);
-      if (parsed.length < 2) {
-        setError("CSV must have a header row and at least one data row");
-        return;
+      if (workerRef.current) {
+        workerRef.current.postMessage({ type: "parse", text });
       }
-      const headers = parsed[0].map((h) => h.trim());
-      const dataRows = parsed.slice(1);
-      setCsvHeaders(headers);
-      setCsvRows(dataRows);
-
-      // Auto-map columns by fuzzy matching
-      const autoMap: Record<string, string> = {};
-      for (const field of LEAD_FIELDS) {
-        const match = headers.find(
-          (h) =>
-            h.toLowerCase().replace(/[_\s-]/g, "") ===
-            field.key.toLowerCase().replace(/[_\s-]/g, "")
-        );
-        if (match) {
-          autoMap[field.key] = match;
-        } else {
-          // Try label match
-          const labelMatch = headers.find(
-            (h) =>
-              h.toLowerCase().replace(/[_\s-]/g, "") ===
-              field.label.toLowerCase().replace(/[_\s-]/g, "")
-          );
-          if (labelMatch) autoMap[field.key] = labelMatch;
-        }
-      }
-      setColumnMap(autoMap);
-      setStep("mapping");
     };
     reader.readAsText(file);
   }, []);

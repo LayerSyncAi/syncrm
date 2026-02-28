@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useQuery } from "convex/react";
 import { motion } from "framer-motion";
 import { api } from "../../../convex/_generated/api";
@@ -207,11 +208,16 @@ export function PropertyComparison({
                         {property.title}
                       </p>
                       {property.images.length > 0 && (
-                        <img
-                          src={property.images[0]}
-                          alt={property.title}
-                          className="w-full h-20 object-cover rounded-md"
-                        />
+                        <div className="relative w-full h-20">
+                          <Image
+                            src={property.images[0]}
+                            alt={property.title}
+                            fill
+                            sizes="200px"
+                            className="object-cover rounded-md"
+                            loading="lazy"
+                          />
+                        </div>
                       )}
                     </div>
                   </motion.th>

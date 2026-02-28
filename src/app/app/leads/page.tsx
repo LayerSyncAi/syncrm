@@ -17,6 +17,7 @@ import { useRequireAuth } from "@/hooks/useAuth";
 import { leadToasts } from "@/lib/toast";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Eye, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { ErrorBoundary } from "@/components/common/error-boundary";
 
 const listVariants = {
   hidden: {},
@@ -384,7 +385,7 @@ export default function LeadsPage() {
           </Link>
         </motion.div>
       ) : (
-        <>
+        <ErrorBoundary sectionName="Lead Table">
           <Table>
             <thead>
               <tr>
@@ -431,7 +432,7 @@ export default function LeadsPage() {
             onNextPage={pagination.nextPage}
             onPrevPage={pagination.prevPage}
           />
-        </>
+        </ErrorBoundary>
       )}
 
       {bulkMatchingOpen && (

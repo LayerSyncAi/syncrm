@@ -34,7 +34,14 @@ export const createForLead = mutation({
     const lead = await canAccessLead(ctx, args.leadId, user._id, user.role === "admin", user.orgId);
     if (!lead) throw new Error("Lead not found");
     const assignedTo = args.assignedToUserId ?? lead.ownerUserId;
-    return ctx.db.insert("activities", {
+    const now = Date.now();
+
+    // Compute nextReminderAt: 1 hour before scheduledAt (for pre-reminder cron)
+    const nextReminderAt = args.scheduledAt
+      ? args.scheduledAt - 60 * 60 * 1000
+      : undefined;
+
+    const activityId = await ctx.db.insert("activities", {
       leadId: args.leadId,
       type: args.type,
       title: args.title,
@@ -45,10 +52,20 @@ export const createForLead = mutation({
       completionNotes: undefined,
       assignedToUserId: assignedTo,
       createdByUserId: user._id,
+      nextReminderAt,
       orgId: user.orgId,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      createdAt: now,
+      updatedAt: now,
     });
+
+    // Update denormalized fields on lead
+    await ctx.db.patch(args.leadId, {
+      lastActivityAt: now,
+      activityCount: (lead.activityCount ?? 0) + 1,
+      updatedAt: now,
+    });
+
+    return activityId;
   },
 });
 
@@ -224,7 +241,13 @@ export const update = mutation({
     const updates: Record<string, any> = { updatedAt: Date.now() };
     if (args.title !== undefined) updates.title = args.title;
     if (args.description !== undefined) updates.description = args.description;
-    if (args.scheduledAt !== undefined) updates.scheduledAt = args.scheduledAt;
+    if (args.scheduledAt !== undefined) {
+      updates.scheduledAt = args.scheduledAt;
+      // Recompute nextReminderAt when schedule changes
+      updates.nextReminderAt = args.scheduledAt
+        ? args.scheduledAt - 60 * 60 * 1000
+        : undefined;
+    }
     if (args.type !== undefined) updates.type = args.type;
 
     await ctx.db.patch(args.activityId, updates);
@@ -247,11 +270,19 @@ export const markComplete = mutation({
     if (!args.completionNotes.trim()) {
       throw new Error("Completion notes are required");
     }
+    const now = Date.now();
     await ctx.db.patch(args.activityId, {
-      completedAt: Date.now(),
+      completedAt: now,
       status: "completed",
       completionNotes: args.completionNotes.trim(),
-      updatedAt: Date.now(),
+      nextReminderAt: undefined, // No more reminders needed
+      updatedAt: now,
+    });
+
+    // Update denormalized lastActivityAt on lead
+    await ctx.db.patch(activity.leadId, {
+      lastActivityAt: now,
+      updatedAt: now,
     });
   },
 });
@@ -266,9 +297,14 @@ export const reopen = mutation({
     if (user.role !== "admin" && activity.assignedToUserId !== user._id) {
       throw new Error("Not allowed");
     }
+    // Restore nextReminderAt if the activity has a future schedule
+    const nextReminderAt = activity.scheduledAt && activity.scheduledAt > Date.now()
+      ? activity.scheduledAt - 60 * 60 * 1000
+      : undefined;
     await ctx.db.patch(args.activityId, {
       completedAt: undefined,
       status: "todo",
+      nextReminderAt,
       updatedAt: Date.now(),
     });
   },
@@ -285,5 +321,14 @@ export const remove = mutation({
       throw new Error("Not allowed");
     }
     await ctx.db.delete(args.activityId);
+
+    // Decrement denormalized activityCount on lead
+    const lead = await ctx.db.get(activity.leadId);
+    if (lead) {
+      await ctx.db.patch(activity.leadId, {
+        activityCount: Math.max(0, (lead.activityCount ?? 1) - 1),
+        updatedAt: Date.now(),
+      });
+    }
   },
 });

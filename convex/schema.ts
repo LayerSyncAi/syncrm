@@ -91,6 +91,10 @@ export default defineSchema({
     // Scoring
     score: v.optional(v.number()),
     lastScoredAt: v.optional(v.number()),
+    // Denormalized computed fields (maintained on-write for read performance)
+    lastActivityAt: v.optional(v.number()),
+    activityCount: v.optional(v.number()),
+    computedScore: v.optional(v.number()),
     // Merge / archive
     isArchived: v.optional(v.boolean()),
     mergedIntoLeadId: v.optional(v.id("leads")),
@@ -104,7 +108,11 @@ export default defineSchema({
     .index("by_normalized_phone", ["normalizedPhone"])
     .index("by_name", ["fullName"])
     .index("by_email", ["email"])
-    .index("by_org", ["orgId"]),
+    .index("by_org", ["orgId"])
+    .searchIndex("search_leads", {
+      searchField: "fullName",
+      filterFields: ["orgId"],
+    }),
   leadScoreConfig: defineTable({
     criteria: v.array(
       v.object({
@@ -287,6 +295,8 @@ export default defineSchema({
     completionNotes: v.optional(v.string()),
     assignedToUserId: v.id("users"),
     createdByUserId: v.id("users"),
+    // Precomputed next reminder timestamp for efficient cron queries
+    nextReminderAt: v.optional(v.number()),
     orgId: v.optional(v.id("organizations")),
     createdAt: v.number(),
     updatedAt: v.optional(v.number()),
@@ -299,7 +309,8 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_type", ["type"])
     .index("by_lead", ["leadId"])
-    .index("by_org", ["orgId"]),
+    .index("by_org", ["orgId"])
+    .index("by_next_reminder", ["nextReminderAt"]),
   activityReminders: defineTable({
     activityId: v.optional(v.id("activities")),
     reminderType: v.union(
@@ -343,6 +354,12 @@ export default defineSchema({
     .index("by_lead", ["leadId"])
     .index("by_property", ["propertyId"])
     .index("by_org", ["orgId"]),
+  rateLimits: defineTable({
+    key: v.string(), // e.g. "leadCreate:<userId>" or "importBulk:<userId>"
+    tokens: v.number(),
+    lastRefill: v.number(),
+  })
+    .index("by_key", ["key"]),
   contacts: defineTable({
     name: v.string(),
     phone: v.string(),
