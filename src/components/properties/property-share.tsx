@@ -50,7 +50,7 @@ const statusBadge = (status: string) => {
 export function PropertyShare({ propertyId, currentUserId }: PropertyShareProps) {
   const shares = useQuery(api.propertyShares.listForProperty, { propertyId });
   const agents = useQuery(api.users.listForAssignment);
-  const leads = useQuery(api.leads.list, {});
+  const leadsResult = useQuery(api.leads.list, {});
   const shareProperty = useMutation(api.propertyShares.shareProperty);
   const cancelShare = useMutation(api.propertyShares.cancelShare);
 
@@ -65,7 +65,7 @@ export function PropertyShare({ propertyId, currentUserId }: PropertyShareProps)
   const availableAgents = agents?.filter((a) => a._id !== currentUserId) ?? [];
 
   // Filter leads to show leads owned by the selected agent
-  const agentLeads = leads?.filter((l) => l.ownerUserId === selectedAgent) ?? [];
+  const agentLeads = leadsResult?.items?.filter((l) => l.ownerUserId === selectedAgent) ?? [];
 
   const handleShare = async () => {
     if (!selectedAgent || !selectedLead) {
