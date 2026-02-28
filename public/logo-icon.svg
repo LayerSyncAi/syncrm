@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" fill="none">
+  <defs>
+    <linearGradient id="syncGrad" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3a7d34"/>
+      <stop offset="100%" stop-color="#1e4d1a"/>
+    </linearGradient>
+  </defs>
+  <circle cx="20" cy="20" r="18" fill="url(#syncGrad)" opacity="0.15"/>
+  <circle cx="20" cy="20" r="18" stroke="url(#syncGrad)" stroke-width="2.5" fill="none"/>
+  <!-- Top arrow (clockwise) -->
+  <path d="M28 14 A12 12 0 0 1 28 26" stroke="url(#syncGrad)" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+  <polygon points="30,13 28,17.5 25.5,13" fill="url(#syncGrad)"/>
+  <!-- Bottom arrow (counter-clockwise) -->
+  <path d="M12 26 A12 12 0 0 1 12 14" stroke="url(#syncGrad)" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+  <polygon points="10,27 12,22.5 14.5,27" fill="url(#syncGrad)"/>
+</svg>
