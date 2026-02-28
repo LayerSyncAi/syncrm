@@ -153,8 +153,8 @@ export default function ContactsPage() {
       ? {
           q: debouncedSearch || undefined,
           ownerUserId: ownerFilter || undefined,
-          page: pagination.page,
-          pageSize: pagination.pageSize,
+          page: pagination.page > 0 ? pagination.page : undefined,
+          pageSize: pagination.pageSize !== 50 ? pagination.pageSize : undefined,
         }
       : "skip"
   );

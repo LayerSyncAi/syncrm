@@ -200,8 +200,8 @@ export default function LeadsPage() {
     scoreMin: scoreRange.scoreMin,
     scoreMax: scoreRange.scoreMax,
     sortBy: scoreSortDir || undefined,
-    page: pagination.page,
-    pageSize: pagination.pageSize,
+    page: pagination.page > 0 ? pagination.page : undefined,
+    pageSize: pagination.pageSize !== 50 ? pagination.pageSize : undefined,
   });
 
   // Support both paginated and legacy response format
