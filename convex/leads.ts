@@ -95,28 +95,44 @@ export const list = query({
     scoreMin: v.optional(v.number()),
     scoreMax: v.optional(v.number()),
     sortBy: v.optional(v.union(v.literal("score_asc"), v.literal("score_desc"))),
+    page: v.optional(v.number()),
+    pageSize: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserWithOrg(ctx);
     const isAdmin = user.role === "admin";
 
-    // Always scope by org first
-    let results = await ctx.db
-      .query("leads")
-      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
-      .collect();
-
-    // Apply role-based filtering
+    // Use index-based scoping: for non-admins, use by_owner index directly
+    let baseQuery;
     if (!isAdmin) {
-      results = results.filter((lead) => lead.ownerUserId === user._id);
+      baseQuery = ctx.db
+        .query("leads")
+        .withIndex("by_owner", (q) => q.eq("ownerUserId", user._id));
     } else if (args.ownerUserId) {
-      results = results.filter((lead) => lead.ownerUserId === args.ownerUserId);
+      baseQuery = ctx.db
+        .query("leads")
+        .withIndex("by_owner", (q) => q.eq("ownerUserId", args.ownerUserId));
+    } else if (args.stageId) {
+      baseQuery = ctx.db
+        .query("leads")
+        .withIndex("by_stage", (q) => q.eq("stageId", args.stageId));
+    } else {
+      baseQuery = ctx.db
+        .query("leads")
+        .withIndex("by_org", (q) => q.eq("orgId", user.orgId));
     }
 
-    // Apply remaining filters in memory
+    const results = await baseQuery.collect();
+
+    // Apply remaining filters that can't be handled by indexes
     const filtered = results.filter((lead) => {
       if (lead.isArchived) return false;
-      if (args.stageId && lead.stageId !== args.stageId) {
+      // Org scoping for non-org index paths
+      if (lead.orgId !== user.orgId) return false;
+      // Stage filter (only if not already filtered by index)
+      if (args.stageId && lead.stageId !== args.stageId && !isAdmin && !args.ownerUserId) {
+        // stageId index already applied for admin without owner filter
+      } else if (args.stageId && lead.stageId !== args.stageId) {
         return false;
       }
       if (args.interestType && lead.interestType !== args.interestType) {
@@ -138,7 +154,6 @@ export const list = query({
           return false;
         }
       }
-      // Score range filtering
       if (args.scoreMin !== undefined) {
         if ((lead.score ?? 0) < args.scoreMin) return false;
       }
@@ -174,7 +189,20 @@ export const list = query({
       enriched.sort((a, b) => (a.score ?? 0) - (b.score ?? 0));
     }
 
-    return enriched;
+    // Server-side pagination
+    const page = args.page ?? 0;
+    const pageSize = args.pageSize ?? 50;
+    const totalCount = enriched.length;
+    const start = page * pageSize;
+    const items = enriched.slice(start, start + pageSize);
+
+    return {
+      items,
+      totalCount,
+      page,
+      pageSize,
+      hasMore: start + pageSize < totalCount,
+    };
   },
 });
 
@@ -676,16 +704,23 @@ export const dashboardScoreStats = query({
     const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
     const openLeads = activeLeads.filter((l) => !l.closedAt);
 
-    // Fetch activities for open leads to find unworked ones
+    // Pre-sort candidates by score descending, only check top candidates
+    // to avoid fetching activities for every single open lead (N+1 fix)
+    const candidates = openLeads
+      .filter((l) => (l.score ?? 0) > 0)
+      .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+      .slice(0, 20); // Only check top 20 candidates instead of all open leads
+
     const leadActivityMap = new Map<string, number>();
-    for (const lead of openLeads) {
-      const activities = await ctx.db
+    const activityChecks = candidates.map(async (lead) => {
+      const recentActivity = await ctx.db
         .query("activities")
         .withIndex("by_lead", (q) => q.eq("leadId", lead._id))
-        .collect();
-      const recentCount = activities.filter((a) => a.createdAt >= sevenDaysAgo).length;
-      leadActivityMap.set(lead._id, recentCount);
-    }
+        .filter((q) => q.gte(q.field("createdAt"), sevenDaysAgo))
+        .first();
+      leadActivityMap.set(lead._id, recentActivity ? 1 : 0);
+    });
+    await Promise.all(activityChecks);
 
     const users = await ctx.db
       .query("users")
@@ -693,9 +728,8 @@ export const dashboardScoreStats = query({
       .collect();
     const userMap = new Map(users.map((u) => [u._id, u]));
 
-    const topUnworked = openLeads
+    const topUnworked = candidates
       .filter((l) => (leadActivityMap.get(l._id) ?? 0) === 0)
-      .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
       .slice(0, 5)
       .map((l) => {
         const owner = userMap.get(l.ownerUserId);

@@ -246,9 +246,15 @@ export default function PropertiesPage() {
     );
   };
 
+  // Resolve properties list: supports both paginated {items, totalCount} and legacy array
+  const propertiesList: Property[] = React.useMemo(() => {
+    if (!properties) return [];
+    return (properties as any).items ?? (Array.isArray(properties) ? properties : []);
+  }, [properties]);
+
   const compareProperties = React.useMemo(
-    () => (properties ?? []).filter((p: Property) => compareIds.includes(p._id)),
-    [properties, compareIds]
+    () => propertiesList.filter((p: Property) => compareIds.includes(p._id)),
+    [propertiesList, compareIds]
   );
 
   // #41 – Lightbox state
@@ -599,7 +605,9 @@ export default function PropertiesPage() {
           </div>
         </div>
         <div className="mt-3 text-sm text-text-muted">
-          {properties ? `${properties.length} propert${properties.length !== 1 ? "ies" : "y"}` : "Loading..."}
+          {properties
+            ? `${(properties as any).totalCount ?? (properties as any).length ?? 0} propert${((properties as any).totalCount ?? (properties as any).length ?? 0) !== 1 ? "ies" : "y"}`
+            : "Loading..."}
         </div>
       </div>
 
@@ -626,7 +634,7 @@ export default function PropertiesPage() {
                 </TableCell>
               </TableRow>
             </tbody>
-          ) : properties.length === 0 ? (
+          ) : propertiesList.length === 0 ? (
             <tbody>
               <TableRow>
                 <TableCell colSpan={9} className="text-center text-text-muted">
@@ -638,7 +646,7 @@ export default function PropertiesPage() {
             </tbody>
           ) : (
             <motion.tbody variants={listVariants} initial="hidden" animate="show" key="data">
-              {properties.map((property: Property) => (
+              {propertiesList.map((property: Property) => (
                 <motion.tr
                   key={property._id}
                   variants={rowVariants}
@@ -703,7 +711,7 @@ export default function PropertiesPage() {
             Loading properties...
           </div>
         </div>
-      ) : properties.length === 0 ? (
+      ) : propertiesList.length === 0 ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <div className="col-span-full text-center text-text-muted py-8">
             {debouncedSearch || listingTypeFilter || statusFilter || typeFilter || debouncedLocation || priceMin
@@ -719,7 +727,7 @@ export default function PropertiesPage() {
             key="card-data"
             className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
           >
-            {properties.map((property: Property) => {
+            {propertiesList.map((property: Property) => {
               const isCompared = compareIds.includes(property._id);
               return (
               <motion.div
