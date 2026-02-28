@@ -2,6 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getCurrentUserWithOrg, assertOrgAccess } from "./helpers";
 import { Id } from "./_generated/dataModel";
+import { checkRateLimit } from "./rateLimit";
 
 const leadArgs = {
   contactId: v.id("contacts"),
@@ -47,6 +48,7 @@ export const create = mutation({
   args: leadArgs,
   handler: async (ctx, args) => {
     const user = await getCurrentUserWithOrg(ctx);
+    await checkRateLimit(ctx, "leadCreate", user._id);
 
     const contact = await ctx.db.get(args.contactId);
     if (!contact) {
@@ -102,39 +104,48 @@ export const list = query({
     const user = await getCurrentUserWithOrg(ctx);
     const isAdmin = user.role === "admin";
 
-    // Use index-based scoping: for non-admins, use by_owner index directly
-    let baseQuery;
-    if (!isAdmin) {
-      baseQuery = ctx.db
+    // Use Convex searchIndex when text search is provided (server-side search)
+    let results;
+    if (args.q && args.q.trim().length > 0) {
+      results = await ctx.db
         .query("leads")
-        .withIndex("by_owner", (q) => q.eq("ownerUserId", user._id));
+        .withSearchIndex("search_leads", (q) =>
+          q.search("fullName", args.q!).eq("orgId", user.orgId)
+        )
+        .collect();
+    } else if (!isAdmin) {
+      results = await ctx.db
+        .query("leads")
+        .withIndex("by_owner", (q) => q.eq("ownerUserId", user._id))
+        .collect();
     } else if (args.ownerUserId) {
       const ownerUserId = args.ownerUserId;
-      baseQuery = ctx.db
+      results = await ctx.db
         .query("leads")
-        .withIndex("by_owner", (q) => q.eq("ownerUserId", ownerUserId));
+        .withIndex("by_owner", (q) => q.eq("ownerUserId", ownerUserId))
+        .collect();
     } else if (args.stageId) {
       const stageId = args.stageId;
-      baseQuery = ctx.db
+      results = await ctx.db
         .query("leads")
-        .withIndex("by_stage", (q) => q.eq("stageId", stageId));
+        .withIndex("by_stage", (q) => q.eq("stageId", stageId))
+        .collect();
     } else {
-      baseQuery = ctx.db
+      results = await ctx.db
         .query("leads")
-        .withIndex("by_org", (q) => q.eq("orgId", user.orgId));
+        .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+        .collect();
     }
-
-    const results = await baseQuery.collect();
 
     // Apply remaining filters that can't be handled by indexes
     const filtered = results.filter((lead) => {
       if (lead.isArchived) return false;
       // Org scoping for non-org index paths
       if (lead.orgId !== user.orgId) return false;
-      // Stage filter (only if not already filtered by index)
-      if (args.stageId && lead.stageId !== args.stageId && !isAdmin && !args.ownerUserId) {
-        // stageId index already applied for admin without owner filter
-      } else if (args.stageId && lead.stageId !== args.stageId) {
+      // Non-admin can only see their own leads
+      if (!isAdmin && lead.ownerUserId !== user._id) return false;
+      // Stage filter
+      if (args.stageId && lead.stageId !== args.stageId) {
         return false;
       }
       if (args.interestType && lead.interestType !== args.interestType) {
@@ -147,8 +158,10 @@ export const list = query({
         );
         if (!match) return false;
       }
-      if (args.q) {
+      // If search was already handled by searchIndex, also check phone match
+      if (args.q && args.q.trim().length > 0) {
         const search = args.q.toLowerCase();
+        // searchIndex handles fullName; also allow phone match
         if (
           !lead.fullName.toLowerCase().includes(search) &&
           !lead.phone.includes(search)

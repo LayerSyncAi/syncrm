@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useQuery, useMutation } from "convex/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../../convex/_generated/api";
@@ -204,11 +205,14 @@ export function PropertySuggestions({
               <div className="flex gap-4">
                 {/* Property Image */}
                 {suggestion.property.images.length > 0 && (
-                  <div className="flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden bg-border">
-                    <img
+                  <div className="relative flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden bg-border">
+                    <Image
                       src={suggestion.property.images[0]}
                       alt={suggestion.property.title}
-                      className="w-full h-full object-cover"
+                      fill
+                      sizes="96px"
+                      className="object-cover"
+                      loading="lazy"
                     />
                   </div>
                 )}

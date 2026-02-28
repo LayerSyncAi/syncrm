@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDashboardData } from "@/hooks/useDashboardData";
+import { ErrorBoundary } from "@/components/common/error-boundary";
 
 // --- #13: Animated counter that rolls up from 0 ---
 
@@ -119,6 +120,7 @@ export default function DashboardPage() {
   useEffect(() => { hasMounted.current = true; }, []);
 
   return (
+    <ErrorBoundary sectionName="Dashboard">
     <div className="space-y-6">
       <Card>
         <CardHeader>
@@ -531,5 +533,6 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
     </div>
+    </ErrorBoundary>
   );
 }

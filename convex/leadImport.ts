@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getCurrentUserWithOrg } from "./helpers";
+import { checkRateLimit } from "./rateLimit";
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
@@ -171,6 +172,7 @@ export const bulkImport = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserWithOrg(ctx);
+    await checkRateLimit(ctx, "importBulk", user._id);
     const timestamp = Date.now();
 
     const stages = await ctx.db
