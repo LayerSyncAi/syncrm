@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
+import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
 import Link from "next/link";
 import { useQuery, useMutation } from "convex/react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 import { Table, TableCell, TableHead, TableRow } from "@/components/ui/table";
+import { PaginationControls } from "@/components/ui/pagination";
+import { usePagination } from "@/hooks/usePagination";
 import { useRequireAuth } from "@/hooks/useAuth";
 import { leadToasts } from "@/lib/toast";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -29,6 +31,82 @@ const rowVariants = {
 const BulkMatching = lazy(() =>
   import("@/components/leads/bulk-matching").then((m) => ({ default: m.BulkMatching }))
 );
+
+const formatDate = (timestamp: number) =>
+  new Date(timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+
+interface LeadRowData {
+  _id: Id<"leads">;
+  fullName: string;
+  phone: string;
+  interestType: string;
+  score?: number;
+  stageId: Id<"pipelineStages">;
+  ownerName: string;
+  updatedAt: number;
+}
+
+const LeadTableRow = React.memo(function LeadTableRow({
+  lead,
+  stages,
+  onStageChange,
+}: {
+  lead: LeadRowData;
+  stages: { _id: string; name: string }[] | undefined;
+  onStageChange: (leadId: Id<"leads">, stageId: Id<"pipelineStages">) => void;
+}) {
+  return (
+    <motion.tr
+      variants={rowVariants}
+      className="group h-11 border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)]"
+    >
+      <TableCell>
+        <Link href={`/app/leads/${lead._id}`} className="font-medium hover:text-primary">
+          {lead.fullName}
+        </Link>
+        <p className="text-xs text-text-muted">{lead.phone}</p>
+      </TableCell>
+      <TableCell>
+        <span
+          className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+            lead.interestType === "buy" ? "bg-primary/10 text-primary" : "bg-info/10 text-info"
+          }`}
+        >
+          {lead.interestType === "buy" ? "Buy" : "Rent"}
+        </span>
+      </TableCell>
+      <TableCell>
+        <ScoreBadge score={lead.score} />
+      </TableCell>
+      <TableCell>
+        <StaggeredDropDown
+          value={lead.stageId}
+          onChange={(val) => onStageChange(lead._id, val as Id<"pipelineStages">)}
+          aria-label={`Update stage for ${lead.fullName}`}
+          portal
+          options={stages?.map((stage) => ({ value: stage._id, label: stage.name })) ?? []}
+        />
+      </TableCell>
+      <TableCell>{lead.ownerName}</TableCell>
+      <TableCell>{formatDate(lead.updatedAt)}</TableCell>
+      <TableCell className="text-right">
+        <div className="flex justify-end">
+          <Tooltip content="View">
+            <Link href={`/app/leads/${lead._id}`} onClick={(e) => e.stopPropagation()}>
+              <Button
+                variant="secondary"
+                className="action-btn h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
+                style={{ transitionDelay: "0ms" }}
+              >
+                <Eye className="h-4 w-4" />
+              </Button>
+            </Link>
+          </Tooltip>
+        </div>
+      </TableCell>
+    </motion.tr>
+  );
+});
 
 function ScoreBadge({ score }: { score: number | undefined }) {
   if (score === undefined || score === null) {
@@ -60,6 +138,7 @@ function ScoreBadge({ score }: { score: number | undefined }) {
 
 export default function LeadsPage() {
   const { user, isLoading: authLoading, isAdmin } = useRequireAuth();
+  const pagination = usePagination(50);
 
   // Filter state
   const [stageFilter, setStageFilter] = useState<string>("");
@@ -79,12 +158,12 @@ export default function LeadsPage() {
 
   // Debounce search inputs
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(searchFilter), 300);
+    const timer = setTimeout(() => { setDebouncedSearch(searchFilter); pagination.resetPage(); }, 300);
     return () => clearTimeout(timer);
   }, [searchFilter]);
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedArea(areaFilter), 300);
+    const timer = setTimeout(() => { setDebouncedArea(areaFilter); pagination.resetPage(); }, 300);
     return () => clearTimeout(timer);
   }, [areaFilter]);
 
@@ -105,7 +184,7 @@ export default function LeadsPage() {
     api.users.listActiveUsers,
     isAdmin ? {} : "skip"
   );
-  const leads = useQuery(api.leads.list, {
+  const leadsResult = useQuery(api.leads.list, {
     stageId: stageFilter ? (stageFilter as Id<"pipelineStages">) : undefined,
     interestType:
       interestFilter === "rent" || interestFilter === "buy"
@@ -117,12 +196,22 @@ export default function LeadsPage() {
     scoreMin: scoreRange.scoreMin,
     scoreMax: scoreRange.scoreMax,
     sortBy: scoreSortDir || undefined,
+    page: pagination.page > 0 ? pagination.page : undefined,
+    pageSize: pagination.pageSize !== 50 ? pagination.pageSize : undefined,
   });
+
+  // Support both paginated and legacy response format
+  const leads = useMemo(() => {
+    if (!leadsResult) return undefined;
+    return (leadsResult as any).items ?? (Array.isArray(leadsResult) ? leadsResult : []);
+  }, [leadsResult]);
+  const totalCount = (leadsResult as any)?.totalCount ?? leads?.length ?? 0;
+  const hasMore = (leadsResult as any)?.hasMore ?? false;
 
   // Mutations
   const moveStage = useMutation(api.leads.moveStage);
 
-  const handleStageChange = async (
+  const handleStageChange = useCallback(async (
     leadId: Id<"leads">,
     newStageId: Id<"pipelineStages">
   ) => {
@@ -134,16 +223,7 @@ export default function LeadsPage() {
       console.error("Failed to update stage:", error);
       leadToasts.stageMoveFailed(error instanceof Error ? error.message : undefined);
     }
-  };
-
-  // Format date for display
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
+  }, [moveStage, stages]);
 
   const toggleScoreSort = useCallback(() => {
     setScoreSortDir((prev) => {
@@ -292,7 +372,6 @@ export default function LeadsPage() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
       ) : leads.length === 0 ? (
-        // #33: Empty state spring entrance
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -305,93 +384,54 @@ export default function LeadsPage() {
           </Link>
         </motion.div>
       ) : (
-        <Table>
-          <thead>
-            <tr>
-              <TableHead>Contact</TableHead>
-              <TableHead>Interest</TableHead>
-              <TableHead>
-                <button
-                  onClick={toggleScoreSort}
-                  className="inline-flex items-center gap-1 hover:text-primary transition-colors"
-                >
-                  Score
-                  {scoreSortDir === "" && <ArrowUpDown className="h-3 w-3 text-text-dim" />}
-                  {scoreSortDir === "score_desc" && <ArrowDown className="h-3 w-3 text-primary" />}
-                  {scoreSortDir === "score_asc" && <ArrowUp className="h-3 w-3 text-primary" />}
-                </button>
-              </TableHead>
-              <TableHead>Stage</TableHead>
-              <TableHead>Owner</TableHead>
-              <TableHead>Updated</TableHead>
-              <TableHead>Actions</TableHead>
-            </tr>
-          </thead>
-          <motion.tbody variants={listVariants} initial="hidden" animate="show">
-            {leads.map((lead) => (
-              <motion.tr
-                key={lead._id}
-                variants={rowVariants}
-                className="group h-11 border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)]"
-              >
-                <TableCell>
-                  <Link
-                    href={`/app/leads/${lead._id}`}
-                    className="font-medium hover:text-primary"
+        <>
+          <Table>
+            <thead>
+              <tr>
+                <TableHead>Contact</TableHead>
+                <TableHead>Interest</TableHead>
+                <TableHead>
+                  <button
+                    onClick={toggleScoreSort}
+                    className="inline-flex items-center gap-1 hover:text-primary transition-colors"
                   >
-                    {lead.fullName}
-                  </Link>
-                  <p className="text-xs text-text-muted">{lead.phone}</p>
-                </TableCell>
-                <TableCell>
-                  <span
-                    className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                      lead.interestType === "buy"
-                        ? "bg-primary/10 text-primary"
-                        : "bg-info/10 text-info"
-                    }`}
-                  >
-                    {lead.interestType === "buy" ? "Buy" : "Rent"}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <ScoreBadge score={lead.score} />
-                </TableCell>
-                <TableCell>
-                  <StaggeredDropDown
-                    value={lead.stageId}
-                    onChange={(val) =>
-                      handleStageChange(
-                        lead._id,
-                        val as Id<"pipelineStages">
-                      )
-                    }
-                    aria-label={`Update stage for ${lead.fullName}`}
-                    portal
-                    options={stages?.map((stage) => ({ value: stage._id, label: stage.name })) ?? []}
-                  />
-                </TableCell>
-                <TableCell>{lead.ownerName}</TableCell>
-                <TableCell>{formatDate(lead.updatedAt)}</TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end">
-                    <Tooltip content="View">
-                      <Link href={`/app/leads/${lead._id}`} onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          variant="secondary"
-                          className="action-btn h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
-                          style={{ transitionDelay: "0ms" }}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                    </Tooltip>
-                  </div>
-                </TableCell>
-              </motion.tr>
-            ))}
-          </motion.tbody>
-        </Table>
+                    Score
+                    {scoreSortDir === "" && <ArrowUpDown className="h-3 w-3 text-text-dim" />}
+                    {scoreSortDir === "score_desc" && <ArrowDown className="h-3 w-3 text-primary" />}
+                    {scoreSortDir === "score_asc" && <ArrowUp className="h-3 w-3 text-primary" />}
+                  </button>
+                </TableHead>
+                <TableHead>Stage</TableHead>
+                <TableHead>Owner</TableHead>
+                <TableHead>Updated</TableHead>
+                <TableHead>Actions</TableHead>
+              </tr>
+            </thead>
+            <motion.tbody
+              variants={listVariants}
+              initial="hidden"
+              animate="show"
+              key="data"
+            >
+              {leads.map((lead: LeadRowData) => (
+                <LeadTableRow
+                  key={lead._id}
+                  lead={lead}
+                  stages={stages}
+                  onStageChange={handleStageChange}
+                />
+              ))}
+            </motion.tbody>
+          </Table>
+          <PaginationControls
+            page={pagination.page}
+            pageSize={pagination.pageSize}
+            totalCount={totalCount}
+            hasMore={hasMore}
+            onNextPage={pagination.nextPage}
+            onPrevPage={pagination.prevPage}
+          />
+        </>
       )}
 
       {bulkMatchingOpen && (

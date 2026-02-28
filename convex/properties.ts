@@ -27,6 +27,8 @@ export const list = query({
     priceMin: v.optional(v.number()),
     priceMax: v.optional(v.number()),
     q: v.optional(v.string()),
+    page: v.optional(v.number()),
+    pageSize: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserWithOrg(ctx);
@@ -68,13 +70,28 @@ export const list = query({
       .collect();
     const userMap = new Map(users.map((u) => [u._id, u]));
 
-    return filtered.map((property) => {
+    const enriched = filtered.map((property) => {
       const creator = property.createdByUserId ? userMap.get(property.createdByUserId) : null;
       return {
         ...property,
         createdByName: creator?.fullName || creator?.name || creator?.email || "System",
       };
     });
+
+    // Server-side pagination
+    const page = args.page ?? 0;
+    const pageSize = args.pageSize ?? 50;
+    const totalCount = enriched.length;
+    const start = page * pageSize;
+    const items = enriched.slice(start, start + pageSize);
+
+    return {
+      items,
+      totalCount,
+      page,
+      pageSize,
+      hasMore: start + pageSize < totalCount,
+    };
   },
 });
 

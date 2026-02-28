@@ -13,6 +13,8 @@ import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { PaginationControls } from "@/components/ui/pagination";
+import { usePagination } from "@/hooks/usePagination";
 import { ConfirmDeleteDialog } from "@/components/common/confirm-delete-dialog";
 import { contactToasts } from "@/lib/toast";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -55,9 +57,82 @@ const createEmptyFieldState = (value: string = ""): FieldState => ({
   error: undefined,
 });
 
+const ContactTableRow = React.memo(function ContactTableRow({
+  contact,
+  isAdmin,
+  currentUserId,
+  onEdit,
+  onDelete,
+}: {
+  contact: ContactWithOwners;
+  isAdmin: boolean;
+  currentUserId: Id<"users">;
+  onEdit: (contact: ContactWithOwners) => void;
+  onDelete: (contact: ContactWithOwners) => void;
+}) {
+  return (
+    <motion.tr
+      variants={rowVariants}
+      className="group h-11 cursor-pointer border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)]"
+    >
+      <TableCell>
+        <p className="font-medium">{contact.name}</p>
+      </TableCell>
+      <TableCell>{contact.phone}</TableCell>
+      <TableCell>{contact.email || "-"}</TableCell>
+      <TableCell>{contact.company || "-"}</TableCell>
+      <TableCell>
+        <div className="flex flex-wrap gap-1">
+          {contact.ownerNames.slice(0, 2).map((ownerName: string, i: number) => (
+            <Badge key={i} variant="secondary" className="text-xs">{ownerName}</Badge>
+          ))}
+          {contact.ownerNames.length > 2 && (
+            <Badge variant="secondary" className="text-xs">+{contact.ownerNames.length - 2}</Badge>
+          )}
+        </div>
+      </TableCell>
+      <TableCell className="text-right">
+        <div className="flex justify-end gap-1.5">
+          {contact.phone && (
+            <Tooltip content="Call">
+              <a href={`tel:${contact.phone}`} onClick={(e) => e.stopPropagation()}>
+                <Button variant="secondary" className="action-btn h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out" style={{ transitionDelay: "0ms" }}>
+                  <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" /></svg>
+                </Button>
+              </a>
+            </Tooltip>
+          )}
+          {contact.email && (
+            <Tooltip content="Email">
+              <a href={`mailto:${contact.email}`} onClick={(e) => e.stopPropagation()}>
+                <Button variant="secondary" className="action-btn h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out" style={{ transitionDelay: "50ms" }}>
+                  <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" /><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" /></svg>
+                </Button>
+              </a>
+            </Tooltip>
+          )}
+          <Tooltip content="Edit">
+            <Button variant="secondary" className="action-btn h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out" style={{ transitionDelay: "100ms" }} onClick={() => onEdit(contact)}>
+              <Settings className="h-4 w-4" />
+            </Button>
+          </Tooltip>
+          {(isAdmin || contact.ownerUserIds.includes(currentUserId)) && (
+            <Tooltip content="Delete">
+              <Button variant="secondary" className="action-btn-danger h-9 w-9 p-0 text-red-500 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out" style={{ transitionDelay: "150ms" }} onClick={() => onDelete(contact)}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </Tooltip>
+          )}
+        </div>
+      </TableCell>
+    </motion.tr>
+  );
+});
+
 export default function ContactsPage() {
   const currentUser = useQuery(api.users.getMeRequired);
   const users = useQuery(api.users.listForAssignment);
+  const pagination = usePagination(50);
 
   // Search/filter state with debouncing
   const [searchInput, setSearchInput] = React.useState("");
@@ -72,15 +147,25 @@ export default function ContactsPage() {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  const contacts = useQuery(
+  const contactsResult = useQuery(
     api.contacts.list,
     currentUser
       ? {
           q: debouncedSearch || undefined,
           ownerUserId: ownerFilter || undefined,
+          page: pagination.page > 0 ? pagination.page : undefined,
+          pageSize: pagination.pageSize !== 50 ? pagination.pageSize : undefined,
         }
       : "skip"
   );
+
+  // Support both paginated {items, totalCount} and legacy array format
+  const contacts: ContactWithOwners[] | undefined = React.useMemo(() => {
+    if (!contactsResult) return undefined;
+    return (contactsResult as any).items ?? (Array.isArray(contactsResult) ? contactsResult : []);
+  }, [contactsResult]);
+  const totalCount = (contactsResult as any)?.totalCount ?? contacts?.length ?? 0;
+  const hasMore = (contactsResult as any)?.hasMore ?? false;
 
   // Mutations
   const createContact = useMutation(api.contacts.create);
@@ -335,7 +420,7 @@ export default function ContactsPage() {
           )}
           <div className="flex items-end">
             <p className="text-sm text-text-muted">
-              {contacts ? `${contacts.length} contact${contacts.length !== 1 ? "s" : ""}` : "Loading..."}
+              {contacts ? `${totalCount} contact${totalCount !== 1 ? "s" : ""}` : "Loading..."}
             </p>
           </div>
         </div>
@@ -371,96 +456,34 @@ export default function ContactsPage() {
             </TableRow>
           </tbody>
         ) : (
-          <motion.tbody variants={listVariants} initial="hidden" animate="show" key="data">
+          <motion.tbody
+            variants={listVariants}
+            initial="hidden"
+            animate="show"
+            key="data"
+          >
             {contacts.map((contact: ContactWithOwners) => (
-              <motion.tr
+              <ContactTableRow
                 key={contact._id}
-                variants={rowVariants}
-                className="group h-11 cursor-pointer border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)]"
-              >
-                <TableCell>
-                  <p className="font-medium">{contact.name}</p>
-                </TableCell>
-                <TableCell>{contact.phone}</TableCell>
-                <TableCell>{contact.email || "-"}</TableCell>
-                <TableCell>{contact.company || "-"}</TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap gap-1">
-                    {contact.ownerNames.slice(0, 2).map((ownerName: string, i: number) => (
-                      <Badge key={i} variant="secondary" className="text-xs">
-                        {ownerName}
-                      </Badge>
-                    ))}
-                    {contact.ownerNames.length > 2 && (
-                      <Badge variant="secondary" className="text-xs">
-                        +{contact.ownerNames.length - 2}
-                      </Badge>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-1.5">
-                    {/* Quick action fan-out buttons */}
-                    {contact.phone && (
-                      <Tooltip content="Call">
-                        <a href={`tel:${contact.phone}`} onClick={(e) => e.stopPropagation()}>
-                          <Button
-                            variant="secondary"
-                            className="action-btn h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
-                            style={{ transitionDelay: "0ms" }}
-                          >
-                            <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-                              <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
-                            </svg>
-                          </Button>
-                        </a>
-                      </Tooltip>
-                    )}
-                    {contact.email && (
-                      <Tooltip content="Email">
-                        <a href={`mailto:${contact.email}`} onClick={(e) => e.stopPropagation()}>
-                          <Button
-                            variant="secondary"
-                            className="action-btn h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
-                            style={{ transitionDelay: "50ms" }}
-                          >
-                            <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-                              <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
-                              <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
-                            </svg>
-                          </Button>
-                        </a>
-                      </Tooltip>
-                    )}
-                    <Tooltip content="Edit">
-                      <Button
-                        variant="secondary"
-                        className="action-btn h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
-                        style={{ transitionDelay: "100ms" }}
-                        onClick={() => setSelectedContact(contact)}
-                      >
-                        <Settings className="h-4 w-4" />
-                      </Button>
-                    </Tooltip>
-                    {(isAdmin || contact.ownerUserIds.includes(currentUser._id)) && (
-                      <Tooltip content="Delete">
-                        <Button
-                          variant="secondary"
-                          className="action-btn-danger h-9 w-9 p-0 text-red-500 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
-                          style={{ transitionDelay: "150ms" }}
-                          onClick={() => setDeleteTarget(contact)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </Tooltip>
-                    )}
-                  </div>
-                </TableCell>
-              </motion.tr>
+                contact={contact}
+                isAdmin={isAdmin}
+                currentUserId={currentUser._id}
+                onEdit={setSelectedContact}
+                onDelete={setDeleteTarget}
+              />
             ))}
           </motion.tbody>
         )}
       </Table>
+
+      <PaginationControls
+        page={pagination.page}
+        pageSize={pagination.pageSize}
+        totalCount={totalCount}
+        hasMore={hasMore}
+        onNextPage={pagination.nextPage}
+        onPrevPage={pagination.prevPage}
+      />
 
       {/* Create/Edit Modal */}
       <Modal

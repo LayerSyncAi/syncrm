@@ -62,6 +62,8 @@ export const list = query({
   args: {
     q: v.optional(v.string()),
     ownerUserId: v.optional(v.id("users")),
+    page: v.optional(v.number()),
+    pageSize: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserWithOrg(ctx);
@@ -104,7 +106,7 @@ export const list = query({
       return true;
     });
 
-    return filtered.map((contact) => {
+    const enriched = filtered.map((contact) => {
       const ownerNames = contact.ownerUserIds.map((ownerId) => {
         const owner = userMap.get(ownerId);
         return owner?.fullName || owner?.name || owner?.email || "Unknown";
@@ -114,6 +116,21 @@ export const list = query({
         ownerNames,
       };
     });
+
+    // Server-side pagination
+    const page = args.page ?? 0;
+    const pageSize = args.pageSize ?? 50;
+    const totalCount = enriched.length;
+    const start = page * pageSize;
+    const items = enriched.slice(start, start + pageSize);
+
+    return {
+      items,
+      totalCount,
+      page,
+      pageSize,
+      hasMore: start + pageSize < totalCount,
+    };
   },
 });
 

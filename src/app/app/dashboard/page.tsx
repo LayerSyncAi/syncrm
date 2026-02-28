@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import Link from "next/link";
-import { useQuery } from "convex/react";
-import { api } from "../../../../convex/_generated/api";
 import { motion, useMotionValue, animate } from "framer-motion";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useDashboardData } from "@/hooks/useDashboardData";
 
 // --- #13: Animated counter that rolls up from 0 ---
 
@@ -100,25 +99,24 @@ const DISTRIBUTION_COLORS = [
 ];
 
 export default function DashboardPage() {
-  const dashboardData = useQuery(api.leads.dashboardStats, {});
-  const scoreData = useQuery(api.leads.dashboardScoreStats, {});
+  const {
+    isLoading,
+    isScoreLoading,
+    stats,
+    stageBreakdown,
+    monthlyProgress,
+    distribution,
+    avgScoreByStage,
+    topUnworked,
+    maxDistCount,
+    scoredCount,
+    totalActive,
+    overallAvg,
+  } = useDashboardData();
 
-  const isLoading = dashboardData === undefined;
-  const isScoreLoading = scoreData === undefined;
-
-  const stats = dashboardData
-    ? [
-        { label: "Total leads", value: dashboardData.stats.totalLeads },
-        { label: "Open leads", value: dashboardData.stats.openLeads },
-        { label: "Won", value: dashboardData.stats.totalWon },
-        { label: "Lost", value: dashboardData.stats.totalLost },
-      ]
-    : [];
-
-  const stageBreakdown = dashboardData?.stageBreakdown ?? [];
-  const monthlyProgress = dashboardData?.monthlyProgress ?? 0;
-
-  const maxDistCount = Math.max(...(scoreData?.distribution.map((d) => d.count) ?? [1]));
+  // Track mount state: only animate on initial mount, not on real-time data updates
+  const hasMounted = useRef(false);
+  useEffect(() => { hasMounted.current = true; }, []);
 
   return (
     <div className="space-y-6">
@@ -173,7 +171,7 @@ export default function DashboardPage() {
       ) : (
         <motion.div
           variants={containerVariants}
-          initial="hidden"
+          initial={hasMounted.current ? false : "hidden"}
           animate="show"
           className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"
         >
@@ -213,11 +211,11 @@ export default function DashboardPage() {
                   <h3 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
                     Lead Score Distribution
                   </h3>
-                  {!isScoreLoading && scoreData && (
+                  {!isScoreLoading && (
                     <p className="mt-1 text-xs text-text-dim">
-                      {scoreData.scoredCount} of {scoreData.totalActive} leads scored
-                      {scoreData.scoredCount > 0 && (
-                        <> &middot; Avg: <span className="font-medium text-text-muted">{scoreData.overallAvg}</span></>
+                      {scoredCount} of {totalActive} leads scored
+                      {scoredCount > 0 && (
+                        <> &middot; Avg: <span className="font-medium text-text-muted">{overallAvg}</span></>
                       )}
                     </p>
                   )}
@@ -231,18 +229,18 @@ export default function DashboardPage() {
                     <StageRowSkeleton key={i} />
                   ))}
                 </div>
-              ) : !scoreData || scoreData.totalActive === 0 ? (
+              ) : totalActive === 0 ? (
                 <p className="text-sm text-text-muted text-center py-4">
                   No leads to display
                 </p>
               ) : (
                 <motion.div
                   variants={stageContainerVariants}
-                  initial="hidden"
+                  initial={hasMounted.current ? false : "hidden"}
                   animate="show"
                   className="space-y-3"
                 >
-                  {scoreData.distribution.map((bucket, index) => (
+                  {distribution.map((bucket, index) => (
                     <motion.div
                       key={bucket.label}
                       variants={stageItemVariants}
@@ -302,18 +300,18 @@ export default function DashboardPage() {
                     <StageRowSkeleton key={i} />
                   ))}
                 </div>
-              ) : !scoreData || scoreData.avgScoreByStage.length === 0 ? (
+              ) : avgScoreByStage.length === 0 ? (
                 <p className="text-sm text-text-muted text-center py-4">
                   No stage data yet
                 </p>
               ) : (
                 <motion.div
                   variants={stageContainerVariants}
-                  initial="hidden"
+                  initial={hasMounted.current ? false : "hidden"}
                   animate="show"
                   className="space-y-3"
                 >
-                  {scoreData.avgScoreByStage
+                  {avgScoreByStage
                     .filter((s) => s.count > 0)
                     .map((stage, index) => {
                       const color =
@@ -362,7 +360,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Top Unworked High-Score Leads */}
-      {!isScoreLoading && scoreData && scoreData.topUnworked.length > 0 && (
+      {!isScoreLoading && topUnworked.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -394,7 +392,7 @@ export default function DashboardPage() {
                 animate="show"
                 className="space-y-2"
               >
-                {scoreData.topUnworked.map((lead, index) => {
+                {topUnworked.map((lead, index) => {
                   const scoreColor =
                     lead.score >= 70
                       ? "text-success"
@@ -479,7 +477,7 @@ export default function DashboardPage() {
             // #16: Stage rows with stagger + animated accent bar
             <motion.div
               variants={stageContainerVariants}
-              initial="hidden"
+              initial={hasMounted.current ? false : "hidden"}
               animate="show"
               className="space-y-4"
             >
