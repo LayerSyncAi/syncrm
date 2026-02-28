@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from "react";
+import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
 import Link from "next/link";
 import { useQuery, useMutation } from "convex/react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -155,10 +155,6 @@ export default function LeadsPage() {
 
   // Bulk matching modal state
   const [bulkMatchingOpen, setBulkMatchingOpen] = useState(false);
-
-  // Track if initial mount has passed (to prevent re-animation on filter changes)
-  const hasMounted = useRef(false);
-  useEffect(() => { hasMounted.current = true; }, []);
 
   // Debounce search inputs
   useEffect(() => {
@@ -413,8 +409,9 @@ export default function LeadsPage() {
             </thead>
             <motion.tbody
               variants={listVariants}
-              initial={hasMounted.current ? false : "hidden"}
+              initial="hidden"
               animate="show"
+              key="data"
             >
               {leads.map((lead: LeadRowData) => (
                 <LeadTableRow

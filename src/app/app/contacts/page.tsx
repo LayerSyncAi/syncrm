@@ -167,10 +167,6 @@ export default function ContactsPage() {
   const totalCount = (contactsResult as any)?.totalCount ?? contacts?.length ?? 0;
   const hasMore = (contactsResult as any)?.hasMore ?? false;
 
-  // Track initial mount to prevent re-animation
-  const hasMounted = React.useRef(false);
-  React.useEffect(() => { hasMounted.current = true; }, []);
-
   // Mutations
   const createContact = useMutation(api.contacts.create);
   const updateContact = useMutation(api.contacts.update);
@@ -462,7 +458,7 @@ export default function ContactsPage() {
         ) : (
           <motion.tbody
             variants={listVariants}
-            initial={hasMounted.current ? false : "hidden"}
+            initial="hidden"
             animate="show"
             key="data"
           >
