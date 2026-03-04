@@ -44,6 +44,7 @@ interface LeadHeroCardProps {
   onStageChange: (stageId: Id<"pipelineStages">) => void;
   onSaveCloseDetails: () => void;
   isSavingCloseDetails: boolean;
+  closeDetailsSaved: boolean;
   onViewDetails: () => void;
 }
 
@@ -63,6 +64,7 @@ export const LeadHeroCard = React.memo(function LeadHeroCard({
   onStageChange,
   onSaveCloseDetails,
   isSavingCloseDetails,
+  closeDetailsSaved,
   onViewDetails,
 }: LeadHeroCardProps) {
   const [scoreExpanded, setScoreExpanded] = React.useState(false);
@@ -226,6 +228,7 @@ export const LeadHeroCard = React.memo(function LeadHeroCard({
           <StaggeredDropDown
             className="max-w-xs"
             portal
+            disabled={closeDetailsSaved}
             value={lead.stageId}
             onChange={(val) => onStageChange(val as Id<"pipelineStages">)}
             options={stages?.map((s) => ({ value: s._id, label: s.name })) ?? []}
@@ -236,6 +239,7 @@ export const LeadHeroCard = React.memo(function LeadHeroCard({
                 placeholder="Close reason"
                 value={closeReason}
                 onChange={(e) => onCloseReasonChange(e.target.value)}
+                readOnly={closeDetailsSaved}
                 className="max-w-xs"
               />
               {stages?.find((s) => s._id === lead.stageId)?.terminalOutcome === "won" && (
@@ -245,16 +249,19 @@ export const LeadHeroCard = React.memo(function LeadHeroCard({
                   currency={dealCurrency}
                   onCurrencyChange={onDealCurrencyChange}
                   placeholder="Deal value"
+                  disabled={closeDetailsSaved}
                   className="max-w-[220px]"
                 />
               )}
-              <Button
-                onClick={onSaveCloseDetails}
-                disabled={isSavingCloseDetails}
-                className="h-10"
-              >
-                {isSavingCloseDetails ? "Saving..." : "Save"}
-              </Button>
+              {!closeDetailsSaved && (
+                <Button
+                  onClick={onSaveCloseDetails}
+                  disabled={isSavingCloseDetails}
+                  className="h-10"
+                >
+                  {isSavingCloseDetails ? "Saving..." : "Save"}
+                </Button>
+              )}
             </>
           )}
         </div>

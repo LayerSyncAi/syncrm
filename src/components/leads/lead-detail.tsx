@@ -295,6 +295,7 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
         onStageChange={handleStageChange}
         onSaveCloseDetails={handleSaveCloseDetails}
         isSavingCloseDetails={isSavingCloseDetails}
+        closeDetailsSaved={!!(lead.closedAt && (leadData?.lead as Record<string, unknown>)?.closeReason)}
         onViewDetails={() => setContactDetailsOpen(true)}
       />
 

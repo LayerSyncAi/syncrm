@@ -45,6 +45,8 @@ interface LeadRowData {
   stageId: Id<"pipelineStages">;
   ownerName: string;
   updatedAt: number;
+  closedAt?: number;
+  closeReason?: string;
 }
 
 const LeadTableRow = React.memo(function LeadTableRow({
@@ -85,6 +87,7 @@ const LeadTableRow = React.memo(function LeadTableRow({
           onChange={(val) => onStageChange(lead._id, val as Id<"pipelineStages">)}
           aria-label={`Update stage for ${lead.fullName}`}
           portal
+          disabled={!!(lead.closedAt && lead.closeReason)}
           options={stages?.map((stage) => ({ value: stage._id, label: stage.name })) ?? []}
         />
       </TableCell>
