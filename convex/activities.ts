@@ -113,6 +113,8 @@ export const listAllTasks = query({
       v.literal("note"),
       v.literal("all")
     )),
+    page: v.optional(v.number()),
+    pageSize: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserWithOrg(ctx);
@@ -167,11 +169,26 @@ export const listAllTasks = query({
       };
     });
 
-    return enrichedActivities.sort((a, b) => {
+    const sorted = enrichedActivities.sort((a, b) => {
       const aDate = a.scheduledAt || a.createdAt;
       const bDate = b.scheduledAt || b.createdAt;
       return bDate - aDate;
     });
+
+    // Server-side pagination
+    const page = args.page ?? 0;
+    const pageSize = args.pageSize ?? 50;
+    const totalCount = sorted.length;
+    const start = page * pageSize;
+    const items = sorted.slice(start, start + pageSize);
+
+    return {
+      items,
+      totalCount,
+      page,
+      pageSize,
+      hasMore: start + pageSize < totalCount,
+    };
   },
 });
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -23,6 +23,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tooltip } from "@/components/ui/tooltip";
+import { PaginationControls } from "@/components/ui/pagination";
+import { usePagination } from "@/hooks/usePagination";
 import {
   Loader2,
   Plus,
@@ -96,9 +98,21 @@ export default function CommissionsPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
 
+  // Pagination
+  const commissionsPagination = usePagination(50);
+
   // Queries
   const configs = useQuery(api.commissions.listConfigs);
-  const dealCommissions = useQuery(api.commissions.listDealCommissions, {});
+  const dealCommissionsResult = useQuery(api.commissions.listDealCommissions, {
+    page: commissionsPagination.page > 0 ? commissionsPagination.page : undefined,
+    pageSize: commissionsPagination.pageSize !== 50 ? commissionsPagination.pageSize : undefined,
+  });
+  const dealCommissions = useMemo(() => {
+    if (!dealCommissionsResult) return undefined;
+    return (dealCommissionsResult as any).items ?? (Array.isArray(dealCommissionsResult) ? dealCommissionsResult : []);
+  }, [dealCommissionsResult]);
+  const commissionsTotalCount = (dealCommissionsResult as any)?.totalCount ?? dealCommissions?.length ?? 0;
+  const commissionsHasMore = (dealCommissionsResult as any)?.hasMore ?? false;
 
   // Mutations
   const createConfig = useMutation(api.commissions.createConfig);
@@ -477,7 +491,7 @@ export default function CommissionsPage() {
                     </TableRow>
                   </TableHeader>
                   <motion.tbody variants={listVariants} initial="hidden" animate="show">
-                    {dealCommissions.map((commission) => {
+                    {dealCommissions.map((commission: any) => {
                       const fmt = (amount: number) =>
                         new Intl.NumberFormat("en-US", {
                           style: "currency",
@@ -562,6 +576,15 @@ export default function CommissionsPage() {
                 </Table>
               </div>
             )}
+
+            <PaginationControls
+              page={commissionsPagination.page}
+              pageSize={commissionsPagination.pageSize}
+              totalCount={commissionsTotalCount}
+              hasMore={commissionsHasMore}
+              onNextPage={commissionsPagination.nextPage}
+              onPrevPage={commissionsPagination.prevPage}
+            />
           </motion.div>
         )}
       </AnimatePresence>
@@ -732,7 +755,7 @@ export default function CommissionsPage() {
 
       {/* Commission Details Modal */}
       {(() => {
-        const detailCommission = dealCommissions?.find((c) => c._id === detailCommissionId);
+        const detailCommission = dealCommissions?.find((c: any) => c._id === detailCommissionId);
         if (!detailCommission) return null;
 
         const fmt = (amount: number) =>

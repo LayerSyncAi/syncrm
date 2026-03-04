@@ -191,6 +191,8 @@ export const listDealCommissions = query({
     leadId: v.optional(v.id("leads")),
     agentUserId: v.optional(v.id("users")),
     status: v.optional(v.union(v.literal("pending"), v.literal("approved"), v.literal("paid"))),
+    page: v.optional(v.number()),
+    pageSize: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserWithOrg(ctx);
@@ -233,7 +235,7 @@ export const listDealCommissions = query({
     const propertyMap = new Map(properties.map((p) => [p._id, p]));
     const configMap = new Map(configs.map((c) => [c._id, c]));
 
-    return commissions.map((commission) => {
+    const enriched = commissions.map((commission) => {
       const lead = leadMap.get(commission.leadId);
       const propAgent = commission.propertyAgentUserId ? userMap.get(commission.propertyAgentUserId) : null;
       const leadAgent = userMap.get(commission.leadAgentUserId);
@@ -253,6 +255,21 @@ export const listDealCommissions = query({
         configName: config?.name || null,
       };
     });
+
+    // Server-side pagination
+    const page = args.page ?? 0;
+    const pageSize = args.pageSize ?? 50;
+    const totalCount = enriched.length;
+    const start = page * pageSize;
+    const items = enriched.slice(start, start + pageSize);
+
+    return {
+      items,
+      totalCount,
+      page,
+      pageSize,
+      hasMore: start + pageSize < totalCount,
+    };
   },
 });
 
