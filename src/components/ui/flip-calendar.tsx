@@ -12,6 +12,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { format } from "date-fns";
 import { ArrowLeft, ArrowRight, Pencil, Clock, X } from "lucide-react";
 import { DateObj, useDayzed } from "dayzed";
+import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 
 /* ─── public props ─── */
 export interface FlipCalendarProps {
@@ -368,39 +369,62 @@ interface TimePickerProps {
   onMinutesChange: (m: number) => void;
 }
 
+const HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) => ({
+  value: String(i),
+  label: String(i).padStart(2, "0"),
+}));
+
 const TimePicker = ({
   hours,
   minutes,
   onHoursChange,
   onMinutesChange,
 }: TimePickerProps) => {
+  const [minuteInput, setMinuteInput] = useState(
+    String(minutes).padStart(2, "0")
+  );
+
+  // Keep the text field in sync when the parent value changes
+  useEffect(() => {
+    setMinuteInput(String(minutes).padStart(2, "0"));
+  }, [minutes]);
+
+  const commitMinutes = (raw: string) => {
+    const n = parseInt(raw, 10);
+    const clamped = Number.isNaN(n) ? 0 : Math.min(Math.max(n, 0), 59);
+    setMinuteInput(String(clamped).padStart(2, "0"));
+    onMinutesChange(clamped);
+  };
+
   return (
     <div className="mt-3 border-t border-border pt-3">
       <div className="flex items-center gap-2">
-        <Clock className="h-4 w-4 text-text-muted" />
-        <select
-          value={hours}
-          onChange={(e) => onHoursChange(Number(e.target.value))}
-          className="h-8 rounded-[8px] border border-border-strong bg-transparent px-2 text-sm text-text outline-none focus:ring-2 focus:ring-primary/30"
-        >
-          {Array.from({ length: 24 }, (_, i) => (
-            <option key={i} value={i}>
-              {String(i).padStart(2, "0")}
-            </option>
-          ))}
-        </select>
+        <Clock className="h-4 w-4 shrink-0 text-text-muted" />
+        <div className="w-[72px]">
+          <StaggeredDropDown
+            value={String(hours)}
+            onChange={(val) => onHoursChange(Number(val))}
+            options={HOUR_OPTIONS}
+            maxHeight={192}
+            portal
+          />
+        </div>
         <span className="text-text-muted">:</span>
-        <select
-          value={minutes}
-          onChange={(e) => onMinutesChange(Number(e.target.value))}
-          className="h-8 rounded-[8px] border border-border-strong bg-transparent px-2 text-sm text-text outline-none focus:ring-2 focus:ring-primary/30"
-        >
-          {Array.from({ length: 12 }, (_, i) => i * 5).map((m) => (
-            <option key={m} value={m}>
-              {String(m).padStart(2, "0")}
-            </option>
-          ))}
-        </select>
+        <input
+          type="text"
+          inputMode="numeric"
+          maxLength={2}
+          value={minuteInput}
+          onChange={(e) => {
+            const v = e.target.value.replace(/\D/g, "").slice(0, 2);
+            setMinuteInput(v);
+          }}
+          onBlur={(e) => commitMinutes(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commitMinutes(minuteInput);
+          }}
+          className="h-10 w-14 rounded-[10px] border border-border-strong bg-transparent px-2 text-center text-sm text-text outline-none transition duration-150 hover:border-primary/60 focus:ring-4 focus:ring-[rgba(59,130,246,0.18)]"
+        />
       </div>
     </div>
   );

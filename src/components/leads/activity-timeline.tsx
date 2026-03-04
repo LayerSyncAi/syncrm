@@ -12,6 +12,7 @@ import { Modal } from "@/components/ui/modal";
 import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 import { Textarea } from "@/components/ui/textarea";
 import { FlipCalendar } from "@/components/ui/flip-calendar";
+import { DueDateRing } from "@/components/ui/due-date-ring";
 
 const timelineContainerVariants = {
   hidden: {},
@@ -28,26 +29,6 @@ const formatDateTime = (timestamp: number) =>
 
 const isActivityOverdue = (a: { status: string; scheduledAt?: number }) =>
   a.status === "todo" && !!a.scheduledAt && a.scheduledAt < Date.now();
-
-function DueDateRing({ scheduledAt, createdAt }: { scheduledAt: number; createdAt: number }) {
-  const now = Date.now();
-  const total = scheduledAt - createdAt;
-  const elapsed = now - createdAt;
-  const progress = total > 0 ? Math.min(Math.max(elapsed / total, 0), 1) : 1;
-  const r = 9;
-  const c = 2 * Math.PI * r;
-  const offset = c * (1 - progress);
-  const color = progress >= 1 ? "var(--danger)" : progress >= 0.75 ? "var(--warning)" : "var(--info)";
-
-  return (
-    <svg width="22" height="22" viewBox="0 0 22 22" className="shrink-0">
-      <circle cx="11" cy="11" r={r} fill="none" stroke="var(--border)" strokeWidth="2" />
-      <circle cx="11" cy="11" r={r} fill="none" stroke={color} strokeWidth="2.5"
-        strokeDasharray={c} strokeDashoffset={offset} strokeLinecap="round"
-        transform="rotate(-90 11 11)" className="transition-all duration-700" />
-    </svg>
-  );
-}
 
 function CelebrationCheck() {
   return (
@@ -74,10 +55,12 @@ const TimelineItem = React.memo(function TimelineItem({
   activity,
   celebrating,
   onMarkComplete,
+  onDelete,
 }: {
   activity: Activity;
   celebrating: boolean;
   onMarkComplete: (id: Id<"activities">) => void;
+  onDelete: (id: Id<"activities">) => void;
 }) {
   const overdue = isActivityOverdue(activity);
 
@@ -126,11 +109,20 @@ const TimelineItem = React.memo(function TimelineItem({
           </span>
           {activity.completedAt && <span>· Completed: {formatDateTime(activity.completedAt)}</span>}
         </div>
-        {activity.status !== "completed" && (
-          <Button variant="secondary" onClick={() => onMarkComplete(activity._id)}>
-            Mark complete
+        <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            className="text-danger hover:bg-danger/10 text-xs px-2 py-1"
+            onClick={() => onDelete(activity._id)}
+          >
+            Delete
           </Button>
-        )}
+          {activity.status !== "completed" && (
+            <Button variant="secondary" onClick={() => onMarkComplete(activity._id)}>
+              Mark complete
+            </Button>
+          )}
+        </div>
       </div>
     </motion.div>
   );
@@ -146,6 +138,7 @@ interface ActivityTimelineProps {
     scheduledAt?: number;
   }) => Promise<void>;
   onMarkComplete: (activityId: Id<"activities">, notes: string) => Promise<void>;
+  onDeleteActivity: (activityId: Id<"activities">) => Promise<void>;
 }
 
 export const ActivityTimeline = React.memo(function ActivityTimeline({
@@ -153,6 +146,7 @@ export const ActivityTimeline = React.memo(function ActivityTimeline({
   activities,
   onCreateActivity,
   onMarkComplete,
+  onDeleteActivity,
 }: ActivityTimelineProps) {
   const [activityType, setActivityType] = useState<"call" | "whatsapp" | "email" | "meeting" | "viewing" | "note">("call");
   const [activityTitle, setActivityTitle] = useState("");
@@ -165,6 +159,32 @@ export const ActivityTimeline = React.memo(function ActivityTimeline({
   const [isMarkingComplete, setIsMarkingComplete] = useState(false);
 
   const [celebratingIds, setCelebratingIds] = useState<Set<string>>(new Set());
+
+  const [deletingActivity, setDeletingActivity] = useState<Activity | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isDeletingActivity, setIsDeletingActivity] = useState(false);
+
+  const handleOpenDeleteModal = useCallback((activityId: Id<"activities">) => {
+    const activity = activities?.find((a) => a._id === activityId) ?? null;
+    setDeletingActivity(activity);
+    setDeleteConfirmText("");
+  }, [activities]);
+
+  const handleCloseDeleteModal = useCallback(() => {
+    setDeletingActivity(null);
+    setDeleteConfirmText("");
+  }, []);
+
+  const handleDeleteActivity = useCallback(async () => {
+    if (!deletingActivity || deleteConfirmText !== deletingActivity.title) return;
+    setIsDeletingActivity(true);
+    try {
+      await onDeleteActivity(deletingActivity._id);
+      handleCloseDeleteModal();
+    } finally {
+      setIsDeletingActivity(false);
+    }
+  }, [deletingActivity, deleteConfirmText, onDeleteActivity, handleCloseDeleteModal]);
 
   const handleCreateActivity = useCallback(async () => {
     if (!activityTitle.trim()) return;
@@ -276,6 +296,7 @@ export const ActivityTimeline = React.memo(function ActivityTimeline({
                   activity={activity}
                   celebrating={celebratingIds.has(activity._id)}
                   onMarkComplete={handleOpenCompleteModal}
+                  onDelete={handleOpenDeleteModal}
                 />
               ))}
             </motion.div>
@@ -313,6 +334,42 @@ export const ActivityTimeline = React.memo(function ActivityTimeline({
             />
             <p className="text-xs text-text-muted">These notes will be visible in the timeline and on the tasks page.</p>
           </div>
+        </motion.div>
+      </Modal>
+
+      <Modal
+        open={deletingActivity !== null}
+        title="Delete Activity"
+        description="This action cannot be undone"
+        onClose={handleCloseDeleteModal}
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={handleCloseDeleteModal}>Cancel</Button>
+            <Button
+              className="bg-danger hover:bg-danger/90 text-white"
+              disabled={deleteConfirmText !== (deletingActivity?.title ?? "") || isDeletingActivity}
+              onClick={handleDeleteActivity}
+            >
+              {isDeletingActivity ? "Deleting..." : "Delete activity"}
+            </Button>
+          </div>
+        }
+      >
+        <motion.div
+          className="space-y-4"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 24, delay: 0.1 }}
+        >
+          <p className="text-sm text-text-muted">
+            To confirm, type <span className="font-semibold text-text">{deletingActivity?.title}</span> below:
+          </p>
+          <Input
+            placeholder="Type the activity name to confirm"
+            value={deleteConfirmText}
+            onChange={(e) => setDeleteConfirmText(e.target.value)}
+            className="border-danger/30 focus:ring-danger/20"
+          />
         </motion.div>
       </Modal>
     </>

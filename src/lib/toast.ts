@@ -127,6 +127,16 @@ export const activityToasts = {
     animatedToast.error("Failed to reopen task", {
       description: detail || "Something went wrong. Please try again.",
     }),
+
+  deleted: (title: string) =>
+    animatedToast.success("Task deleted", {
+      description: `"${title}" has been permanently removed.`,
+    }),
+
+  deleteFailed: (detail?: string) =>
+    animatedToast.error("Failed to delete task", {
+      description: detail || "Something went wrong. Please try again.",
+    }),
 };
 
 // ── Contacts ──────────────────────────────────────────────

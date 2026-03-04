@@ -38,16 +38,21 @@ interface TaskDetailModalProps {
   task: TaskActivity | null;
   onTaskUpdated?: () => void;
   onTaskCompleted?: (taskId: string) => void;
+  onTaskDeleted?: (taskId: string) => void;
 }
 
-export function TaskDetailModal({ open, onClose, task, onTaskUpdated, onTaskCompleted }: TaskDetailModalProps) {
+export function TaskDetailModal({ open, onClose, task, onTaskUpdated, onTaskCompleted, onTaskDeleted }: TaskDetailModalProps) {
   const [completionNotes, setCompletionNotes] = useState("");
   const [isCompleting, setIsCompleting] = useState(false);
   const [isReopening, setIsReopening] = useState(false);
   const [showCompleteForm, setShowCompleteForm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const markComplete = useMutation(api.activities.markComplete);
   const reopenTask = useMutation(api.activities.reopen);
+  const removeTask = useMutation(api.activities.remove);
 
   const formatDateTime = (timestamp: number) => {
     return new Date(timestamp).toLocaleString("en-US", {
@@ -96,6 +101,25 @@ export function TaskDetailModal({ open, onClose, task, onTaskUpdated, onTaskComp
     }
   };
 
+  const handleDelete = async () => {
+    if (!task || deleteConfirmText !== task.title) return;
+    setIsDeleting(true);
+    try {
+      await removeTask({ activityId: task._id });
+      activityToasts.deleted(task.title);
+      onTaskDeleted?.(task._id);
+      onTaskUpdated?.();
+      onClose();
+    } catch (error) {
+      console.error("Failed to delete task:", error);
+      activityToasts.deleteFailed(error instanceof Error ? error.message : undefined);
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+      setDeleteConfirmText("");
+    }
+  };
+
   if (!task) return null;
 
   const getActivityTypeLabel = (type: string) => {
@@ -118,7 +142,7 @@ export function TaskDetailModal({ open, onClose, task, onTaskUpdated, onTaskComp
       onClose={onClose}
       footer={
         <div className="flex items-center justify-between">
-          <div>
+          <div className="flex items-center gap-2">
             {task.lead && (
               <Link href={`/app/leads/${task.lead._id}`}>
                 <Button variant="secondary" onClick={onClose}>
@@ -126,6 +150,13 @@ export function TaskDetailModal({ open, onClose, task, onTaskUpdated, onTaskComp
                 </Button>
               </Link>
             )}
+            <Button
+              variant="secondary"
+              className="text-danger hover:bg-danger/10"
+              onClick={() => { setShowDeleteConfirm(true); setShowCompleteForm(false); }}
+            >
+              Delete
+            </Button>
           </div>
           <div className="flex gap-2">
             {task.status === "completed" ? (
@@ -244,6 +275,43 @@ export function TaskDetailModal({ open, onClose, task, onTaskUpdated, onTaskComp
               className="min-h-[100px]"
             />
           </div>
+        )}
+
+        {showDeleteConfirm && (
+          <motion.div
+            className="space-y-3 rounded-[10px] border border-danger/30 bg-danger/5 p-4"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            transition={{ type: "spring", stiffness: 300, damping: 24 }}
+          >
+            <p className="text-sm font-medium text-danger">
+              This action cannot be undone.
+            </p>
+            <p className="text-sm text-text-muted">
+              To confirm, type <span className="font-semibold text-text">{task.title}</span> below:
+            </p>
+            <Input
+              placeholder="Type the task name to confirm"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              className="border-danger/30 focus:ring-danger/20"
+            />
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="secondary"
+                onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(""); }}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="bg-danger hover:bg-danger/90 text-white"
+                disabled={deleteConfirmText !== task.title || isDeleting}
+                onClick={handleDelete}
+              >
+                {isDeleting ? "Deleting..." : "Delete task"}
+              </Button>
+            </div>
+          </motion.div>
         )}
       </motion.div>
     </Modal>
