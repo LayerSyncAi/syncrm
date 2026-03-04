@@ -14,9 +14,12 @@ import { Table, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { PaginationControls } from "@/components/ui/pagination";
 import { usePagination } from "@/hooks/usePagination";
 import { Tooltip } from "@/components/ui/tooltip";
-import { Eye, ExternalLink } from "lucide-react";
+import { Eye, ExternalLink, Trash2 } from "lucide-react";
 import { useRequireAuth } from "@/hooks/useAuth";
 import { DueDateRing } from "@/components/ui/due-date-ring";
+import { Modal } from "@/components/ui/modal";
+import { Input } from "@/components/ui/input";
+import { activityToasts } from "@/lib/toast";
 
 function AnimatedCounter({ value }: { value: number }) {
   const ref = useRef<HTMLSpanElement>(null);
@@ -136,6 +139,11 @@ export default function TasksPage() {
   const [selectedTask, setSelectedTask] = useState<TaskActivity | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [celebratingIds, setCelebratingIds] = useState<Set<string>>(new Set());
+  const [deletingTask, setDeletingTask] = useState<TaskActivity | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isDeletingTask, setIsDeletingTask] = useState(false);
+
+  const removeTask = useMutation(api.activities.remove);
 
   // Reset to first page when filters change
   useEffect(() => {
@@ -176,6 +184,35 @@ export default function TasksPage() {
       });
     }, 1600);
   }, []);
+
+  const handleOpenDeleteModal = useCallback((task: TaskActivity) => {
+    setDeletingTask(task);
+    setDeleteConfirmText("");
+  }, []);
+
+  const handleCloseDeleteModal = useCallback(() => {
+    setDeletingTask(null);
+    setDeleteConfirmText("");
+  }, []);
+
+  const handleDeleteTask = useCallback(async () => {
+    if (!deletingTask || deleteConfirmText !== deletingTask.title) return;
+    setIsDeletingTask(true);
+    try {
+      await removeTask({ activityId: deletingTask._id });
+      activityToasts.deleted(deletingTask.title);
+      handleCloseDeleteModal();
+    } catch (error) {
+      console.error("Failed to delete task:", error);
+      activityToasts.deleteFailed(error instanceof Error ? error.message : undefined);
+    } finally {
+      setIsDeletingTask(false);
+    }
+  }, [deletingTask, deleteConfirmText, removeTask, handleCloseDeleteModal]);
+
+  const handleTaskDeleted = useCallback((taskId: string) => {
+    handleCloseModal();
+  }, [handleCloseModal]);
 
   if (authLoading) {
     return (
@@ -385,6 +422,16 @@ export default function TasksPage() {
                         </Link>
                       </Tooltip>
                     )}
+                    <Tooltip content="Delete Task">
+                      <Button
+                        variant="secondary"
+                        className="action-btn h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out text-danger hover:bg-danger/10"
+                        style={{ transitionDelay: "100ms" }}
+                        onClick={() => handleOpenDeleteModal(task as TaskActivity)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </Tooltip>
                   </div>
                 </TableCell>
               </motion.tr>
@@ -411,10 +458,46 @@ export default function TasksPage() {
               onClose={handleCloseModal}
               task={selectedTask}
               onTaskCompleted={handleTaskCompleted}
+              onTaskDeleted={handleTaskDeleted}
             />
           </Suspense>
         )}
       </AnimatePresence>
+
+      <Modal
+        open={deletingTask !== null}
+        title="Delete Task"
+        description="This action cannot be undone"
+        onClose={handleCloseDeleteModal}
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={handleCloseDeleteModal}>Cancel</Button>
+            <Button
+              className="bg-danger hover:bg-danger/90 text-white"
+              disabled={deleteConfirmText !== (deletingTask?.title ?? "") || isDeletingTask}
+              onClick={handleDeleteTask}
+            >
+              {isDeletingTask ? "Deleting..." : "Delete task"}
+            </Button>
+          </div>
+        }
+      >
+        <motion.div
+          className="space-y-4"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 24, delay: 0.1 }}
+        >
+          <p className="text-sm text-text-muted">
+            To confirm, type <span className="font-semibold text-text">{deletingTask?.title}</span> below:
+          </p>
+          <Input
+            placeholder="Type the task name to confirm"
+            value={deleteConfirmText}
+            onChange={(e) => setDeleteConfirmText(e.target.value)}
+          />
+        </motion.div>
+      </Modal>
     </div>
   );
 }

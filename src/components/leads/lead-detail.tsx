@@ -100,6 +100,7 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
   const updateCloseDetails = useMutation(api.leads.updateCloseDetails);
   const createActivity = useMutation(api.activities.createForLead);
   const markActivityComplete = useMutation(api.activities.markComplete);
+  const removeActivity = useMutation(api.activities.remove);
   const attachProperty = useMutation(api.matches.attachPropertyToLead);
   const detachProperty = useMutation(api.matches.detach);
 
@@ -194,6 +195,17 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
       throw error;
     }
   }, [markActivityComplete]);
+
+  const handleDeleteActivity = useCallback(async (activityId: Id<"activities">) => {
+    try {
+      await removeActivity({ activityId });
+      activityToasts.deleted("Activity");
+    } catch (error) {
+      console.error("Failed to delete activity:", error);
+      activityToasts.deleteFailed(error instanceof Error ? error.message : undefined);
+      throw error;
+    }
+  }, [removeActivity]);
 
   const handleAttachProperties = useCallback(async () => {
     if (selectedPropertyIds.size === 0) return;
@@ -334,6 +346,7 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
               activities={activities}
               onCreateActivity={handleCreateActivity}
               onMarkComplete={handleMarkComplete}
+              onDeleteActivity={handleDeleteActivity}
             />
           </motion.div>
         )}
