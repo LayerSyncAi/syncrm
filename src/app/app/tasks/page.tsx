@@ -16,6 +16,7 @@ import { usePagination } from "@/hooks/usePagination";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Eye, ExternalLink } from "lucide-react";
 import { useRequireAuth } from "@/hooks/useAuth";
+import { DueDateRing } from "@/components/ui/due-date-ring";
 
 function AnimatedCounter({ value }: { value: number }) {
   const ref = useRef<HTMLSpanElement>(null);
@@ -91,37 +92,6 @@ const getActivityTypeLabel = (type: string) => activityTypeLabels[type] || type;
 
 const isTaskOverdue = (task: { status: string; scheduledAt?: number }) =>
   task.status === "todo" && !!task.scheduledAt && task.scheduledAt < Date.now();
-
-// Due date proximity ring — fills as the deadline approaches
-function DueDateRing({ scheduledAt, createdAt }: { scheduledAt: number; createdAt: number }) {
-  const now = Date.now();
-  const total = scheduledAt - createdAt;
-  const elapsed = now - createdAt;
-  const progress = total > 0 ? Math.min(Math.max(elapsed / total, 0), 1) : 1;
-  const r = 9;
-  const circumference = 2 * Math.PI * r;
-  const offset = circumference * (1 - progress);
-  const color = progress >= 1 ? "var(--danger)" : progress >= 0.75 ? "var(--warning)" : "var(--info)";
-
-  return (
-    <svg width="22" height="22" viewBox="0 0 22 22" className="shrink-0">
-      <circle cx="11" cy="11" r={r} fill="none" stroke="var(--border)" strokeWidth="2" />
-      <circle
-        cx="11"
-        cy="11"
-        r={r}
-        fill="none"
-        stroke={color}
-        strokeWidth="2.5"
-        strokeDasharray={circumference}
-        strokeDashoffset={offset}
-        strokeLinecap="round"
-        transform="rotate(-90 11 11)"
-        className="transition-all duration-700"
-      />
-    </svg>
-  );
-}
 
 // Animated checkmark SVG for completion celebration
 function CelebrationCheck() {

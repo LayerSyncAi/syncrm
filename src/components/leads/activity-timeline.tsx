@@ -12,6 +12,7 @@ import { Modal } from "@/components/ui/modal";
 import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 import { Textarea } from "@/components/ui/textarea";
 import { FlipCalendar } from "@/components/ui/flip-calendar";
+import { DueDateRing } from "@/components/ui/due-date-ring";
 
 const timelineContainerVariants = {
   hidden: {},
@@ -28,26 +29,6 @@ const formatDateTime = (timestamp: number) =>
 
 const isActivityOverdue = (a: { status: string; scheduledAt?: number }) =>
   a.status === "todo" && !!a.scheduledAt && a.scheduledAt < Date.now();
-
-function DueDateRing({ scheduledAt, createdAt }: { scheduledAt: number; createdAt: number }) {
-  const now = Date.now();
-  const total = scheduledAt - createdAt;
-  const elapsed = now - createdAt;
-  const progress = total > 0 ? Math.min(Math.max(elapsed / total, 0), 1) : 1;
-  const r = 9;
-  const c = 2 * Math.PI * r;
-  const offset = c * (1 - progress);
-  const color = progress >= 1 ? "var(--danger)" : progress >= 0.75 ? "var(--warning)" : "var(--info)";
-
-  return (
-    <svg width="22" height="22" viewBox="0 0 22 22" className="shrink-0">
-      <circle cx="11" cy="11" r={r} fill="none" stroke="var(--border)" strokeWidth="2" />
-      <circle cx="11" cy="11" r={r} fill="none" stroke={color} strokeWidth="2.5"
-        strokeDasharray={c} strokeDashoffset={offset} strokeLinecap="round"
-        transform="rotate(-90 11 11)" className="transition-all duration-700" />
-    </svg>
-  );
-}
 
 function CelebrationCheck() {
   return (
