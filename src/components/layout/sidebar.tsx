@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useState } from "react";
+import { memo, useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -19,6 +19,7 @@ import {
   UserCog,
   Users,
   Waypoints,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -48,6 +49,8 @@ interface SidebarProps {
   collapsed?: boolean;
   onToggle?: () => void;
   orgName?: string;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
 // --- NavItem with micro-interactions ---
@@ -145,24 +148,63 @@ function NavItem({
   );
 }
 
-export const Sidebar = memo(function Sidebar({ isAdmin, collapsed, onToggle, orgName }: SidebarProps) {
+export const Sidebar = memo(function Sidebar({ isAdmin, collapsed, onToggle, orgName, mobileOpen, onMobileClose }: SidebarProps) {
   const pathname = usePathname();
   const [ioExpanded, setIoExpanded] = useState(false);
   const [adminExpanded, setAdminExpanded] = useState(false);
 
+  // Close mobile sidebar on route change
+  useEffect(() => {
+    if (mobileOpen && onMobileClose) {
+      onMobileClose();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
   return (
-    <aside
-      className={cn(
-        "fixed left-0 top-0 z-40 flex h-screen flex-col bg-[#2a5925] px-3 py-4 text-[#fcfcfc] transition-[width] duration-200",
-        collapsed ? "w-[var(--sidebar-width-collapsed)]" : "w-[var(--sidebar-width)]"
-      )}
-    >
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        className="absolute -right-4 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-[#2a5925] text-[#fcfcfc] shadow-sm transition hover:bg-white/10"
+    <>
+      {/* Mobile backdrop overlay */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-40 bg-black/50 md:hidden"
+            onClick={onMobileClose}
+            aria-hidden="true"
+          />
+        )}
+      </AnimatePresence>
+
+      <aside
+        className={cn(
+          "fixed left-0 top-0 z-50 flex h-screen flex-col bg-[#2a5925] px-3 py-4 text-[#fcfcfc] transition-[width,transform] duration-200",
+          // Desktop: standard sidebar behavior
+          "max-md:w-[var(--sidebar-width)]",
+          collapsed ? "md:w-[var(--sidebar-width-collapsed)]" : "md:w-[var(--sidebar-width)]",
+          // Mobile: slide in/out
+          mobileOpen ? "max-md:translate-x-0" : "max-md:-translate-x-full"
+        )}
       >
+        {/* Mobile close button */}
+        <button
+          type="button"
+          onClick={onMobileClose}
+          aria-label="Close sidebar"
+          className="absolute right-3 top-4 flex h-9 w-9 items-center justify-center rounded-full text-[#fcfcfc] transition hover:bg-white/10 md:hidden"
+        >
+          <X className="h-5 w-5" />
+        </button>
+
+        {/* Desktop collapse/expand toggle */}
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className="absolute -right-4 top-1/2 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-[#2a5925] text-[#fcfcfc] shadow-sm transition hover:bg-white/10 md:flex"
+        >
         {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
       </button>
       <div className="mb-6 flex items-center justify-between px-2">
@@ -297,6 +339,7 @@ export const Sidebar = memo(function Sidebar({ isAdmin, collapsed, onToggle, org
           )}
         </div>
       ) : null}
-    </aside>
+      </aside>
+    </>
   );
 });

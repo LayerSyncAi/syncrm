@@ -475,7 +475,7 @@ export default function NewLeadPage() {
       </AnimatePresence>
 
       <form onSubmit={handleSubmit}>
-        <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
+        <div className="grid gap-6 lg:grid-cols-[1fr_400px]" style={{ minWidth: 0 }}>
           {/* Left column: Lead details */}
           <motion.div
             initial={{ opacity: 0, y: 16 }}

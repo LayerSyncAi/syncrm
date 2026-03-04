@@ -465,6 +465,7 @@ export default function ContactsPage() {
         </div>
       </div>
 
+      <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
       <Table>
         <thead>
           <tr>
@@ -514,6 +515,7 @@ export default function ContactsPage() {
           </motion.tbody>
         )}
       </Table>
+      </div>
 
       <PaginationControls
         page={pagination.page}

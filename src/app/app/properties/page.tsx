@@ -630,6 +630,7 @@ export default function PropertiesPage() {
       </div>
 
       {viewMode === "list" ? (
+        <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
         <Table>
           <thead>
             <tr>
@@ -723,6 +724,7 @@ export default function PropertiesPage() {
             </motion.tbody>
           )}
         </Table>
+        </div>
       ) : !properties ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <div className="col-span-full text-center text-text-muted py-8">

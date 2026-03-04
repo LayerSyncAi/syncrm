@@ -134,7 +134,7 @@ export default function DashboardPage() {
                 Monitor your pipeline performance and conversion velocity.
               </p>
             </div>
-            <div className="min-w-[220px]">
+            <div className="w-full lg:min-w-[220px]">
               <div className="flex items-center justify-between text-xs text-text-muted">
                 <span>Win rate</span>
                 {isLoading ? (
