@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
+import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 import { Textarea } from "@/components/ui/textarea";
 import { RightDrawer } from "@/components/common/right-drawer";
 import { Modal } from "@/components/ui/modal";
@@ -603,14 +603,15 @@ export default function CommissionsPage() {
             {editingConfig ? (
               <Input value={scenarioLabels[formData.scenario]} readOnly className="bg-surface-2" />
             ) : (
-              <Select
+              <StaggeredDropDown
                 value={formData.scenario}
-                onChange={(e) => setFormData((prev) => ({ ...prev, scenario: e.target.value as Scenario }))}
-              >
-                <option value="shared_deal">Shared Deal</option>
-                <option value="own_property_own_lead">Own Property & Own Lead</option>
-                <option value="company_property">Company Property</option>
-              </Select>
+                onChange={(val) => setFormData((prev) => ({ ...prev, scenario: val as Scenario }))}
+                options={[
+                  { value: "shared_deal", label: "Shared Deal", description: scenarioDescriptions.shared_deal },
+                  { value: "own_property_own_lead", label: "Own Property & Own Lead", description: scenarioDescriptions.own_property_own_lead },
+                  { value: "company_property", label: "Company Property", description: scenarioDescriptions.company_property },
+                ]}
+              />
             )}
             <p className="text-xs text-text-muted">{scenarioDescriptions[formData.scenario]}</p>
           </div>

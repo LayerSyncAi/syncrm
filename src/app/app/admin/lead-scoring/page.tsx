@@ -8,7 +8,7 @@ import { useRequireAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertTriangle, Save, RefreshCw, Star, Check, X, Loader2 } from "lucide-react";
@@ -396,20 +396,18 @@ export default function LeadScoringPage() {
               </h2>
             </CardHeader>
             <CardContent>
-              <Select
-                value={previewLeadId}
-                onChange={(e) =>
-                  setPreviewLeadId(e.target.value as Id<"leads"> | "")
+              <StaggeredDropDown
+                value={previewLeadId || undefined}
+                onChange={(val) =>
+                  setPreviewLeadId(val as Id<"leads"> | "")
                 }
+                placeholder="Select a lead to preview..."
                 className="mb-4"
-              >
-                <option value="">Select a lead to preview...</option>
-                {leads?.items?.slice(0, 50).map((lead) => (
-                  <option key={lead._id} value={lead._id}>
-                    {lead.fullName} ({lead.phone})
-                  </option>
-                ))}
-              </Select>
+                options={leads?.items?.slice(0, 50).map((lead) => ({
+                  value: lead._id,
+                  label: `${lead.fullName} (${lead.phone})`,
+                })) ?? []}
+              />
 
               {previewLeadId && !previewResult && (
                 <div className="space-y-2">

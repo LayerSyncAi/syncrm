@@ -5,7 +5,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
+import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { propertyShareToasts } from "@/lib/toast";
@@ -134,20 +134,18 @@ export function PropertyShare({ propertyId, currentUserId }: PropertyShareProps)
 
           <div className="space-y-2">
             <Label>Select Agent *</Label>
-            <Select
+            <StaggeredDropDown
               value={selectedAgent}
-              onChange={(e) => {
-                setSelectedAgent(e.target.value);
+              onChange={(val) => {
+                setSelectedAgent(val);
                 setSelectedLead("");
               }}
-            >
-              <option value="">Choose an agent...</option>
-              {availableAgents.map((agent) => (
-                <option key={agent._id} value={agent._id}>
-                  {agent.name}
-                </option>
-              ))}
-            </Select>
+              placeholder="Choose an agent..."
+              options={availableAgents.map((agent) => ({
+                value: agent._id,
+                label: agent.name,
+              }))}
+            />
           </div>
 
           {selectedAgent && (
@@ -158,17 +156,15 @@ export function PropertyShare({ propertyId, currentUserId }: PropertyShareProps)
                   This agent has no active leads. Select a different agent.
                 </p>
               ) : (
-                <Select
+                <StaggeredDropDown
                   value={selectedLead}
-                  onChange={(e) => setSelectedLead(e.target.value)}
-                >
-                  <option value="">Choose a lead...</option>
-                  {agentLeads.map((lead) => (
-                    <option key={lead._id} value={lead._id}>
-                      {lead.fullName} — {lead.interestType === "buy" ? "Buying" : "Renting"} ({lead.stageName})
-                    </option>
-                  ))}
-                </Select>
+                  onChange={(val) => setSelectedLead(val)}
+                  placeholder="Choose a lead..."
+                  options={agentLeads.map((lead) => ({
+                    value: lead._id,
+                    label: `${lead.fullName} — ${lead.interestType === "buy" ? "Buying" : "Renting"} (${lead.stageName})`,
+                  }))}
+                />
               )}
             </div>
           )}

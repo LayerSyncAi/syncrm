@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
+import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 import { Textarea } from "@/components/ui/textarea";
 import { RightDrawer } from "@/components/common/right-drawer";
 import { Modal } from "@/components/ui/modal";
@@ -529,18 +529,19 @@ export default function StagesPage() {
             {formData.isTerminal && (
               <div className="space-y-2 pt-2">
                 <Label>Terminal Outcome</Label>
-                <Select
+                <StaggeredDropDown
                   value={formData.terminalOutcome || "won"}
-                  onChange={(e) =>
+                  onChange={(val) =>
                     setFormData((prev) => ({
                       ...prev,
-                      terminalOutcome: e.target.value as "won" | "lost",
+                      terminalOutcome: val as "won" | "lost",
                     }))
                   }
-                >
-                  <option value="won">Won (Success)</option>
-                  <option value="lost">Lost (Did not convert)</option>
-                </Select>
+                  options={[
+                    { value: "won", label: "Won (Success)" },
+                    { value: "lost", label: "Lost (Did not convert)" },
+                  ]}
+                />
               </div>
             )}
           </div>

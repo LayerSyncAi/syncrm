@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Modal } from "@/components/ui/modal";
-import { Select } from "@/components/ui/select";
+import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 import { Textarea } from "@/components/ui/textarea";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { parseCurrencyInput } from "@/lib/currency";
@@ -311,28 +311,30 @@ export default function NewPropertyPage() {
                 {/* Type */}
                 <div className="space-y-2">
                   <Label>Type</Label>
-                  <Select
+                  <StaggeredDropDown
                     value={type}
-                    onChange={(e) => setType(e.target.value as PropertyType)}
-                  >
-                    <option value="house">House</option>
-                    <option value="apartment">Apartment</option>
-                    <option value="land">Land</option>
-                    <option value="commercial">Commercial</option>
-                    <option value="other">Other</option>
-                  </Select>
+                    onChange={(val) => setType(val as PropertyType)}
+                    options={[
+                      { value: "house", label: "House" },
+                      { value: "apartment", label: "Apartment" },
+                      { value: "land", label: "Land" },
+                      { value: "commercial", label: "Commercial" },
+                      { value: "other", label: "Other" },
+                    ]}
+                  />
                 </div>
 
                 {/* Listing Type */}
                 <div className="space-y-2">
                   <Label>Listing</Label>
-                  <Select
+                  <StaggeredDropDown
                     value={listingType}
-                    onChange={(e) => setListingType(e.target.value as ListingType)}
-                  >
-                    <option value="sale">Sale</option>
-                    <option value="rent">Rent</option>
-                  </Select>
+                    onChange={(val) => setListingType(val as ListingType)}
+                    options={[
+                      { value: "sale", label: "Sale" },
+                      { value: "rent", label: "Rent" },
+                    ]}
+                  />
                 </div>
 
                 {/* Price */}
@@ -360,20 +362,18 @@ export default function NewPropertyPage() {
                   {locationError && (
                     <p className="text-xs text-danger">{locationError}</p>
                   )}
-                  <Select
+                  <StaggeredDropDown
                     value={location}
-                    onChange={(e) => {
-                      setLocation(e.target.value);
-                      setLocationError(validateLocation(e.target.value));
+                    onChange={(val) => {
+                      setLocation(val);
+                      setLocationError(validateLocation(val));
                     }}
-                  >
-                    <option value="">Select a location...</option>
-                    {locations?.map((loc) => (
-                      <option key={loc._id} value={loc.name}>
-                        {loc.name}
-                      </option>
-                    ))}
-                  </Select>
+                    placeholder="Select a location..."
+                    options={locations?.map((loc) => ({
+                      value: loc.name,
+                      label: loc.name,
+                    })) ?? []}
+                  />
                 </div>
 
                 {/* Area */}
@@ -419,16 +419,17 @@ export default function NewPropertyPage() {
                 {/* Status */}
                 <div className="space-y-2">
                   <Label>Status</Label>
-                  <Select
+                  <StaggeredDropDown
                     value={status}
-                    onChange={(e) => setStatus(e.target.value as PropertyStatus)}
-                  >
-                    <option value="available">Available</option>
-                    <option value="under_offer">Under Offer</option>
-                    <option value="let">Let</option>
-                    <option value="sold">Sold</option>
-                    <option value="off_market">Off Market</option>
-                  </Select>
+                    onChange={(val) => setStatus(val as PropertyStatus)}
+                    options={[
+                      { value: "available", label: "Available" },
+                      { value: "under_offer", label: "Under Offer" },
+                      { value: "let", label: "Let" },
+                      { value: "sold", label: "Sold" },
+                      { value: "off_market", label: "Off Market" },
+                    ]}
+                  />
                 </div>
               </div>
 

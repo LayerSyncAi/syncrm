@@ -3,7 +3,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { currencies, formatCurrencyInput, parseCurrencyInput, validateCurrencyInput } from "@/lib/currency";
-import { Select } from "./select";
+import { StaggeredDropDown } from "./staggered-dropdown";
 
 interface CurrencyInputProps {
   value: string;
@@ -104,18 +104,18 @@ export function CurrencyInput({
         <p className="text-xs text-danger">{error || localError}</p>
       )}
       <div className="flex gap-2">
-        <Select
+        <StaggeredDropDown
           value={currency}
-          onChange={(e) => onCurrencyChange(e.target.value)}
-          className={cn("w-[100px] shrink-0", hasError && "border-danger focus:ring-danger/20")}
+          onChange={(val) => onCurrencyChange(val)}
+          className={cn("w-[100px] shrink-0")}
           disabled={disabled}
-        >
-          {currencies.map((c) => (
-            <option key={c.code} value={c.code}>
-              {c.code}
-            </option>
-          ))}
-        </Select>
+          options={currencies.map((c) => ({
+            value: c.code,
+            label: c.code,
+            description: c.name,
+          }))}
+          portal
+        />
         <input
           type="text"
           value={displayValue}
