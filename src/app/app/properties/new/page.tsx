@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../../../../convex/_generated/api";
+import { Id } from "../../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -60,6 +61,7 @@ export default function NewPropertyPage() {
   const [images, setImages] = React.useState<ImageItem[]>([]);
   const [imagesError, setImagesError] = React.useState<string | undefined>();
 
+  const [savedPropertyId, setSavedPropertyId] = React.useState<Id<"properties"> | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
   const [formError, setFormError] = React.useState("");
 
@@ -161,6 +163,12 @@ export default function NewPropertyPage() {
   };
 
   const handleSave = async () => {
+    if (savedPropertyId) {
+      // Property already saved, just close
+      router.push("/app/properties");
+      return;
+    }
+
     if (!validateForm()) {
       // Switch to the tab with the first error
       const titleError = validateTitle(title.value);
@@ -179,7 +187,7 @@ export default function NewPropertyPage() {
     setIsSaving(true);
     setFormError("");
     try {
-      await createProperty({
+      const propertyId = await createProperty({
         title: title.value.trim(),
         type,
         listingType,
@@ -193,8 +201,8 @@ export default function NewPropertyPage() {
         description: description.trim(),
         images: serializeImages(images),
       });
+      setSavedPropertyId(propertyId);
       propertyToasts.created(title.value.trim());
-      router.push("/app/properties");
     } catch (error) {
       console.error("Failed to create property:", error);
       const msg = error instanceof Error ? error.message : "Failed to create property. Please try again.";
@@ -222,10 +230,10 @@ export default function NewPropertyPage() {
       footer={
         <div className="flex justify-end gap-2">
           <Button variant="secondary" onClick={closeModal} disabled={isSaving}>
-            Cancel
+            {savedPropertyId ? "Close" : "Cancel"}
           </Button>
           <Button onClick={handleSave} disabled={isSaving}>
-            {isSaving ? "Saving..." : "Save property"}
+            {isSaving ? "Saving..." : savedPropertyId ? "Done" : "Save property"}
           </Button>
         </div>
       }
@@ -449,13 +457,27 @@ export default function NewPropertyPage() {
               animate={{ opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } }}
               exit={{ opacity: 0, y: -8, transition: { duration: 0.15 } }}
             >
-              <p className="mb-3 text-xs text-text-muted">
-                Document uploads will be available after saving the property.
-              </p>
-              <DocumentManager
-                folders={["mandates_to_sell", "contracts", "id_copies", "proof_of_funds"]}
-                disabled
-              />
+              {savedPropertyId ? (
+                <DocumentManager
+                  propertyId={savedPropertyId}
+                  folders={["mandates_to_sell", "contracts", "id_copies", "proof_of_funds"]}
+                />
+              ) : (
+                <div className="space-y-4">
+                  <DocumentManager
+                    folders={["mandates_to_sell", "contracts", "id_copies", "proof_of_funds"]}
+                    disabled
+                  />
+                  <div className="rounded-lg border border-border-strong bg-surface-2/30 p-4 text-center">
+                    <p className="text-sm text-text-muted mb-3">
+                      Save the property first to upload documents.
+                    </p>
+                    <Button onClick={handleSave} disabled={isSaving}>
+                      {isSaving ? "Saving..." : "Save property"}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </motion.div>
           )}
 
