@@ -1,26 +1,56 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useSyncExternalStore, useCallback } from "react";
 
 /**
- * Adaptive tick hook — forces a re-render on an interval that scales
- * with how close the deadline is. No API calls, just local arithmetic.
+ * Shared tick bus — one setInterval per tick-rate bucket, shared across
+ * all mounted DueDateRing instances. 1000 rings = still only 3 timers max.
  *
- *  < 1 h remaining  → tick every 15 s
- *  1–24 h remaining → tick every 60 s
- *  > 24 h remaining → tick every 5 min
+ * Buckets:
+ *  15 s  — tasks due in < 1 h
+ *  60 s  — tasks due in 1–24 h
+ *  5 min — tasks due in > 24 h
  */
+const tickBus = new Map<number, { count: number; subscribers: Set<() => void>; timer: ReturnType<typeof setInterval> | null }>();
+
+function subscribe(intervalMs: number, cb: () => void) {
+  let bucket = tickBus.get(intervalMs);
+  if (!bucket) {
+    bucket = { count: 0, subscribers: new Set(), timer: null };
+    tickBus.set(intervalMs, bucket);
+  }
+  bucket.subscribers.add(cb);
+
+  // Start the shared timer if this is the first subscriber
+  if (bucket.subscribers.size === 1) {
+    bucket.timer = setInterval(() => {
+      bucket!.count++;
+      bucket!.subscribers.forEach((fn) => fn());
+    }, intervalMs);
+  }
+
+  return () => {
+    bucket!.subscribers.delete(cb);
+    // Stop the timer when the last subscriber leaves
+    if (bucket!.subscribers.size === 0 && bucket!.timer !== null) {
+      clearInterval(bucket!.timer);
+      bucket!.timer = null;
+      bucket!.count = 0;
+      tickBus.delete(intervalMs);
+    }
+  };
+}
+
+function getIntervalForDeadline(scheduledAt: number) {
+  const remaining = scheduledAt - Date.now();
+  return remaining < 3_600_000 ? 15_000 : remaining < 86_400_000 ? 60_000 : 300_000;
+}
+
 function useTick(scheduledAt: number) {
-  const [, setTick] = useState(0);
-  useEffect(() => {
-    const remaining = scheduledAt - Date.now();
-    const interval =
-      remaining < 3_600_000 ? 15_000 :
-      remaining < 86_400_000 ? 60_000 :
-      300_000;
-    const id = setInterval(() => setTick((t) => t + 1), interval);
-    return () => clearInterval(id);
-  }, [scheduledAt]);
+  const intervalMs = getIntervalForDeadline(scheduledAt);
+  const sub = useCallback((cb: () => void) => subscribe(intervalMs, cb), [intervalMs]);
+  const snap = useCallback(() => tickBus.get(intervalMs)?.count ?? 0, [intervalMs]);
+  useSyncExternalStore(sub, snap, snap);
 }
 
 export function DueDateRing({ scheduledAt, createdAt }: { scheduledAt: number; createdAt: number }) {
