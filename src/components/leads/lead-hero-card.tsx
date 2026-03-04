@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 
 const formatDate = (timestamp: number) =>
@@ -238,26 +239,14 @@ export const LeadHeroCard = React.memo(function LeadHeroCard({
                 className="max-w-xs"
               />
               {stages?.find((s) => s._id === lead.stageId)?.terminalOutcome === "won" && (
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    placeholder="Deal value"
-                    value={dealValue}
-                    onChange={(e) => onDealValueChange(e.target.value)}
-                    className="max-w-[140px]"
-                  />
-                  <select
-                    value={dealCurrency}
-                    onChange={(e) => onDealCurrencyChange(e.target.value)}
-                    className="h-10 rounded-[10px] border border-border-strong bg-transparent px-2 text-sm text-text outline-none"
-                  >
-                    <option value="USD">USD</option>
-                    <option value="ZWL">ZWL</option>
-                    <option value="ZAR">ZAR</option>
-                    <option value="GBP">GBP</option>
-                    <option value="EUR">EUR</option>
-                  </select>
-                </div>
+                <CurrencyInput
+                  value={dealValue}
+                  onChange={onDealValueChange}
+                  currency={dealCurrency}
+                  onCurrencyChange={onDealCurrencyChange}
+                  placeholder="Deal value"
+                  className="max-w-[220px]"
+                />
               )}
               <Button
                 onClick={onSaveCloseDetails}
