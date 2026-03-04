@@ -124,13 +124,16 @@ export function StaggeredDropDown({
   const displayText = selectedOption?.label ?? placeholder;
 
   // ─── Variants (configurable via props) ──────────────────
+  // Cap total stagger time so long lists still animate quickly
+  const effectiveStagger = Math.min(staggerChildren, 0.15 / Math.max(options.length, 1));
+
   const wrapperVariants = {
     open: {
       scaleY: 1,
       transition: {
         duration: animationDuration,
         when: "beforeChildren" as const,
-        staggerChildren,
+        staggerChildren: effectiveStagger,
       },
     },
     closed: {
@@ -138,7 +141,7 @@ export function StaggeredDropDown({
       transition: {
         duration: animationDuration,
         when: "afterChildren" as const,
-        staggerChildren,
+        staggerChildren: effectiveStagger,
       },
     },
   };
