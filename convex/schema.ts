@@ -367,6 +367,7 @@ export default defineSchema({
     email: v.optional(v.string()),
     company: v.optional(v.string()),
     notes: v.optional(v.string()),
+    preferredAreas: v.optional(v.array(v.string())),
     // Multiple owners can see this contact - agents only see contacts they own
     ownerUserIds: v.array(v.id("users")),
     createdByUserId: v.id("users"),

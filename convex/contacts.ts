@@ -29,6 +29,7 @@ export const create = mutation({
     email: v.optional(v.string()),
     company: v.optional(v.string()),
     notes: v.optional(v.string()),
+    preferredAreas: v.optional(v.array(v.string())),
     ownerUserIds: v.optional(v.array(v.id("users"))),
   },
   handler: async (ctx, args) => {
@@ -49,6 +50,7 @@ export const create = mutation({
       email: args.email,
       company: args.company,
       notes: args.notes,
+      preferredAreas: args.preferredAreas,
       ownerUserIds: owners,
       createdByUserId: user._id,
       orgId: user.orgId,
@@ -184,6 +186,7 @@ export const update = mutation({
     email: v.optional(v.string()),
     company: v.optional(v.string()),
     notes: v.optional(v.string()),
+    preferredAreas: v.optional(v.array(v.string())),
     ownerUserIds: v.optional(v.array(v.id("users"))),
   },
   handler: async (ctx, args) => {
@@ -209,6 +212,7 @@ export const update = mutation({
     if (args.email !== undefined) updates.email = args.email;
     if (args.company !== undefined) updates.company = args.company;
     if (args.notes !== undefined) updates.notes = args.notes;
+    if (args.preferredAreas !== undefined) updates.preferredAreas = args.preferredAreas;
 
     if (user.role === "admin" && args.ownerUserIds !== undefined) {
       if (args.ownerUserIds.length === 0) {
