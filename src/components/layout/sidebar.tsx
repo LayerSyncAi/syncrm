@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -165,15 +166,28 @@ export const Sidebar = memo(function Sidebar({ isAdmin, collapsed, onToggle, org
       >
         {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
       </button>
-      <div className="mb-6 flex items-center justify-between px-2">
-        <div
-          className={cn(
-            "rounded-[12px] border border-white/20 bg-white/10 px-3 py-3 text-sm font-semibold transition-all duration-200",
-            collapsed ? "w-full text-center" : "w-auto"
+      <div className="mb-6 flex items-center justify-center px-2">
+        <Link href="/app/dashboard" className="block transition-opacity hover:opacity-80">
+          {collapsed ? (
+            <Image
+              src="/logo-icon.svg"
+              alt="SynCRM"
+              width={36}
+              height={36}
+              className="h-9 w-9"
+              priority
+            />
+          ) : (
+            <Image
+              src="/logo.svg"
+              alt="SynCRM"
+              width={140}
+              height={36}
+              className="h-9 w-auto"
+              priority
+            />
           )}
-        >
-          {collapsed ? (orgName ? orgName[0].toUpperCase() : "S") : (orgName || "SynCRM")}
-        </div>
+        </Link>
       </div>
       <nav className="flex-1 space-y-1">
         {navItems.map((item) => (
