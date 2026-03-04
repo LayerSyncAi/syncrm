@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { parseCurrencyInput } from "@/lib/currency";
 import { ImageUpload, ImageItem, serializeImages } from "@/components/ui/image-upload";
+import { DocumentManager } from "@/components/documents/document-manager";
 import { propertyToasts } from "@/lib/toast";
 
 const newPropertyTabs = ["Details", "Sharing", "Documentation", "Gallery"] as const;
@@ -447,11 +448,14 @@ export default function NewPropertyPage() {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } }}
               exit={{ opacity: 0, y: -8, transition: { duration: 0.15 } }}
-              className="py-8 text-center"
             >
-              <p className="text-sm text-text-muted">
+              <p className="mb-3 text-xs text-text-muted">
                 Document uploads will be available after saving the property.
               </p>
+              <DocumentManager
+                folders={["mandates_to_sell", "contracts", "id_copies", "proof_of_funds"]}
+                disabled
+              />
             </motion.div>
           )}
 

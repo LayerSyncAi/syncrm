@@ -224,6 +224,7 @@ export const LeadHeroCard = React.memo(function LeadHeroCard({
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <StaggeredDropDown
             className="max-w-xs"
+            portal
             value={lead.stageId}
             onChange={(val) => onStageChange(val as Id<"pipelineStages">)}
             options={stages?.map((s) => ({ value: s._id, label: s.name })) ?? []}
