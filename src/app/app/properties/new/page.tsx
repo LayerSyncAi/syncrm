@@ -213,6 +213,15 @@ export default function NewPropertyPage() {
     }
   };
 
+  // Auto-save when switching to Documentation tab so uploads work immediately
+  const prevTabRef = React.useRef(activeTab);
+  React.useEffect(() => {
+    if (activeTab === "Documentation" && prevTabRef.current !== "Documentation" && !savedPropertyId && !isSaving) {
+      handleSave();
+    }
+    prevTabRef.current = activeTab;
+  }, [activeTab, savedPropertyId, isSaving]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (!currentUser) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -462,20 +471,19 @@ export default function NewPropertyPage() {
                   propertyId={savedPropertyId}
                   folders={["mandates_to_sell", "contracts", "id_copies", "proof_of_funds"]}
                 />
+              ) : isSaving ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mb-3" />
+                  <p className="text-sm text-text-muted">Saving property...</p>
+                </div>
               ) : (
-                <div className="space-y-4">
-                  <DocumentManager
-                    folders={["mandates_to_sell", "contracts", "id_copies", "proof_of_funds"]}
-                    disabled
-                  />
-                  <div className="rounded-lg border border-border-strong bg-surface-2/30 p-4 text-center">
-                    <p className="text-sm text-text-muted mb-3">
-                      Save the property first to upload documents.
-                    </p>
-                    <Button onClick={handleSave} disabled={isSaving}>
-                      {isSaving ? "Saving..." : "Save property"}
-                    </Button>
-                  </div>
+                <div className="rounded-lg border border-border-strong bg-surface-2/30 p-6 text-center">
+                  <p className="text-sm text-text-muted mb-3">
+                    Please fill in the required fields first (Details &amp; Gallery tabs).
+                  </p>
+                  <Button onClick={handleSave} disabled={isSaving}>
+                    Save property
+                  </Button>
                 </div>
               )}
             </motion.div>
