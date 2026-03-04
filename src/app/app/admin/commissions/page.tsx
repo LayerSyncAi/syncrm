@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
+import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 import { Textarea } from "@/components/ui/textarea";
 import { RightDrawer } from "@/components/common/right-drawer";
 import { Modal } from "@/components/ui/modal";
@@ -22,6 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Tooltip } from "@/components/ui/tooltip";
 import {
   Loader2,
   Plus,
@@ -34,6 +35,7 @@ import {
   Building2,
   CheckCircle,
   Clock,
+  Eye,
 } from "lucide-react";
 import { commissionToasts } from "@/lib/toast";
 
@@ -114,6 +116,7 @@ export default function CommissionsPage() {
   const [formData, setFormData] = useState<ConfigFormData>(defaultFormData);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [detailCommissionId, setDetailCommissionId] = useState<Id<"dealCommissions"> | null>(null);
 
   // Seed defaults on first load
   useEffect(() => {
@@ -486,7 +489,7 @@ export default function CommissionsPage() {
                         <motion.tr
                           key={commission._id}
                           variants={rowVariants}
-                          className="h-11 border-b border-[rgba(148,163,184,0.1)] transition-colors duration-150 hover:bg-row-hover"
+                          className="group h-11 border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)]"
                         >
                           <TableCell className="font-medium">{commission.leadName}</TableCell>
                           <TableCell>
@@ -539,16 +542,18 @@ export default function CommissionsPage() {
                               </span>
                             )}
                           </TableCell>
-                          <TableCell className="text-right">
-                            <Select
-                              value={commission.status}
-                              onChange={(e) => handleStatusChange(commission._id, e.target.value as CommissionStatus)}
-                              className="h-8 w-28 text-xs"
-                            >
-                              <option value="pending">Pending</option>
-                              <option value="approved">Approved</option>
-                              <option value="paid">Paid</option>
-                            </Select>
+                          <TableCell>
+                            <div className="flex justify-end">
+                              <Tooltip content="View details">
+                                <Button
+                                  variant="secondary"
+                                  className="action-btn h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
+                                  onClick={() => setDetailCommissionId(commission._id)}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </Tooltip>
+                            </div>
                           </TableCell>
                         </motion.tr>
                       );
@@ -598,14 +603,15 @@ export default function CommissionsPage() {
             {editingConfig ? (
               <Input value={scenarioLabels[formData.scenario]} readOnly className="bg-surface-2" />
             ) : (
-              <Select
+              <StaggeredDropDown
                 value={formData.scenario}
-                onChange={(e) => setFormData((prev) => ({ ...prev, scenario: e.target.value as Scenario }))}
-              >
-                <option value="shared_deal">Shared Deal</option>
-                <option value="own_property_own_lead">Own Property & Own Lead</option>
-                <option value="company_property">Company Property</option>
-              </Select>
+                onChange={(val) => setFormData((prev) => ({ ...prev, scenario: val as Scenario }))}
+                options={[
+                  { value: "shared_deal", label: "Shared Deal", description: scenarioDescriptions.shared_deal },
+                  { value: "own_property_own_lead", label: "Own Property & Own Lead", description: scenarioDescriptions.own_property_own_lead },
+                  { value: "company_property", label: "Company Property", description: scenarioDescriptions.company_property },
+                ]}
+              />
             )}
             <p className="text-xs text-text-muted">{scenarioDescriptions[formData.scenario]}</p>
           </div>
@@ -723,6 +729,148 @@ export default function CommissionsPage() {
           This will permanently remove this commission split scenario. If any deals have used this config, you will not be able to delete it.
         </p>
       </Modal>
+
+      {/* Commission Details Modal */}
+      {(() => {
+        const detailCommission = dealCommissions?.find((c) => c._id === detailCommissionId);
+        if (!detailCommission) return null;
+
+        const fmt = (amount: number) =>
+          new Intl.NumberFormat("en-US", {
+            style: "currency",
+            currency: detailCommission.dealCurrency,
+            minimumFractionDigits: 0,
+          }).format(amount);
+
+        const scenarioLabel = detailCommission.configScenario
+          ? scenarioLabels[detailCommission.configScenario as Scenario]
+          : "Unknown Scenario";
+
+        const ScenarioIcon = detailCommission.configScenario
+          ? scenarioIcons[detailCommission.configScenario as Scenario] || DollarSign
+          : DollarSign;
+
+        return (
+          <Modal
+            open={!!detailCommissionId}
+            title="Commission Details"
+            description={`Deal commission for ${detailCommission.leadName}`}
+            onClose={() => setDetailCommissionId(null)}
+            footer={
+              <div className="flex justify-end">
+                <Button variant="secondary" onClick={() => setDetailCommissionId(null)}>
+                  Close
+                </Button>
+              </div>
+            }
+          >
+            <div className="space-y-5">
+              {/* Deal overview */}
+              <div className="rounded-lg border border-border bg-surface-2/30 p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-text-muted">Lead</span>
+                  <span className="text-sm font-medium">{detailCommission.leadName}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-text-muted">Property</span>
+                  <span className="text-sm font-medium">{detailCommission.propertyTitle || "—"}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-text-muted">Deal Value</span>
+                  <span className="text-sm font-semibold">{fmt(detailCommission.dealValue)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-text-muted">Created</span>
+                  <span className="text-sm">{new Date(detailCommission.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+                </div>
+              </div>
+
+              {/* Split scenario */}
+              <div className="rounded-lg border border-border p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10">
+                    <ScenarioIcon className="h-3.5 w-3.5 text-primary" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium">Split Scenario</h4>
+                    <p className="text-xs text-text-muted">{detailCommission.configName || scenarioLabel}</p>
+                  </div>
+                </div>
+                <p className="text-xs text-text-muted italic">
+                  Rates locked at time of deal closure. These may differ from current scenario defaults.
+                </p>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-text-muted">Contact Owner ({detailCommission.contactOwnerName || detailCommission.leadAgentName})</span>
+                    <span className="font-medium">{detailCommission.leadAgentPercent}% = {fmt(detailCommission.leadAgentAmount)}</span>
+                  </div>
+                  {detailCommission.propertyAgentName !== "—" && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-text-muted">Property Owner ({detailCommission.propertyOwnerName || detailCommission.propertyAgentName})</span>
+                      <span className="font-medium">{detailCommission.propertyAgentPercent}% = {fmt(detailCommission.propertyAgentAmount)}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-text-muted">Company</span>
+                    <span className="font-medium">{detailCommission.companyPercent}% = {fmt(detailCommission.companyAmount)}</span>
+                  </div>
+                </div>
+
+                {/* Visual bar */}
+                <div className="flex h-2.5 overflow-hidden rounded-full bg-border">
+                  {detailCommission.propertyAgentPercent > 0 && (
+                    <div className="bg-blue-500" style={{ width: `${detailCommission.propertyAgentPercent}%` }} />
+                  )}
+                  {detailCommission.leadAgentPercent > 0 && (
+                    <div className="bg-green-500" style={{ width: `${detailCommission.leadAgentPercent}%` }} />
+                  )}
+                  {detailCommission.companyPercent > 0 && (
+                    <div className="bg-amber-500" style={{ width: `${detailCommission.companyPercent}%` }} />
+                  )}
+                </div>
+                <div className="flex items-center gap-3 text-xs text-text-muted">
+                  {detailCommission.propertyAgentPercent > 0 && (
+                    <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-blue-500" /> Property Agent</span>
+                  )}
+                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-green-500" /> Lead Agent</span>
+                  <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-amber-500" /> Company</span>
+                </div>
+              </div>
+
+              {/* Status update */}
+              <div className="rounded-lg border border-border p-4 space-y-3">
+                <h4 className="text-sm font-medium">Status</h4>
+                <div className="flex items-center gap-3">
+                  {(["pending", "approved", "paid"] as CommissionStatus[]).map((s) => {
+                    const isActive = detailCommission.status === s;
+                    const styles = {
+                      pending: isActive ? "bg-amber-100 text-amber-700 border-amber-300" : "bg-surface-2 text-text-muted border-border hover:border-amber-300 hover:text-amber-700",
+                      approved: isActive ? "bg-blue-100 text-blue-700 border-blue-300" : "bg-surface-2 text-text-muted border-border hover:border-blue-300 hover:text-blue-700",
+                      paid: isActive ? "bg-green-100 text-green-700 border-green-300" : "bg-surface-2 text-text-muted border-border hover:border-green-300 hover:text-green-700",
+                    };
+                    const icons = {
+                      pending: <Clock className="h-3.5 w-3.5" />,
+                      approved: <CheckCircle className="h-3.5 w-3.5" />,
+                      paid: <CheckCircle className="h-3.5 w-3.5" />,
+                    };
+                    return (
+                      <button
+                        key={s}
+                        onClick={() => handleStatusChange(detailCommission._id, s)}
+                        className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all duration-150 ${styles[s]}`}
+                      >
+                        {icons[s]}
+                        {s.charAt(0).toUpperCase() + s.slice(1)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </Modal>
+        );
+      })()}
     </div>
   );
 }

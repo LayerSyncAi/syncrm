@@ -36,6 +36,7 @@ interface DocumentManagerProps {
   leadId?: Id<"leads">;
   propertyId?: Id<"properties">;
   folders: Folder[];
+  disabled?: boolean;
 }
 
 type DocumentWithUrl = {
@@ -72,7 +73,7 @@ const itemVariants = {
   show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
 } as const;
 
-export function DocumentManager({ leadId, propertyId, folders }: DocumentManagerProps) {
+export function DocumentManager({ leadId, propertyId, folders, disabled = false }: DocumentManagerProps) {
   const [activeFolder, setActiveFolder] = React.useState<Folder>(folders[0]);
   const [isUploading, setIsUploading] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -214,13 +215,13 @@ export function DocumentManager({ leadId, propertyId, folders }: DocumentManager
             multiple
             onChange={handleFileSelect}
             className="hidden"
-            disabled={isUploading}
+            disabled={isUploading || disabled}
           />
           <Button
             variant="secondary"
             className="h-8 text-xs"
             onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
+            disabled={isUploading || disabled}
           >
             {isUploading ? "Uploading..." : "Choose Files"}
           </Button>

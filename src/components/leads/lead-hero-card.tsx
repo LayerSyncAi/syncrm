@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 
 const formatDate = (timestamp: number) =>
@@ -41,6 +42,9 @@ interface LeadHeroCardProps {
   dealCurrency: string;
   onDealCurrencyChange: (val: string) => void;
   onStageChange: (stageId: Id<"pipelineStages">) => void;
+  onSaveCloseDetails: () => void;
+  isSavingCloseDetails: boolean;
+  closeDetailsSaved: boolean;
   onViewDetails: () => void;
 }
 
@@ -58,6 +62,9 @@ export const LeadHeroCard = React.memo(function LeadHeroCard({
   dealCurrency,
   onDealCurrencyChange,
   onStageChange,
+  onSaveCloseDetails,
+  isSavingCloseDetails,
+  closeDetailsSaved,
   onViewDetails,
 }: LeadHeroCardProps) {
   const [scoreExpanded, setScoreExpanded] = React.useState(false);
@@ -220,6 +227,8 @@ export const LeadHeroCard = React.memo(function LeadHeroCard({
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <StaggeredDropDown
             className="max-w-xs"
+            portal
+            disabled={closeDetailsSaved}
             value={lead.stageId}
             onChange={(val) => onStageChange(val as Id<"pipelineStages">)}
             options={stages?.map((s) => ({ value: s._id, label: s.name })) ?? []}
@@ -230,29 +239,28 @@ export const LeadHeroCard = React.memo(function LeadHeroCard({
                 placeholder="Close reason"
                 value={closeReason}
                 onChange={(e) => onCloseReasonChange(e.target.value)}
+                readOnly={closeDetailsSaved}
                 className="max-w-xs"
               />
               {stages?.find((s) => s._id === lead.stageId)?.terminalOutcome === "won" && (
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    placeholder="Deal value"
-                    value={dealValue}
-                    onChange={(e) => onDealValueChange(e.target.value)}
-                    className="max-w-[140px]"
-                  />
-                  <select
-                    value={dealCurrency}
-                    onChange={(e) => onDealCurrencyChange(e.target.value)}
-                    className="h-10 rounded-[10px] border border-border-strong bg-transparent px-2 text-sm text-text outline-none"
-                  >
-                    <option value="USD">USD</option>
-                    <option value="ZWL">ZWL</option>
-                    <option value="ZAR">ZAR</option>
-                    <option value="GBP">GBP</option>
-                    <option value="EUR">EUR</option>
-                  </select>
-                </div>
+                <CurrencyInput
+                  value={dealValue}
+                  onChange={onDealValueChange}
+                  currency={dealCurrency}
+                  onCurrencyChange={onDealCurrencyChange}
+                  placeholder="Deal value"
+                  disabled={closeDetailsSaved}
+                  className="max-w-[220px]"
+                />
+              )}
+              {!closeDetailsSaved && (
+                <Button
+                  onClick={onSaveCloseDetails}
+                  disabled={isSavingCloseDetails}
+                  className="h-10"
+                >
+                  {isSavingCloseDetails ? "Saving..." : "Save"}
+                </Button>
               )}
             </>
           )}

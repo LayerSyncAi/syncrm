@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { PaginationControls } from "@/components/ui/pagination";
 import { usePagination } from "@/hooks/usePagination";
 import { ConfirmDeleteDialog } from "@/components/common/confirm-delete-dialog";
-import { contactToasts } from "@/lib/toast";
+import { contactToasts, locationToasts } from "@/lib/toast";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Settings, Trash2 } from "lucide-react";
 
@@ -38,6 +38,7 @@ type ContactWithOwners = {
   email?: string;
   company?: string;
   notes?: string;
+  preferredAreas?: string[];
   ownerUserIds: Id<"users">[];
   ownerNames: string[];
   createdByUserId: Id<"users">;
@@ -132,6 +133,8 @@ const ContactTableRow = React.memo(function ContactTableRow({
 export default function ContactsPage() {
   const currentUser = useQuery(api.users.getMeRequired);
   const users = useQuery(api.users.listForAssignment);
+  const locations = useQuery(api.locations.list);
+  const createLocation = useMutation(api.locations.create);
   const pagination = usePagination(50);
 
   // Search/filter state with debouncing
@@ -185,6 +188,9 @@ export default function ContactsPage() {
   const [email, setEmail] = React.useState<FieldState>(createEmptyFieldState());
   const [company, setCompany] = React.useState("");
   const [notes, setNotes] = React.useState("");
+  const [preferredAreas, setPreferredAreas] = React.useState<string[]>([]);
+  const [newLocation, setNewLocation] = React.useState("");
+  const [isAddingLocation, setIsAddingLocation] = React.useState(false);
   const [ownerUserIds, setOwnerUserIds] = React.useState<Id<"users">[]>([]);
 
   const isAdmin = currentUser?.role === "admin";
@@ -244,6 +250,7 @@ export default function ContactsPage() {
       setEmail(createEmptyFieldState(selectedContact.email || ""));
       setCompany(selectedContact.company || "");
       setNotes(selectedContact.notes || "");
+      setPreferredAreas(selectedContact.preferredAreas || []);
       setOwnerUserIds(selectedContact.ownerUserIds);
       setFormError("");
     }
@@ -255,6 +262,8 @@ export default function ContactsPage() {
     setEmail(createEmptyFieldState());
     setCompany("");
     setNotes("");
+    setPreferredAreas([]);
+    setNewLocation("");
     setOwnerUserIds([]);
     setFormError("");
   };
@@ -290,6 +299,7 @@ export default function ContactsPage() {
           email: email.value.trim() || undefined,
           company: company.trim() || undefined,
           notes: notes.trim() || undefined,
+          preferredAreas: preferredAreas.length > 0 ? preferredAreas : undefined,
           ownerUserIds: ownerUserIds.length > 0 ? ownerUserIds : undefined,
         });
       } else if (selectedContact) {
@@ -300,6 +310,7 @@ export default function ContactsPage() {
           email: email.value.trim() || undefined,
           company: company.trim() || undefined,
           notes: notes.trim() || undefined,
+          preferredAreas: preferredAreas.length > 0 ? preferredAreas : undefined,
           ownerUserIds: ownerUserIds.length > 0 ? ownerUserIds : undefined,
         });
       }
@@ -339,6 +350,34 @@ export default function ContactsPage() {
         return [...current, userId];
       }
     });
+  };
+
+  const handleAddArea = (area: string) => {
+    const trimmed = area.trim();
+    if (trimmed && !preferredAreas.includes(trimmed)) {
+      setPreferredAreas([...preferredAreas, trimmed]);
+    }
+  };
+
+  const handleRemoveArea = (area: string) => {
+    setPreferredAreas(preferredAreas.filter((a) => a !== area));
+  };
+
+  const handleAddNewLocation = async () => {
+    if (!newLocation.trim()) return;
+    setIsAddingLocation(true);
+    try {
+      await createLocation({ name: newLocation.trim() });
+      handleAddArea(newLocation.trim());
+      locationToasts.created(newLocation.trim());
+      setNewLocation("");
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to add location";
+      setFormError(errorMessage);
+      locationToasts.createFailed(errorMessage);
+    } finally {
+      setIsAddingLocation(false);
+    }
   };
 
   const openCreateModal = () => {
@@ -573,6 +612,68 @@ export default function ContactsPage() {
                 placeholder="Company name"
               />
             </div>
+          </div>
+
+          {/* Preferred Areas */}
+          <div className="space-y-2">
+            <Label>Preferred Areas</Label>
+            <div className="flex gap-2">
+              <StaggeredDropDown
+                value=""
+                onChange={(val) => {
+                  if (val) {
+                    handleAddArea(val);
+                  }
+                }}
+                className="flex-1"
+                placeholder="Select a location..."
+                options={[
+                  { value: "", label: "Select a location..." },
+                  ...(locations?.map((loc) => ({ value: loc.name, label: loc.name })) ?? []),
+                ]}
+              />
+            </div>
+            <div className="flex gap-2 mt-2">
+              <Input
+                value={newLocation}
+                onChange={(e) => setNewLocation(e.target.value)}
+                placeholder="Add new location..."
+                className="flex-1"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddNewLocation();
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={handleAddNewLocation}
+                disabled={isAddingLocation || !newLocation.trim()}
+              >
+                {isAddingLocation ? "Adding..." : "Add"}
+              </Button>
+            </div>
+            {preferredAreas.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {preferredAreas.map((area) => (
+                  <span
+                    key={area}
+                    className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary"
+                  >
+                    {area}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveArea(area)}
+                      className="hover:text-danger"
+                    >
+                      &times;
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Notes */}

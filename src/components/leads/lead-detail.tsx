@@ -63,9 +63,11 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
   const [closeReason, setCloseReason] = useState("");
   const [dealValue, setDealValue] = useState("");
   const [dealCurrency, setDealCurrency] = useState("USD");
+  const [closeDetailsInitialized, setCloseDetailsInitialized] = useState(false);
   const [notes, setNotes] = useState("");
   const [notesInitialized, setNotesInitialized] = useState(false);
   const [isSavingNotes, setIsSavingNotes] = useState(false);
+  const [isSavingCloseDetails, setIsSavingCloseDetails] = useState(false);
 
   // Property attachment state
   const [selectedPropertyIds, setSelectedPropertyIds] = useState<Set<string>>(new Set());
@@ -95,6 +97,7 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
   // Mutations
   const moveStage = useMutation(api.leads.moveStage);
   const updateNotes = useMutation(api.leads.updateNotes);
+  const updateCloseDetails = useMutation(api.leads.updateCloseDetails);
   const createActivity = useMutation(api.activities.createForLead);
   const markActivityComplete = useMutation(api.activities.markComplete);
   const attachProperty = useMutation(api.matches.attachPropertyToLead);
@@ -104,6 +107,15 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
   if (leadData?.lead && !notesInitialized) {
     setNotes(leadData.lead.notes || "");
     setNotesInitialized(true);
+  }
+
+  // Initialize close details from lead data
+  if (leadData?.lead && !closeDetailsInitialized) {
+    const l = leadData.lead as Record<string, unknown>;
+    if (l.closeReason) setCloseReason(l.closeReason as string);
+    if (l.dealValue) setDealValue(String(l.dealValue));
+    if (l.dealCurrency) setDealCurrency(l.dealCurrency as string);
+    setCloseDetailsInitialized(true);
   }
 
   const handleStageChange = useCallback(async (newStageId: Id<"pipelineStages">) => {
@@ -123,6 +135,25 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
       leadToasts.stageMoveFailed(error instanceof Error ? error.message : undefined);
     }
   }, [stages, moveStage, leadId, closeReason, dealValue, dealCurrency]);
+
+  const handleSaveCloseDetails = useCallback(async () => {
+    setIsSavingCloseDetails(true);
+    try {
+      const parsedDealValue = dealValue ? parseFloat(dealValue.replace(/[^0-9.]/g, "")) : undefined;
+      await updateCloseDetails({
+        leadId,
+        closeReason: closeReason || undefined,
+        dealValue: parsedDealValue,
+        dealCurrency,
+      });
+      leadToasts.stageMoved("close details saved");
+    } catch (error) {
+      console.error("Failed to save close details:", error);
+      leadToasts.stageMoveFailed(error instanceof Error ? error.message : undefined);
+    } finally {
+      setIsSavingCloseDetails(false);
+    }
+  }, [updateCloseDetails, leadId, closeReason, dealValue, dealCurrency]);
 
   const handleSaveNotes = useCallback(async () => {
     setIsSavingNotes(true);
@@ -262,6 +293,9 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
         dealCurrency={dealCurrency}
         onDealCurrencyChange={setDealCurrency}
         onStageChange={handleStageChange}
+        onSaveCloseDetails={handleSaveCloseDetails}
+        isSavingCloseDetails={isSavingCloseDetails}
+        closeDetailsSaved={!!(lead.closedAt && (leadData?.lead as Record<string, unknown>)?.closeReason)}
         onViewDetails={() => setContactDetailsOpen(true)}
       />
 
@@ -307,7 +341,7 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
         {activeTab === "Documents" && (
           <motion.div key="documents" variants={tabContentVariants} initial="initial" animate="animate" exit="exit">
             <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>}>
-              <DocumentManager leadId={leadId} folders={["lead_documentation", "id_copies", "proof_of_funds", "contracts", "mandates_to_sell"]} />
+              <DocumentManager leadId={leadId} folders={["lead_documentation", "id_copies", "proof_of_funds", "contracts"]} />
             </Suspense>
           </motion.div>
         )}
