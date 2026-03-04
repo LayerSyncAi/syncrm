@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,9 @@ import { CurrencyInput } from "@/components/ui/currency-input";
 import { parseCurrencyInput } from "@/lib/currency";
 import { ImageUpload, ImageItem, serializeImages } from "@/components/ui/image-upload";
 import { propertyToasts } from "@/lib/toast";
+
+const newPropertyTabs = ["Details", "Sharing", "Documentation", "Gallery"] as const;
+type NewPropertyTab = (typeof newPropertyTabs)[number];
 
 type PropertyType = "house" | "apartment" | "land" | "commercial" | "other";
 type ListingType = "rent" | "sale";
@@ -36,6 +40,8 @@ export default function NewPropertyPage() {
   const currentUser = useQuery(api.users.getMeRequired);
   const createProperty = useMutation(api.properties.create);
   const locations = useQuery(api.locations.list);
+
+  const [activeTab, setActiveTab] = React.useState<NewPropertyTab>("Details");
 
   // Form state with validation
   const [title, setTitle] = React.useState<FieldState>(createEmptyFieldState());
@@ -154,7 +160,20 @@ export default function NewPropertyPage() {
   };
 
   const handleSave = async () => {
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      // Switch to the tab with the first error
+      const titleError = validateTitle(title.value);
+      const priceError = validatePrice(price.value);
+      const locError = validateLocation(location);
+      const areaError = validateArea(area.value);
+      const imgsError = validateImages(images);
+      if (titleError || priceError || locError || areaError) {
+        setActiveTab("Details");
+      } else if (imgsError) {
+        setActiveTab("Gallery");
+      }
+      return;
+    }
 
     setIsSaving(true);
     setFormError("");
@@ -210,179 +229,253 @@ export default function NewPropertyPage() {
         </div>
       }
     >
-      <div className="space-y-6">
+      <div className="space-y-5">
+        {/* Tab bar */}
+        <div className="border-b border-border">
+          <div className="flex gap-6 relative">
+            {newPropertyTabs.map((tab) => (
+              <button
+                key={tab}
+                className={`relative pb-3 text-sm font-medium transition-colors duration-150 ${
+                  activeTab === tab
+                    ? "text-text"
+                    : "text-text-muted hover:text-text"
+                }`}
+                onClick={() => setActiveTab(tab)}
+              >
+                {tab}
+                {activeTab === tab && (
+                  <motion.div
+                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
+                    layoutId="new-property-tab-indicator"
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  />
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {formError && (
           <div className="rounded-lg bg-danger/10 p-4 text-danger text-sm">
             {formError}
           </div>
         )}
 
-        {/* Images Section */}
-        <div className="space-y-2">
-          <Label className="flex items-center gap-1">
-            Images <span className="text-danger">*</span>
-          </Label>
-          <ImageUpload
-            images={images}
-            onChange={handleImagesChange}
-            minImages={2}
-            maxImages={10}
-            error={imagesError}
-          />
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          {/* Title */}
-          <div className="space-y-2 md:col-span-2">
-            <Label className="flex items-center gap-1">
-              Title <span className="text-danger">*</span>
-            </Label>
-            {title.touched && title.error && (
-              <p className="text-xs text-danger">{title.error}</p>
-            )}
-            <Input
-              value={title.value}
-              onChange={(e) => handleFieldChange("title", e.target.value, validateTitle)}
-              onBlur={() => handleFieldBlur("title", validateTitle)}
-              placeholder="e.g., Borrowdale Villa"
-              error={title.touched && !!title.error}
-            />
-          </div>
-
-          {/* Type */}
-          <div className="space-y-2">
-            <Label>Type</Label>
-            <Select
-              value={type}
-              onChange={(e) => setType(e.target.value as PropertyType)}
+        {/* Tab content */}
+        <AnimatePresence mode="wait">
+          {activeTab === "Details" && (
+            <motion.div
+              key="details"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } }}
+              exit={{ opacity: 0, y: -8, transition: { duration: 0.15 } }}
+              className="space-y-6"
             >
-              <option value="house">House</option>
-              <option value="apartment">Apartment</option>
-              <option value="land">Land</option>
-              <option value="commercial">Commercial</option>
-              <option value="other">Other</option>
-            </Select>
-          </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                {/* Title */}
+                <div className="space-y-2 md:col-span-2">
+                  <Label className="flex items-center gap-1">
+                    Title <span className="text-danger">*</span>
+                  </Label>
+                  {title.touched && title.error && (
+                    <p className="text-xs text-danger">{title.error}</p>
+                  )}
+                  <Input
+                    value={title.value}
+                    onChange={(e) => handleFieldChange("title", e.target.value, validateTitle)}
+                    onBlur={() => handleFieldBlur("title", validateTitle)}
+                    placeholder="e.g., Borrowdale Villa"
+                    error={title.touched && !!title.error}
+                  />
+                </div>
 
-          {/* Listing Type */}
-          <div className="space-y-2">
-            <Label>Listing</Label>
-            <Select
-              value={listingType}
-              onChange={(e) => setListingType(e.target.value as ListingType)}
+                {/* Type */}
+                <div className="space-y-2">
+                  <Label>Type</Label>
+                  <Select
+                    value={type}
+                    onChange={(e) => setType(e.target.value as PropertyType)}
+                  >
+                    <option value="house">House</option>
+                    <option value="apartment">Apartment</option>
+                    <option value="land">Land</option>
+                    <option value="commercial">Commercial</option>
+                    <option value="other">Other</option>
+                  </Select>
+                </div>
+
+                {/* Listing Type */}
+                <div className="space-y-2">
+                  <Label>Listing</Label>
+                  <Select
+                    value={listingType}
+                    onChange={(e) => setListingType(e.target.value as ListingType)}
+                  >
+                    <option value="sale">Sale</option>
+                    <option value="rent">Rent</option>
+                  </Select>
+                </div>
+
+                {/* Price */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1">
+                    Price <span className="text-danger">*</span>
+                  </Label>
+                  <CurrencyInput
+                    value={price.value}
+                    onChange={(val) => handleFieldChange("price", val, validatePrice)}
+                    onBlur={() => handleFieldBlur("price", validatePrice)}
+                    currency={currency}
+                    onCurrencyChange={setCurrency}
+                    placeholder="0"
+                    error={price.touched ? price.error : undefined}
+                    touched={price.touched}
+                  />
+                </div>
+
+                {/* Location */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1">
+                    Location <span className="text-danger">*</span>
+                  </Label>
+                  {locationError && (
+                    <p className="text-xs text-danger">{locationError}</p>
+                  )}
+                  <Select
+                    value={location}
+                    onChange={(e) => {
+                      setLocation(e.target.value);
+                      setLocationError(validateLocation(e.target.value));
+                    }}
+                  >
+                    <option value="">Select a location...</option>
+                    {locations?.map((loc) => (
+                      <option key={loc._id} value={loc.name}>
+                        {loc.name}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+
+                {/* Area */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1">
+                    Area (m²) <span className="text-danger">*</span>
+                  </Label>
+                  {area.touched && area.error && (
+                    <p className="text-xs text-danger">{area.error}</p>
+                  )}
+                  <Input
+                    type="number"
+                    value={area.value}
+                    onChange={(e) => handleFieldChange("area", e.target.value, validateArea)}
+                    onBlur={() => handleFieldBlur("area", validateArea)}
+                    placeholder="e.g., 280"
+                    error={area.touched && !!area.error}
+                  />
+                </div>
+
+                {/* Bedrooms */}
+                <div className="space-y-2">
+                  <Label>Bedrooms</Label>
+                  <Input
+                    type="number"
+                    value={bedrooms}
+                    onChange={(e) => setBedrooms(e.target.value)}
+                    placeholder="e.g., 4"
+                  />
+                </div>
+
+                {/* Bathrooms */}
+                <div className="space-y-2">
+                  <Label>Bathrooms</Label>
+                  <Input
+                    type="number"
+                    value={bathrooms}
+                    onChange={(e) => setBathrooms(e.target.value)}
+                    placeholder="e.g., 2"
+                  />
+                </div>
+
+                {/* Status */}
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value as PropertyStatus)}
+                  >
+                    <option value="available">Available</option>
+                    <option value="under_offer">Under Offer</option>
+                    <option value="let">Let</option>
+                    <option value="sold">Sold</option>
+                    <option value="off_market">Off Market</option>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Description */}
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <Textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={3}
+                  placeholder="Enter property description..."
+                />
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === "Sharing" && (
+            <motion.div
+              key="sharing"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } }}
+              exit={{ opacity: 0, y: -8, transition: { duration: 0.15 } }}
+              className="py-8 text-center"
             >
-              <option value="sale">Sale</option>
-              <option value="rent">Rent</option>
-            </Select>
-          </div>
+              <p className="text-sm text-text-muted">
+                Property sharing will be available after saving the property.
+              </p>
+            </motion.div>
+          )}
 
-          {/* Price */}
-          <div className="space-y-2">
-            <Label className="flex items-center gap-1">
-              Price <span className="text-danger">*</span>
-            </Label>
-            <CurrencyInput
-              value={price.value}
-              onChange={(val) => handleFieldChange("price", val, validatePrice)}
-              onBlur={() => handleFieldBlur("price", validatePrice)}
-              currency={currency}
-              onCurrencyChange={setCurrency}
-              placeholder="0"
-              error={price.touched ? price.error : undefined}
-              touched={price.touched}
-            />
-          </div>
-
-          {/* Location */}
-          <div className="space-y-2">
-            <Label className="flex items-center gap-1">
-              Location <span className="text-danger">*</span>
-            </Label>
-            {locationError && (
-              <p className="text-xs text-danger">{locationError}</p>
-            )}
-            <Select
-              value={location}
-              onChange={(e) => {
-                setLocation(e.target.value);
-                setLocationError(validateLocation(e.target.value));
-              }}
+          {activeTab === "Documentation" && (
+            <motion.div
+              key="documentation"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } }}
+              exit={{ opacity: 0, y: -8, transition: { duration: 0.15 } }}
+              className="py-8 text-center"
             >
-              <option value="">Select a location...</option>
-              {locations?.map((loc) => (
-                <option key={loc._id} value={loc.name}>
-                  {loc.name}
-                </option>
-              ))}
-            </Select>
-          </div>
+              <p className="text-sm text-text-muted">
+                Document uploads will be available after saving the property.
+              </p>
+            </motion.div>
+          )}
 
-          {/* Area */}
-          <div className="space-y-2">
-            <Label className="flex items-center gap-1">
-              Area (m²) <span className="text-danger">*</span>
-            </Label>
-            {area.touched && area.error && (
-              <p className="text-xs text-danger">{area.error}</p>
-            )}
-            <Input
-              type="number"
-              value={area.value}
-              onChange={(e) => handleFieldChange("area", e.target.value, validateArea)}
-              onBlur={() => handleFieldBlur("area", validateArea)}
-              placeholder="e.g., 280"
-              error={area.touched && !!area.error}
-            />
-          </div>
-
-          {/* Bedrooms */}
-          <div className="space-y-2">
-            <Label>Bedrooms</Label>
-            <Input
-              type="number"
-              value={bedrooms}
-              onChange={(e) => setBedrooms(e.target.value)}
-              placeholder="e.g., 4"
-            />
-          </div>
-
-          {/* Bathrooms */}
-          <div className="space-y-2">
-            <Label>Bathrooms</Label>
-            <Input
-              type="number"
-              value={bathrooms}
-              onChange={(e) => setBathrooms(e.target.value)}
-              placeholder="e.g., 2"
-            />
-          </div>
-
-          {/* Status */}
-          <div className="space-y-2">
-            <Label>Status</Label>
-            <Select
-              value={status}
-              onChange={(e) => setStatus(e.target.value as PropertyStatus)}
+          {activeTab === "Gallery" && (
+            <motion.div
+              key="gallery"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } }}
+              exit={{ opacity: 0, y: -8, transition: { duration: 0.15 } }}
+              className="space-y-2"
             >
-              <option value="available">Available</option>
-              <option value="under_offer">Under Offer</option>
-              <option value="let">Let</option>
-              <option value="sold">Sold</option>
-              <option value="off_market">Off Market</option>
-            </Select>
-          </div>
-        </div>
-
-        {/* Description */}
-        <div className="space-y-2">
-          <Label>Description</Label>
-          <Textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={3}
-            placeholder="Enter property description..."
-          />
-        </div>
+              <Label className="flex items-center gap-1">
+                Images <span className="text-danger">*</span>
+              </Label>
+              <ImageUpload
+                images={images}
+                onChange={handleImagesChange}
+                minImages={2}
+                maxImages={10}
+                error={imagesError}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </Modal>
   );

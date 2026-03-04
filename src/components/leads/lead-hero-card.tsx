@@ -41,6 +41,8 @@ interface LeadHeroCardProps {
   dealCurrency: string;
   onDealCurrencyChange: (val: string) => void;
   onStageChange: (stageId: Id<"pipelineStages">) => void;
+  onSaveCloseDetails: () => void;
+  isSavingCloseDetails: boolean;
   onViewDetails: () => void;
 }
 
@@ -58,6 +60,8 @@ export const LeadHeroCard = React.memo(function LeadHeroCard({
   dealCurrency,
   onDealCurrencyChange,
   onStageChange,
+  onSaveCloseDetails,
+  isSavingCloseDetails,
   onViewDetails,
 }: LeadHeroCardProps) {
   const [scoreExpanded, setScoreExpanded] = React.useState(false);
@@ -254,6 +258,13 @@ export const LeadHeroCard = React.memo(function LeadHeroCard({
                   </select>
                 </div>
               )}
+              <Button
+                onClick={onSaveCloseDetails}
+                disabled={isSavingCloseDetails}
+                className="h-10"
+              >
+                {isSavingCloseDetails ? "Saving..." : "Save"}
+              </Button>
             </>
           )}
         </div>

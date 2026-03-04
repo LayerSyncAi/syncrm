@@ -489,6 +489,186 @@ export const updateNotes = mutation({
   },
 });
 
+export const updateCloseDetails = mutation({
+  args: {
+    leadId: v.id("leads"),
+    closeReason: v.optional(v.string()),
+    dealValue: v.optional(v.number()),
+    dealCurrency: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserWithOrg(ctx);
+    const lead = await assertLeadAccess(ctx, args.leadId, user._id, user.role === "admin", user.orgId);
+    if (!lead) {
+      throw new Error("Lead not found");
+    }
+
+    // Only allow updating close details on leads that are already in a terminal stage
+    const stage = await ctx.db.get(lead.stageId);
+    if (!stage || !stage.isTerminal) {
+      throw new Error("Lead is not in a closed stage");
+    }
+
+    const now = Date.now();
+    const updated: Record<string, unknown> = {
+      updatedAt: now,
+    };
+    if (args.closeReason !== undefined) updated.closeReason = args.closeReason;
+    if (args.dealValue !== undefined) updated.dealValue = args.dealValue;
+    if (args.dealCurrency !== undefined) updated.dealCurrency = args.dealCurrency;
+
+    await ctx.db.patch(args.leadId, updated);
+
+    // Auto-generate commission records when deal is won and dealValue is provided
+    if (stage.terminalOutcome === "won" && args.dealValue && args.dealValue > 0) {
+      const dealCurrency = args.dealCurrency || "USD";
+
+      // Check if commission records already exist for this lead
+      const existingCommissions = await ctx.db
+        .query("dealCommissions")
+        .withIndex("by_lead", (q) => q.eq("leadId", args.leadId))
+        .collect();
+
+      // Only create commissions if none exist yet
+      if (existingCommissions.length === 0) {
+        const shares = await ctx.db
+          .query("propertyShares")
+          .withIndex("by_lead", (q) => q.eq("leadId", args.leadId))
+          .collect();
+
+        const activeShares = shares.filter(
+          (s) => (s.status === "active" || s.status === "closed_won") && (!s.orgId || s.orgId === user.orgId)
+        );
+
+        const configs = await ctx.db
+          .query("commissionConfigs")
+          .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+          .collect();
+
+        if (activeShares.length > 0) {
+          const sharedConfig = configs.find(
+            (c) => c.scenario === "shared_deal" && c.isDefault
+          ) || configs.find((c) => c.scenario === "shared_deal");
+
+          for (const share of activeShares) {
+            if (share.status === "active") {
+              await ctx.db.patch(share._id, {
+                status: "closed_won",
+                dealValue: args.dealValue,
+                dealCurrency,
+                closedAt: now,
+                updatedAt: now,
+              });
+            }
+
+            const property = await ctx.db.get(share.propertyId);
+            if (property) {
+              await ctx.db.patch(share.propertyId, {
+                status: property.listingType === "sale" ? "sold" : "off_market",
+                updatedAt: now,
+              });
+            }
+
+            const propPercent = sharedConfig?.propertyAgentPercent ?? 40;
+            const leadPercent = sharedConfig?.leadAgentPercent ?? 40;
+            const compPercent = sharedConfig?.companyPercent ?? 20;
+
+            await ctx.db.insert("dealCommissions", {
+              leadId: args.leadId,
+              propertyId: share.propertyId,
+              propertyShareId: share._id,
+              commissionConfigId: sharedConfig?._id,
+              dealValue: args.dealValue,
+              dealCurrency,
+              propertyAgentUserId: share.sharedByUserId,
+              propertyAgentPercent: propPercent,
+              propertyAgentAmount: (args.dealValue * propPercent) / 100,
+              leadAgentUserId: share.sharedWithUserId,
+              leadAgentPercent: leadPercent,
+              leadAgentAmount: (args.dealValue * leadPercent) / 100,
+              companyPercent: compPercent,
+              companyAmount: (args.dealValue * compPercent) / 100,
+              status: "pending",
+              orgId: user.orgId,
+              createdAt: now,
+            });
+          }
+        } else {
+          const matches = await ctx.db
+            .query("leadPropertyMatches")
+            .withIndex("by_lead", (q) => q.eq("leadId", args.leadId))
+            .collect();
+
+          let scenario: "own_property_own_lead" | "company_property" | "shared_deal" = "company_property";
+          let propertyAgentId: Id<"users"> | undefined;
+          let propertyId: Id<"properties"> | undefined;
+
+          if (matches.length > 0) {
+            for (const match of matches) {
+              const property = await ctx.db.get(match.propertyId);
+              if (property?.createdByUserId === lead.ownerUserId) {
+                scenario = "own_property_own_lead";
+                propertyId = match.propertyId;
+                break;
+              }
+              if (property) {
+                propertyId = match.propertyId;
+                if (property.createdByUserId) {
+                  propertyAgentId = property.createdByUserId;
+                  scenario = "shared_deal";
+                }
+              }
+            }
+          }
+
+          const config = configs.find(
+            (c) => c.scenario === scenario && c.isDefault
+          ) || configs.find((c) => c.scenario === scenario);
+
+          const defaultSplits = {
+            own_property_own_lead: { prop: 0, lead: 70, company: 30 },
+            shared_deal: { prop: 40, lead: 40, company: 20 },
+            company_property: { prop: 0, lead: 50, company: 50 },
+          };
+          const defaults = defaultSplits[scenario];
+          const propPercent = config?.propertyAgentPercent ?? defaults.prop;
+          const leadPercent = config?.leadAgentPercent ?? defaults.lead;
+          const compPercent = config?.companyPercent ?? defaults.company;
+
+          await ctx.db.insert("dealCommissions", {
+            leadId: args.leadId,
+            propertyId,
+            commissionConfigId: config?._id,
+            dealValue: args.dealValue,
+            dealCurrency,
+            propertyAgentUserId: scenario === "own_property_own_lead" ? undefined : propertyAgentId,
+            propertyAgentPercent: propPercent,
+            propertyAgentAmount: (args.dealValue * propPercent) / 100,
+            leadAgentUserId: lead.ownerUserId,
+            leadAgentPercent: leadPercent,
+            leadAgentAmount: (args.dealValue * leadPercent) / 100,
+            companyPercent: compPercent,
+            companyAmount: (args.dealValue * compPercent) / 100,
+            status: "pending",
+            orgId: user.orgId,
+            createdAt: now,
+          });
+
+          if (propertyId) {
+            const wonProperty = await ctx.db.get(propertyId);
+            if (wonProperty) {
+              await ctx.db.patch(propertyId, {
+                status: wonProperty.listingType === "sale" ? "sold" : "off_market",
+                updatedAt: now,
+              });
+            }
+          }
+        }
+      }
+    }
+  },
+});
+
 export const createWithProperties = mutation({
   args: {
     ...leadArgs,
