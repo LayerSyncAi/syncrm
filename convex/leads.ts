@@ -504,7 +504,11 @@ export const updateCloseDetails = mutation({
     }
 
     // Only allow updating close details on leads that are already in a terminal stage
-    const stage = await ctx.db.get(lead.stageId);
+    const stages = await ctx.db
+      .query("pipelineStages")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
+    const stage = stages.find((s) => s._id === lead.stageId);
     if (!stage || !stage.isTerminal) {
       throw new Error("Lead is not in a closed stage");
     }
