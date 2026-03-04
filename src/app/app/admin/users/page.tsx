@@ -496,7 +496,7 @@ export default function UsersPage() {
                   <p className="text-sm font-medium">Reset password</p>
                   <p className="text-xs text-text-muted">
                     {editingUser.resetPasswordOnNextLogin
-                      ? "Password reset is already pending."
+                      ? <>Password reset is already pending. The temporary password is <span className="font-mono font-semibold text-text">12345678</span>. The user will be required to change it on next login.</>
                       : "Set a temporary password. User must change it on next login."}
                   </p>
                 </div>
