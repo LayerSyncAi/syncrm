@@ -166,6 +166,7 @@ export default function AdminRolesPage() {
               No users found
             </p>
           ) : (
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -268,6 +269,7 @@ export default function AdminRolesPage() {
                 })}
               </motion.tbody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>

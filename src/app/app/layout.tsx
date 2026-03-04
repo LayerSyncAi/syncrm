@@ -15,6 +15,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   // We need to wait for user data to load for the UI
   const { user, org, isLoading, isAuthenticated, isSessionAuthenticated, signOut } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -130,18 +131,20 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           collapsed={collapsed}
           onToggle={() => setCollapsed((prev) => !prev)}
           orgName={org?.name}
+          mobileOpen={mobileOpen}
+          onMobileClose={() => setMobileOpen(false)}
         />
       </ErrorBoundary>
       <div
-        className="transition-[margin] duration-200"
+        className="transition-[margin] duration-200 max-md:!ml-0"
         style={{
           marginLeft: collapsed
             ? "var(--sidebar-width-collapsed)"
             : "var(--sidebar-width)",
         }}
       >
-        <Topbar userName={userName} userEmail={user.email || undefined} orgName={org?.name} userTimezone={user.timezone || undefined} />
-        <div className="px-6 py-6">
+        <Topbar userName={userName} userEmail={user.email || undefined} orgName={org?.name} userTimezone={user.timezone || undefined} onMobileMenuOpen={() => setMobileOpen(true)} />
+        <div className="px-3 py-4 sm:px-6 sm:py-6">
           <ErrorBoundary sectionName="Page Content">
             {children}
           </ErrorBoundary>

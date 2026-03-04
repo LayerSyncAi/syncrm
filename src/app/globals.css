@@ -295,6 +295,37 @@ a {
   border-color: #ef4444;
 }
 
+/* Mobile: prevent horizontal overflow on the body */
+@media (max-width: 767px) {
+  html, body {
+    overflow-x: hidden;
+  }
+
+  /* Improve touch targets — ensure minimum 44px tap areas */
+  button, a, select, input[type="checkbox"], input[type="radio"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Slightly larger base text on mobile for readability */
+  body {
+    font-size: 15px;
+    line-height: 1.4rem;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Ensure inputs don't zoom on iOS (16px minimum) */
+  input, select, textarea {
+    font-size: 16px;
+  }
+
+  /* Better scrollbar for horizontal scroll tables on mobile */
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+}
+
 /* Sidebar active-tab underline: shimmer sweeps left → right */
 @keyframes sidebar-underline-sweep {
   0% {

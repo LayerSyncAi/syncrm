@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ChevronDown, Globe, LogOut } from "lucide-react";
+import { ChevronDown, Globe, LogOut, Menu } from "lucide-react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -15,6 +15,7 @@ interface TopbarProps {
   userEmail?: string;
   orgName?: string;
   userTimezone?: string;
+  onMobileMenuOpen?: () => void;
 }
 
 const titleMap: Record<string, string> = {
@@ -28,7 +29,7 @@ const titleMap: Record<string, string> = {
   "/app/admin/stages": "Stages",
 };
 
-export function Topbar({ userName, userEmail, orgName, userTimezone }: TopbarProps) {
+export function Topbar({ userName, userEmail, orgName, userTimezone, onMobileMenuOpen }: TopbarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { signOut } = useAuthActions();
@@ -85,15 +86,24 @@ export function Topbar({ userName, userEmail, orgName, userTimezone }: TopbarPro
   return (
     <header
       className={cn(
-        "sticky top-0 z-30 flex h-[var(--topbar-height)] items-center justify-between border-b px-6 transition-all duration-300",
+        "sticky top-0 z-30 flex h-[var(--topbar-height)] items-center justify-between border-b px-3 sm:px-6 transition-all duration-300",
         scrolled
           ? "border-border-strong/60 bg-card-bg/80 shadow-[0_1px_12px_rgba(0,0,0,0.08)] backdrop-blur-md"
           : "border-border bg-card-bg"
       )}
     >
-      <div className="flex min-w-0 flex-1 items-center gap-4">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        {/* Mobile hamburger menu */}
+        <button
+          type="button"
+          onClick={onMobileMenuOpen}
+          aria-label="Open menu"
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-text-muted transition hover:bg-row-hover md:hidden"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
         <h1 className="text-lg font-semibold">{title}</h1>
-        <span className="rounded-full border border-border-strong px-3 py-1 text-xs text-text-muted">
+        <span className="hidden rounded-full border border-border-strong px-3 py-1 text-xs text-text-muted sm:inline-block">
           Live
         </span>
       </div>

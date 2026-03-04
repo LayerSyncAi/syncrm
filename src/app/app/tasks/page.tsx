@@ -316,6 +316,7 @@ export default function TasksPage() {
           <p className="text-text-muted">No tasks found matching your filters.</p>
         </Card>
       ) : (
+        <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
         <Table>
           <thead>
             <tr>
@@ -439,6 +440,7 @@ export default function TasksPage() {
             })}
           </motion.tbody>
         </Table>
+        </div>
       )}
 
       <PaginationControls

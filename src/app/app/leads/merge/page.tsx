@@ -251,7 +251,7 @@ export default function MergeLeadsPage() {
                 ))}
               </div>
             ) : (
-              <div className="max-h-[500px] overflow-y-auto">
+              <div className="max-h-[500px] overflow-y-auto overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>

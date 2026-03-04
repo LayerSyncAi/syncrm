@@ -389,6 +389,7 @@ export default function LeadsPage() {
         </motion.div>
       ) : (
         <ErrorBoundary sectionName="Lead Table">
+          <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
           <Table>
             <thead>
               <tr>
@@ -427,6 +428,7 @@ export default function LeadsPage() {
               ))}
             </motion.tbody>
           </Table>
+          </div>
           <PaginationControls
             page={pagination.page}
             pageSize={pagination.pageSize}
