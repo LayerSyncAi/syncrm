@@ -15,6 +15,8 @@ import { Modal } from "@/components/ui/modal";
 import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableCell, TableHead, TableRow } from "@/components/ui/table";
+import { PaginationControls } from "@/components/ui/pagination";
+import { usePagination } from "@/hooks/usePagination";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { parseCurrencyInput } from "@/lib/currency";
 import { ConfirmDeleteDialog } from "@/components/common/confirm-delete-dialog";
@@ -184,6 +186,7 @@ const sheetPanelVariants = {
 
 export default function PropertiesPage() {
   const currentUser = useQuery(api.users.getMeRequired);
+  const pagination = usePagination(50);
 
   // Filter state with debouncing
   const [searchInput, setSearchInput] = React.useState("");
@@ -199,6 +202,7 @@ export default function PropertiesPage() {
   React.useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchInput);
+      pagination.resetPage();
     }, 300);
     return () => clearTimeout(timer);
   }, [searchInput]);
@@ -207,9 +211,15 @@ export default function PropertiesPage() {
   React.useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedLocation(locationFilter);
+      pagination.resetPage();
     }, 300);
     return () => clearTimeout(timer);
   }, [locationFilter]);
+
+  // Reset page on filter changes
+  React.useEffect(() => {
+    pagination.resetPage();
+  }, [listingTypeFilter, statusFilter, typeFilter, priceMin]);
 
   const properties = useQuery(
     api.properties.list,
@@ -221,6 +231,8 @@ export default function PropertiesPage() {
           type: typeFilter || undefined,
           location: debouncedLocation || undefined,
           priceMin: priceMin ? parseFloat(parseCurrencyInput(priceMin)) : undefined,
+          page: pagination.page > 0 ? pagination.page : undefined,
+          pageSize: pagination.pageSize !== 50 ? pagination.pageSize : undefined,
         }
       : "skip"
   );
@@ -255,6 +267,8 @@ export default function PropertiesPage() {
     if (!properties) return [];
     return (properties as any).items ?? (Array.isArray(properties) ? properties : []);
   }, [properties]);
+  const propertiesTotalCount = (properties as any)?.totalCount ?? propertiesList.length;
+  const propertiesHasMore = (properties as any)?.hasMore ?? false;
 
   const compareProperties = React.useMemo(
     () => propertiesList.filter((p: Property) => compareIds.includes(p._id)),
@@ -841,6 +855,15 @@ export default function PropertiesPage() {
             })}
           </motion.div>
       )}
+
+      <PaginationControls
+        page={pagination.page}
+        pageSize={pagination.pageSize}
+        totalCount={propertiesTotalCount}
+        hasMore={propertiesHasMore}
+        onNextPage={pagination.nextPage}
+        onPrevPage={pagination.prevPage}
+      />
 
       {/* View/Edit Modal */}
       <Modal

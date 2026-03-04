@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 import { Table, TableCell, TableHead, TableRow } from "@/components/ui/table";
+import { PaginationControls } from "@/components/ui/pagination";
+import { usePagination } from "@/hooks/usePagination";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Eye, ExternalLink } from "lucide-react";
 import { useRequireAuth } from "@/hooks/useAuth";
@@ -158,16 +160,31 @@ interface TaskActivity {
 
 export default function TasksPage() {
   const { user, isLoading: authLoading } = useRequireAuth();
+  const pagination = usePagination(50);
   const [statusFilter, setStatusFilter] = useState<TaskStatus>("all");
   const [typeFilter, setTypeFilter] = useState<ActivityType>("all");
   const [selectedTask, setSelectedTask] = useState<TaskActivity | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [celebratingIds, setCelebratingIds] = useState<Set<string>>(new Set());
 
-  const tasks = useQuery(api.activities.listAllTasks, {
+  // Reset to first page when filters change
+  useEffect(() => {
+    pagination.resetPage();
+  }, [statusFilter, typeFilter]);
+
+  const tasksResult = useQuery(api.activities.listAllTasks, {
     status: statusFilter,
     type: typeFilter,
+    page: pagination.page > 0 ? pagination.page : undefined,
+    pageSize: pagination.pageSize !== 50 ? pagination.pageSize : undefined,
   });
+
+  const tasks = useMemo(() => {
+    if (!tasksResult) return undefined;
+    return (tasksResult as any).items ?? (Array.isArray(tasksResult) ? tasksResult : []);
+  }, [tasksResult]);
+  const totalCount = (tasksResult as any)?.totalCount ?? tasks?.length ?? 0;
+  const hasMore = (tasksResult as any)?.hasMore ?? false;
 
   const handleViewTask = useCallback((task: TaskActivity) => {
     setSelectedTask(task);
@@ -206,7 +223,7 @@ export default function TasksPage() {
     if (!tasks) return { todoCount: 0, completedCount: 0 };
     let todo = 0;
     let completed = 0;
-    for (const t of tasks) {
+    for (const t of tasks as any[]) {
       if (t.status === "todo") todo++;
       else if (t.status === "completed") completed++;
     }
@@ -243,7 +260,7 @@ export default function TasksPage() {
         <motion.div variants={cardItemVariants} whileHover={{ scale: 1.02, boxShadow: "0 8px 25px rgba(0,0,0,0.1)" }}>
           <Card className="p-4">
             <p className="text-xs text-text-muted uppercase tracking-wide">Total</p>
-            <p className="text-2xl font-semibold mt-1"><AnimatedCounter value={tasks?.length ?? 0} /></p>
+            <p className="text-2xl font-semibold mt-1"><AnimatedCounter value={totalCount} /></p>
           </Card>
         </motion.div>
       </motion.div>
@@ -304,7 +321,7 @@ export default function TasksPage() {
             </tr>
           </thead>
           <motion.tbody variants={listVariants} initial="hidden" animate="show">
-            {tasks.map((task) => {
+            {tasks.map((task: TaskActivity) => {
               const overdue = isTaskOverdue(task);
               const celebrating = celebratingIds.has(task._id);
               return (
@@ -406,6 +423,15 @@ export default function TasksPage() {
           </motion.tbody>
         </Table>
       )}
+
+      <PaginationControls
+        page={pagination.page}
+        pageSize={pagination.pageSize}
+        totalCount={totalCount}
+        hasMore={hasMore}
+        onNextPage={pagination.nextPage}
+        onPrevPage={pagination.prevPage}
+      />
 
       <AnimatePresence>
         {modalOpen && (
