@@ -99,7 +99,7 @@ const LeadTableRow = React.memo(function LeadTableRow({
             <Link href={`/app/leads/${lead._id}`} onClick={(e) => e.stopPropagation()}>
               <Button
                 variant="secondary"
-                className="action-btn h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
+                className="action-btn h-9 w-9 p-0 md:opacity-0 md:translate-x-3 md:scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
                 style={{ transitionDelay: "0ms" }}
               >
                 <Eye className="h-4 w-4" />

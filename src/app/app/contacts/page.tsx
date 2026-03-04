@@ -97,7 +97,7 @@ const ContactTableRow = React.memo(function ContactTableRow({
           {contact.phone && (
             <Tooltip content="Call">
               <a href={`tel:${contact.phone}`} onClick={(e) => e.stopPropagation()}>
-                <Button variant="secondary" className="action-btn h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out" style={{ transitionDelay: "0ms" }}>
+                <Button variant="secondary" className="action-btn h-9 w-9 p-0 md:opacity-0 md:translate-x-3 md:scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out" style={{ transitionDelay: "0ms" }}>
                   <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" /></svg>
                 </Button>
               </a>
@@ -106,20 +106,20 @@ const ContactTableRow = React.memo(function ContactTableRow({
           {contact.email && (
             <Tooltip content="Email">
               <a href={`mailto:${contact.email}`} onClick={(e) => e.stopPropagation()}>
-                <Button variant="secondary" className="action-btn h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out" style={{ transitionDelay: "50ms" }}>
+                <Button variant="secondary" className="action-btn h-9 w-9 p-0 md:opacity-0 md:translate-x-3 md:scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out" style={{ transitionDelay: "50ms" }}>
                   <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" /><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" /></svg>
                 </Button>
               </a>
             </Tooltip>
           )}
           <Tooltip content="Edit">
-            <Button variant="secondary" className="action-btn h-9 w-9 p-0 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out" style={{ transitionDelay: "100ms" }} onClick={() => onEdit(contact)}>
+            <Button variant="secondary" className="action-btn h-9 w-9 p-0 md:opacity-0 md:translate-x-3 md:scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out" style={{ transitionDelay: "100ms" }} onClick={() => onEdit(contact)}>
               <Settings className="h-4 w-4" />
             </Button>
           </Tooltip>
           {(isAdmin || contact.ownerUserIds.includes(currentUserId)) && (
             <Tooltip content="Delete">
-              <Button variant="secondary" className="action-btn-danger h-9 w-9 p-0 text-red-500 opacity-0 translate-x-3 scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out" style={{ transitionDelay: "150ms" }} onClick={() => onDelete(contact)}>
+              <Button variant="secondary" className="action-btn-danger h-9 w-9 p-0 text-red-500 md:opacity-0 md:translate-x-3 md:scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out" style={{ transitionDelay: "150ms" }} onClick={() => onDelete(contact)}>
                 <Trash2 className="h-4 w-4" />
               </Button>
             </Tooltip>
