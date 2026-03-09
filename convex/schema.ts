@@ -27,6 +27,7 @@ export default defineSchema({
     timezone: v.optional(v.string()), // IANA timezone, e.g. "Africa/Harare"
     resetPasswordOnNextLogin: v.optional(v.boolean()),
     passwordUpdatedAt: v.optional(v.number()),
+    showOnboardingInterface: v.optional(v.boolean()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

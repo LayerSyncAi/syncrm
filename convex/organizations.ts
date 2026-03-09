@@ -58,6 +58,7 @@ export const setupOrganization = mutation({
     await ctx.db.patch(user._id, {
       orgId,
       role: "admin",
+      showOnboardingInterface: true,
       updatedAt: timestamp,
     });
 

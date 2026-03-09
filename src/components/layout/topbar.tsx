@@ -113,7 +113,7 @@ export function Topbar({ userName, userEmail, orgName, userTimezone, onMobileMen
         </div>
       )}
       <div className="flex min-w-0 flex-1 items-center justify-end gap-3">
-        <div className="relative">
+        <div className="relative" data-tour="user-profile">
           <button
             className="flex items-center gap-2 rounded-[10px] border border-border-strong px-3 py-2 text-sm text-text"
             onClick={() => setOpen((prev) => !prev)}

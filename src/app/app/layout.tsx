@@ -1,6 +1,7 @@
 "use client";
 
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { useRouter, usePathname } from "next/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
@@ -9,6 +10,11 @@ import { Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ErrorBoundary } from "@/components/common/error-boundary";
 import { StaticDataProvider } from "@/components/providers/static-data-provider";
+
+const OnboardingTour = dynamic(
+  () => import("@/components/onboarding/onboarding-tour").then((m) => m.OnboardingTour),
+  { ssr: false }
+);
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   // Middleware handles auth redirects - if we get here, user should be authenticated
@@ -122,9 +128,21 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const userName = user.fullName || user.name || user.email || "User";
   const isAdmin = user.role === "admin";
 
+  // Onboarding tour: show for users who haven't completed it yet
+  // Default to true for users who don't have the field set (existing users)
+  const showOnboarding = user.showOnboardingInterface !== false && pathname === "/app/dashboard";
+  const [tourDismissed, setTourDismissed] = useState(false);
+
+  const handleTourComplete = useCallback(() => {
+    setTourDismissed(true);
+  }, []);
+
   return (
     <StaticDataProvider>
     <div className="min-h-screen bg-content-bg">
+      {showOnboarding && !tourDismissed && (
+        <OnboardingTour isAdmin={isAdmin} onComplete={handleTourComplete} />
+      )}
       <ErrorBoundary sectionName="Sidebar">
         <Sidebar
           isAdmin={isAdmin}

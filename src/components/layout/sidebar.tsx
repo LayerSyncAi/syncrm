@@ -217,7 +217,7 @@ export const Sidebar = memo(function Sidebar({ isAdmin, collapsed, onToggle, org
           {collapsed ? (orgName ? orgName[0].toUpperCase() : "S") : (orgName || "SynCRM")}
         </div>
       </div>
-      <nav className="flex-1 space-y-1">
+      <nav className="flex-1 space-y-1" data-tour="sidebar-nav">
         {navItems.map((item) => (
           <NavItem
             key={item.href}
@@ -228,7 +228,7 @@ export const Sidebar = memo(function Sidebar({ isAdmin, collapsed, onToggle, org
           />
         ))}
       </nav>
-      <div className="mt-4 space-y-1 border-t border-white/20 pt-4">
+      <div className="mt-4 space-y-1 border-t border-white/20 pt-4" data-tour="sidebar-import-export">
         {collapsed ? (
           /* When sidebar is collapsed, show items directly (with hover tooltips) */
           importExportItems.map((item) => (
@@ -284,7 +284,7 @@ export const Sidebar = memo(function Sidebar({ isAdmin, collapsed, onToggle, org
         )}
       </div>
       {isAdmin ? (
-        <div className="mt-4 space-y-1 border-t border-white/20 pt-4">
+        <div className="mt-4 space-y-1 border-t border-white/20 pt-4" data-tour="sidebar-admin">
           {collapsed ? (
             adminItems.map((item) => (
               <NavItem
