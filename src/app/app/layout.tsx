@@ -22,8 +22,13 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const { user, org, isLoading, isAuthenticated, isSessionAuthenticated, signOut } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [tourDismissed, setTourDismissed] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
+
+  const handleTourComplete = useCallback(() => {
+    setTourDismissed(true);
+  }, []);
 
   const isForceChangePasswordPage = pathname === "/app/force-change-password";
 
@@ -131,11 +136,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   // Onboarding tour: show for users who haven't completed it yet
   // Default to true for users who don't have the field set (existing users)
   const showOnboarding = user.showOnboardingInterface !== false && pathname === "/app/dashboard";
-  const [tourDismissed, setTourDismissed] = useState(false);
-
-  const handleTourComplete = useCallback(() => {
-    setTourDismissed(true);
-  }, []);
 
   return (
     <StaticDataProvider>
