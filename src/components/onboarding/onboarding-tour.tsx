@@ -113,7 +113,7 @@ const tourSteps: Step[] = [
   },
   {
     target: '[data-tour="sidebar-import-export"]',
-    placement: "right",
+    placement: "right-start",
     disableBeacon: true,
     content: "",
     data: {
@@ -125,7 +125,7 @@ const tourSteps: Step[] = [
   },
   {
     target: '[data-tour="sidebar-admin"]',
-    placement: "right",
+    placement: "right-start",
     disableBeacon: true,
     content: "",
     data: {
