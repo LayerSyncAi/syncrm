@@ -95,6 +95,7 @@ export const adminCreateUserInternal = internalMutation({
       isActive: args.isActive,
       orgId: args.orgId,
       resetPasswordOnNextLogin: true,
+      showOnboardingInterface: true,
       createdAt: timestamp,
       updatedAt: timestamp,
     });
@@ -309,6 +310,16 @@ export const listAll = query({
         email: u.email,
         role: u.role,
       }));
+  },
+});
+
+export const completeOnboarding = mutation({
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    await ctx.db.patch(user._id, {
+      showOnboardingInterface: false,
+      updatedAt: Date.now(),
+    });
   },
 });
 
