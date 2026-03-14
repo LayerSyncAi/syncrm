@@ -75,6 +75,11 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
   const [propertySearch, setPropertySearch] = useState("");
   const [isAttaching, setIsAttaching] = useState(false);
 
+  // Sibling leads resolution state (when won/under contract)
+  const [showSiblingModal, setShowSiblingModal] = useState(false);
+  const [siblingLeadsToClose, setSiblingLeadsToClose] = useState<Set<string>>(new Set());
+  const [isClosingSiblings, setIsClosingSiblings] = useState(false);
+
   // Property comparison state
   const [comparisonOpen, setComparisonOpen] = useState(false);
   const [comparisonPropertyIds, setComparisonPropertyIds] = useState<Id<"properties">[]>([]);
@@ -94,8 +99,17 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
     (properties as any)?.items ?? (Array.isArray(properties) ? properties : []);
   const viewProperty = viewPropertyId ? propertiesArray.find((p) => p._id === viewPropertyId) ?? null : null;
 
+  // Sibling leads query (for resolution modal)
+  const siblingLeads = useQuery(
+    api.leads.getOpenLeadsForContact,
+    showSiblingModal && leadData?.lead
+      ? { contactId: leadData.lead.contactId, excludeLeadId: leadId }
+      : "skip"
+  );
+
   // Mutations
   const moveStage = useMutation(api.leads.moveStage);
+  const bulkCloseAsLost = useMutation(api.leads.bulkCloseAsLost);
   const updateNotes = useMutation(api.leads.updateNotes);
   const updateCloseDetails = useMutation(api.leads.updateCloseDetails);
   const createActivity = useMutation(api.activities.createForLead);
@@ -131,6 +145,14 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
         dealCurrency: stage?.isTerminal && stage?.terminalOutcome === "won" ? dealCurrency : undefined,
       });
       leadToasts.stageMoved(stage?.name || "new stage");
+
+      // Show sibling leads modal when won or under contract
+      const isWon = stage?.isTerminal && stage?.terminalOutcome === "won";
+      const isUnderContract = !stage?.isTerminal && stage?.name.toLowerCase() === "under contract";
+      if (isWon || isUnderContract) {
+        setShowSiblingModal(true);
+        setSiblingLeadsToClose(new Set());
+      }
     } catch (error) {
       console.error("Failed to update stage:", error);
       leadToasts.stageMoveFailed(error instanceof Error ? error.message : undefined);
@@ -248,6 +270,37 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
     setComparisonPropertyIds(propertyIds);
     setComparisonOpen(true);
   }, []);
+
+  const toggleSiblingLead = useCallback((siblingLeadId: string) => {
+    setSiblingLeadsToClose((prev) => {
+      const next = new Set(prev);
+      if (next.has(siblingLeadId)) next.delete(siblingLeadId);
+      else next.add(siblingLeadId);
+      return next;
+    });
+  }, []);
+
+  const handleCloseSiblingLeads = useCallback(async () => {
+    if (siblingLeadsToClose.size === 0) {
+      setShowSiblingModal(false);
+      return;
+    }
+    setIsClosingSiblings(true);
+    try {
+      await bulkCloseAsLost({
+        leadIds: Array.from(siblingLeadsToClose) as Id<"leads">[],
+        closeReason: "Contact chose another property",
+      });
+      leadToasts.stageMoved(`${siblingLeadsToClose.size} lead(s) marked as lost`);
+      setShowSiblingModal(false);
+      setSiblingLeadsToClose(new Set());
+    } catch (error) {
+      console.error("Failed to close sibling leads:", error);
+      leadToasts.stageMoveFailed(error instanceof Error ? error.message : undefined);
+    } finally {
+      setIsClosingSiblings(false);
+    }
+  }, [siblingLeadsToClose, bulkCloseAsLost]);
 
   // Loading and error states
   if (authLoading || leadData === undefined) {
@@ -548,6 +601,73 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
           />
         </Suspense>
       )}
+
+      {/* Sibling leads resolution modal */}
+      <Modal
+        open={showSiblingModal}
+        title="Resolve other leads for this contact"
+        description={`${lead.fullName} has other open leads. Select which ones to mark as lost, or keep them open.`}
+        onClose={() => setShowSiblingModal(false)}
+        footer={
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs text-text-muted">
+              {siblingLeadsToClose.size > 0 ? `${siblingLeadsToClose.size} selected to close` : "None selected"}
+            </span>
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={() => setShowSiblingModal(false)} disabled={isClosingSiblings}>
+                Keep all open
+              </Button>
+              <Button onClick={handleCloseSiblingLeads} disabled={isClosingSiblings || siblingLeadsToClose.size === 0}>
+                {isClosingSiblings ? "Closing..." : `Mark ${siblingLeadsToClose.size} as lost`}
+              </Button>
+            </div>
+          </div>
+        }
+      >
+        <div className="space-y-3">
+          {siblingLeads === undefined ? (
+            <div className="flex items-center justify-center py-6">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+            </div>
+          ) : siblingLeads.length === 0 ? (
+            <div className="text-center py-6 text-text-muted text-sm">
+              No other open leads for this contact.
+            </div>
+          ) : (
+            siblingLeads.map((sibling) => {
+              const isSelected = siblingLeadsToClose.has(sibling._id);
+              return (
+                <label
+                  key={sibling._id}
+                  className={`flex items-center gap-3 rounded-lg border p-3 text-sm cursor-pointer transition-colors ${
+                    isSelected
+                      ? "border-danger/40 bg-danger/5"
+                      : "border-border-strong hover:bg-card-bg/50"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => toggleSiblingLead(sibling._id)}
+                    className="rounded border-border shrink-0"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium">{sibling.fullName}</p>
+                    <p className="text-xs text-text-muted">
+                      {sibling.interestType === "buy" ? "Buying" : "Renting"} &middot; Stage: {sibling.stageName}
+                    </p>
+                    {sibling.properties && sibling.properties.length > 0 && (
+                      <p className="text-xs text-text-muted mt-0.5">
+                        Properties: {sibling.properties.filter(Boolean).map((p) => (p as { title: string }).title).join(", ")}
+                      </p>
+                    )}
+                  </div>
+                </label>
+              );
+            })
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }

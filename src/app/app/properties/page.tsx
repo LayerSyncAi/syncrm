@@ -247,6 +247,12 @@ export default function PropertiesPage() {
   // UI state
   const [viewMode, setViewMode] = React.useState<"list" | "cards">("list");
   const [selectedProperty, setSelectedProperty] = React.useState<Property | null>(null);
+
+  // Deal info for selected property (sold/under contract banner)
+  const propertyDealInfo = useQuery(
+    api.properties.getPropertyDealInfo,
+    selectedProperty ? { propertyId: selectedProperty._id } : "skip"
+  );
   const [propertyTab, setPropertyTab] = React.useState<PropertyTab>("Details");
   const [isSaving, setIsSaving] = React.useState(false);
   const [deleteTarget, setDeleteTarget] = React.useState<Property | null>(null);
@@ -920,6 +926,45 @@ export default function PropertiesPage() {
               ))}
             </div>
           </div>
+
+          {/* Deal status banner for sold/under-contract properties */}
+          {propertyDealInfo && (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`rounded-lg p-4 text-sm ${
+                propertyDealInfo.status === "sold"
+                  ? "bg-danger/10 text-danger border border-danger/20"
+                  : propertyDealInfo.status === "under_offer"
+                    ? "bg-warning/10 text-warning border border-warning/20"
+                    : "bg-info/10 text-info border border-info/20"
+              }`}
+            >
+              <div className="flex items-center gap-2 font-semibold">
+                {propertyDealInfo.status === "sold" && "This property has been sold"}
+                {propertyDealInfo.status === "under_offer" && "This property is under contract"}
+                {propertyDealInfo.status === "let" && "This property has been let"}
+              </div>
+              {propertyDealInfo.contactName && (
+                <p className="mt-1 opacity-80">
+                  {propertyDealInfo.status === "sold" ? "Sold" : propertyDealInfo.status === "under_offer" ? "Under contract with" : "Let to"}: {propertyDealInfo.contactName}
+                  {propertyDealInfo.dealValue && propertyDealInfo.dealCurrency && (
+                    <span className="ml-2">
+                      ({new Intl.NumberFormat("en-US", { style: "currency", currency: propertyDealInfo.dealCurrency, minimumFractionDigits: 0 }).format(propertyDealInfo.dealValue)})
+                    </span>
+                  )}
+                </p>
+              )}
+              {propertyDealInfo.leadId && (
+                <Link
+                  href={`/app/leads/${propertyDealInfo.leadId}`}
+                  className="mt-2 inline-block text-xs underline opacity-70 hover:opacity-100"
+                >
+                  View lead
+                </Link>
+              )}
+            </motion.div>
+          )}
 
           {/* Tab content */}
           <AnimatePresence mode="wait">

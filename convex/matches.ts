@@ -163,6 +163,28 @@ export const attachPropertyToLead = mutation({
         `Cannot attach a property that is ${property.status === "sold" ? "sold" : "off market"}`
       );
     }
+
+    // Enforce unique contact-property pair across all active leads for this contact
+    const existingLeads = await ctx.db
+      .query("leads")
+      .withIndex("by_contact", (q) => q.eq("contactId", lead.contactId))
+      .collect();
+    const otherActiveLeadIds = existingLeads
+      .filter((l) => !l.isArchived && l._id !== args.leadId && l.orgId === user.orgId)
+      .map((l) => l._id);
+
+    for (const otherLeadId of otherActiveLeadIds) {
+      const otherMatches = await ctx.db
+        .query("leadPropertyMatches")
+        .withIndex("by_lead", (q) => q.eq("leadId", otherLeadId))
+        .collect();
+      if (otherMatches.some((m) => m.propertyId === args.propertyId)) {
+        throw new Error(
+          `This contact already has another lead for "${property.title}". Each contact-property pair must be unique.`
+        );
+      }
+    }
+
     return ctx.db.insert("leadPropertyMatches", {
       leadId: args.leadId,
       propertyId: args.propertyId,
