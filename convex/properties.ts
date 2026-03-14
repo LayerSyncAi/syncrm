@@ -278,3 +278,72 @@ export const getById = query({
     };
   },
 });
+
+export const getPropertyDealInfo = query({
+  args: {
+    propertyId: v.id("properties"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserWithOrg(ctx);
+    const property = await ctx.db.get(args.propertyId);
+    if (!property) return null;
+    if (property.orgId && property.orgId !== user.orgId) return null;
+
+    // Only relevant for sold, under_offer, or let properties
+    if (
+      property.status !== "sold" &&
+      property.status !== "under_offer" &&
+      property.status !== "let"
+    ) {
+      return null;
+    }
+
+    // Check deal commissions first (for sold/let properties)
+    const commissions = await ctx.db
+      .query("dealCommissions")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
+    const propertyCommission = commissions.find(
+      (c) => c.propertyId === args.propertyId
+    );
+
+    if (propertyCommission) {
+      const lead = await ctx.db.get(propertyCommission.leadId);
+      return {
+        status: property.status,
+        dealValue: propertyCommission.dealValue,
+        dealCurrency: propertyCommission.dealCurrency,
+        contactName: lead?.fullName || "Unknown",
+        leadId: propertyCommission.leadId,
+      };
+    }
+
+    // Check leadPropertyMatches for under_offer (under contract) properties
+    const matches = await ctx.db
+      .query("leadPropertyMatches")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
+
+    for (const match of matches) {
+      if (match.propertyId === args.propertyId) {
+        const lead = await ctx.db.get(match.leadId);
+        if (lead && !lead.isArchived && !lead.closedAt) {
+          const stage = await ctx.db.get(lead.stageId);
+          if (
+            stage &&
+            (stage.name.toLowerCase() === "under contract" ||
+              (stage.isTerminal && stage.terminalOutcome === "won"))
+          ) {
+            return {
+              status: property.status,
+              contactName: lead.fullName,
+              leadId: match.leadId,
+            };
+          }
+        }
+      }
+    }
+
+    return { status: property.status };
+  },
+});

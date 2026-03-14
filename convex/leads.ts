@@ -457,6 +457,24 @@ export const moveStage = mutation({
       }
     }
 
+    // Handle "Under Contract" stage — mark matched properties as "under_offer"
+    const isUnderContract = !stage.isTerminal && stage.name.toLowerCase() === "under contract";
+    if (isUnderContract) {
+      const ucMatches = await ctx.db
+        .query("leadPropertyMatches")
+        .withIndex("by_lead", (q) => q.eq("leadId", args.leadId))
+        .collect();
+      for (const match of ucMatches) {
+        const property = await ctx.db.get(match.propertyId);
+        if (property && property.status === "available") {
+          await ctx.db.patch(match.propertyId, {
+            status: "under_offer" as const,
+            updatedAt: now,
+          });
+        }
+      }
+    }
+
     // If deal is lost, mark active shares as closed_lost
     if (stage.isTerminal && stage.terminalOutcome === "lost") {
       const shares = await ctx.db
@@ -695,31 +713,70 @@ export const createWithProperties = mutation({
     const ownerId =
       user.role === "admin" && args.ownerUserId ? args.ownerUserId : user._id;
 
-    const leadId = await ctx.db.insert("leads", {
-      contactId: args.contactId,
-      fullName: contact.name,
-      phone: contact.phone,
-      normalizedPhone: contact.normalizedPhone,
-      email: contact.email,
-      source: args.source,
-      interestType: args.interestType,
-      budgetCurrency: args.budgetCurrency,
-      budgetMin: args.budgetMin,
-      budgetMax: args.budgetMax,
-      preferredAreas: args.preferredAreas,
-      notes: args.notes,
-      stageId: args.stageId,
-      ownerUserId: ownerId,
-      orgId: user.orgId,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-    });
-
+    // Validate uniqueness of contact-property pairs
     if (args.propertyIds && args.propertyIds.length > 0) {
+      const existingLeads = await ctx.db
+        .query("leads")
+        .withIndex("by_contact", (q) => q.eq("contactId", args.contactId))
+        .collect();
+      const activeLeadIds = existingLeads
+        .filter((l) => !l.isArchived && l.orgId === user.orgId)
+        .map((l) => l._id);
+
+      if (activeLeadIds.length > 0) {
+        const allMatches = await ctx.db
+          .query("leadPropertyMatches")
+          .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+          .collect();
+        const existingPropertyIds = new Set(
+          allMatches
+            .filter((m) => activeLeadIds.some((id) => id === m.leadId))
+            .map((m) => m.propertyId as string)
+        );
+
+        const duplicateNames: string[] = [];
+        for (const propertyId of args.propertyIds) {
+          if (existingPropertyIds.has(propertyId as string)) {
+            const property = await ctx.db.get(propertyId);
+            duplicateNames.push(property?.title || "Unknown property");
+          }
+        }
+        if (duplicateNames.length > 0) {
+          throw new Error(
+            `This contact already has leads for: ${duplicateNames.join(", ")}. Each contact-property pair must be unique.`
+          );
+        }
+      }
+    }
+
+    // Each contact-property pair is its own lead
+    if (args.propertyIds && args.propertyIds.length > 0) {
+      const leadIds: Id<"leads">[] = [];
       for (const propertyId of args.propertyIds) {
         const property = await ctx.db.get(propertyId);
         if (!property) continue;
         assertOrgAccess(property, user.orgId);
+
+        const leadId = await ctx.db.insert("leads", {
+          contactId: args.contactId,
+          fullName: contact.name,
+          phone: contact.phone,
+          normalizedPhone: contact.normalizedPhone,
+          email: contact.email,
+          source: args.source,
+          interestType: args.interestType,
+          budgetCurrency: args.budgetCurrency,
+          budgetMin: args.budgetMin,
+          budgetMax: args.budgetMax,
+          preferredAreas: args.preferredAreas,
+          notes: args.notes,
+          stageId: args.stageId,
+          ownerUserId: ownerId,
+          orgId: user.orgId,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
+
         await ctx.db.insert("leadPropertyMatches", {
           leadId,
           propertyId,
@@ -728,10 +785,32 @@ export const createWithProperties = mutation({
           orgId: user.orgId,
           createdAt: timestamp,
         });
-      }
-    }
 
-    return leadId;
+        leadIds.push(leadId);
+      }
+      return leadIds[0];
+    } else {
+      // No properties — create a single lead
+      return ctx.db.insert("leads", {
+        contactId: args.contactId,
+        fullName: contact.name,
+        phone: contact.phone,
+        normalizedPhone: contact.normalizedPhone,
+        email: contact.email,
+        source: args.source,
+        interestType: args.interestType,
+        budgetCurrency: args.budgetCurrency,
+        budgetMin: args.budgetMin,
+        budgetMax: args.budgetMax,
+        preferredAreas: args.preferredAreas,
+        notes: args.notes,
+        stageId: args.stageId,
+        ownerUserId: ownerId,
+        orgId: user.orgId,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
+    }
   },
 });
 
@@ -953,5 +1032,92 @@ export const dashboardScoreStats = query({
       scoredCount,
       totalActive: activeLeads.length,
     };
+  },
+});
+
+export const getOpenLeadsForContact = query({
+  args: {
+    contactId: v.id("contacts"),
+    excludeLeadId: v.optional(v.id("leads")),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserWithOrg(ctx);
+
+    const leads = await ctx.db
+      .query("leads")
+      .withIndex("by_contact", (q) => q.eq("contactId", args.contactId))
+      .collect();
+
+    const openLeads = leads.filter((lead) => {
+      if (lead.isArchived) return false;
+      if (lead.orgId !== user.orgId) return false;
+      if (args.excludeLeadId && lead._id === args.excludeLeadId) return false;
+      if (lead.closedAt) return false;
+      return true;
+    });
+
+    const enriched = await Promise.all(
+      openLeads.map(async (lead) => {
+        const matches = await ctx.db
+          .query("leadPropertyMatches")
+          .withIndex("by_lead", (q) => q.eq("leadId", lead._id))
+          .collect();
+        const properties = (
+          await Promise.all(
+            matches.map(async (m) => {
+              const p = await ctx.db.get(m.propertyId);
+              return p ? { _id: p._id, title: p.title, location: p.location } : null;
+            })
+          )
+        ).filter(Boolean);
+
+        const stage = await ctx.db.get(lead.stageId);
+
+        return {
+          _id: lead._id,
+          fullName: lead.fullName,
+          interestType: lead.interestType,
+          stageName: stage?.name || "Unknown",
+          properties,
+          createdAt: lead.createdAt,
+        };
+      })
+    );
+
+    return enriched;
+  },
+});
+
+export const bulkCloseAsLost = mutation({
+  args: {
+    leadIds: v.array(v.id("leads")),
+    closeReason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserWithOrg(ctx);
+
+    const stages = await ctx.db
+      .query("pipelineStages")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
+    const lostStage = stages.find((s) => s.isTerminal && s.terminalOutcome === "lost");
+    if (!lostStage) throw new Error("No 'Lost' stage configured");
+
+    const now = Date.now();
+    let closedCount = 0;
+    for (const leadId of args.leadIds) {
+      const lead = await assertLeadAccess(ctx, leadId, user._id, user.role === "admin", user.orgId);
+      if (!lead || lead.closedAt) continue;
+
+      await ctx.db.patch(leadId, {
+        stageId: lostStage._id,
+        closedAt: now,
+        closeReason: args.closeReason || "Contact chose another property",
+        updatedAt: now,
+      });
+      closedCount++;
+    }
+
+    return { closedCount };
   },
 });

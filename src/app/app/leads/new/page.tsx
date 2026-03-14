@@ -398,6 +398,7 @@ export default function NewLeadPage() {
 
     setIsSubmitting(true);
     try {
+      const propertyCount = selectedPropertyIds.size;
       const leadId = await createLeadWithProperties({
         contactId: selectedContactId as Id<"contacts">,
         source,
@@ -416,8 +417,16 @@ export default function NewLeadPage() {
           ? Array.from(selectedPropertyIds)
           : undefined,
       });
-      leadToasts.created();
-      router.push(`/app/leads/${leadId}`);
+      if (propertyCount > 1) {
+        leadToasts.created(`${propertyCount} leads created — one per property`);
+      } else {
+        leadToasts.created();
+      }
+      if (propertyCount > 1) {
+        router.push("/app/leads");
+      } else {
+        router.push(`/app/leads/${leadId}`);
+      }
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Failed to create lead";
       setFormError(errorMessage);
