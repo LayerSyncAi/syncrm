@@ -201,11 +201,11 @@ export const propertyToasts = {
       description: detail || "Something went wrong. Please try again.",
     }),
 
-  attached: (count: number) =>
+  attached: (count: number, detail?: string) =>
     animatedToast.success(
       count === 1 ? "Property attached" : `${count} properties attached`,
       {
-        description: "The properties have been linked to this lead.",
+        description: detail ?? "The properties have been linked to this lead.",
       }
     ),
 

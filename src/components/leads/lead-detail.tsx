@@ -116,6 +116,7 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
   const markActivityComplete = useMutation(api.activities.markComplete);
   const removeActivity = useMutation(api.activities.remove);
   const attachProperty = useMutation(api.matches.attachPropertyToLead);
+  const bulkAttachProperties = useMutation(api.matches.bulkAttachProperties);
   const detachProperty = useMutation(api.matches.detach);
 
   // Initialize notes from lead data
@@ -233,10 +234,14 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
     if (selectedPropertyIds.size === 0) return;
     setIsAttaching(true);
     try {
-      for (const propertyId of selectedPropertyIds) {
-        await attachProperty({ leadId, propertyId: propertyId as Id<"properties">, matchType });
+      const propertyIds = Array.from(selectedPropertyIds) as Id<"properties">[];
+      const result = await bulkAttachProperties({ leadId, propertyIds, matchType });
+      const totalAttached = (result.attachedToCurrentLead ? 1 : 0) + result.createdLeadCount;
+      if (result.createdLeadCount > 0) {
+        propertyToasts.attached(totalAttached, `${result.createdLeadCount} new lead${result.createdLeadCount > 1 ? "s" : ""} created`);
+      } else {
+        propertyToasts.attached(totalAttached);
       }
-      propertyToasts.attached(selectedPropertyIds.size);
       setDrawerOpen(false);
       setSelectedPropertyIds(new Set());
     } catch (error) {
@@ -245,7 +250,7 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
     } finally {
       setIsAttaching(false);
     }
-  }, [selectedPropertyIds, attachProperty, leadId, matchType]);
+  }, [selectedPropertyIds, bulkAttachProperties, leadId, matchType]);
 
   const togglePropertySelection = useCallback((propertyId: string) => {
     setSelectedPropertyIds((prev) => {
