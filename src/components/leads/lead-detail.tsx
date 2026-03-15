@@ -335,8 +335,9 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
 
   const filteredProperties = propertiesArray.filter(
     (p) =>
-      p.title.toLowerCase().includes(propertySearch.toLowerCase()) ||
-      p.location.toLowerCase().includes(propertySearch.toLowerCase())
+      (p.status === "available" || p.status === "under_offer") &&
+      (p.title.toLowerCase().includes(propertySearch.toLowerCase()) ||
+      p.location.toLowerCase().includes(propertySearch.toLowerCase()))
   );
   const attachedPropertyIds = new Set(matches?.map((m) => m.propertyId) ?? []);
 
