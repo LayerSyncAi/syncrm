@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { getCurrentUserWithOrg, assertOrgAccess } from "./helpers";
 import { Id } from "./_generated/dataModel";
 import { checkRateLimit } from "./rateLimit";
+import { computeAndStoreScore } from "./leadScoring";
 
 const leadArgs = {
   contactId: v.id("contacts"),
@@ -870,10 +871,14 @@ export const createWithProperties = mutation({
 
         leadIds.push(leadId);
       }
+      // Score all created leads
+      for (const lid of leadIds) {
+        await computeAndStoreScore(ctx, lid, user.orgId);
+      }
       return leadIds[0];
     } else {
       // No properties — create a single lead
-      return ctx.db.insert("leads", {
+      const leadId = await ctx.db.insert("leads", {
         contactId: args.contactId,
         fullName: contact.name,
         phone: contact.phone,
@@ -892,6 +897,8 @@ export const createWithProperties = mutation({
         createdAt: timestamp,
         updatedAt: timestamp,
       });
+      await computeAndStoreScore(ctx, leadId, user.orgId);
+      return leadId;
     }
   },
 });
