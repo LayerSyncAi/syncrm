@@ -34,11 +34,10 @@ const BulkMatching = lazy(() =>
   import("@/components/leads/bulk-matching").then((m) => ({ default: m.BulkMatching }))
 );
 
-const formatDate = (timestamp: number) =>
-  new Date(timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
 interface LeadRowData {
   _id: Id<"leads">;
+  contactId: Id<"contacts">;
   fullName: string;
   phone: string;
   interestType: string;
@@ -167,12 +166,11 @@ export default function LeadsPage() {
   // Filter state
   const [stageFilter, setStageFilter] = useState<string>("");
   const [interestFilter, setInterestFilter] = useState<string>("");
-  const [areaFilter, setAreaFilter] = useState("");
-  const [searchFilter, setSearchFilter] = useState("");
+  const [propertyFilter, setPropertyFilter] = useState<string>("");
+  const [contactNameFilter, setContactNameFilter] = useState("");
   const [ownerFilter, setOwnerFilter] = useState<string>("");
   const [scoreFilter, setScoreFilter] = useState<string>("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [debouncedArea, setDebouncedArea] = useState("");
+  const [debouncedContactName, setDebouncedContactName] = useState("");
 
   // Sort state
   const [scoreSortDir, setScoreSortDir] = useState<"" | "score_asc" | "score_desc">("");
@@ -185,16 +183,17 @@ export default function LeadsPage() {
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Debounce search inputs
-  useEffect(() => {
-    const timer = setTimeout(() => { setDebouncedSearch(searchFilter); pagination.resetPage(); }, 300);
-    return () => clearTimeout(timer);
-  }, [searchFilter]);
+  // Sibling leads resolution state (when won/under contract from table)
+  const [siblingTriggerLead, setSiblingTriggerLead] = useState<LeadRowData | null>(null);
+  const [siblingLeadsToClose, setSiblingLeadsToClose] = useState<Set<string>>(new Set());
+  const [isClosingSiblings, setIsClosingSiblings] = useState(false);
+  const [siblingCloseConfirmText, setSiblingCloseConfirmText] = useState("");
 
+  // Debounce contact name search
   useEffect(() => {
-    const timer = setTimeout(() => { setDebouncedArea(areaFilter); pagination.resetPage(); }, 300);
+    const timer = setTimeout(() => { setDebouncedContactName(contactNameFilter); pagination.resetPage(); }, 300);
     return () => clearTimeout(timer);
-  }, [areaFilter]);
+  }, [contactNameFilter]);
 
   // Derive score range from filter
   const scoreRange = useMemo(() => {
@@ -209,18 +208,22 @@ export default function LeadsPage() {
 
   // Queries
   const stages = useQuery(api.stages.list);
-  const users = useQuery(
-    api.users.listActiveUsers,
-    isAdmin ? {} : "skip"
-  );
+  const users = useQuery(api.users.listActiveUsers, isAdmin ? {} : "skip");
+  const properties = useQuery(api.properties.list, {});
+  const propertiesList = useMemo(() => {
+    if (!properties) return [];
+    const items = (properties as any)?.items ?? (Array.isArray(properties) ? properties : []);
+    return items as { _id: Id<"properties">; title: string }[];
+  }, [properties]);
+
   const leadsResult = useQuery(api.leads.list, {
     stageId: stageFilter ? (stageFilter as Id<"pipelineStages">) : undefined,
     interestType:
       interestFilter === "rent" || interestFilter === "buy"
         ? interestFilter
         : undefined,
-    preferredAreaKeyword: debouncedArea || undefined,
-    q: debouncedSearch || undefined,
+    propertyId: propertyFilter ? (propertyFilter as Id<"properties">) : undefined,
+    q: debouncedContactName || undefined,
     ownerUserId: ownerFilter ? (ownerFilter as Id<"users">) : undefined,
     scoreMin: scoreRange.scoreMin,
     scoreMax: scoreRange.scoreMax,
@@ -228,6 +231,14 @@ export default function LeadsPage() {
     page: pagination.page > 0 ? pagination.page : undefined,
     pageSize: pagination.pageSize !== 50 ? pagination.pageSize : undefined,
   });
+
+  // Sibling leads query (for resolution modal)
+  const siblingLeads = useQuery(
+    api.leads.getOpenLeadsForContact,
+    siblingTriggerLead
+      ? { contactId: siblingTriggerLead.contactId, excludeLeadId: siblingTriggerLead._id }
+      : "skip"
+  );
 
   // Support both paginated and legacy response format
   const leads = useMemo(() => {
@@ -239,6 +250,7 @@ export default function LeadsPage() {
 
   // Mutations
   const moveStage = useMutation(api.leads.moveStage);
+  const bulkCloseAsLost = useMutation(api.leads.bulkCloseAsLost);
   const deleteLeadMutation = useMutation(api.leads.deleteLead);
 
   const handleDeleteLead = useCallback(async () => {
@@ -261,15 +273,60 @@ export default function LeadsPage() {
     leadId: Id<"leads">,
     newStageId: Id<"pipelineStages">
   ) => {
+    const stage = stages?.find((s) => s._id === newStageId);
     try {
       await moveStage({ leadId, stageId: newStageId });
-      const stageName = stages?.find((s) => s._id === newStageId)?.name || "new stage";
+      const stageName = stage?.name || "new stage";
       leadToasts.stageMoved(stageName);
+
+      // Show sibling leads modal when won or under contract
+      const isWon = stage?.isTerminal && stage?.terminalOutcome === "won";
+      const isUnderContract = !stage?.isTerminal && stage?.name.toLowerCase() === "under contract";
+      if (isWon || isUnderContract) {
+        const triggerLead = leads?.find((l: LeadRowData) => l._id === leadId);
+        if (triggerLead) {
+          setSiblingTriggerLead(triggerLead);
+          setSiblingLeadsToClose(new Set());
+          setSiblingCloseConfirmText("");
+        }
+      }
     } catch (error) {
       console.error("Failed to update stage:", error);
       leadToasts.stageMoveFailed(error instanceof Error ? error.message : undefined);
     }
-  }, [moveStage, stages]);
+  }, [moveStage, stages, leads]);
+
+  const toggleSiblingLead = useCallback((siblingLeadId: string) => {
+    setSiblingLeadsToClose((prev) => {
+      const next = new Set(prev);
+      if (next.has(siblingLeadId)) next.delete(siblingLeadId);
+      else next.add(siblingLeadId);
+      return next;
+    });
+  }, []);
+
+  const handleCloseSiblingLeads = useCallback(async () => {
+    if (siblingLeadsToClose.size === 0) {
+      setSiblingTriggerLead(null);
+      return;
+    }
+    setIsClosingSiblings(true);
+    try {
+      await bulkCloseAsLost({
+        leadIds: Array.from(siblingLeadsToClose) as Id<"leads">[],
+        closeReason: "Contact chose another property",
+      });
+      leadToasts.stageMoved(`${siblingLeadsToClose.size} lead(s) marked as lost`);
+      setSiblingTriggerLead(null);
+      setSiblingLeadsToClose(new Set());
+      setSiblingCloseConfirmText("");
+    } catch (error) {
+      console.error("Failed to close sibling leads:", error);
+      leadToasts.stageMoveFailed(error instanceof Error ? error.message : undefined);
+    } finally {
+      setIsClosingSiblings(false);
+    }
+  }, [siblingLeadsToClose, bulkCloseAsLost]);
 
   const toggleScoreSort = useCallback(() => {
     setScoreSortDir((prev) => {
@@ -290,9 +347,6 @@ export default function LeadsPage() {
   if (!user) {
     return null;
   }
-
-  // Filter stages for dropdown (non-terminal for regular stage selection)
-  const nonTerminalStages = stages?.filter((s) => !s.isTerminal) ?? [];
 
   return (
     <div className="space-y-6">
@@ -343,7 +397,7 @@ export default function LeadsPage() {
         transition={{ type: "spring", stiffness: 300, damping: 24, delay: 0.06 }}
         className="rounded-[12px] border border-border-strong bg-card-bg p-4"
       >
-        <div className="grid gap-3 md:grid-cols-4 xl:grid-cols-6">
+        <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
           <div className="space-y-2">
             <Label>Stage</Label>
             <StaggeredDropDown
@@ -382,19 +436,22 @@ export default function LeadsPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label>Location keyword</Label>
-            <Input
-              placeholder="Avondale"
-              value={areaFilter}
-              onChange={(e) => setAreaFilter(e.target.value)}
+            <Label>Property</Label>
+            <StaggeredDropDown
+              value={propertyFilter}
+              onChange={(val) => setPropertyFilter(val)}
+              options={[
+                { value: "", label: "All properties" },
+                ...(propertiesList.map((p) => ({ value: p._id, label: p.title })) ?? []),
+              ]}
             />
           </div>
           <div className="space-y-2">
-            <Label>Search</Label>
+            <Label>Contact name</Label>
             <Input
-              placeholder="Name, phone"
-              value={searchFilter}
-              onChange={(e) => setSearchFilter(e.target.value)}
+              placeholder="Search by name, phone"
+              value={contactNameFilter}
+              onChange={(e) => setContactNameFilter(e.target.value)}
             />
           </div>
           {isAdmin && (
@@ -542,6 +599,92 @@ export default function LeadsPage() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Sibling leads resolution modal (under contract / won from table) */}
+      <Modal
+        open={siblingTriggerLead !== null}
+        title="Resolve other leads for this contact"
+        description={siblingTriggerLead ? `${siblingTriggerLead.fullName} has other open leads. Select which ones to mark as lost, or keep them open.` : ""}
+        onClose={() => { setSiblingTriggerLead(null); setSiblingCloseConfirmText(""); }}
+        footer={
+          <div className="space-y-3">
+            {siblingLeadsToClose.size > 0 && siblingTriggerLead && (
+              <div className="space-y-2">
+                <p className="text-xs text-text-muted">
+                  Type <span className="font-mono font-medium text-text">close leads for {siblingTriggerLead.fullName.toLowerCase()}</span> to confirm
+                </p>
+                <Input
+                  value={siblingCloseConfirmText}
+                  onChange={(e) => setSiblingCloseConfirmText(e.target.value)}
+                  placeholder={`close leads for ${siblingTriggerLead.fullName.toLowerCase()}`}
+                  className="font-mono text-sm"
+                />
+              </div>
+            )}
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs text-text-muted">
+                {siblingLeadsToClose.size > 0 ? `${siblingLeadsToClose.size} selected to close` : "None selected"}
+              </span>
+              <div className="flex gap-2">
+                <Button variant="secondary" onClick={() => { setSiblingTriggerLead(null); setSiblingCloseConfirmText(""); }} disabled={isClosingSiblings}>
+                  Keep all open
+                </Button>
+                <Button
+                  onClick={handleCloseSiblingLeads}
+                  disabled={isClosingSiblings || siblingLeadsToClose.size === 0 || (siblingTriggerLead ? siblingCloseConfirmText !== `close leads for ${siblingTriggerLead.fullName.toLowerCase()}` : true)}
+                  className="bg-danger hover:bg-danger/90 text-white"
+                >
+                  {isClosingSiblings ? "Closing..." : `Mark ${siblingLeadsToClose.size} as lost`}
+                </Button>
+              </div>
+            </div>
+          </div>
+        }
+      >
+        <div className="space-y-3">
+          {siblingLeads === undefined ? (
+            <div className="flex items-center justify-center py-6">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+            </div>
+          ) : siblingLeads.length === 0 ? (
+            <div className="text-center py-6 text-text-muted text-sm">
+              No other open leads for this contact.
+            </div>
+          ) : (
+            siblingLeads.map((sibling) => {
+              const isSelected = siblingLeadsToClose.has(sibling._id);
+              return (
+                <label
+                  key={sibling._id}
+                  className={`flex items-center gap-3 rounded-lg border p-3 text-sm cursor-pointer transition-colors ${
+                    isSelected
+                      ? "border-danger/40 bg-danger/5"
+                      : "border-border-strong hover:bg-card-bg/50"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => toggleSiblingLead(sibling._id)}
+                    className="rounded border-border shrink-0"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium">{sibling.fullName}</p>
+                    <p className="text-xs text-text-muted">
+                      {sibling.interestType === "buy" ? "Buying" : "Renting"} &middot; Stage: {sibling.stageName}
+                    </p>
+                    {sibling.properties && sibling.properties.length > 0 && (
+                      <p className="text-xs text-text-muted mt-0.5">
+                        Property: {sibling.properties.filter(Boolean).map((p) => (p as { title: string }).title).join(", ")}
+                      </p>
+                    )}
+                  </div>
+                </label>
+              );
+            })
+          )}
+        </div>
       </Modal>
     </div>
   );

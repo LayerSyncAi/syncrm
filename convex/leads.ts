@@ -95,6 +95,7 @@ export const list = query({
     preferredAreaKeyword: v.optional(v.string()),
     q: v.optional(v.string()),
     ownerUserId: v.optional(v.id("users")),
+    propertyId: v.optional(v.id("properties")),
     scoreMin: v.optional(v.number()),
     scoreMax: v.optional(v.number()),
     sortBy: v.optional(v.union(v.literal("score_asc"), v.literal("score_desc"))),
@@ -211,7 +212,22 @@ export const list = query({
       }
     }
 
-    const enriched = filtered.map((lead) => {
+    // Build a set of lead IDs that match a specific property (for property filter)
+    let propertyFilterLeadIds: Set<string> | null = null;
+    if (args.propertyId) {
+      propertyFilterLeadIds = new Set(
+        allMatches
+          .filter((m) => m.propertyId === args.propertyId)
+          .map((m) => m.leadId as string)
+      );
+    }
+
+    // Apply property filter before enrichment
+    const afterPropertyFilter = args.propertyId
+      ? filtered.filter((lead) => propertyFilterLeadIds!.has(lead._id as string))
+      : filtered;
+
+    const enriched = afterPropertyFilter.map((lead) => {
       const owner = userMap.get(lead.ownerUserId);
       const stage = stageMap.get(lead.stageId);
       const match = matchByLead.get(lead._id as string);
