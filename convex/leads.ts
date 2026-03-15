@@ -1219,15 +1219,23 @@ export const deleteLead = mutation({
       .withIndex("by_lead", (q: any) => q.eq("leadId", args.leadId))
       .collect();
     for (const match of matches) {
-      // Check if any other active lead references this property
+      // Check if any other open (non-closed, non-archived) lead references this property
       const otherMatches = await ctx.db
         .query("leadPropertyMatches")
         .withIndex("by_org", (q: any) => q.eq("orgId", user.orgId))
         .collect();
-      const otherActive = otherMatches.some(
+      const otherMatchesForProperty = otherMatches.filter(
         (m) => m.propertyId === match.propertyId && m.leadId !== args.leadId
       );
-      if (!otherActive) {
+      let hasActiveReference = false;
+      for (const om of otherMatchesForProperty) {
+        const otherLead = await ctx.db.get(om.leadId);
+        if (otherLead && !otherLead.isArchived && !otherLead.closedAt) {
+          hasActiveReference = true;
+          break;
+        }
+      }
+      if (!hasActiveReference) {
         const property = await ctx.db.get(match.propertyId);
         if (property && property.status !== "available") {
           await ctx.db.patch(match.propertyId, { status: "available" as const, updatedAt: Date.now() });
