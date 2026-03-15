@@ -942,7 +942,7 @@ export default function NewLeadPage() {
                                 {property.location}
                                 {property.bedrooms !== undefined && ` \u00B7 ${property.bedrooms} bed`}
                                 {" \u00B7 "}
-                                {property.area} m\u00B2
+                                {property.area} m²
                               </p>
                             </div>
                             <span
