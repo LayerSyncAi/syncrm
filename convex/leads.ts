@@ -502,6 +502,61 @@ export const moveStage = mutation({
       }
     }
 
+    // Auto-close other leads pointing to the same property when won or under contract
+    const isWon = stage.isTerminal && stage.terminalOutcome === "won";
+    if (isWon || isUnderContract) {
+      const thisLeadMatches = await ctx.db
+        .query("leadPropertyMatches")
+        .withIndex("by_lead", (q) => q.eq("leadId", args.leadId))
+        .collect();
+      const thisPropertyIds = thisLeadMatches.map((m) => m.propertyId as string);
+
+      if (thisPropertyIds.length > 0) {
+        // Find the lost stage for auto-closing
+        const allStages = await ctx.db
+          .query("pipelineStages")
+          .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+          .collect();
+        const lostStage = allStages.find((s) => s.isTerminal && s.terminalOutcome === "lost");
+
+        if (lostStage) {
+          // Find all other leads in the org that share these properties
+          const allPropertyMatches = await ctx.db
+            .query("leadPropertyMatches")
+            .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+            .collect();
+          const competingLeadIds = new Set(
+            allPropertyMatches
+              .filter(
+                (m) =>
+                  thisPropertyIds.includes(m.propertyId as string) &&
+                  m.leadId !== args.leadId
+              )
+              .map((m) => m.leadId as string)
+          );
+
+          for (const competingLeadId of competingLeadIds) {
+            const competingLead = await ctx.db.get(competingLeadId as Id<"leads">);
+            if (
+              competingLead &&
+              !competingLead.isArchived &&
+              !competingLead.closedAt &&
+              competingLead.orgId === user.orgId
+            ) {
+              await ctx.db.patch(competingLeadId as Id<"leads">, {
+                stageId: lostStage._id,
+                closedAt: now,
+                closeReason: isWon
+                  ? "Property sold/let to another lead"
+                  : "Property under contract with another lead",
+                updatedAt: now,
+              });
+            }
+          }
+        }
+      }
+    }
+
     // If deal is lost, mark active shares as closed_lost
     if (stage.isTerminal && stage.terminalOutcome === "lost") {
       const shares = await ctx.db
