@@ -186,14 +186,41 @@ export const list = query({
     const stageMap = new Map(stages.map((s) => [s._id, s]));
     const userMap = new Map(users.map((u) => [u._id, u]));
 
+    // Batch fetch all property matches for the filtered leads
+    const allMatches = await ctx.db
+      .query("leadPropertyMatches")
+      .withIndex("by_org", (q: any) => q.eq("orgId", user.orgId))
+      .collect();
+    const matchByLead = new Map<string, typeof allMatches[0]>();
+    for (const m of allMatches) {
+      if (!matchByLead.has(m.leadId as string)) {
+        matchByLead.set(m.leadId as string, m);
+      }
+    }
+
+    // Fetch property titles for all matched properties
+    const propertyIds = new Set(
+      Array.from(matchByLead.values()).map((m) => m.propertyId)
+    );
+    const propertyTitleMap = new Map<string, string>();
+    for (const pid of propertyIds) {
+      const property = await ctx.db.get(pid);
+      if (property) {
+        propertyTitleMap.set(pid as string, property.title);
+      }
+    }
+
     const enriched = filtered.map((lead) => {
       const owner = userMap.get(lead.ownerUserId);
       const stage = stageMap.get(lead.stageId);
+      const match = matchByLead.get(lead._id as string);
+      const propertyTitle = match ? propertyTitleMap.get(match.propertyId as string) ?? null : null;
       return {
         ...lead,
         ownerName: owner?.fullName || owner?.name || owner?.email || "Unknown",
         stageName: stage?.name || "Unknown",
         stageOrder: stage?.order ?? 0,
+        propertyTitle,
       };
     });
 
@@ -1131,12 +1158,26 @@ export const deleteLead = mutation({
     const lead = await assertLeadAccess(ctx, args.leadId, user._id, user.role === "admin", user.orgId);
     if (!lead) throw new Error("Lead not found");
 
-    // Delete all property matches for this lead
+    // Delete all property matches for this lead and mark freed properties as available
     const matches = await ctx.db
       .query("leadPropertyMatches")
       .withIndex("by_lead", (q: any) => q.eq("leadId", args.leadId))
       .collect();
     for (const match of matches) {
+      // Check if any other active lead references this property
+      const otherMatches = await ctx.db
+        .query("leadPropertyMatches")
+        .withIndex("by_org", (q: any) => q.eq("orgId", user.orgId))
+        .collect();
+      const otherActive = otherMatches.some(
+        (m) => m.propertyId === match.propertyId && m.leadId !== args.leadId
+      );
+      if (!otherActive) {
+        const property = await ctx.db.get(match.propertyId);
+        if (property && property.status !== "sold") {
+          await ctx.db.patch(match.propertyId, { status: "available" as const });
+        }
+      }
       await ctx.db.delete(match._id);
     }
 
