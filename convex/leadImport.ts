@@ -114,33 +114,42 @@ export const findDuplicatesForLead = query({
       email: string | undefined;
       phone: string;
       reason: string;
+      propertyTitle: string | null;
     }> = [];
 
     for (const lead of activeLeads) {
+      let reason: string | null = null;
       if (args.email) {
         const normEmail = normalizeEmail(args.email);
         if (lead.email && normalizeEmail(lead.email) === normEmail) {
-          matches.push({
-            leadId: lead._id,
-            fullName: lead.fullName,
-            email: lead.email,
-            phone: lead.phone,
-            reason: "Email match",
-          });
-          continue;
+          reason = "Email match";
         }
       }
-      if (args.phone) {
+      if (!reason && args.phone) {
         const normPhone = normalizePhone(args.phone);
         if (normalizePhone(lead.phone) === normPhone) {
-          matches.push({
-            leadId: lead._id,
-            fullName: lead.fullName,
-            email: lead.email,
-            phone: lead.phone,
-            reason: "Phone match",
-          });
+          reason = "Phone match";
         }
+      }
+      if (reason) {
+        // Look up the matched property for this lead
+        const leadMatches = await ctx.db
+          .query("leadPropertyMatches")
+          .withIndex("by_lead", (q: any) => q.eq("leadId", lead._id))
+          .first();
+        let propertyTitle: string | null = null;
+        if (leadMatches) {
+          const property = await ctx.db.get(leadMatches.propertyId);
+          propertyTitle = property?.title ?? null;
+        }
+        matches.push({
+          leadId: lead._id,
+          fullName: lead.fullName,
+          email: lead.email,
+          phone: lead.phone,
+          reason,
+          propertyTitle,
+        });
       }
     }
 

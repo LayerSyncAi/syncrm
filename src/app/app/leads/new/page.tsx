@@ -139,6 +139,7 @@ export default function NewLeadPage() {
   const [propertySearchInput, setPropertySearchInput] = useState("");
   const [debouncedPropertySearch, setDebouncedPropertySearch] = useState("");
   const [showPropertySection, setShowPropertySection] = useState(!!prefillPropertyId);
+  const [propertyFilter, setPropertyFilter] = useState<"all" | "recommended">("all");
 
   // Debounce contact search
   useEffect(() => {
@@ -173,8 +174,7 @@ export default function NewLeadPage() {
     showPropertySection && user
       ? {
           q: debouncedPropertySearch || undefined,
-          listingType: listingTypeForSearch,
-          limit: 20,
+          limit: 100,
         }
       : "skip"
   );
@@ -218,11 +218,35 @@ export default function NewLeadPage() {
     }
   }, [budgetMin, budgetMax]);
 
-  // Filter property results to exclude already-selected ones (for the search list)
+  // Filter property results based on active filter tab
   const availableProperties = useMemo(() => {
     if (!propertyResults) return [];
-    return propertyResults;
-  }, [propertyResults]);
+    if (propertyFilter === "all") return propertyResults;
+
+    // "recommended" — match on listing type, budget range, and preferred areas
+    return propertyResults.filter((p: PropertyResult) => {
+      // Must match interest type → listing type
+      const expectedListingType = interestType === "buy" ? "sale" : "rent";
+      if (p.listingType !== expectedListingType) return false;
+
+      // Budget range check
+      const min = budgetMin ? parseFloat(budgetMin) : undefined;
+      const max = budgetMax ? parseFloat(budgetMax) : undefined;
+      if (min !== undefined && !isNaN(min) && p.price < min) return false;
+      if (max !== undefined && !isNaN(max) && p.price > max) return false;
+
+      // Preferred area check (if any areas specified, property must match one)
+      if (preferredAreas.length > 0) {
+        const locationLower = p.location.toLowerCase();
+        const matchesArea = preferredAreas.some((area) =>
+          locationLower.includes(area.toLowerCase())
+        );
+        if (!matchesArea) return false;
+      }
+
+      return true;
+    });
+  }, [propertyResults, propertyFilter, interestType, budgetMin, budgetMax, preferredAreas]);
 
   // Separate: properties selected but not in current search results (show them as tags)
   const selectedPropertyList = useMemo(() => {
@@ -857,9 +881,29 @@ export default function NewLeadPage() {
                     value={propertySearchInput}
                     onChange={(e) => setPropertySearchInput(e.target.value)}
                   />
-                  <p className="text-xs text-text-muted">
-                    Showing {interestType === "buy" ? "sale" : "rental"} properties (matching interest type)
-                  </p>
+                  <div className="flex gap-2">
+                    {(["all", "recommended"] as const).map((filter) => (
+                      <button
+                        key={filter}
+                        type="button"
+                        onClick={() => setPropertyFilter(filter)}
+                        className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                          propertyFilter === filter
+                            ? "bg-primary text-white"
+                            : "bg-border text-text-muted hover:bg-border-strong"
+                        }`}
+                      >
+                        {filter === "all" ? "All available" : "Recommended"}
+                      </button>
+                    ))}
+                  </div>
+                  {propertyFilter === "recommended" && (
+                    <p className="text-xs text-text-muted">
+                      Filtered by {interestType === "buy" ? "sale" : "rental"} properties
+                      {budgetMin || budgetMax ? ", budget range" : ""}
+                      {preferredAreas.length > 0 ? ", preferred areas" : ""}
+                    </p>
+                  )}
 
                   <div className="space-y-2 max-h-[360px] overflow-y-auto">
                     {!propertyResults ? (
@@ -898,7 +942,7 @@ export default function NewLeadPage() {
                                 {property.location}
                                 {property.bedrooms !== undefined && ` \u00B7 ${property.bedrooms} bed`}
                                 {" \u00B7 "}
-                                {property.area} m\u00B2
+                                {property.area} m²
                               </p>
                             </div>
                             <span

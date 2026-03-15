@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { getCurrentUserWithOrg, assertOrgAccess } from "./helpers";
 import { Id } from "./_generated/dataModel";
 import { checkRateLimit } from "./rateLimit";
+import { computeAndStoreScore } from "./leadScoring";
 
 const leadArgs = {
   contactId: v.id("contacts"),
@@ -186,14 +187,41 @@ export const list = query({
     const stageMap = new Map(stages.map((s) => [s._id, s]));
     const userMap = new Map(users.map((u) => [u._id, u]));
 
+    // Batch fetch all property matches for the filtered leads
+    const allMatches = await ctx.db
+      .query("leadPropertyMatches")
+      .withIndex("by_org", (q: any) => q.eq("orgId", user.orgId))
+      .collect();
+    const matchByLead = new Map<string, typeof allMatches[0]>();
+    for (const m of allMatches) {
+      if (!matchByLead.has(m.leadId as string)) {
+        matchByLead.set(m.leadId as string, m);
+      }
+    }
+
+    // Fetch property titles for all matched properties
+    const propertyIds = new Set(
+      Array.from(matchByLead.values()).map((m) => m.propertyId)
+    );
+    const propertyTitleMap = new Map<string, string>();
+    for (const pid of propertyIds) {
+      const property = await ctx.db.get(pid);
+      if (property) {
+        propertyTitleMap.set(pid as string, property.title);
+      }
+    }
+
     const enriched = filtered.map((lead) => {
       const owner = userMap.get(lead.ownerUserId);
       const stage = stageMap.get(lead.stageId);
+      const match = matchByLead.get(lead._id as string);
+      const propertyTitle = match ? propertyTitleMap.get(match.propertyId as string) ?? null : null;
       return {
         ...lead,
         ownerName: owner?.fullName || owner?.name || owner?.email || "Unknown",
         stageName: stage?.name || "Unknown",
         stageOrder: stage?.order ?? 0,
+        propertyTitle,
       };
     });
 
@@ -471,6 +499,61 @@ export const moveStage = mutation({
             status: "under_offer" as const,
             updatedAt: now,
           });
+        }
+      }
+    }
+
+    // Auto-close other leads pointing to the same property when won or under contract
+    const isWon = stage.isTerminal && stage.terminalOutcome === "won";
+    if (isWon || isUnderContract) {
+      const thisLeadMatches = await ctx.db
+        .query("leadPropertyMatches")
+        .withIndex("by_lead", (q) => q.eq("leadId", args.leadId))
+        .collect();
+      const thisPropertyIds = thisLeadMatches.map((m) => m.propertyId as string);
+
+      if (thisPropertyIds.length > 0) {
+        // Find the lost stage for auto-closing
+        const allStages = await ctx.db
+          .query("pipelineStages")
+          .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+          .collect();
+        const lostStage = allStages.find((s) => s.isTerminal && s.terminalOutcome === "lost");
+
+        if (lostStage) {
+          // Find all other leads in the org that share these properties
+          const allPropertyMatches = await ctx.db
+            .query("leadPropertyMatches")
+            .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+            .collect();
+          const competingLeadIds = new Set(
+            allPropertyMatches
+              .filter(
+                (m) =>
+                  thisPropertyIds.includes(m.propertyId as string) &&
+                  m.leadId !== args.leadId
+              )
+              .map((m) => m.leadId as string)
+          );
+
+          for (const competingLeadId of competingLeadIds) {
+            const competingLead = await ctx.db.get(competingLeadId as Id<"leads">);
+            if (
+              competingLead &&
+              !competingLead.isArchived &&
+              !competingLead.closedAt &&
+              competingLead.orgId === user.orgId
+            ) {
+              await ctx.db.patch(competingLeadId as Id<"leads">, {
+                stageId: lostStage._id,
+                closedAt: now,
+                closeReason: isWon
+                  ? "Property sold/let to another lead"
+                  : "Property under contract with another lead",
+                updatedAt: now,
+              });
+            }
+          }
         }
       }
     }
@@ -788,10 +871,14 @@ export const createWithProperties = mutation({
 
         leadIds.push(leadId);
       }
+      // Score all created leads
+      for (const lid of leadIds) {
+        await computeAndStoreScore(ctx, lid, user.orgId);
+      }
       return leadIds[0];
     } else {
       // No properties — create a single lead
-      return ctx.db.insert("leads", {
+      const leadId = await ctx.db.insert("leads", {
         contactId: args.contactId,
         fullName: contact.name,
         phone: contact.phone,
@@ -810,6 +897,8 @@ export const createWithProperties = mutation({
         createdAt: timestamp,
         updatedAt: timestamp,
       });
+      await computeAndStoreScore(ctx, leadId, user.orgId);
+      return leadId;
     }
   },
 });
@@ -1119,5 +1208,61 @@ export const bulkCloseAsLost = mutation({
     }
 
     return { closedCount };
+  },
+});
+
+export const deleteLead = mutation({
+  args: {
+    leadId: v.id("leads"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserWithOrg(ctx);
+    const lead = await assertLeadAccess(ctx, args.leadId, user._id, user.role === "admin", user.orgId);
+    if (!lead) throw new Error("Lead not found");
+
+    // Delete all property matches for this lead and mark freed properties as available
+    const matches = await ctx.db
+      .query("leadPropertyMatches")
+      .withIndex("by_lead", (q: any) => q.eq("leadId", args.leadId))
+      .collect();
+    for (const match of matches) {
+      // Check if any other open (non-closed, non-archived) lead references this property
+      const otherMatches = await ctx.db
+        .query("leadPropertyMatches")
+        .withIndex("by_org", (q: any) => q.eq("orgId", user.orgId))
+        .collect();
+      const otherMatchesForProperty = otherMatches.filter(
+        (m) => m.propertyId === match.propertyId && m.leadId !== args.leadId
+      );
+      let hasActiveReference = false;
+      for (const om of otherMatchesForProperty) {
+        const otherLead = await ctx.db.get(om.leadId);
+        if (otherLead && !otherLead.isArchived && !otherLead.closedAt) {
+          hasActiveReference = true;
+          break;
+        }
+      }
+      if (!hasActiveReference) {
+        const property = await ctx.db.get(match.propertyId);
+        if (property && property.status !== "available") {
+          await ctx.db.patch(match.propertyId, { status: "available" as const, updatedAt: Date.now() });
+        }
+      }
+      await ctx.db.delete(match._id);
+    }
+
+    // Delete all activities for this lead
+    const activities = await ctx.db
+      .query("activities")
+      .withIndex("by_lead", (q: any) => q.eq("leadId", args.leadId))
+      .collect();
+    for (const activity of activities) {
+      await ctx.db.delete(activity._id);
+    }
+
+    // Delete the lead itself
+    await ctx.db.delete(args.leadId);
+
+    return { deleted: true };
   },
 });

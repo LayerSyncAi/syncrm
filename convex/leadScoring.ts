@@ -1,6 +1,7 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, QueryCtx, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { requireAdmin, getCurrentUserWithOrg } from "./helpers";
+import { Id, Doc } from "./_generated/dataModel";
 
 const criterionSchema = v.object({
   key: v.string(),
@@ -11,7 +12,16 @@ const criterionSchema = v.object({
   threshold: v.optional(v.number()),
 });
 
-const DEFAULT_CRITERIA = [
+type Criterion = {
+  key: string;
+  label: string;
+  type: "boolean" | "threshold";
+  weight: number;
+  enabled: boolean;
+  threshold?: number;
+};
+
+const DEFAULT_CRITERIA: Criterion[] = [
   { key: "has_email", label: "Has email address", type: "boolean" as const, weight: 10, enabled: true },
   { key: "has_budget", label: "Has budget set", type: "boolean" as const, weight: 15, enabled: true },
   { key: "has_preferred_areas", label: "Has preferred areas", type: "boolean" as const, weight: 10, enabled: true },
@@ -20,6 +30,80 @@ const DEFAULT_CRITERIA = [
   { key: "budget_min", label: "Minimum budget amount", type: "threshold" as const, weight: 15, enabled: true, threshold: 50000 },
   { key: "recent_activity", label: "Activity in last 7 days", type: "boolean" as const, weight: 25, enabled: true },
 ];
+
+function evaluateCriteria(
+  lead: Doc<"leads">,
+  activities: Doc<"activities">[],
+  criteria: Criterion[],
+): number {
+  const now = Date.now();
+  const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+  let score = 0;
+
+  for (const criterion of criteria) {
+    if (!criterion.enabled) continue;
+    let met = false;
+    switch (criterion.key) {
+      case "has_email":
+        met = !!lead.email && lead.email.trim().length > 0;
+        break;
+      case "has_budget":
+        met = lead.budgetMin !== undefined || lead.budgetMax !== undefined;
+        break;
+      case "has_preferred_areas":
+        met = lead.preferredAreas.length > 0;
+        break;
+      case "has_notes":
+        met = lead.notes.trim().length > 0;
+        break;
+      case "activity_count":
+        met = activities.length >= (criterion.threshold || 0);
+        break;
+      case "budget_min":
+        met = (lead.budgetMin || 0) >= (criterion.threshold || 0);
+        break;
+      case "recent_activity":
+        met = activities.some((a) => a.createdAt >= sevenDaysAgo);
+        break;
+    }
+    if (met) score += criterion.weight;
+  }
+
+  return score;
+}
+
+/** Compute and store score for a single lead. Callable from other mutations. */
+export async function computeAndStoreScore(
+  ctx: MutationCtx,
+  leadId: Id<"leads">,
+  orgId: Id<"organizations">,
+) {
+  const lead = await ctx.db.get(leadId);
+  if (!lead) return;
+
+  const configs = await ctx.db
+    .query("leadScoreConfig")
+    .withIndex("by_org", (q) => q.eq("orgId", orgId))
+    .collect();
+  const criteria: Criterion[] =
+    configs.length > 0
+      ? (configs.sort((a, b) => b.updatedAt - a.updatedAt)[0].criteria as Criterion[])
+      : DEFAULT_CRITERIA;
+
+  const activities = await ctx.db
+    .query("activities")
+    .withIndex("by_lead", (q) => q.eq("leadId", leadId))
+    .collect();
+
+  const score = evaluateCriteria(lead, activities, criteria);
+  const now = Date.now();
+
+  await ctx.db.patch(leadId, {
+    score,
+    lastScoredAt: now,
+    updatedAt: now,
+  });
+}
 
 export const getConfig = query({
   handler: async (ctx) => {
@@ -246,35 +330,7 @@ export const recomputeAllScores = mutation({
         .withIndex("by_lead", (q) => q.eq("leadId", lead._id))
         .collect();
 
-      let score = 0;
-      for (const criterion of criteria) {
-        if (!criterion.enabled) continue;
-        let met = false;
-        switch (criterion.key) {
-          case "has_email":
-            met = !!lead.email && lead.email.trim().length > 0;
-            break;
-          case "has_budget":
-            met = lead.budgetMin !== undefined || lead.budgetMax !== undefined;
-            break;
-          case "has_preferred_areas":
-            met = lead.preferredAreas.length > 0;
-            break;
-          case "has_notes":
-            met = lead.notes.trim().length > 0;
-            break;
-          case "activity_count":
-            met = activities.length >= (criterion.threshold || 0);
-            break;
-          case "budget_min":
-            met = (lead.budgetMin || 0) >= (criterion.threshold || 0);
-            break;
-          case "recent_activity":
-            met = activities.some((a) => a.createdAt >= sevenDaysAgo);
-            break;
-        }
-        if (met) score += criterion.weight;
-      }
+      const score = evaluateCriteria(lead, activities, criteria);
 
       await ctx.db.patch(lead._id, {
         score,

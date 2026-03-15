@@ -1,11 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery } from "convex/react";
 import { motion } from "framer-motion";
 import { api } from "../../../convex/_generated/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, X } from "lucide-react";
 import Link from "next/link";
 import { Id } from "../../../convex/_generated/dataModel";
 
@@ -22,6 +23,8 @@ export function DuplicateWarning({
   excludeLeadId,
   showMergeLink = true,
 }: DuplicateWarningProps) {
+  const [dismissed, setDismissed] = useState(false);
+
   const duplicates = useQuery(
     api.leadImport.findDuplicatesForLead,
     email || phone
@@ -33,9 +36,8 @@ export function DuplicateWarning({
       : "skip"
   );
 
-  if (!duplicates || duplicates.length === 0) return null;
+  if (dismissed || !duplicates || duplicates.length === 0) return null;
 
-  // #29: Duplicate warning slide-in
   return (
     <motion.div
       initial={{ opacity: 0, y: -12, scale: 0.98 }}
@@ -46,11 +48,20 @@ export function DuplicateWarning({
       <div className="flex items-start gap-2">
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-amber-800">
-            Possible duplicate{duplicates.length > 1 ? "s" : ""} detected
-          </p>
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-sm font-medium text-amber-800">
+              Possible duplicate{duplicates.length > 1 ? "s" : ""} detected
+            </p>
+            <button
+              onClick={() => setDismissed(true)}
+              className="shrink-0 rounded-md p-0.5 text-amber-600 hover:text-amber-800 hover:bg-amber-100 transition-colors"
+              aria-label="Dismiss"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
           <div className="mt-2 space-y-2">
-            {duplicates.map((dup: { leadId: string; fullName: string; email: string | undefined; phone: string; reason: string }) => (
+            {duplicates.map((dup: { leadId: string; fullName: string; email: string | undefined; phone: string; reason: string; propertyTitle: string | null }) => (
               <div
                 key={dup.leadId}
                 className="flex items-center justify-between gap-2 rounded-[8px] border border-amber-200 bg-white px-3 py-2"
@@ -58,6 +69,12 @@ export function DuplicateWarning({
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-text">
                     {dup.fullName}
+                    {dup.propertyTitle && (
+                      <span className="font-normal text-text-muted"> for </span>
+                    )}
+                    {dup.propertyTitle && (
+                      <span className="font-medium">{dup.propertyTitle}</span>
+                    )}
                   </p>
                   <p className="text-xs text-text-muted">
                     {dup.phone}

@@ -169,20 +169,34 @@ export const attachPropertyToLead = mutation({
       .query("leads")
       .withIndex("by_contact", (q) => q.eq("contactId", lead.contactId))
       .collect();
-    const otherActiveLeadIds = existingLeads
-      .filter((l) => !l.isArchived && l._id !== args.leadId && l.orgId === user.orgId)
+    const activeLeadIds = existingLeads
+      .filter((l) => !l.isArchived && l.orgId === user.orgId)
       .map((l) => l._id);
 
-    for (const otherLeadId of otherActiveLeadIds) {
-      const otherMatches = await ctx.db
+    for (const activeLeadId of activeLeadIds) {
+      const activeMatches = await ctx.db
         .query("leadPropertyMatches")
-        .withIndex("by_lead", (q) => q.eq("leadId", otherLeadId))
+        .withIndex("by_lead", (q) => q.eq("leadId", activeLeadId))
         .collect();
-      if (otherMatches.some((m) => m.propertyId === args.propertyId)) {
+      if (activeMatches.some((m) => m.propertyId === args.propertyId)) {
+        const isSameLead = activeLeadId === args.leadId;
         throw new Error(
-          `This contact already has another lead for "${property.title}". Each contact-property pair must be unique.`
+          isSameLead
+            ? `This property is already attached to this lead.`
+            : `This contact already has another lead for "${property.title}". Each contact-property pair must be unique.`
         );
       }
+    }
+
+    // Enforce 1 property per lead — if this lead already has a property, reject
+    const currentMatches = await ctx.db
+      .query("leadPropertyMatches")
+      .withIndex("by_lead", (q) => q.eq("leadId", args.leadId))
+      .collect();
+    if (currentMatches.length > 0) {
+      throw new Error(
+        "This lead already has an attached property. Each lead can only have one property. Use bulk attach to create new leads for additional properties."
+      );
     }
 
     return ctx.db.insert("leadPropertyMatches", {
@@ -193,6 +207,134 @@ export const attachPropertyToLead = mutation({
       orgId: user.orgId,
       createdAt: Date.now(),
     });
+  },
+});
+
+export const bulkAttachProperties = mutation({
+  args: {
+    leadId: v.id("leads"),
+    propertyIds: v.array(v.id("properties")),
+    matchType: v.union(
+      v.literal("suggested"),
+      v.literal("requested"),
+      v.literal("viewed"),
+      v.literal("offered")
+    ),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserWithOrg(ctx);
+    const lead = await canAccessLead(ctx, args.leadId, user._id, user.role === "admin", user.orgId);
+    if (!lead) throw new Error("Lead not found");
+    if (args.propertyIds.length === 0) throw new Error("No properties selected");
+
+    // Validate all properties upfront
+    const properties: Doc<"properties">[] = [];
+    for (const propertyId of args.propertyIds) {
+      const property = await ctx.db.get(propertyId);
+      if (!property) throw new Error("Property not found");
+      assertOrgAccess(property, user.orgId);
+      if (property.status === "sold" || property.status === "off_market") {
+        throw new Error(
+          `Cannot attach "${property.title}" — it is ${property.status === "sold" ? "sold" : "off market"}`
+        );
+      }
+      properties.push(property);
+    }
+
+    // Enforce unique contact-property pairs across all active leads
+    const existingLeads = await ctx.db
+      .query("leads")
+      .withIndex("by_contact", (q) => q.eq("contactId", lead.contactId))
+      .collect();
+    const activeLeadIds = existingLeads
+      .filter((l) => !l.isArchived && l.orgId === user.orgId)
+      .map((l) => l._id);
+
+    const allExistingMatches: Doc<"leadPropertyMatches">[] = [];
+    for (const activeLeadId of activeLeadIds) {
+      const matches = await ctx.db
+        .query("leadPropertyMatches")
+        .withIndex("by_lead", (q) => q.eq("leadId", activeLeadId))
+        .collect();
+      allExistingMatches.push(...matches);
+    }
+    const existingPropertyIds = new Set(allExistingMatches.map((m) => m.propertyId as string));
+
+    const duplicateNames: string[] = [];
+    for (let i = 0; i < args.propertyIds.length; i++) {
+      if (existingPropertyIds.has(args.propertyIds[i] as string)) {
+        duplicateNames.push(properties[i].title);
+      }
+    }
+    if (duplicateNames.length > 0) {
+      throw new Error(
+        `This contact already has leads for: ${duplicateNames.join(", ")}. Each contact-property pair must be unique.`
+      );
+    }
+
+    // Check if current lead already has a property
+    const currentMatches = allExistingMatches.filter((m) => m.leadId === args.leadId);
+    const currentLeadHasProperty = currentMatches.length > 0;
+
+    const timestamp = Date.now();
+    const createdLeadIds: Id<"leads">[] = [];
+
+    // Determine which properties need new leads vs attach to current lead
+    const propertiesToCreateLeadsFor = currentLeadHasProperty
+      ? args.propertyIds // all need new leads
+      : args.propertyIds.slice(1); // first one goes to current lead
+
+    // Attach first property to current lead if it has no property yet
+    if (!currentLeadHasProperty) {
+      await ctx.db.insert("leadPropertyMatches", {
+        leadId: args.leadId,
+        propertyId: args.propertyIds[0],
+        matchType: args.matchType,
+        createdByUserId: user._id,
+        orgId: user.orgId,
+        createdAt: timestamp,
+      });
+    }
+
+    // Create new leads for remaining properties
+    for (const propertyId of propertiesToCreateLeadsFor) {
+      const newLeadId = await ctx.db.insert("leads", {
+        contactId: lead.contactId,
+        fullName: lead.fullName,
+        phone: lead.phone,
+        normalizedPhone: lead.normalizedPhone,
+        email: lead.email,
+        source: lead.source,
+        interestType: lead.interestType,
+        budgetCurrency: lead.budgetCurrency,
+        budgetMin: lead.budgetMin,
+        budgetMax: lead.budgetMax,
+        preferredAreas: lead.preferredAreas,
+        notes: lead.notes,
+        stageId: lead.stageId,
+        ownerUserId: lead.ownerUserId,
+        orgId: user.orgId,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
+
+      await ctx.db.insert("leadPropertyMatches", {
+        leadId: newLeadId,
+        propertyId,
+        matchType: args.matchType,
+        createdByUserId: user._id,
+        orgId: user.orgId,
+        createdAt: timestamp,
+      });
+
+      createdLeadIds.push(newLeadId);
+    }
+
+    return {
+      attachedToCurrentLead: !currentLeadHasProperty,
+      createdLeadCount: createdLeadIds.length,
+      createdLeadIds,
+    };
   },
 });
 

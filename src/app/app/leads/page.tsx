@@ -15,8 +15,9 @@ import { PaginationControls } from "@/components/ui/pagination";
 import { usePagination } from "@/hooks/usePagination";
 import { useRequireAuth } from "@/hooks/useAuth";
 import { leadToasts } from "@/lib/toast";
+import { Modal } from "@/components/ui/modal";
 import { Tooltip } from "@/components/ui/tooltip";
-import { Eye, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Eye, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { ErrorBoundary } from "@/components/common/error-boundary";
 
 const listVariants = {
@@ -47,16 +48,19 @@ interface LeadRowData {
   updatedAt: number;
   closedAt?: number;
   closeReason?: string;
+  propertyTitle?: string | null;
 }
 
 const LeadTableRow = React.memo(function LeadTableRow({
   lead,
   stages,
   onStageChange,
+  onDelete,
 }: {
   lead: LeadRowData;
   stages: { _id: string; name: string }[] | undefined;
   onStageChange: (leadId: Id<"leads">, stageId: Id<"pipelineStages">) => void;
+  onDelete: (lead: LeadRowData) => void;
 }) {
   return (
     <motion.tr
@@ -92,9 +96,15 @@ const LeadTableRow = React.memo(function LeadTableRow({
         />
       </TableCell>
       <TableCell>{lead.ownerName}</TableCell>
-      <TableCell>{formatDate(lead.updatedAt)}</TableCell>
+      <TableCell>
+        {lead.propertyTitle ? (
+          <span className="text-sm text-text">{lead.propertyTitle}</span>
+        ) : (
+          <span className="text-xs text-text-dim">—</span>
+        )}
+      </TableCell>
       <TableCell className="text-right">
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-1">
           <Tooltip content="View">
             <Link href={`/app/leads/${lead._id}`} onClick={(e) => e.stopPropagation()}>
               <Button
@@ -105,6 +115,16 @@ const LeadTableRow = React.memo(function LeadTableRow({
                 <Eye className="h-4 w-4" />
               </Button>
             </Link>
+          </Tooltip>
+          <Tooltip content="Delete">
+            <Button
+              variant="secondary"
+              className="action-btn h-9 w-9 p-0 text-danger hover:text-danger hover:bg-danger/10 md:opacity-0 md:translate-x-3 md:scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
+              style={{ transitionDelay: "40ms" }}
+              onClick={(e) => { e.stopPropagation(); onDelete(lead); }}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
           </Tooltip>
         </div>
       </TableCell>
@@ -160,6 +180,11 @@ export default function LeadsPage() {
   // Bulk matching modal state
   const [bulkMatchingOpen, setBulkMatchingOpen] = useState(false);
 
+  // Delete lead modal state
+  const [deleteTarget, setDeleteTarget] = useState<LeadRowData | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+
   // Debounce search inputs
   useEffect(() => {
     const timer = setTimeout(() => { setDebouncedSearch(searchFilter); pagination.resetPage(); }, 300);
@@ -214,6 +239,23 @@ export default function LeadsPage() {
 
   // Mutations
   const moveStage = useMutation(api.leads.moveStage);
+  const deleteLeadMutation = useMutation(api.leads.deleteLead);
+
+  const handleDeleteLead = useCallback(async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      await deleteLeadMutation({ leadId: deleteTarget._id });
+      leadToasts.stageMoved("Lead deleted");
+      setDeleteTarget(null);
+      setDeleteConfirmText("");
+    } catch (error) {
+      console.error("Failed to delete lead:", error);
+      leadToasts.stageMoveFailed(error instanceof Error ? error.message : undefined);
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [deleteTarget, deleteLeadMutation]);
 
   const handleStageChange = useCallback(async (
     leadId: Id<"leads">,
@@ -407,7 +449,7 @@ export default function LeadsPage() {
                 </TableHead>
                 <TableHead>Stage</TableHead>
                 <TableHead>Owner</TableHead>
-                <TableHead>Updated</TableHead>
+                <TableHead>Property</TableHead>
                 <TableHead>Actions</TableHead>
               </tr>
             </thead>
@@ -423,6 +465,7 @@ export default function LeadsPage() {
                   lead={lead}
                   stages={stages}
                   onStageChange={handleStageChange}
+                  onDelete={(l) => { setDeleteTarget(l); setDeleteConfirmText(""); }}
                 />
               ))}
             </motion.tbody>
@@ -446,6 +489,60 @@ export default function LeadsPage() {
           />
         </Suspense>
       )}
+
+      {/* Delete lead confirmation modal */}
+      <Modal
+        open={deleteTarget !== null}
+        title="Delete lead"
+        description="This action cannot be undone. This will permanently delete the lead, its activities, and free any attached properties."
+        onClose={() => { setDeleteTarget(null); setDeleteConfirmText(""); }}
+        footer={
+          <div className="flex items-center justify-between gap-2">
+            <Button variant="secondary" onClick={() => { setDeleteTarget(null); setDeleteConfirmText(""); }} disabled={isDeleting}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDeleteLead}
+              disabled={isDeleting || !deleteTarget || deleteConfirmText !== (deleteTarget?.propertyTitle ? `delete lead ${deleteTarget.fullName.toLowerCase()} for ${deleteTarget.propertyTitle.toLowerCase()}` : "delete my lead")}
+              className="bg-danger hover:bg-danger/90 text-white"
+            >
+              {isDeleting ? "Deleting..." : "Delete lead"}
+            </Button>
+          </div>
+        }
+      >
+        {deleteTarget && (
+          <div className="space-y-4">
+            <div className="rounded-[10px] border border-danger/20 bg-danger/5 p-3">
+              <p className="text-sm font-medium text-text">{deleteTarget.fullName}</p>
+              {deleteTarget.propertyTitle && (
+                <p className="text-xs text-text-muted mt-0.5">Property: {deleteTarget.propertyTitle}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <p className="text-xs text-text-muted">
+                Type{" "}
+                <span className="font-mono font-medium text-text">
+                  {deleteTarget.propertyTitle
+                    ? `delete lead ${deleteTarget.fullName.toLowerCase()} for ${deleteTarget.propertyTitle.toLowerCase()}`
+                    : "delete my lead"}
+                </span>{" "}
+                to confirm
+              </p>
+              <Input
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder={
+                  deleteTarget.propertyTitle
+                    ? `delete lead ${deleteTarget.fullName.toLowerCase()} for ${deleteTarget.propertyTitle.toLowerCase()}`
+                    : "delete my lead"
+                }
+                className="font-mono text-sm"
+              />
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
