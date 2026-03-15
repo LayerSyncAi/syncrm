@@ -79,6 +79,12 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
   const [showSiblingModal, setShowSiblingModal] = useState(false);
   const [siblingLeadsToClose, setSiblingLeadsToClose] = useState<Set<string>>(new Set());
   const [isClosingSiblings, setIsClosingSiblings] = useState(false);
+  const [siblingCloseConfirmText, setSiblingCloseConfirmText] = useState("");
+
+  // Delete lead state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Property comparison state
   const [comparisonOpen, setComparisonOpen] = useState(false);
@@ -118,6 +124,7 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
   const attachProperty = useMutation(api.matches.attachPropertyToLead);
   const bulkAttachProperties = useMutation(api.matches.bulkAttachProperties);
   const detachProperty = useMutation(api.matches.detach);
+  const deleteLeadMutation = useMutation(api.leads.deleteLead);
 
   // Initialize notes from lead data
   if (leadData?.lead && !notesInitialized) {
@@ -299,6 +306,7 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
       leadToasts.stageMoved(`${siblingLeadsToClose.size} lead(s) marked as lost`);
       setShowSiblingModal(false);
       setSiblingLeadsToClose(new Set());
+      setSiblingCloseConfirmText("");
     } catch (error) {
       console.error("Failed to close sibling leads:", error);
       leadToasts.stageMoveFailed(error instanceof Error ? error.message : undefined);
@@ -306,6 +314,20 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
       setIsClosingSiblings(false);
     }
   }, [siblingLeadsToClose, bulkCloseAsLost]);
+
+  const handleDeleteLead = useCallback(async () => {
+    setIsDeleting(true);
+    try {
+      await deleteLeadMutation({ leadId });
+      leadToasts.stageMoved("Lead deleted");
+      router.push("/app/leads");
+    } catch (error) {
+      console.error("Failed to delete lead:", error);
+      leadToasts.stageMoveFailed(error instanceof Error ? error.message : undefined);
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [deleteLeadMutation, leadId, router]);
 
   // Loading and error states
   if (authLoading || leadData === undefined) {
@@ -346,9 +368,25 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
   );
   const attachedPropertyIds = new Set(matches?.map((m) => m.propertyId) ?? []);
 
+  const leadPropertyName = matches && matches.length > 0 && matches[0].property
+    ? matches[0].property.title
+    : null;
+  const deleteConfirmPhrase = leadPropertyName
+    ? `delete lead ${lead.fullName.toLowerCase()} for ${leadPropertyName.toLowerCase()}`
+    : `delete my lead`;
+
   return (
     <div className="space-y-6">
-      <Breadcrumb items={[{ label: "Leads", href: "/app/leads" }, { label: lead.fullName }]} />
+      <div className="flex items-center justify-between">
+        <Breadcrumb items={[{ label: "Leads", href: "/app/leads" }, { label: lead.fullName }]} />
+        <Button
+          variant="ghost"
+          className="text-danger hover:text-danger hover:bg-danger/10 text-xs h-8 px-3"
+          onClick={() => { setShowDeleteModal(true); setDeleteConfirmText(""); }}
+        >
+          Delete Lead
+        </Button>
+      </div>
 
       <LeadHeroCard
         lead={lead}
@@ -613,19 +651,38 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
         open={showSiblingModal}
         title="Resolve other leads for this contact"
         description={`${lead.fullName} has other open leads. Select which ones to mark as lost, or keep them open.`}
-        onClose={() => setShowSiblingModal(false)}
+        onClose={() => { setShowSiblingModal(false); setSiblingCloseConfirmText(""); }}
         footer={
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs text-text-muted">
-              {siblingLeadsToClose.size > 0 ? `${siblingLeadsToClose.size} selected to close` : "None selected"}
-            </span>
-            <div className="flex gap-2">
-              <Button variant="secondary" onClick={() => setShowSiblingModal(false)} disabled={isClosingSiblings}>
-                Keep all open
-              </Button>
-              <Button onClick={handleCloseSiblingLeads} disabled={isClosingSiblings || siblingLeadsToClose.size === 0}>
-                {isClosingSiblings ? "Closing..." : `Mark ${siblingLeadsToClose.size} as lost`}
-              </Button>
+          <div className="space-y-3">
+            {siblingLeadsToClose.size > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs text-text-muted">
+                  Type <span className="font-mono font-medium text-text">close leads for {lead.fullName.toLowerCase()}</span> to confirm
+                </p>
+                <Input
+                  value={siblingCloseConfirmText}
+                  onChange={(e) => setSiblingCloseConfirmText(e.target.value)}
+                  placeholder={`close leads for ${lead.fullName.toLowerCase()}`}
+                  className="font-mono text-sm"
+                />
+              </div>
+            )}
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs text-text-muted">
+                {siblingLeadsToClose.size > 0 ? `${siblingLeadsToClose.size} selected to close` : "None selected"}
+              </span>
+              <div className="flex gap-2">
+                <Button variant="secondary" onClick={() => { setShowSiblingModal(false); setSiblingCloseConfirmText(""); }} disabled={isClosingSiblings}>
+                  Keep all open
+                </Button>
+                <Button
+                  onClick={handleCloseSiblingLeads}
+                  disabled={isClosingSiblings || siblingLeadsToClose.size === 0 || siblingCloseConfirmText !== `close leads for ${lead.fullName.toLowerCase()}`}
+                  className="bg-danger hover:bg-danger/90 text-white"
+                >
+                  {isClosingSiblings ? "Closing..." : `Mark ${siblingLeadsToClose.size} as lost`}
+                </Button>
+              </div>
             </div>
           </div>
         }
@@ -664,7 +721,7 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
                     </p>
                     {sibling.properties && sibling.properties.length > 0 && (
                       <p className="text-xs text-text-muted mt-0.5">
-                        Properties: {sibling.properties.filter(Boolean).map((p) => (p as { title: string }).title).join(", ")}
+                        Property: {sibling.properties.filter(Boolean).map((p) => (p as { title: string }).title).join(", ")}
                       </p>
                     )}
                   </div>
@@ -672,6 +729,50 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
               );
             })
           )}
+        </div>
+      </Modal>
+
+      {/* Delete lead confirmation modal */}
+      <Modal
+        open={showDeleteModal}
+        title="Delete lead"
+        description="This action cannot be undone. This will permanently delete the lead, its activities, and property matches."
+        onClose={() => { setShowDeleteModal(false); setDeleteConfirmText(""); }}
+        footer={
+          <div className="flex items-center justify-between gap-2">
+            <Button variant="secondary" onClick={() => { setShowDeleteModal(false); setDeleteConfirmText(""); }} disabled={isDeleting}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDeleteLead}
+              disabled={isDeleting || deleteConfirmText !== deleteConfirmPhrase}
+              className="bg-danger hover:bg-danger/90 text-white"
+            >
+              {isDeleting ? "Deleting..." : "Delete lead"}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div className="rounded-[10px] border border-danger/20 bg-danger/5 p-3">
+            <p className="text-sm font-medium text-text">{lead.fullName}</p>
+            {matches && matches.length > 0 && matches[0].property && (
+              <p className="text-xs text-text-muted mt-0.5">
+                Property: {matches[0].property.title}
+              </p>
+            )}
+          </div>
+          <div className="space-y-2">
+            <p className="text-xs text-text-muted">
+              Type <span className="font-mono font-medium text-text">{deleteConfirmPhrase}</span> to confirm
+            </p>
+            <Input
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder={deleteConfirmPhrase}
+              className="font-mono text-sm"
+            />
+          </div>
         </div>
       </Modal>
     </div>

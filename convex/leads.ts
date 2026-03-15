@@ -1121,3 +1121,37 @@ export const bulkCloseAsLost = mutation({
     return { closedCount };
   },
 });
+
+export const deleteLead = mutation({
+  args: {
+    leadId: v.id("leads"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserWithOrg(ctx);
+    const lead = await assertLeadAccess(ctx, args.leadId, user._id, user.role === "admin", user.orgId);
+    if (!lead) throw new Error("Lead not found");
+
+    // Delete all property matches for this lead
+    const matches = await ctx.db
+      .query("leadPropertyMatches")
+      .withIndex("by_lead", (q: any) => q.eq("leadId", args.leadId))
+      .collect();
+    for (const match of matches) {
+      await ctx.db.delete(match._id);
+    }
+
+    // Delete all activities for this lead
+    const activities = await ctx.db
+      .query("activities")
+      .withIndex("by_lead", (q: any) => q.eq("leadId", args.leadId))
+      .collect();
+    for (const activity of activities) {
+      await ctx.db.delete(activity._id);
+    }
+
+    // Delete the lead itself
+    await ctx.db.delete(args.leadId);
+
+    return { deleted: true };
+  },
+});
