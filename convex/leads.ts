@@ -1229,8 +1229,8 @@ export const deleteLead = mutation({
       );
       if (!otherActive) {
         const property = await ctx.db.get(match.propertyId);
-        if (property && property.status !== "sold") {
-          await ctx.db.patch(match.propertyId, { status: "available" as const });
+        if (property && property.status !== "available") {
+          await ctx.db.patch(match.propertyId, { status: "available" as const, updatedAt: Date.now() });
         }
       }
       await ctx.db.delete(match._id);
