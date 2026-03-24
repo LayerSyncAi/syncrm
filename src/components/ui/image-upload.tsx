@@ -44,9 +44,9 @@ export function ImageUpload({
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const dropZoneRef = React.useRef<HTMLDivElement>(null);
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+  const uploadFiles = async (fileList: FileList | File[]) => {
+    const files = Array.from(fileList);
+    if (files.length === 0) return;
 
     setIsUploading(true);
     setUploadError(null);
@@ -54,7 +54,7 @@ export function ImageUpload({
     try {
       const newImages: ImageItem[] = [];
 
-      for (const file of Array.from(files)) {
+      for (const file of files) {
         // Validate file type
         if (!file.type.startsWith("image/")) {
           setUploadError(`${file.name} is not an image file`);
@@ -117,6 +117,12 @@ export function ImageUpload({
     }
   };
 
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    await uploadFiles(files);
+  };
+
   // Helper to fetch storage URL using Convex client
   const fetchStorageUrl = async (storageId: string): Promise<string | null> => {
     try {
@@ -158,18 +164,7 @@ export function ImageUpload({
     const files = e.dataTransfer.files;
     if (!files || files.length === 0) return;
 
-    // Create a synthetic event-like object for handleFileSelect logic
-    const dataTransfer = new DataTransfer();
-    for (const file of Array.from(files)) {
-      dataTransfer.items.add(file);
-    }
-
-    // Reuse the file input ref to trigger the same upload flow
-    if (fileInputRef.current) {
-      fileInputRef.current.files = dataTransfer.files;
-      const event = new Event("change", { bubbles: true });
-      fileInputRef.current.dispatchEvent(event);
-    }
+    await uploadFiles(files);
   };
 
   const handleAddUrl = () => {
@@ -213,6 +208,15 @@ export function ImageUpload({
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
+      {/* Full-screen upload loader */}
+      {isUploading && (
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-white/30 border-t-white mb-4" />
+          <p className="text-lg font-medium text-white">Uploading images...</p>
+          <p className="text-sm text-white/60 mt-1">Please wait, do not close this window</p>
+        </div>
+      )}
+
       {/* Drag & Drop Overlay */}
       {isDragging && !disabled && (
         <div className="rounded-[10px] border-2 border-dashed border-primary bg-primary/5 p-8 text-center">
