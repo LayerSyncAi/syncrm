@@ -27,7 +27,7 @@ export function ImageUpload({
   images,
   onChange,
   minImages = 2,
-  maxImages = 10,
+  maxImages = 25,
   disabled = false,
   error,
   className,
@@ -39,12 +39,14 @@ export function ImageUpload({
   const [uploadError, setUploadError] = React.useState<string | null>(null);
   const [showUrlInput, setShowUrlInput] = React.useState(false);
   const [urlInput, setUrlInput] = React.useState("");
+  const [isDragging, setIsDragging] = React.useState(false);
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const dropZoneRef = React.useRef<HTMLDivElement>(null);
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+  const uploadFiles = async (fileList: FileList | File[]) => {
+    const files = Array.from(fileList);
+    if (files.length === 0) return;
 
     setIsUploading(true);
     setUploadError(null);
@@ -52,7 +54,7 @@ export function ImageUpload({
     try {
       const newImages: ImageItem[] = [];
 
-      for (const file of Array.from(files)) {
+      for (const file of files) {
         // Validate file type
         if (!file.type.startsWith("image/")) {
           setUploadError(`${file.name} is not an image file`);
@@ -115,6 +117,12 @@ export function ImageUpload({
     }
   };
 
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    await uploadFiles(files);
+  };
+
   // Helper to fetch storage URL using Convex client
   const fetchStorageUrl = async (storageId: string): Promise<string | null> => {
     try {
@@ -126,6 +134,37 @@ export function ImageUpload({
       console.error("Failed to get storage URL:", err);
       return null;
     }
+  };
+
+  // Drag & drop handlers
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!disabled) setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only set false when leaving the drop zone itself, not children
+    if (e.currentTarget === e.target) setIsDragging(false);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (disabled) return;
+
+    const files = e.dataTransfer.files;
+    if (!files || files.length === 0) return;
+
+    await uploadFiles(files);
   };
 
   const handleAddUrl = () => {
@@ -161,9 +200,33 @@ export function ImageUpload({
   };
 
   return (
-    <div className={cn("space-y-3", className)}>
+    <div
+      ref={dropZoneRef}
+      className={cn("space-y-3", className)}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
+      {/* Full-screen upload loader */}
+      {isUploading && (
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-white/30 border-t-white mb-4" />
+          <p className="text-lg font-medium text-white">Uploading images...</p>
+          <p className="text-sm text-white/60 mt-1">Please wait, do not close this window</p>
+        </div>
+      )}
+
+      {/* Drag & Drop Overlay */}
+      {isDragging && !disabled && (
+        <div className="rounded-[10px] border-2 border-dashed border-primary bg-primary/5 p-8 text-center">
+          <p className="text-sm font-medium text-primary">Drop images here to upload</p>
+          <p className="text-xs text-text-muted mt-1">Supports multiple files (max 5MB each)</p>
+        </div>
+      )}
+
       {/* Image Grid */}
-      {images.length > 0 && (
+      {images.length > 0 && !isDragging && (
         <div className="grid gap-3 grid-cols-2 md:grid-cols-3">
           {images.map((image, index) => (
             <div
@@ -199,10 +262,13 @@ export function ImageUpload({
       )}
 
       {/* Upload Controls */}
-      {!disabled && images.length < maxImages && (
+      {!disabled && images.length < maxImages && !isDragging && (
         <div className="space-y-3">
-          {/* File Upload */}
-          <div className="flex gap-2">
+          {/* Drag & Drop Zone + File Upload */}
+          <div
+            className="rounded-[10px] border-2 border-dashed border-border-strong bg-surface-2/30 p-6 text-center cursor-pointer transition-colors hover:border-primary/50 hover:bg-primary/5"
+            onClick={() => fileInputRef.current?.click()}
+          >
             <input
               ref={fileInputRef}
               type="file"
@@ -212,22 +278,24 @@ export function ImageUpload({
               className="hidden"
               disabled={isUploading}
             />
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading}
-              className="flex-1"
-            >
-              {isUploading ? "Uploading..." : "Upload Images"}
-            </Button>
+            <p className="text-sm font-medium text-text">
+              {isUploading ? "Uploading..." : "Drag & drop images here, or click to browse"}
+            </p>
+            <p className="text-xs text-text-muted mt-1">
+              Supports bulk upload — up to {maxImages - images.length} more image{maxImages - images.length !== 1 ? "s" : ""} (max 5MB each)
+            </p>
+          </div>
+
+          {/* URL Input Toggle */}
+          <div className="flex justify-center">
             <Button
               type="button"
               variant="ghost"
               onClick={() => setShowUrlInput(!showUrlInput)}
               disabled={isUploading}
+              className="text-xs"
             >
-              {showUrlInput ? "Cancel" : "Add URL"}
+              {showUrlInput ? "Cancel" : "Or add image by URL"}
             </Button>
           </div>
 

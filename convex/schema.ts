@@ -185,6 +185,7 @@ export default defineSchema({
     ),
     description: v.string(),
     images: v.array(v.string()),
+    isDraft: v.optional(v.boolean()),
     createdByUserId: v.optional(v.id("users")),
     orgId: v.optional(v.id("organizations")),
     createdAt: v.number(),
