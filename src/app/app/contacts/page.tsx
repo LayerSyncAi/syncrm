@@ -33,8 +33,8 @@ const rowVariants = {
 type ContactWithOwners = {
   _id: Id<"contacts">;
   name: string;
-  phone: string;
-  normalizedPhone: string;
+  phone?: string;
+  normalizedPhone?: string;
   email?: string;
   company?: string;
   notes?: string;
@@ -79,7 +79,7 @@ const ContactTableRow = React.memo(function ContactTableRow({
       <TableCell>
         <p className="font-medium">{contact.name}</p>
       </TableCell>
-      <TableCell>{contact.phone}</TableCell>
+      <TableCell>{contact.phone || "-"}</TableCell>
       <TableCell>{contact.email || "-"}</TableCell>
       <TableCell>{contact.company || "-"}</TableCell>
       <TableCell>
@@ -203,7 +203,7 @@ export default function ContactsPage() {
   };
 
   const validatePhone = (value: string): string | undefined => {
-    if (!value.trim()) return "Phone number is required";
+    if (!value.trim()) return undefined; // Phone is optional
     const digits = value.replace(/\D/g, "");
     if (digits.length < 7) return "Please enter a valid phone number";
     return undefined;
@@ -295,7 +295,7 @@ export default function ContactsPage() {
       if (isCreating) {
         await createContact({
           name: name.value.trim(),
-          phone: phone.value.trim(),
+          phone: phone.value.trim() || undefined,
           email: email.value.trim() || undefined,
           company: company.trim() || undefined,
           notes: notes.trim() || undefined,
@@ -306,7 +306,7 @@ export default function ContactsPage() {
         await updateContact({
           contactId: selectedContact._id,
           name: name.value.trim(),
-          phone: phone.value.trim(),
+          phone: phone.value.trim() || undefined,
           email: email.value.trim() || undefined,
           company: company.trim() || undefined,
           notes: notes.trim() || undefined,
@@ -574,9 +574,7 @@ export default function ContactsPage() {
 
             {/* Phone */}
             <div className="space-y-2">
-              <Label className="flex items-center gap-1">
-                Phone <span className="text-danger">*</span>
-              </Label>
+              <Label>Phone</Label>
               {phone.touched && phone.error && (
                 <p className="text-xs text-danger">{phone.error}</p>
               )}

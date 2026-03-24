@@ -67,7 +67,7 @@ export const checkDuplicates = query({
       if (!isDuplicate && row.phone) {
         const normPhone = normalizePhone(row.phone);
         const match = activeLeads.find(
-          (l) => normalizePhone(l.phone) === normPhone
+          (l) => l.phone && normalizePhone(l.phone) === normPhone
         );
         if (match) {
           isDuplicate = true;
@@ -127,7 +127,7 @@ export const findDuplicatesForLead = query({
       }
       if (!reason && args.phone) {
         const normPhone = normalizePhone(args.phone);
-        if (normalizePhone(lead.phone) === normPhone) {
+        if (lead.phone && normalizePhone(lead.phone) === normPhone) {
           reason = "Phone match";
         }
       }
@@ -146,7 +146,7 @@ export const findDuplicatesForLead = query({
           leadId: lead._id,
           fullName: lead.fullName,
           email: lead.email,
-          phone: lead.phone,
+          phone: lead.phone || "",
           reason,
           propertyTitle,
         });
@@ -240,7 +240,7 @@ export const bulkImport = mutation({
         }
         if (!duplicateLead) {
           duplicateLead = activeLeads.find(
-            (l) => normalizePhone(l.phone) === normalizedPhoneVal
+            (l) => l.phone && normalizePhone(l.phone) === normalizedPhoneVal
           );
         }
 

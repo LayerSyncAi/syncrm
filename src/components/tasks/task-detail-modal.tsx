@@ -16,7 +16,7 @@ import { activityToasts } from "@/lib/toast";
 
 interface TaskActivity {
   _id: Id<"activities">;
-  leadId: Id<"leads">;
+  leadId?: Id<"leads">;
   type: "call" | "whatsapp" | "email" | "meeting" | "viewing" | "note";
   title: string;
   description: string;
@@ -28,7 +28,7 @@ interface TaskActivity {
   createdByUserId: Id<"users">;
   createdAt: number;
   updatedAt?: number;
-  lead: { _id: Id<"leads">; fullName: string; phone: string } | null;
+  lead: { _id: Id<"leads">; fullName: string; phone?: string } | null;
   assignedTo: { _id: Id<"users">; fullName?: string; name?: string; email?: string } | null;
 }
 
@@ -213,7 +213,7 @@ export function TaskDetailModal({ open, onClose, task, onTaskUpdated, onTaskComp
           <div className="space-y-2">
             <Label>Lead</Label>
             <Input
-              value={task.lead ? `${task.lead.fullName}${task.lead.phone ? ` (${task.lead.phone})` : ""}` : "Unknown lead"}
+              value={task.lead ? `${task.lead.fullName}${task.lead.phone ? ` (${task.lead.phone})` : ""}` : task.leadId ? "Unknown lead" : "Standalone task"}
               readOnly
             />
           </div>

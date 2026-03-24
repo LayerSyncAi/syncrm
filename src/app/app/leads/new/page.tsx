@@ -38,7 +38,7 @@ interface FieldState {
 interface Contact {
   _id: Id<"contacts">;
   name: string;
-  phone: string;
+  phone?: string;
   email?: string;
   company?: string;
   ownerNames: string[];
@@ -262,7 +262,7 @@ export default function NewLeadPage() {
   };
 
   const validatePhone = (value: string): string | undefined => {
-    if (!value.trim()) return "Phone number is required";
+    if (!value.trim()) return undefined; // Phone is optional
     const digits = value.replace(/\D/g, "");
     if (digits.length < 7) return "Please enter a valid phone number";
     return undefined;
@@ -369,7 +369,7 @@ export default function NewLeadPage() {
     try {
       const newContactId = await createContact({
         name: newContactName.value.trim(),
-        phone: newContactPhone.value.trim(),
+        phone: newContactPhone.value.trim() || undefined,
         email: newContactEmail.value.trim() || undefined,
         company: newContactCompany.trim() || undefined,
       });
@@ -1031,9 +1031,7 @@ export default function NewLeadPage() {
             </div>
 
             <div className="space-y-2">
-              <Label className="flex items-center gap-1">
-                Phone <span className="text-danger">*</span>
-              </Label>
+              <Label>Phone</Label>
               {newContactPhone.touched && newContactPhone.error && (
                 <p className="text-xs text-danger">{newContactPhone.error}</p>
               )}

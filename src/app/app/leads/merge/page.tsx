@@ -108,7 +108,7 @@ export default function MergeLeadsPage() {
     return items.filter(
       (l) =>
         l.fullName.toLowerCase().includes(q) ||
-        l.phone.includes(q) ||
+        (l.phone && l.phone.includes(q)) ||
         (l.email && l.email.toLowerCase().includes(q))
     );
   }, [allLeads, searchQuery]);

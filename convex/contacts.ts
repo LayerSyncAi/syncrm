@@ -25,7 +25,7 @@ async function canAccessContact(
 export const create = mutation({
   args: {
     name: v.string(),
-    phone: v.string(),
+    phone: v.optional(v.string()),
     email: v.optional(v.string()),
     company: v.optional(v.string()),
     notes: v.optional(v.string()),
@@ -45,8 +45,8 @@ export const create = mutation({
 
     return ctx.db.insert("contacts", {
       name: args.name,
-      phone: args.phone,
-      normalizedPhone: normalizePhone(args.phone),
+      phone: args.phone || undefined,
+      normalizedPhone: args.phone ? normalizePhone(args.phone) : undefined,
       email: args.email,
       company: args.company,
       notes: args.notes,
@@ -97,7 +97,7 @@ export const list = query({
       if (args.q) {
         const search = args.q.toLowerCase();
         const nameMatch = contact.name.toLowerCase().includes(search);
-        const phoneMatch = contact.phone.includes(search) || contact.normalizedPhone.includes(normalizePhone(search));
+        const phoneMatch = contact.phone?.includes(search) || contact.normalizedPhone?.includes(normalizePhone(search));
         const emailMatch = contact.email?.toLowerCase().includes(search);
         const companyMatch = contact.company?.toLowerCase().includes(search);
         if (!nameMatch && !phoneMatch && !emailMatch && !companyMatch) {
