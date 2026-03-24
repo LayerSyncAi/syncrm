@@ -44,6 +44,8 @@ export default function NewPropertyPage() {
   const router = useRouter();
   const currentUser = useQuery(api.users.getMeRequired);
   const createProperty = useMutation(api.properties.create);
+  const createDraft = useMutation(api.properties.createDraft);
+  const deleteDraft = useMutation(api.properties.deleteDraft);
 
   const [activeTab, setActiveTab] = React.useState<NewPropertyTab>("Details");
 
@@ -69,9 +71,15 @@ export default function NewPropertyPage() {
   const [images, setImages] = React.useState<ImageItem[]>([]);
   const [imagesError, setImagesError] = React.useState<string | undefined>();
 
+  // Draft ID for document uploads before full save
+  const [draftId, setDraftId] = React.useState<Id<"properties"> | null>(null);
+  const [isCreatingDraft, setIsCreatingDraft] = React.useState(false);
   const [savedPropertyId, setSavedPropertyId] = React.useState<Id<"properties"> | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
   const [formError, setFormError] = React.useState("");
+
+  // The property ID for document management (draft or saved)
+  const documentPropertyId = savedPropertyId || draftId;
 
   // Validation functions
   const validateTitle = (value: string): string | undefined => {
@@ -150,7 +158,15 @@ export default function NewPropertyPage() {
     });
   };
 
-  const closeModal = () => {
+  const closeModal = async () => {
+    // Clean up draft if it was never fully saved
+    if (draftId && !savedPropertyId) {
+      try {
+        await deleteDraft({ propertyId: draftId });
+      } catch {
+        // Best-effort cleanup
+      }
+    }
     router.push("/app/properties");
   };
 
@@ -196,6 +212,7 @@ export default function NewPropertyPage() {
     setFormError("");
     try {
       const propertyId = await createProperty({
+        draftId: draftId ?? undefined,
         title: title.value.trim(),
         type,
         listingType,
@@ -224,14 +241,32 @@ export default function NewPropertyPage() {
     }
   };
 
-  // Auto-save when switching to Documentation tab so uploads work immediately
+  // Auto-create draft when switching to Documentation tab so document uploads work immediately
   const prevTabRef = React.useRef(activeTab);
   React.useEffect(() => {
-    if (activeTab === "Documentation" && prevTabRef.current !== "Documentation" && !savedPropertyId && !isSaving) {
-      handleSave();
-    }
+    const ensureDraft = async () => {
+      if (
+        activeTab === "Documentation" &&
+        prevTabRef.current !== "Documentation" &&
+        !savedPropertyId &&
+        !draftId &&
+        !isCreatingDraft
+      ) {
+        setIsCreatingDraft(true);
+        try {
+          const id = await createDraft();
+          setDraftId(id);
+        } catch (error) {
+          console.error("Failed to create draft:", error);
+          setFormError("Failed to prepare document upload. Please try again.");
+        } finally {
+          setIsCreatingDraft(false);
+        }
+      }
+    };
+    ensureDraft();
     prevTabRef.current = activeTab;
-  }, [activeTab, savedPropertyId, isSaving]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeTab, savedPropertyId, draftId, isCreatingDraft]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!currentUser) {
     return (
@@ -518,24 +553,20 @@ export default function NewPropertyPage() {
               animate={{ opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } }}
               exit={{ opacity: 0, y: -8, transition: { duration: 0.15 } }}
             >
-              {savedPropertyId ? (
+              {documentPropertyId ? (
                 <DocumentManager
-                  propertyId={savedPropertyId}
+                  propertyId={documentPropertyId}
                   folders={["mandates_to_sell", "contracts", "id_copies", "proof_of_funds"]}
                 />
-              ) : isSaving ? (
+              ) : isCreatingDraft ? (
                 <div className="flex flex-col items-center justify-center py-12">
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mb-3" />
-                  <p className="text-sm text-text-muted">Saving property...</p>
+                  <p className="text-sm text-text-muted">Preparing document upload...</p>
                 </div>
               ) : (
-                <div className="rounded-lg border border-border-strong bg-surface-2/30 p-6 text-center">
-                  <p className="text-sm text-text-muted mb-3">
-                    Please fill in the required fields first (Details &amp; Gallery tabs).
-                  </p>
-                  <Button onClick={handleSave} disabled={isSaving}>
-                    Save property
-                  </Button>
+                <div className="flex flex-col items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mb-3" />
+                  <p className="text-sm text-text-muted">Setting up documents...</p>
                 </div>
               )}
             </motion.div>
@@ -556,7 +587,7 @@ export default function NewPropertyPage() {
                 images={images}
                 onChange={handleImagesChange}
                 minImages={2}
-                maxImages={10}
+                maxImages={25}
                 error={imagesError}
               />
             </motion.div>

@@ -707,6 +707,7 @@ export default function PropertiesPage() {
                   key={property._id}
                   variants={rowVariants}
                   className="group h-11 cursor-pointer border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)]"
+                  onClick={() => setSelectedProperty(property)}
                 >
                   <TableCell className="font-medium">{property.title}</TableCell>
                   <TableCell>{formatType(property.type)}</TableCell>
@@ -737,7 +738,7 @@ export default function PropertiesPage() {
                           variant="secondary"
                           className="action-btn h-9 w-9 p-0 md:opacity-0 md:translate-x-3 md:scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
                           style={{ transitionDelay: "50ms" }}
-                          onClick={() => setSelectedProperty(property)}
+                          onClick={(e) => { e.stopPropagation(); setSelectedProperty(property); }}
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -748,7 +749,7 @@ export default function PropertiesPage() {
                             variant="secondary"
                             className="action-btn-danger h-9 w-9 p-0 text-red-500 md:opacity-0 md:translate-x-3 md:scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
                             style={{ transitionDelay: "100ms" }}
-                            onClick={() => setDeleteTarget(property)}
+                            onClick={(e) => { e.stopPropagation(); setDeleteTarget(property); }}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -793,11 +794,11 @@ export default function PropertiesPage() {
                 whileHover={{ y: -4, boxShadow: "0 12px 28px rgba(0,0,0,0.12)" }}
                 transition={{ type: "spring", stiffness: 400, damping: 25 }}
               >
-              <Card className="flex h-full flex-col relative">
+              <Card className="flex h-full flex-col relative cursor-pointer" onClick={() => setSelectedProperty(property)}>
                 {/* #40 – Compare checkbox */}
                 <button
                   type="button"
-                  onClick={() => toggleCompare(property._id)}
+                  onClick={(e) => { e.stopPropagation(); toggleCompare(property._id); }}
                   className={`absolute top-3 right-3 z-10 flex h-7 w-7 items-center justify-center rounded-lg border-2 transition ${
                     isCompared
                       ? "border-primary bg-primary text-white"
@@ -815,7 +816,7 @@ export default function PropertiesPage() {
                     src={property.images[0]}
                     alt={`${property.title} cover`}
                     layoutId={`prop-img-${property._id}`}
-                    onClick={() => setLightboxImage({ url: property.images[0], id: `prop-img-${property._id}` })}
+                    onClick={() => setSelectedProperty(property)}
                   />
                 ) : (
                   <div className="aspect-[4/3] w-full overflow-hidden rounded-[12px] border border-border-strong bg-surface-2 flex items-center justify-center text-text-muted">
@@ -872,6 +873,7 @@ export default function PropertiesPage() {
                     <Tooltip content="Add Lead">
                       <Link
                         href={`/app/leads/new?propertyId=${property._id}&interestType=${property.listingType === "sale" ? "buy" : "rent"}`}
+                        onClick={(e) => e.stopPropagation()}
                       >
                         <Button variant="secondary" className="action-btn h-9 w-9 p-0">
                           <UserPlus className="h-4 w-4" />
@@ -882,7 +884,7 @@ export default function PropertiesPage() {
                       <Button
                         variant="secondary"
                         className="action-btn h-9 w-9 p-0"
-                        onClick={() => setSelectedProperty(property)}
+                        onClick={(e) => { e.stopPropagation(); setSelectedProperty(property); }}
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
@@ -892,7 +894,7 @@ export default function PropertiesPage() {
                         <Button
                           variant="secondary"
                           className="action-btn-danger h-9 w-9 p-0 text-red-500"
-                          onClick={() => setDeleteTarget(property)}
+                          onClick={(e) => { e.stopPropagation(); setDeleteTarget(property); }}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -1272,7 +1274,7 @@ export default function PropertiesPage() {
                   images={images}
                   onChange={handleImagesChange}
                   minImages={2}
-                  maxImages={10}
+                  maxImages={25}
                   disabled={!canEditProperty}
                   error={imagesError}
                 />

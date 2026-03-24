@@ -39,6 +39,8 @@ export const list = query({
       .collect();
 
     const filtered = properties.filter((property) => {
+      // Exclude drafts from the list
+      if (property.isDraft) return false;
       if (args.location && !property.location.toLowerCase().includes(args.location.toLowerCase())) {
         return false;
       }
@@ -95,8 +97,34 @@ export const list = query({
   },
 });
 
+export const createDraft = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUserWithOrg(ctx);
+    const timestamp = Date.now();
+    return ctx.db.insert("properties", {
+      title: "Untitled Draft",
+      type: "house",
+      listingType: "sale",
+      price: 0,
+      currency: "USD",
+      location: "",
+      area: 0,
+      status: "available",
+      description: "",
+      images: [],
+      isDraft: true,
+      createdByUserId: user._id,
+      orgId: user.orgId,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+  },
+});
+
 export const create = mutation({
   args: {
+    draftId: v.optional(v.id("properties")),
     title: v.string(),
     type: v.union(
       v.literal("house"),
@@ -140,8 +168,23 @@ export const create = mutation({
       throw new Error("At least 2 property images are required");
     }
     const timestamp = Date.now();
+    const { draftId, ...propertyData } = args;
+
+    // If we have a draft, upgrade it to a full property
+    if (draftId) {
+      const draft = await ctx.db.get(draftId);
+      if (draft && draft.isDraft && draft.createdByUserId === user._id) {
+        await ctx.db.patch(draftId, {
+          ...propertyData,
+          isDraft: undefined,
+          updatedAt: timestamp,
+        });
+        return draftId;
+      }
+    }
+
     return ctx.db.insert("properties", {
-      ...args,
+      ...propertyData,
       createdByUserId: user._id,
       orgId: user.orgId,
       createdAt: timestamp,
@@ -216,6 +259,20 @@ export const update = mutation({
       }
     }
     await ctx.db.patch(args.propertyId, updates);
+  },
+});
+
+export const deleteDraft = mutation({
+  args: {
+    propertyId: v.id("properties"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserWithOrg(ctx);
+    const property = await ctx.db.get(args.propertyId);
+    if (!property) return;
+    if (!property.isDraft) return; // Only delete drafts
+    if (property.createdByUserId !== user._id) return;
+    await ctx.db.delete(args.propertyId);
   },
 });
 
