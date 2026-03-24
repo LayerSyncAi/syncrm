@@ -112,6 +112,18 @@ export const create = mutation({
     area: v.number(),
     bedrooms: v.optional(v.number()),
     bathrooms: v.optional(v.number()),
+    commercialType: v.optional(
+      v.union(
+        v.literal("warehouse"),
+        v.literal("office"),
+        v.literal("retail_shop"),
+        v.literal("industrial"),
+        v.literal("mixed_use"),
+        v.literal("other")
+      )
+    ),
+    zoning: v.optional(v.string()),
+    usageType: v.optional(v.string()),
     status: v.union(
       v.literal("available"),
       v.literal("under_offer"),
@@ -158,6 +170,18 @@ export const update = mutation({
     area: v.optional(v.number()),
     bedrooms: v.optional(v.number()),
     bathrooms: v.optional(v.number()),
+    commercialType: v.optional(
+      v.union(
+        v.literal("warehouse"),
+        v.literal("office"),
+        v.literal("retail_shop"),
+        v.literal("industrial"),
+        v.literal("mixed_use"),
+        v.literal("other")
+      )
+    ),
+    zoning: v.optional(v.string()),
+    usageType: v.optional(v.string()),
     status: v.optional(
       v.union(
         v.literal("available"),

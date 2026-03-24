@@ -21,6 +21,7 @@ import { CurrencyInput } from "@/components/ui/currency-input";
 import { parseCurrencyInput } from "@/lib/currency";
 import { ConfirmDeleteDialog } from "@/components/common/confirm-delete-dialog";
 import { ImageUpload, ImageItem, serializeImages, deserializeImages } from "@/components/ui/image-upload";
+import { LocationTypeahead } from "@/components/ui/location-typeahead";
 import { propertyToasts } from "@/lib/toast";
 import { DocumentManager } from "@/components/documents/document-manager";
 import { PropertyShare } from "@/components/properties/property-share";
@@ -53,6 +54,7 @@ const gridItemVariants = {
 type PropertyType = "house" | "apartment" | "land" | "commercial" | "other";
 type ListingType = "rent" | "sale";
 type PropertyStatus = "available" | "under_offer" | "let" | "sold" | "off_market";
+type CommercialType = "warehouse" | "office" | "retail_shop" | "industrial" | "mixed_use" | "other";
 
 type Property = {
   _id: Id<"properties">;
@@ -65,6 +67,9 @@ type Property = {
   area: number;
   bedrooms?: number;
   bathrooms?: number;
+  commercialType?: CommercialType;
+  zoning?: string;
+  usageType?: string;
   status: PropertyStatus;
   description: string;
   images: string[];
@@ -119,6 +124,18 @@ const formatType = (type: PropertyType): string => {
 
 const formatListingType = (type: ListingType): string => {
   return type === "rent" ? "Rent" : "Sale";
+};
+
+const formatCommercialType = (ct: CommercialType): string => {
+  const map: Record<CommercialType, string> = {
+    warehouse: "Warehouse",
+    office: "Office",
+    retail_shop: "Retail / Shop",
+    industrial: "Industrial",
+    mixed_use: "Mixed-Use",
+    other: "Other",
+  };
+  return map[ct] || ct;
 };
 
 // #38 – Card Image Parallax
@@ -238,7 +255,7 @@ export default function PropertiesPage() {
   );
 
   // Locations for dropdown
-  const locations = useQuery(api.locations.list);
+
 
   // Mutations
   const updateProperty = useMutation(api.properties.update);
@@ -303,11 +320,16 @@ export default function PropertiesPage() {
   const [area, setArea] = React.useState<FieldState>(createEmptyFieldState());
   const [bedrooms, setBedrooms] = React.useState("");
   const [bathrooms, setBathrooms] = React.useState("");
+  const [commercialType, setCommercialType] = React.useState<CommercialType | "">("");
+  const [zoning, setZoning] = React.useState("");
+  const [usageType, setUsageType] = React.useState("");
   const [status, setStatus] = React.useState<PropertyStatus>("available");
   const [description, setDescription] = React.useState("");
   const [images, setImages] = React.useState<ImageItem[]>([]);
   const [imagesError, setImagesError] = React.useState<string | undefined>();
 
+  const isCommercial = type === "commercial";
+  const isLand = type === "land";
   const isAdmin = currentUser?.role === "admin";
   // Allow editing if admin or the property creator
   const canEditProperty = isAdmin || (selectedProperty?.createdByUserId != null && selectedProperty?.createdByUserId === currentUser?._id);
@@ -397,6 +419,9 @@ export default function PropertiesPage() {
       setArea(createEmptyFieldState(selectedProperty.area.toString()));
       setBedrooms(selectedProperty.bedrooms?.toString() || "");
       setBathrooms(selectedProperty.bathrooms?.toString() || "");
+      setCommercialType(selectedProperty.commercialType || "");
+      setZoning(selectedProperty.zoning || "");
+      setUsageType(selectedProperty.usageType || "");
       setStatus(selectedProperty.status);
       setDescription(selectedProperty.description);
       setImages(deserializeImages(selectedProperty.images || []));
@@ -416,6 +441,9 @@ export default function PropertiesPage() {
     setArea(createEmptyFieldState());
     setBedrooms("");
     setBathrooms("");
+    setCommercialType("");
+    setZoning("");
+    setUsageType("");
     setStatus("available");
     setDescription("");
     setImages([]);
@@ -461,8 +489,11 @@ export default function PropertiesPage() {
         currency,
         location,
         area: parseFloat(area.value),
-        bedrooms: bedrooms ? parseInt(bedrooms) : undefined,
-        bathrooms: bathrooms ? parseInt(bathrooms) : undefined,
+        bedrooms: isCommercial || isLand ? undefined : (bedrooms ? parseInt(bedrooms) : undefined),
+        bathrooms: isCommercial || isLand ? undefined : (bathrooms ? parseInt(bathrooms) : undefined),
+        commercialType: isCommercial && commercialType ? commercialType as CommercialType : undefined,
+        zoning: isCommercial && zoning ? zoning.trim() : undefined,
+        usageType: isCommercial && usageType ? usageType.trim() : undefined,
         status,
         description: description.trim(),
         images: serializeImages(images),
@@ -818,12 +849,24 @@ export default function PropertiesPage() {
                   <div className="grid gap-2 text-sm text-text-muted">
                     <div className="flex items-center justify-between gap-2 text-text">
                       <span className="text-text-muted">Location</span>
-                      <span>{property.location}</span>
+                      <span className="truncate ml-2 text-right">{property.location}</span>
                     </div>
                     <div className="flex items-center justify-between gap-2 text-text">
-                      <span className="text-text-muted">Area</span>
+                      <span className="text-text-muted">{property.type === "commercial" ? "Floor Area" : "Area"}</span>
                       <span>{property.area} m²</span>
                     </div>
+                    {property.type === "commercial" && property.commercialType && (
+                      <div className="flex items-center justify-between gap-2 text-text">
+                        <span className="text-text-muted">Commercial Type</span>
+                        <span>{formatCommercialType(property.commercialType)}</span>
+                      </div>
+                    )}
+                    {property.type === "commercial" && property.zoning && (
+                      <div className="flex items-center justify-between gap-2 text-text">
+                        <span className="text-text-muted">Zoning</span>
+                        <span>{property.zoning}</span>
+                      </div>
+                    )}
                   </div>
                   <div className="mt-auto flex justify-end gap-1.5">
                     <Tooltip content="Add Lead">
@@ -1057,25 +1100,22 @@ export default function PropertiesPage() {
                     {locationError && (
                       <p className="text-xs text-danger">{locationError}</p>
                     )}
-                    <StaggeredDropDown
+                    <LocationTypeahead
                       value={location}
                       onChange={(val) => {
                         setLocation(val);
                         setLocationError(validateLocation(val));
                       }}
                       disabled={!canEditProperty}
-                      placeholder="Select a location..."
-                      options={[
-                        { value: "", label: "Select a location..." },
-                        ...(locations?.map((loc) => ({ value: loc.name, label: loc.name })) ?? []),
-                      ]}
+                      placeholder="Type to search a location..."
+                      error={!!locationError}
                     />
                   </div>
 
                   {/* Area */}
                   <div className="space-y-2">
                     <Label className="flex items-center gap-1">
-                      Area (m²) <span className="text-danger">*</span>
+                      {isCommercial ? "Floor Area (m²)" : "Area (m²)"} <span className="text-danger">*</span>
                     </Label>
                     {area.touched && area.error && (
                       <p className="text-xs text-danger">{area.error}</p>
@@ -1090,27 +1130,73 @@ export default function PropertiesPage() {
                     />
                   </div>
 
-                  {/* Bedrooms */}
-                  <div className="space-y-2">
-                    <Label>Bedrooms</Label>
-                    <Input
-                      type="number"
-                      value={bedrooms}
-                      onChange={(e) => setBedrooms(e.target.value)}
-                      readOnly={!canEditProperty}
-                    />
-                  </div>
+                  {/* Residential fields: Bedrooms & Bathrooms (hidden for commercial/land) */}
+                  {!isCommercial && !isLand && (
+                    <>
+                      <div className="space-y-2">
+                        <Label>Bedrooms</Label>
+                        <Input
+                          type="number"
+                          value={bedrooms}
+                          onChange={(e) => setBedrooms(e.target.value)}
+                          readOnly={!canEditProperty}
+                        />
+                      </div>
 
-                  {/* Bathrooms */}
-                  <div className="space-y-2">
-                    <Label>Bathrooms</Label>
-                    <Input
-                      type="number"
-                      value={bathrooms}
-                      onChange={(e) => setBathrooms(e.target.value)}
-                      readOnly={!canEditProperty}
-                    />
-                  </div>
+                      <div className="space-y-2">
+                        <Label>Bathrooms</Label>
+                        <Input
+                          type="number"
+                          value={bathrooms}
+                          onChange={(e) => setBathrooms(e.target.value)}
+                          readOnly={!canEditProperty}
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {/* Commercial-specific fields */}
+                  {isCommercial && (
+                    <>
+                      <div className="space-y-2">
+                        <Label>Commercial Type</Label>
+                        <StaggeredDropDown
+                          value={commercialType}
+                          onChange={(val) => setCommercialType(val as CommercialType)}
+                          disabled={!canEditProperty}
+                          placeholder="Select commercial type..."
+                          options={[
+                            { value: "warehouse", label: "Warehouse" },
+                            { value: "office", label: "Office" },
+                            { value: "retail_shop", label: "Retail / Shop" },
+                            { value: "industrial", label: "Industrial" },
+                            { value: "mixed_use", label: "Mixed-Use" },
+                            { value: "other", label: "Other" },
+                          ]}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Zoning</Label>
+                        <Input
+                          value={zoning}
+                          onChange={(e) => setZoning(e.target.value)}
+                          readOnly={!canEditProperty}
+                          placeholder="e.g., Commercial B2"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Usage Type</Label>
+                        <Input
+                          value={usageType}
+                          onChange={(e) => setUsageType(e.target.value)}
+                          readOnly={!canEditProperty}
+                          placeholder="e.g., Retail, Office, Storage"
+                        />
+                      </div>
+                    </>
+                  )}
 
                   {/* Status */}
                   <div className="space-y-2">
@@ -1266,8 +1352,11 @@ export default function PropertiesPage() {
                         <div className="flex justify-between"><span>Area</span><span className="text-text">{prop.area} m²</span></div>
                         <div className="flex justify-between"><span>Type</span><span className="text-text">{formatType(prop.type)}</span></div>
                         <div className="flex justify-between"><span>Listing</span><span className="text-text">{formatListingType(prop.listingType)}</span></div>
-                        {prop.bedrooms != null && <div className="flex justify-between"><span>Beds</span><span className="text-text">{prop.bedrooms}</span></div>}
-                        {prop.bathrooms != null && <div className="flex justify-between"><span>Baths</span><span className="text-text">{prop.bathrooms}</span></div>}
+                        {prop.type !== "commercial" && prop.type !== "land" && prop.bedrooms != null && <div className="flex justify-between"><span>Beds</span><span className="text-text">{prop.bedrooms}</span></div>}
+                        {prop.type !== "commercial" && prop.type !== "land" && prop.bathrooms != null && <div className="flex justify-between"><span>Baths</span><span className="text-text">{prop.bathrooms}</span></div>}
+                        {prop.type === "commercial" && prop.commercialType && <div className="flex justify-between"><span>Commercial Type</span><span className="text-text">{formatCommercialType(prop.commercialType)}</span></div>}
+                        {prop.type === "commercial" && prop.zoning && <div className="flex justify-between"><span>Zoning</span><span className="text-text">{prop.zoning}</span></div>}
+                        {prop.type === "commercial" && prop.usageType && <div className="flex justify-between"><span>Usage</span><span className="text-text">{prop.usageType}</span></div>}
                         <div className="flex justify-between"><span>Status</span><span className="text-text">{formatStatus(prop.status)}</span></div>
                       </div>
                       <Button
