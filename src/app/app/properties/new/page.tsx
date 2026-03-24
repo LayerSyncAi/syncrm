@@ -15,8 +15,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { parseCurrencyInput } from "@/lib/currency";
 import { ImageUpload, ImageItem, serializeImages } from "@/components/ui/image-upload";
+import { LocationTypeahead } from "@/components/ui/location-typeahead";
 import { DocumentManager } from "@/components/documents/document-manager";
 import { propertyToasts } from "@/lib/toast";
+
+type CommercialType = "warehouse" | "office" | "retail_shop" | "industrial" | "mixed_use" | "other";
 
 const newPropertyTabs = ["Details", "Sharing", "Documentation", "Gallery"] as const;
 type NewPropertyTab = (typeof newPropertyTabs)[number];
@@ -41,7 +44,6 @@ export default function NewPropertyPage() {
   const router = useRouter();
   const currentUser = useQuery(api.users.getMeRequired);
   const createProperty = useMutation(api.properties.create);
-  const locations = useQuery(api.locations.list);
 
   const [activeTab, setActiveTab] = React.useState<NewPropertyTab>("Details");
 
@@ -56,7 +58,13 @@ export default function NewPropertyPage() {
   const [area, setArea] = React.useState<FieldState>(createEmptyFieldState());
   const [bedrooms, setBedrooms] = React.useState("");
   const [bathrooms, setBathrooms] = React.useState("");
+  const [commercialType, setCommercialType] = React.useState<CommercialType | "">("");
+  const [zoning, setZoning] = React.useState("");
+  const [usageType, setUsageType] = React.useState("");
   const [status, setStatus] = React.useState<PropertyStatus>("available");
+
+  const isCommercial = type === "commercial";
+  const isLand = type === "land";
   const [description, setDescription] = React.useState("");
   const [images, setImages] = React.useState<ImageItem[]>([]);
   const [imagesError, setImagesError] = React.useState<string | undefined>();
@@ -195,8 +203,11 @@ export default function NewPropertyPage() {
         currency,
         location,
         area: parseFloat(area.value),
-        bedrooms: bedrooms ? parseInt(bedrooms) : undefined,
-        bathrooms: bathrooms ? parseInt(bathrooms) : undefined,
+        bedrooms: isCommercial || isLand ? undefined : (bedrooms ? parseInt(bedrooms) : undefined),
+        bathrooms: isCommercial || isLand ? undefined : (bathrooms ? parseInt(bathrooms) : undefined),
+        commercialType: isCommercial && commercialType ? commercialType as CommercialType : undefined,
+        zoning: isCommercial && zoning ? zoning.trim() : undefined,
+        usageType: isCommercial && usageType ? usageType.trim() : undefined,
         status,
         description: description.trim(),
         images: serializeImages(images),
@@ -362,24 +373,21 @@ export default function NewPropertyPage() {
                   {locationError && (
                     <p className="text-xs text-danger">{locationError}</p>
                   )}
-                  <StaggeredDropDown
+                  <LocationTypeahead
                     value={location}
                     onChange={(val) => {
                       setLocation(val);
                       setLocationError(validateLocation(val));
                     }}
-                    placeholder="Select a location..."
-                    options={locations?.map((loc) => ({
-                      value: loc.name,
-                      label: loc.name,
-                    })) ?? []}
+                    placeholder="Type to search a location..."
+                    error={!!locationError}
                   />
                 </div>
 
                 {/* Area */}
                 <div className="space-y-2">
                   <Label className="flex items-center gap-1">
-                    Area (m²) <span className="text-danger">*</span>
+                    {isCommercial ? "Floor Area (m²)" : "Area (m²)"} <span className="text-danger">*</span>
                   </Label>
                   {area.touched && area.error && (
                     <p className="text-xs text-danger">{area.error}</p>
@@ -394,27 +402,70 @@ export default function NewPropertyPage() {
                   />
                 </div>
 
-                {/* Bedrooms */}
-                <div className="space-y-2">
-                  <Label>Bedrooms</Label>
-                  <Input
-                    type="number"
-                    value={bedrooms}
-                    onChange={(e) => setBedrooms(e.target.value)}
-                    placeholder="e.g., 4"
-                  />
-                </div>
+                {/* Residential fields: Bedrooms & Bathrooms (hidden for commercial/land) */}
+                {!isCommercial && !isLand && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Bedrooms</Label>
+                      <Input
+                        type="number"
+                        value={bedrooms}
+                        onChange={(e) => setBedrooms(e.target.value)}
+                        placeholder="e.g., 4"
+                      />
+                    </div>
 
-                {/* Bathrooms */}
-                <div className="space-y-2">
-                  <Label>Bathrooms</Label>
-                  <Input
-                    type="number"
-                    value={bathrooms}
-                    onChange={(e) => setBathrooms(e.target.value)}
-                    placeholder="e.g., 2"
-                  />
-                </div>
+                    <div className="space-y-2">
+                      <Label>Bathrooms</Label>
+                      <Input
+                        type="number"
+                        value={bathrooms}
+                        onChange={(e) => setBathrooms(e.target.value)}
+                        placeholder="e.g., 2"
+                      />
+                    </div>
+                  </>
+                )}
+
+                {/* Commercial-specific fields */}
+                {isCommercial && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Commercial Type</Label>
+                      <StaggeredDropDown
+                        value={commercialType}
+                        onChange={(val) => setCommercialType(val as CommercialType)}
+                        placeholder="Select commercial type..."
+                        options={[
+                          { value: "warehouse", label: "Warehouse" },
+                          { value: "office", label: "Office" },
+                          { value: "retail_shop", label: "Retail / Shop" },
+                          { value: "industrial", label: "Industrial" },
+                          { value: "mixed_use", label: "Mixed-Use" },
+                          { value: "other", label: "Other" },
+                        ]}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Zoning</Label>
+                      <Input
+                        value={zoning}
+                        onChange={(e) => setZoning(e.target.value)}
+                        placeholder="e.g., Commercial B2"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Usage Type</Label>
+                      <Input
+                        value={usageType}
+                        onChange={(e) => setUsageType(e.target.value)}
+                        placeholder="e.g., Retail, Office, Storage"
+                      />
+                    </div>
+                  </>
+                )}
 
                 {/* Status */}
                 <div className="space-y-2">
