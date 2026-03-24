@@ -96,12 +96,15 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
   // View property modal state
   const [viewPropertyId, setViewPropertyId] = useState<string | null>(null);
 
-  // Queries
-  const leadData = useQuery(api.leads.getById, { leadId });
+  // Deletion state — declared before queries so we can skip them after delete
+  const [hasDeleted, setHasDeleted] = useState(false);
+
+  // Queries — skip all lead-dependent queries after deletion to avoid errors
+  const leadData = useQuery(api.leads.getById, hasDeleted ? "skip" : { leadId });
   const stages = useQuery(api.stages.list);
-  const activities = useQuery(api.activities.listForLead, { leadId });
-  const matches = useQuery(api.matches.listForLead, { leadId });
-  const scoreBreakdown = useQuery(api.leadScoring.getScoreBreakdown, { leadId });
+  const activities = useQuery(api.activities.listForLead, hasDeleted ? "skip" : { leadId });
+  const matches = useQuery(api.matches.listForLead, hasDeleted ? "skip" : { leadId });
+  const scoreBreakdown = useQuery(api.leadScoring.getScoreBreakdown, hasDeleted ? "skip" : { leadId });
   const properties = useQuery(api.properties.list, (drawerOpen || viewPropertyId) ? {} : "skip");
   // Support both paginated response shape and legacy array shape
   const propertiesArray: Array<{ _id: Id<"properties">; title: string; listingType: string; location: string; [k: string]: unknown }> =
@@ -323,8 +326,6 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
     }
   }, [siblingLeadsToClose, bulkCloseAsLost]);
 
-  const [hasDeleted, setHasDeleted] = useState(false);
-
   const handleDeleteLead = useCallback(async () => {
     setIsDeleting(true);
     try {
@@ -340,6 +341,12 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
     }
   }, [deleteLeadMutation, leadId, router]);
 
+  // Redirect immediately after deletion
+  if (hasDeleted) {
+    router.push("/app/leads");
+    return null;
+  }
+
   // Loading and error states
   if (authLoading || leadData === undefined) {
     return (
@@ -352,10 +359,6 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
   if (!user) return null;
 
   if (leadData === null) {
-    if (hasDeleted) {
-      router.push("/app/leads");
-      return null;
-    }
     return (
       <div className="text-center py-12">
         <p className="text-text-muted">Lead not found or you don&apos;t have access.</p>

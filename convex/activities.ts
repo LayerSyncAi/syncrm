@@ -117,7 +117,7 @@ export const listForLead = query({
   handler: async (ctx, args) => {
     const user = await getCurrentUserWithOrg(ctx);
     const lead = await canAccessLead(ctx, args.leadId, user._id, user.role === "admin", user.orgId);
-    if (!lead) throw new Error("Lead not found");
+    if (!lead) return [];
     const activities = await ctx.db
       .query("activities")
       .withIndex("by_lead", (q) => q.eq("leadId", args.leadId))
