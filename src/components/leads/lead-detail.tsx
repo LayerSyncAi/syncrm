@@ -323,11 +323,14 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
     }
   }, [siblingLeadsToClose, bulkCloseAsLost]);
 
+  const [hasDeleted, setHasDeleted] = useState(false);
+
   const handleDeleteLead = useCallback(async () => {
     setIsDeleting(true);
     try {
       await deleteLeadMutation({ leadId });
       leadToasts.stageMoved("Lead deleted");
+      setHasDeleted(true);
       router.push("/app/leads");
     } catch (error) {
       console.error("Failed to delete lead:", error);
@@ -349,6 +352,10 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
   if (!user) return null;
 
   if (leadData === null) {
+    if (hasDeleted) {
+      router.push("/app/leads");
+      return null;
+    }
     return (
       <div className="text-center py-12">
         <p className="text-text-muted">Lead not found or you don&apos;t have access.</p>
