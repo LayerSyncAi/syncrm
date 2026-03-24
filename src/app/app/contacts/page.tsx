@@ -74,6 +74,8 @@ const ContactTableRow = React.memo(function ContactTableRow({
   return (
     <motion.tr
       variants={rowVariants}
+      initial="hidden"
+      animate="show"
       className="group h-11 cursor-pointer border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)]"
     >
       <TableCell>
