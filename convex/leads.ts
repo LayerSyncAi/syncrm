@@ -69,8 +69,8 @@ export const create = mutation({
     return ctx.db.insert("leads", {
       contactId: args.contactId,
       fullName: contact.name,
-      phone: contact.phone,
-      normalizedPhone: contact.normalizedPhone,
+      phone: contact.phone || undefined,
+      normalizedPhone: contact.normalizedPhone || undefined,
       email: contact.email,
       source: args.source,
       interestType: args.interestType,
@@ -166,7 +166,7 @@ export const list = query({
         // searchIndex handles fullName; also allow phone match
         if (
           !lead.fullName.toLowerCase().includes(search) &&
-          !lead.phone.includes(search)
+          !(lead.phone && lead.phone.includes(search))
         ) {
           return false;
         }
@@ -337,6 +337,19 @@ export const moveStage = mutation({
       throw new Error("Stage not found");
     }
     assertOrgAccess(stage, user.orgId);
+
+    // Enforce contact info when moving beyond the initial (order 1) stage
+    const currentStage = await ctx.db.get(lead.stageId) as { order: number } | null;
+    const targetStage = stage as unknown as { order: number };
+    const isLeavingInitialStage = currentStage && currentStage.order === 1 && targetStage.order > 1;
+    if (isLeavingInitialStage) {
+      const contact = await ctx.db.get(lead.contactId) as { phone?: string; email?: string } | null;
+      if (contact && !contact.phone && !contact.email) {
+        throw new Error(
+          "MISSING_CONTACT_INFO: For the sake of data consistency, you can't move a lead further down the pipeline without any contact information. Please add a phone number or email to the contact first."
+        );
+      }
+    }
 
     const now = Date.now();
     const updated: Record<string, unknown> = {

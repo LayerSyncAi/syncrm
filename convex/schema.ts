@@ -64,8 +64,8 @@ export default defineSchema({
     contactId: v.id("contacts"),
     // Denormalized from contact for quick access
     fullName: v.string(),
-    phone: v.string(),
-    normalizedPhone: v.string(),
+    phone: v.optional(v.string()),
+    normalizedPhone: v.optional(v.string()),
     email: v.optional(v.string()),
     source: v.union(
       v.literal("walk_in"),
@@ -291,7 +291,7 @@ export default defineSchema({
     .index("by_lead", ["leadId"])
     .index("by_org", ["orgId"]),
   activities: defineTable({
-    leadId: v.id("leads"),
+    leadId: v.optional(v.id("leads")),
     type: v.union(
       v.literal("call"),
       v.literal("whatsapp"),
@@ -377,8 +377,8 @@ export default defineSchema({
     .index("by_key", ["key"]),
   contacts: defineTable({
     name: v.string(),
-    phone: v.string(),
-    normalizedPhone: v.string(),
+    phone: v.optional(v.string()),
+    normalizedPhone: v.optional(v.string()),
     email: v.optional(v.string()),
     company: v.optional(v.string()),
     notes: v.optional(v.string()),

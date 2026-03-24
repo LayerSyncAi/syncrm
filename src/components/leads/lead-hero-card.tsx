@@ -102,7 +102,7 @@ export const LeadHeroCard = React.memo(function LeadHeroCard({
             </div>
             <div className="flex flex-wrap gap-4 text-sm text-text-muted">
               <span>Owner: {owner?.fullName || owner?.name || owner?.email || "Unassigned"}</span>
-              <span>Phone: {lead.phone}</span>
+              {lead.phone && <span>Phone: {lead.phone}</span>}
               {lead.email && <span>Email: {lead.email}</span>}
               <span>Created: {formatDate(lead.createdAt)}</span>
             </div>

@@ -19,6 +19,9 @@ import { useRequireAuth } from "@/hooks/useAuth";
 import { DueDateRing } from "@/components/ui/due-date-ring";
 import { Modal } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { FlipCalendar } from "@/components/ui/flip-calendar";
 import { activityToasts } from "@/lib/toast";
 
 function AnimatedCounter({ value }: { value: number }) {
@@ -115,7 +118,7 @@ function CelebrationCheck() {
 
 interface TaskActivity {
   _id: Id<"activities">;
-  leadId: Id<"leads">;
+  leadId?: Id<"leads">;
   type: "call" | "whatsapp" | "email" | "meeting" | "viewing" | "note";
   title: string;
   description: string;
@@ -127,7 +130,7 @@ interface TaskActivity {
   createdByUserId: Id<"users">;
   createdAt: number;
   updatedAt?: number;
-  lead: { _id: Id<"leads">; fullName: string; phone: string } | null;
+  lead: { _id: Id<"leads">; fullName: string; phone?: string } | null;
   assignedTo: { _id: Id<"users">; fullName?: string; name?: string; email?: string } | null;
 }
 
@@ -144,6 +147,43 @@ export default function TasksPage() {
   const [isDeletingTask, setIsDeletingTask] = useState(false);
 
   const removeTask = useMutation(api.activities.remove);
+  const createStandaloneTask = useMutation(api.activities.createStandalone);
+
+  // New task creation state
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newTaskType, setNewTaskType] = useState<"call" | "whatsapp" | "email" | "meeting" | "viewing" | "note">("meeting");
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newTaskDescription, setNewTaskDescription] = useState("");
+  const [newTaskScheduledAt, setNewTaskScheduledAt] = useState<Date | null>(null);
+  const [isCreatingTask, setIsCreatingTask] = useState(false);
+
+  const resetCreateForm = useCallback(() => {
+    setNewTaskTitle("");
+    setNewTaskDescription("");
+    setNewTaskScheduledAt(null);
+    setNewTaskType("meeting");
+  }, []);
+
+  const handleCreateTask = useCallback(async () => {
+    if (!newTaskTitle.trim()) return;
+    setIsCreatingTask(true);
+    try {
+      await createStandaloneTask({
+        type: newTaskType,
+        title: newTaskTitle.trim(),
+        description: newTaskDescription.trim(),
+        scheduledAt: newTaskScheduledAt ? newTaskScheduledAt.getTime() : undefined,
+      });
+      activityToasts.created(newTaskTitle.trim());
+      setShowCreateModal(false);
+      resetCreateForm();
+    } catch (error) {
+      console.error("Failed to create task:", error);
+      activityToasts.createFailed(error instanceof Error ? error.message : undefined);
+    } finally {
+      setIsCreatingTask(false);
+    }
+  }, [createStandaloneTask, newTaskType, newTaskTitle, newTaskDescription, newTaskScheduledAt, resetCreateForm]);
 
   // Reset to first page when filters change
   useEffect(() => {
@@ -239,11 +279,33 @@ export default function TasksPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold">Tasks</h2>
-        <p className="text-sm text-text-muted">
-          Manage and track your activities and tasks.
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-semibold">Tasks</h2>
+          <p className="text-sm text-text-muted">
+            Manage and track your activities and tasks.
+          </p>
+        </div>
+        <button
+          onClick={() => setShowCreateModal(true)}
+          className="group flex h-10 items-center gap-2 rounded-full bg-border pl-3 pr-4 transition-all duration-300 ease-in-out hover:bg-primary hover:pl-2 hover:text-white active:bg-primary-600"
+        >
+          <span className="flex items-center justify-center overflow-hidden rounded-full bg-primary p-1 text-white transition-all duration-300 group-hover:bg-white">
+            <svg
+              viewBox="0 0 16 16"
+              fill="none"
+              className="h-0 w-0 transition-all duration-300 group-hover:h-4 group-hover:w-4 group-hover:text-primary"
+            >
+              <path
+                d="M8 3v10M3 8h10"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </svg>
+          </span>
+          <span className="text-sm font-medium">New Task</span>
+        </button>
       </div>
 
       <motion.div
@@ -335,6 +397,8 @@ export default function TasksPage() {
               <motion.tr
                 key={task._id}
                 variants={rowVariants}
+                initial="hidden"
+                animate="show"
                 layout
                 className={`group h-11 border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)] ${
                   overdue ? "overdue-pulse" : ""
@@ -372,10 +436,10 @@ export default function TasksPage() {
                   {task.lead ? (
                     <div>
                       <p className="font-medium">{task.lead.fullName}</p>
-                      <p className="text-xs text-text-muted">{task.lead.phone}</p>
+                      {task.lead.phone && <p className="text-xs text-text-muted">{task.lead.phone}</p>}
                     </div>
                   ) : (
-                    <span className="text-text-muted">Unknown</span>
+                    <Badge variant="secondary" className="text-xs">Standalone</Badge>
                   )}
                 </TableCell>
                 <TableCell>
@@ -463,6 +527,77 @@ export default function TasksPage() {
           </Suspense>
         )}
       </AnimatePresence>
+
+      {/* Create standalone task modal */}
+      <Modal
+        open={showCreateModal}
+        title="New Task"
+        description="Create a standalone task not linked to any lead."
+        onClose={() => { setShowCreateModal(false); resetCreateForm(); }}
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => { setShowCreateModal(false); resetCreateForm(); }} disabled={isCreatingTask}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateTask} disabled={isCreatingTask || !newTaskTitle.trim()}>
+              {isCreatingTask ? "Creating..." : "Create Task"}
+            </Button>
+          </div>
+        }
+      >
+        <motion.div
+          className="space-y-4"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 24, delay: 0.1 }}
+        >
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Type</Label>
+              <StaggeredDropDown
+                value={newTaskType}
+                onChange={(val) => setNewTaskType(val as typeof newTaskType)}
+                options={[
+                  { value: "call", label: "Call" },
+                  { value: "whatsapp", label: "WhatsApp" },
+                  { value: "email", label: "Email" },
+                  { value: "meeting", label: "Meeting" },
+                  { value: "viewing", label: "Viewing" },
+                  { value: "note", label: "Note" },
+                ]}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1">
+                Title <span className="text-danger">*</span>
+              </Label>
+              <Input
+                placeholder="e.g. Site visit, Team meeting, Follow-up call"
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Schedule</Label>
+            <FlipCalendar
+              value={newTaskScheduledAt}
+              onChange={setNewTaskScheduledAt}
+              showTime
+              placeholder="Schedule date/time (optional)"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Description</Label>
+            <Textarea
+              value={newTaskDescription}
+              onChange={(e) => setNewTaskDescription(e.target.value)}
+              placeholder="Add details about this task..."
+              rows={3}
+            />
+          </div>
+        </motion.div>
+      </Modal>
 
       <Modal
         open={deletingTask !== null}

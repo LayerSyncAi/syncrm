@@ -350,22 +350,22 @@ export const processPreReminders = internalAction({
       );
       if (alreadySent) continue;
 
-      const [user, lead] = await Promise.all([
-        ctx.runQuery(internal.activityReminders.getUserById, {
-          userId: activity.assignedToUserId,
-        }),
-        ctx.runQuery(internal.activityReminders.getLeadById, {
-          leadId: activity.leadId,
-        }),
-      ]);
+      const user = await ctx.runQuery(internal.activityReminders.getUserById, {
+        userId: activity.assignedToUserId,
+      });
+      const lead = activity.leadId
+        ? await ctx.runQuery(internal.activityReminders.getLeadById, { leadId: activity.leadId })
+        : null;
 
       if (!user || !user.email || !user.isActive) continue;
 
       const timezone = user.timezone || "UTC";
       const userName = user.fullName || user.name || "there";
       const timeStr = formatTime(activity.scheduledAt!, timezone);
-      const leadName = lead?.fullName || "Unknown";
+      const leadName = lead?.fullName || null;
       const typeLabel = activityTypeLabel(activity.type);
+      const leadLine = leadName ? `<p style="margin: 4px 0;"><strong>Lead:</strong> ${leadName}</p>` : "";
+      const leadText = leadName ? ` Lead: ${leadName}.` : "";
 
       await sendEmail({
         to: user.email,
@@ -379,12 +379,12 @@ export const processPreReminders = internalAction({
               <p style="margin: 4px 0;"><strong>Activity:</strong> ${activity.title}</p>
               <p style="margin: 4px 0;"><strong>Type:</strong> ${typeLabel}</p>
               <p style="margin: 4px 0;"><strong>Scheduled:</strong> ${timeStr}</p>
-              <p style="margin: 4px 0;"><strong>Lead:</strong> ${leadName}</p>
+              ${leadLine}
             </div>
             <p style="color: #666; font-size: 14px;">Log in to SynCRM to view full details and prepare for your activity.</p>
           </div>
         `,
-        text: `Hi ${userName}, please note your ${typeLabel.toLowerCase()} "${activity.title}" is meant to start in an hour at ${timeStr}. Lead: ${leadName}.`,
+        text: `Hi ${userName}, please note your ${typeLabel.toLowerCase()} "${activity.title}" is meant to start in an hour at ${timeStr}.${leadText}`,
       });
 
       await ctx.runMutation(internal.activityReminders.recordReminder, {
@@ -413,22 +413,22 @@ export const processOverdueReminders = internalAction({
       );
       if (alreadySent) continue;
 
-      const [user, lead] = await Promise.all([
-        ctx.runQuery(internal.activityReminders.getUserById, {
-          userId: activity.assignedToUserId,
-        }),
-        ctx.runQuery(internal.activityReminders.getLeadById, {
-          leadId: activity.leadId,
-        }),
-      ]);
+      const user = await ctx.runQuery(internal.activityReminders.getUserById, {
+        userId: activity.assignedToUserId,
+      });
+      const lead = activity.leadId
+        ? await ctx.runQuery(internal.activityReminders.getLeadById, { leadId: activity.leadId })
+        : null;
 
       if (!user || !user.email || !user.isActive) continue;
 
       const timezone = user.timezone || "UTC";
       const userName = user.fullName || user.name || "there";
       const timeStr = formatTime(activity.scheduledAt!, timezone);
-      const leadName = lead?.fullName || "Unknown";
+      const leadName = lead?.fullName || null;
       const typeLabel = activityTypeLabel(activity.type);
+      const leadLine = leadName ? `<p style="margin: 4px 0;"><strong>Lead:</strong> ${leadName}</p>` : "";
+      const leadText = leadName ? ` Lead: ${leadName}.` : "";
 
       await sendEmail({
         to: user.email,
@@ -442,7 +442,7 @@ export const processOverdueReminders = internalAction({
               <p style="margin: 4px 0;"><strong>Activity:</strong> ${activity.title}</p>
               <p style="margin: 4px 0;"><strong>Type:</strong> ${typeLabel}</p>
               <p style="margin: 4px 0;"><strong>Was scheduled for:</strong> ${timeStr}</p>
-              <p style="margin: 4px 0;"><strong>Lead:</strong> ${leadName}</p>
+              ${leadLine}
               <p style="margin: 4px 0;"><strong>Status:</strong> <span style="color: #dc2626;">Still open</span></p>
             </div>
             <p>Please check in and either:</p>
@@ -453,7 +453,7 @@ export const processOverdueReminders = internalAction({
             <p style="color: #666; font-size: 14px;">Log in to SynCRM to update this activity.</p>
           </div>
         `,
-        text: `Hi ${userName}, your ${typeLabel.toLowerCase()} "${activity.title}" was scheduled for ${timeStr} and is still open. Lead: ${leadName}. Please log in to SynCRM to update this activity.`,
+        text: `Hi ${userName}, your ${typeLabel.toLowerCase()} "${activity.title}" was scheduled for ${timeStr} and is still open.${leadText} Please log in to SynCRM to update this activity.`,
       });
 
       await ctx.runMutation(internal.activityReminders.recordReminder, {
@@ -516,15 +516,15 @@ export const processDailyDigests = internalAction({
         (a, b) => (a.scheduledAt || 0) - (b.scheduledAt || 0)
       );
 
-      // Batch-fetch leads
-      const leadIds = [...new Set(sorted.map((a) => a.leadId))];
-      const leads: Record<string, { fullName: string; phone: string }> = {};
+      // Batch-fetch leads (only for lead-linked activities)
+      const leadIds = [...new Set(sorted.map((a) => a.leadId).filter(Boolean))];
+      const leads: Record<string, { fullName: string; phone?: string }> = {};
       for (const leadId of leadIds) {
         const lead = await ctx.runQuery(
           internal.activityReminders.getLeadById,
-          { leadId }
+          { leadId: leadId! }
         );
-        if (lead) leads[leadId] = lead;
+        if (lead) leads[leadId as string] = lead;
       }
 
       const userName = user.fullName || user.name || "there";
@@ -533,8 +533,8 @@ export const processDailyDigests = internalAction({
 
       const activityRows = sorted
         .map((a) => {
-          const lead = leads[a.leadId];
-          const leadName = lead?.fullName || "Unknown";
+          const lead = a.leadId ? leads[a.leadId as string] : null;
+          const leadName = lead?.fullName || (a.leadId ? "Unknown" : "Standalone");
           const leadPhone = lead?.phone || "";
           const timeStr = a.scheduledAt
             ? formatTime(a.scheduledAt, timezone)
@@ -594,11 +594,12 @@ export const processDailyDigests = internalAction({
         `,
         text: `Good morning ${userName}, here's your schedule for ${dateLabel}: ${sorted
           .map((a) => {
-            const lead = leads[a.leadId];
+            const lead = a.leadId ? leads[a.leadId as string] : null;
             const timeStr = a.scheduledAt
               ? formatTime(a.scheduledAt, timezone)
               : "No time";
-            return `${timeStr} - ${activityTypeLabel(a.type)}: ${a.title} (Lead: ${lead?.fullName || "Unknown"})`;
+            const ctx = lead ? `Lead: ${lead.fullName}` : "Standalone task";
+            return `${timeStr} - ${activityTypeLabel(a.type)}: ${a.title} (${ctx})`;
           })
           .join("; ")}`,
       });

@@ -81,6 +81,9 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
   const [isClosingSiblings, setIsClosingSiblings] = useState(false);
   const [siblingCloseConfirmText, setSiblingCloseConfirmText] = useState("");
 
+  // Contact info warning state
+  const [showContactInfoWarning, setShowContactInfoWarning] = useState(false);
+
   // Delete lead state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
@@ -93,12 +96,15 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
   // View property modal state
   const [viewPropertyId, setViewPropertyId] = useState<string | null>(null);
 
-  // Queries
-  const leadData = useQuery(api.leads.getById, { leadId });
+  // Deletion state — declared before queries so we can skip them after delete
+  const [hasDeleted, setHasDeleted] = useState(false);
+
+  // Queries — skip all lead-dependent queries after deletion to avoid errors
+  const leadData = useQuery(api.leads.getById, hasDeleted ? "skip" : { leadId });
   const stages = useQuery(api.stages.list);
-  const activities = useQuery(api.activities.listForLead, { leadId });
-  const matches = useQuery(api.matches.listForLead, { leadId });
-  const scoreBreakdown = useQuery(api.leadScoring.getScoreBreakdown, { leadId });
+  const activities = useQuery(api.activities.listForLead, hasDeleted ? "skip" : { leadId });
+  const matches = useQuery(api.matches.listForLead, hasDeleted ? "skip" : { leadId });
+  const scoreBreakdown = useQuery(api.leadScoring.getScoreBreakdown, hasDeleted ? "skip" : { leadId });
   const properties = useQuery(api.properties.list, (drawerOpen || viewPropertyId) ? {} : "skip");
   // Support both paginated response shape and legacy array shape
   const propertiesArray: Array<{ _id: Id<"properties">; title: string; listingType: string; location: string; [k: string]: unknown }> =
@@ -163,7 +169,12 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
       }
     } catch (error) {
       console.error("Failed to update stage:", error);
-      leadToasts.stageMoveFailed(error instanceof Error ? error.message : undefined);
+      const msg = error instanceof Error ? error.message : "";
+      if (msg.includes("MISSING_CONTACT_INFO")) {
+        setShowContactInfoWarning(true);
+      } else {
+        leadToasts.stageMoveFailed(msg || undefined);
+      }
     }
   }, [stages, moveStage, leadId, closeReason, dealValue, dealCurrency]);
 
@@ -320,6 +331,7 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
     try {
       await deleteLeadMutation({ leadId });
       leadToasts.stageMoved("Lead deleted");
+      setHasDeleted(true);
       router.push("/app/leads");
     } catch (error) {
       console.error("Failed to delete lead:", error);
@@ -328,6 +340,12 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
       setIsDeleting(false);
     }
   }, [deleteLeadMutation, leadId, router]);
+
+  // Redirect immediately after deletion
+  if (hasDeleted) {
+    router.push("/app/leads");
+    return null;
+  }
 
   // Loading and error states
   if (authLoading || leadData === undefined) {
@@ -593,7 +611,7 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
         >
           {[
             { label: "Name", value: lead.fullName },
-            { label: "Phone", value: lead.phone },
+            { label: "Phone", value: lead.phone || "Not provided" },
             { label: "Email", value: lead.email || "Not provided" },
             { label: "Owner", value: owner?.fullName || owner?.name || owner?.email || "Unassigned" },
             { label: "Interest", value: lead.interestType === "buy" ? "Buying" : "Renting" },
@@ -730,6 +748,48 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
             })
           )}
         </div>
+      </Modal>
+
+      {/* Contact info warning modal */}
+      <Modal
+        open={showContactInfoWarning}
+        title="Contact Information Required"
+        description=""
+        onClose={() => setShowContactInfoWarning(false)}
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setShowContactInfoWarning(false)}>
+              I&apos;ll do it later
+            </Button>
+            <Button onClick={() => { setShowContactInfoWarning(false); window.location.href = "/app/contacts"; }}>
+              Go to Contacts
+            </Button>
+          </div>
+        }
+      >
+        <motion.div
+          className="space-y-4"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ type: "spring", stiffness: 300, damping: 24 }}
+        >
+          <div className="rounded-xl border-2 border-warning/40 bg-warning/10 p-6 text-center">
+            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-warning/20">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-7 w-7 text-warning">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-bold text-text mb-2">Missing Contact Information</h3>
+            <p className="text-sm text-text-muted leading-relaxed">
+              For the sake of data consistency, you can&apos;t move a lead further down the pipeline without any contact information.
+            </p>
+            <p className="text-sm text-text-muted mt-2 leading-relaxed">
+              Please add a <span className="font-semibold text-text">phone number</span> or <span className="font-semibold text-text">email address</span> to the contact before moving this lead.
+            </p>
+          </div>
+        </motion.div>
       </Modal>
 
       {/* Delete lead confirmation modal */}

@@ -69,12 +69,55 @@ export const createForLead = mutation({
   },
 });
 
+export const createStandalone = mutation({
+  args: {
+    type: v.union(
+      v.literal("call"),
+      v.literal("whatsapp"),
+      v.literal("email"),
+      v.literal("meeting"),
+      v.literal("viewing"),
+      v.literal("note")
+    ),
+    title: v.string(),
+    description: v.string(),
+    scheduledAt: v.optional(v.number()),
+    assignedToUserId: v.optional(v.id("users")),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserWithOrg(ctx);
+    const assignedTo = args.assignedToUserId ?? user._id;
+    const now = Date.now();
+
+    const nextReminderAt = args.scheduledAt
+      ? args.scheduledAt - 60 * 60 * 1000
+      : undefined;
+
+    return ctx.db.insert("activities", {
+      leadId: undefined,
+      type: args.type,
+      title: args.title,
+      description: args.description,
+      scheduledAt: args.scheduledAt,
+      completedAt: undefined,
+      status: "todo",
+      completionNotes: undefined,
+      assignedToUserId: assignedTo,
+      createdByUserId: user._id,
+      nextReminderAt,
+      orgId: user.orgId,
+      createdAt: now,
+      updatedAt: now,
+    });
+  },
+});
+
 export const listForLead = query({
   args: { leadId: v.id("leads") },
   handler: async (ctx, args) => {
     const user = await getCurrentUserWithOrg(ctx);
     const lead = await canAccessLead(ctx, args.leadId, user._id, user.role === "admin", user.orgId);
-    if (!lead) throw new Error("Lead not found");
+    if (!lead) return [];
     const activities = await ctx.db
       .query("activities")
       .withIndex("by_lead", (q) => q.eq("leadId", args.leadId))
@@ -143,7 +186,7 @@ export const listAllTasks = query({
     }
 
     // Batch fetch leads and users
-    const leadIds = [...new Set(filtered.map(a => a.leadId))];
+    const leadIds = [...new Set(filtered.map(a => a.leadId).filter(Boolean))] as Id<"leads">[];
     const userIds = [...new Set(filtered.map(a => a.assignedToUserId))];
 
     const [leadDocs, userDocs] = await Promise.all([
@@ -155,7 +198,7 @@ export const listAllTasks = query({
     const userMap = new Map(userDocs.filter(Boolean).map(u => [u!._id, u!]));
 
     const enrichedActivities = filtered.map((activity) => {
-      const lead = leadMap.get(activity.leadId);
+      const lead = activity.leadId ? leadMap.get(activity.leadId) : null;
       const assignedTo = userMap.get(activity.assignedToUserId);
       return {
         ...activity,
@@ -201,19 +244,24 @@ export const getById = query({
     if (activity.orgId && activity.orgId !== user.orgId) return null;
 
     const [lead, assignedTo, createdBy] = await Promise.all([
-      ctx.db.get(activity.leadId),
+      activity.leadId ? ctx.db.get(activity.leadId) : null,
       ctx.db.get(activity.assignedToUserId),
       ctx.db.get(activity.createdByUserId),
     ]);
 
-    if (!lead) return null;
-    if (user.role !== "admin" && lead.ownerUserId !== user._id && activity.assignedToUserId !== user._id) {
+    // For lead-linked tasks, check access
+    if (activity.leadId && !lead) return null;
+    if (lead && user.role !== "admin" && lead.ownerUserId !== user._id && activity.assignedToUserId !== user._id) {
+      return null;
+    }
+    // For standalone tasks, check assignment
+    if (!activity.leadId && user.role !== "admin" && activity.assignedToUserId !== user._id) {
       return null;
     }
 
     return {
       ...activity,
-      lead: { _id: lead._id, fullName: lead.fullName, phone: lead.phone, email: lead.email },
+      lead: lead ? { _id: lead._id, fullName: lead.fullName, phone: lead.phone, email: lead.email } : null,
       assignedTo: assignedTo ? {
         _id: assignedTo._id,
         fullName: assignedTo.fullName,
@@ -296,11 +344,13 @@ export const markComplete = mutation({
       updatedAt: now,
     });
 
-    // Update denormalized lastActivityAt on lead
-    await ctx.db.patch(activity.leadId, {
-      lastActivityAt: now,
-      updatedAt: now,
-    });
+    // Update denormalized lastActivityAt on lead (if linked)
+    if (activity.leadId) {
+      await ctx.db.patch(activity.leadId, {
+        lastActivityAt: now,
+        updatedAt: now,
+      });
+    }
   },
 });
 
@@ -339,13 +389,15 @@ export const remove = mutation({
     }
     await ctx.db.delete(args.activityId);
 
-    // Decrement denormalized activityCount on lead
-    const lead = await ctx.db.get(activity.leadId);
-    if (lead) {
-      await ctx.db.patch(activity.leadId, {
-        activityCount: Math.max(0, (lead.activityCount ?? 1) - 1),
-        updatedAt: Date.now(),
-      });
+    // Decrement denormalized activityCount on lead (if linked)
+    if (activity.leadId) {
+      const lead = await ctx.db.get(activity.leadId);
+      if (lead) {
+        await ctx.db.patch(activity.leadId, {
+          activityCount: Math.max(0, (lead.activityCount ?? 1) - 1),
+          updatedAt: Date.now(),
+        });
+      }
     }
   },
 });

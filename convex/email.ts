@@ -1,7 +1,11 @@
 /**
- * Email sender interface - placeholder implementation
- * Swap this out for Resend, SendGrid, or any other provider
+ * Email sender with Resend integration.
+ * Set the RESEND_API_KEY environment variable to enable real email delivery.
+ * Set EMAIL_FROM to customize the sender address (default: "SynCRM <noreply@syncrm.app>").
+ * Without an API key, emails are logged to the console for development.
  */
+
+import { Resend } from "resend";
 
 export interface EmailSendResult {
   success: boolean;
@@ -16,44 +20,44 @@ export interface EmailOptions {
   text?: string;
 }
 
-/**
- * Placeholder email sender - logs to console in development
- * Replace this implementation with your actual email provider:
- *
- * For Resend:
- * ```
- * import { Resend } from 'resend';
- * const resend = new Resend(process.env.RESEND_API_KEY);
- * ```
- *
- * For SendGrid:
- * ```
- * import sgMail from '@sendgrid/mail';
- * sgMail.setApiKey(process.env.SENDGRID_API_KEY);
- * ```
- */
+const resendApiKey = process.env.RESEND_API_KEY;
+const emailFrom = process.env.EMAIL_FROM || "SynCRM <noreply@syncrm.app>";
+
 export async function sendEmail(options: EmailOptions): Promise<EmailSendResult> {
-  // Log the email in development (placeholder)
-  console.log("=== EMAIL SENT (placeholder) ===");
-  console.log("To:", options.to);
-  console.log("Subject:", options.subject);
-  console.log("HTML:", options.html);
-  console.log("================================");
+  if (!resendApiKey) {
+    // Development fallback: log to console
+    console.log("=== EMAIL (no RESEND_API_KEY configured) ===");
+    console.log("To:", options.to);
+    console.log("Subject:", options.subject);
+    console.log("Text:", options.text || "(html only)");
+    console.log("============================================");
+    return {
+      success: true,
+      messageId: `dev-${Date.now()}`,
+    };
+  }
 
-  // In production, replace with actual email sending logic:
-  // Example with Resend:
-  // const { data, error } = await resend.emails.send({
-  //   from: 'SynCRM <noreply@yourdomain.com>',
-  //   to: options.to,
-  //   subject: options.subject,
-  //   html: options.html,
-  // });
-  // return error ? { success: false, error: error.message } : { success: true, messageId: data.id };
+  try {
+    const resend = new Resend(resendApiKey);
+    const { data, error } = await resend.emails.send({
+      from: emailFrom,
+      to: options.to,
+      subject: options.subject,
+      html: options.html,
+      text: options.text,
+    });
 
-  return {
-    success: true,
-    messageId: `placeholder-${Date.now()}`,
-  };
+    if (error) {
+      console.error("Resend email error:", error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, messageId: data?.id };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown email error";
+    console.error("Email send failed:", message);
+    return { success: false, error: message };
+  }
 }
 
 /**
