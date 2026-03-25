@@ -237,8 +237,10 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
         >
           SynCRM
         </Link>
-        <div className="w-full max-w-lg my-auto px-8 pb-10 md:px-14 lg:px-20">
-          {children}
+        <div className="flex flex-1 items-center justify-center px-8 pb-10 md:px-14 lg:px-20">
+          <div className="w-full max-w-lg">
+            {children}
+          </div>
         </div>
       </div>
 
