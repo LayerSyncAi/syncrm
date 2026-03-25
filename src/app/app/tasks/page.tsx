@@ -400,9 +400,10 @@ export default function TasksPage() {
                 initial="hidden"
                 animate="show"
                 layout
-                className={`group h-11 border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)] ${
+                className={`group h-11 cursor-pointer border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)] ${
                   overdue ? "overdue-pulse" : ""
                 } ${celebrating ? "celebration-glow" : ""}`}
+                onClick={() => handleViewTask(task as TaskActivity)}
               >
                 <TableCell className="whitespace-nowrap">
                   <div className="flex items-center gap-2">
@@ -468,7 +469,7 @@ export default function TasksPage() {
                         variant="secondary"
                         className="action-btn h-9 w-9 p-0 md:opacity-0 md:translate-x-3 md:scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
                         style={{ transitionDelay: "0ms" }}
-                        onClick={() => handleViewTask(task as TaskActivity)}
+                        onClick={(e) => { e.stopPropagation(); handleViewTask(task as TaskActivity); }}
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
@@ -491,7 +492,7 @@ export default function TasksPage() {
                         variant="secondary"
                         className="action-btn h-9 w-9 p-0 md:opacity-0 md:translate-x-3 md:scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out text-danger hover:bg-danger/10"
                         style={{ transitionDelay: "100ms" }}
-                        onClick={() => handleOpenDeleteModal(task as TaskActivity)}
+                        onClick={(e) => { e.stopPropagation(); handleOpenDeleteModal(task as TaskActivity); }}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
