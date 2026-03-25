@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useAutoResizeTextarea } from "@/hooks/useAutoResizeTextarea";
+import { useAuth } from "@/hooks/useAuth";
 
 const copilotTransport = new DefaultChatTransport({
   api: "/api/chat",
@@ -217,7 +218,7 @@ function renderPart(part: UIMessage["parts"][number], index: number) {
 export const CopilotPanel = () => {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const [activeChatId, setActiveChatId] = useState<string>(() => newChatId());
   const [chats, setChats] = useState<CopilotChat[]>([]);
   const [pendingRestore, setPendingRestore] = useState<UIMessage[] | null>(null);
@@ -230,6 +231,9 @@ export const CopilotPanel = () => {
     minHeight: 44,
     maxHeight: 160,
   });
+
+  const { user } = useAuth();
+  const firstName = user?.fullName?.split(" ")[0] || user?.name?.split(" ")[0] || "";
 
   const { messages, sendMessage, status, stop, error, setMessages } = useChat({
     id: activeChatId,
@@ -485,18 +489,6 @@ export const CopilotPanel = () => {
                 <div className="hidden w-[280px] shrink-0 flex-col gap-2 md:flex">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-xs font-semibold text-text-muted">History</p>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={busy || chats.length === 0}
-                      onClick={clearHistory}
-                      title="Clear history"
-                      aria-label="Clear history"
-                      className="h-7 px-2 text-xs"
-                    >
-                      Clear
-                    </Button>
                   </div>
                   <div className="flex flex-1 flex-col gap-1 overflow-y-auto rounded-[10px] border border-border-strong/80 bg-content-bg p-2">
                     {chats.length === 0 ? (
@@ -550,7 +542,9 @@ export const CopilotPanel = () => {
                 >
                   {messages.length === 0 && (
                     <div className="rounded-[12px] border border-border-strong bg-card-bg p-3">
-                      <p className="text-sm font-semibold text-text">Welcome to SynCRM Copilot</p>
+                      <p className="text-sm font-semibold text-text">
+                        Welcome to SynCRM Copilot{firstName ? `, ${firstName}` : ""}
+                      </p>
                       <p className="mt-1 text-sm text-text-muted">
                         I can explain SynCRM, answer quick questions, and help you work with leads, contacts,
                         properties, tasks, and pipeline stages. For live numbers, I&apos;ll fetch your CRM data.
@@ -560,7 +554,8 @@ export const CopilotPanel = () => {
                           type="button"
                           variant="secondary"
                           size="sm"
-                          onClick={() => setDraft("Tell me about SynCRM")}
+                          onClick={() => void sendMessage({ text: "Tell me about SynCRM" })}
+                          disabled={busy}
                         >
                           What is SynCRM?
                         </Button>
@@ -568,7 +563,8 @@ export const CopilotPanel = () => {
                           type="button"
                           variant="secondary"
                           size="sm"
-                          onClick={() => setDraft("Summarize my dashboard: totals, open/won/lost, and stage breakdown")}
+                          onClick={() => void sendMessage({ text: "Summarize my dashboard: totals, open/won/lost, and stage breakdown" })}
+                          disabled={busy}
                         >
                           Dashboard summary
                         </Button>
@@ -576,7 +572,8 @@ export const CopilotPanel = () => {
                           type="button"
                           variant="secondary"
                           size="sm"
-                          onClick={() => setDraft("Show my upcoming tasks in a table")}
+                          onClick={() => void sendMessage({ text: "Show my upcoming tasks in a table" })}
+                          disabled={busy}
                         >
                           Upcoming tasks
                         </Button>
