@@ -94,10 +94,22 @@ const TOOL_LABELS: Record<string, string> = {
 };
 
 const THINKING_MESSAGES = [
-  "Thinking",
-  "Analyzing your request",
-  "Processing",
-  "Working on it",
+  "Pondering",
+  "Spelunking through your data",
+  "Tinkering",
+  "Mulling it over",
+  "Rummaging around",
+  "Noodling on this",
+  "Digging in",
+  "Percolating",
+  "Chewing on that",
+  "Connecting the dots",
+  "Sifting through the details",
+  "Piecing things together",
+  "Brewing up an answer",
+  "Crunching the numbers",
+  "Poking around",
+  "Deliberating",
 ];
 
 /* ─── Thinking / status indicator component ─── */
@@ -108,14 +120,21 @@ function ThinkingIndicator({
   status: string;
   messages: UIMessage[];
 }) {
-  const [thinkingIdx, setThinkingIdx] = useState(0);
+  const [thinkingIdx, setThinkingIdx] = useState(() =>
+    Math.floor(Math.random() * THINKING_MESSAGES.length)
+  );
 
-  // Cycle through generic thinking messages
+  // Cycle through generic thinking messages with some randomness
   useEffect(() => {
     if (status !== "submitted" && status !== "streaming") return;
+    // Reset to a random starting point each time we start thinking
+    setThinkingIdx(Math.floor(Math.random() * THINKING_MESSAGES.length));
     const interval = setInterval(() => {
-      setThinkingIdx((i) => (i + 1) % THINKING_MESSAGES.length);
-    }, 2800);
+      setThinkingIdx((i) => {
+        let next = i + 1 + Math.floor(Math.random() * 2);
+        return next % THINKING_MESSAGES.length;
+      });
+    }, 2200);
     return () => clearInterval(interval);
   }, [status]);
 
@@ -205,6 +224,7 @@ export const CopilotPanel = () => {
   const [searchMode, setSearchMode] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const scrollAnchorRef = useRef<HTMLDivElement | null>(null);
   const persistedSignaturesRef = useRef<Record<string, string>>({});
   const { textareaRef, adjustHeight } = useAutoResizeTextarea({
     minHeight: 44,
@@ -279,13 +299,13 @@ export const CopilotPanel = () => {
     });
   }, [activeChatId, messages]);
 
-  // Auto-scroll to newest message while panel is open.
+  // Auto-scroll to newest message / thinking indicator while panel is open.
   useEffect(() => {
     if (!open) return;
-    const el = scrollerRef.current;
-    if (!el) return;
-    el.scrollTop = el.scrollHeight;
-  }, [open, messages.length, status]);
+    requestAnimationFrame(() => {
+      scrollAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    });
+  }, [open, messages, status]);
 
   const onSubmit = useCallback(
     async (e?: React.FormEvent) => {
@@ -582,6 +602,7 @@ export const CopilotPanel = () => {
                   )}
                   {messageList}
                   <ThinkingIndicator status={status} messages={messages as UIMessage[]} />
+                  <div ref={scrollAnchorRef} />
                 </div>
                 {error && (
                   <p className="text-xs text-danger">
