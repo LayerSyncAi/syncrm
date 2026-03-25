@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../../../convex/_generated/api";
@@ -55,16 +56,19 @@ const LeadTableRow = React.memo(function LeadTableRow({
   stages,
   onStageChange,
   onDelete,
+  onRowClick,
 }: {
   lead: LeadRowData;
   stages: { _id: string; name: string }[] | undefined;
   onStageChange: (leadId: Id<"leads">, stageId: Id<"pipelineStages">) => void;
   onDelete: (lead: LeadRowData) => void;
+  onRowClick: (lead: LeadRowData) => void;
 }) {
   return (
     <motion.tr
       variants={rowVariants}
-      className="group h-11 border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)]"
+      className="group h-11 cursor-pointer border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)]"
+      onClick={() => onRowClick(lead)}
     >
       <TableCell>
         <Link href={`/app/leads/${lead._id}`} className="font-medium hover:text-primary">
@@ -85,14 +89,16 @@ const LeadTableRow = React.memo(function LeadTableRow({
         <ScoreBadge score={lead.score} />
       </TableCell>
       <TableCell>
-        <StaggeredDropDown
-          value={lead.stageId}
-          onChange={(val) => onStageChange(lead._id, val as Id<"pipelineStages">)}
-          aria-label={`Update stage for ${lead.fullName}`}
-          portal
-          disabled={!!(lead.closedAt && lead.closeReason)}
-          options={stages?.map((stage) => ({ value: stage._id, label: stage.name })) ?? []}
-        />
+        <div onClick={(e) => e.stopPropagation()}>
+          <StaggeredDropDown
+            value={lead.stageId}
+            onChange={(val) => onStageChange(lead._id, val as Id<"pipelineStages">)}
+            aria-label={`Update stage for ${lead.fullName}`}
+            portal
+            disabled={!!(lead.closedAt && lead.closeReason)}
+            options={stages?.map((stage) => ({ value: stage._id, label: stage.name })) ?? []}
+          />
+        </div>
       </TableCell>
       <TableCell>{lead.ownerName}</TableCell>
       <TableCell>
@@ -105,15 +111,14 @@ const LeadTableRow = React.memo(function LeadTableRow({
       <TableCell className="text-right">
         <div className="flex justify-end gap-1">
           <Tooltip content="View">
-            <Link href={`/app/leads/${lead._id}`} onClick={(e) => e.stopPropagation()}>
-              <Button
-                variant="secondary"
-                className="action-btn h-9 w-9 p-0 md:opacity-0 md:translate-x-3 md:scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
-                style={{ transitionDelay: "0ms" }}
-              >
-                <Eye className="h-4 w-4" />
-              </Button>
-            </Link>
+            <Button
+              variant="secondary"
+              className="action-btn h-9 w-9 p-0 md:opacity-0 md:translate-x-3 md:scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
+              style={{ transitionDelay: "0ms" }}
+              onClick={(e) => { e.stopPropagation(); onRowClick(lead); }}
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
           </Tooltip>
           <Tooltip content="Delete">
             <Button
@@ -160,6 +165,7 @@ function ScoreBadge({ score }: { score: number | undefined }) {
 }
 
 export default function LeadsPage() {
+  const router = useRouter();
   const { user, isLoading: authLoading, isAdmin } = useRequireAuth();
   const pagination = usePagination(50);
 
@@ -523,6 +529,7 @@ export default function LeadsPage() {
                   stages={stages}
                   onStageChange={handleStageChange}
                   onDelete={(l) => { setDeleteTarget(l); setDeleteConfirmText(""); }}
+                  onRowClick={(l) => router.push(`/app/leads/${l._id}`)}
                 />
               ))}
             </motion.tbody>
