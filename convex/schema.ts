@@ -383,6 +383,24 @@ export default defineSchema({
     company: v.optional(v.string()),
     notes: v.optional(v.string()),
     preferredAreas: v.optional(v.array(v.string())),
+    // Property preferences (linked to contact, not lead — survives lead closure)
+    interestType: v.optional(v.union(v.literal("rent"), v.literal("buy"))),
+    budgetCurrency: v.optional(v.string()),
+    budgetMin: v.optional(v.number()),
+    budgetMax: v.optional(v.number()),
+    preferredPropertyTypes: v.optional(
+      v.array(
+        v.union(
+          v.literal("house"),
+          v.literal("apartment"),
+          v.literal("land"),
+          v.literal("commercial"),
+          v.literal("other")
+        )
+      )
+    ),
+    minBedrooms: v.optional(v.number()),
+    minBathrooms: v.optional(v.number()),
     // Multiple owners can see this contact - agents only see contacts they own
     ownerUserIds: v.array(v.id("users")),
     createdByUserId: v.id("users"),

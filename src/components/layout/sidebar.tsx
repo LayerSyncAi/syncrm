@@ -13,7 +13,9 @@ import {
   DollarSign,
   Download,
   LayoutDashboard,
+  Search,
   Shield,
+  SlidersHorizontal,
   Star,
   Upload,
   UserCog,
@@ -29,6 +31,11 @@ const navItems = [
   { label: "Contacts", href: "/app/contacts", icon: Users },
   { label: "Properties", href: "/app/properties", icon: Building2 },
   { label: "Tasks", href: "/app/tasks", icon: ClipboardList },
+];
+
+const contactToolItems = [
+  { label: "Property Matching", href: "/app/contacts/matching", icon: Search },
+  { label: "Segmentation", href: "/app/contacts/segments", icon: SlidersHorizontal },
 ];
 
 const importExportItems = [
@@ -151,6 +158,7 @@ function NavItem({
 export const Sidebar = memo(function Sidebar({ isAdmin, collapsed, onToggle, orgName, mobileOpen, onMobileClose }: SidebarProps) {
   const pathname = usePathname();
   const [ioExpanded, setIoExpanded] = useState(false);
+  const [contactToolsExpanded, setContactToolsExpanded] = useState(false);
   const [adminExpanded, setAdminExpanded] = useState(false);
 
   // Close mobile sidebar on route change
@@ -274,6 +282,60 @@ export const Sidebar = memo(function Sidebar({ isAdmin, collapsed, onToggle, org
                         active={pathname.startsWith(item.href)}
                         collapsed={collapsed}
                         pillId="nav-pill-io"
+                      />
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </>
+        )}
+      </div>
+      <div className="mt-4 space-y-1 border-t border-white/20 pt-4" data-tour="sidebar-contact-tools">
+        {collapsed ? (
+          contactToolItems.map((item) => (
+            <NavItem
+              key={item.href}
+              item={item}
+              active={pathname.startsWith(item.href)}
+              collapsed={collapsed}
+              pillId="nav-pill-contact-tools"
+            />
+          ))
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => setContactToolsExpanded((p) => !p)}
+              className="flex w-full items-center justify-between rounded-[10px] px-3 py-1.5 transition-colors duration-150 hover:bg-white/10"
+            >
+              <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/70">
+                Contact Tools
+              </span>
+              <motion.div
+                animate={{ rotate: contactToolsExpanded ? 180 : 0 }}
+                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              >
+                <ChevronRight className="h-3 w-3 rotate-90 text-white/50" />
+              </motion.div>
+            </button>
+            <AnimatePresence initial={false}>
+              {contactToolsExpanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="overflow-hidden"
+                >
+                  <div className="space-y-1">
+                    {contactToolItems.map((item) => (
+                      <NavItem
+                        key={item.href}
+                        item={item}
+                        active={pathname.startsWith(item.href)}
+                        collapsed={collapsed}
+                        pillId="nav-pill-contact-tools"
                       />
                     ))}
                   </div>

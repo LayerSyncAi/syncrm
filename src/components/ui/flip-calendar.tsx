@@ -86,12 +86,16 @@ export function FlipCalendar({
 
   const handleHoursChange = (h: number) => {
     setHours(h);
-    emit(date, h, minutes);
+    const d = date ?? new Date();
+    if (!date) setDate(d);
+    emit(d, h, minutes);
   };
 
   const handleMinutesChange = (m: number) => {
     setMinutes(m);
-    emit(date, hours, m);
+    const d = date ?? new Date();
+    if (!date) setDate(d);
+    emit(d, hours, m);
   };
 
   const handleClear = (e: React.MouseEvent) => {
