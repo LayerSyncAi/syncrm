@@ -426,7 +426,7 @@ export const matchProperties = query({
         // Area/location filter (case-insensitive substring)
         if (contact.preferredAreas?.length) {
           const locLower = p.location.toLowerCase();
-          const areaMatch = contact.preferredAreas.some((a) =>
+          const areaMatch = contact.preferredAreas.some((a: string) =>
             locLower.includes(a.toLowerCase())
           );
           if (!areaMatch) return false;
