@@ -97,6 +97,44 @@ export const list = query({
   },
 });
 
+/** Aggregates for dashboards and assistants (non-draft properties only). */
+export const summaryStats = query({
+  handler: async (ctx) => {
+    const user = await getCurrentUserWithOrg(ctx);
+    const rows = await ctx.db
+      .query("properties")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
+    const props = rows.filter((p) => !p.isDraft);
+    const byStatus: Record<string, number> = {};
+    const byListingType: Record<string, number> = {};
+    const byType: Record<string, number> = {};
+    let minP = Infinity;
+    let maxP = -Infinity;
+    let sum = 0;
+    for (const p of props) {
+      byStatus[p.status] = (byStatus[p.status] ?? 0) + 1;
+      byListingType[p.listingType] = (byListingType[p.listingType] ?? 0) + 1;
+      byType[p.type] = (byType[p.type] ?? 0) + 1;
+      if (typeof p.price === "number") {
+        sum += p.price;
+        minP = Math.min(minP, p.price);
+        maxP = Math.max(maxP, p.price);
+      }
+    }
+    return {
+      totalListed: props.length,
+      byStatus,
+      byListingType,
+      byType,
+      price:
+        props.length > 0 && minP !== Infinity && maxP !== -Infinity
+          ? { min: minP, max: maxP, avg: sum / props.length }
+          : null,
+    };
+  },
+});
+
 export const createDraft = mutation({
   args: {},
   handler: async (ctx) => {
