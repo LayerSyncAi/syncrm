@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
-import { ChevronDown, Check } from "lucide-react";
+import { ChevronDown, Check, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface DropdownOption {
@@ -41,6 +41,8 @@ export interface StaggeredDropDownProps {
   chevronIcon?: React.ReactNode;
   /** Render the dropdown list via a portal so it escapes overflow:hidden containers (e.g. tables). Default: false */
   portal?: boolean;
+  /** Show a search input inside the dropdown to filter options. Default: false */
+  searchable?: boolean;
 }
 
 export function StaggeredDropDown({
@@ -57,11 +59,34 @@ export function StaggeredDropDown({
   selectedIcon,
   chevronIcon,
   portal = false,
+  searchable = false,
 }: StaggeredDropDownProps) {
   const [open, setOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLUListElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Filter options when searchable
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !searchQuery.trim()) return options;
+    const q = searchQuery.toLowerCase();
+    return options.filter(
+      (o) =>
+        o.label.toLowerCase().includes(q) ||
+        o.description?.toLowerCase().includes(q)
+    );
+  }, [options, searchQuery, searchable]);
+
+  // Reset search and focus input when opening
+  useEffect(() => {
+    if (open && searchable) {
+      setSearchQuery("");
+      // Small delay so the dropdown has rendered
+      requestAnimationFrame(() => searchInputRef.current?.focus());
+    }
+  }, [open, searchable]);
 
   // Portal positioning state
   const [portalPos, setPortalPos] = useState({ top: 0, left: 0, width: 0 });
@@ -125,7 +150,7 @@ export function StaggeredDropDown({
 
   // ─── Variants (configurable via props) ──────────────────
   // Cap total stagger time so long lists still animate quickly
-  const effectiveStagger = Math.min(staggerChildren, 0.20 / Math.max(options.length, 1));
+  const effectiveStagger = Math.min(staggerChildren, 0.20 / Math.max(filteredOptions.length, 1));
 
   const wrapperVariants = {
     open: {
@@ -196,40 +221,60 @@ export function StaggeredDropDown({
         !portal && "absolute mt-1 w-full"
       )}
     >
+      {searchable && (
+        <div className="px-1 pb-1.5 border-b border-border-strong mb-1">
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted pointer-events-none" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => e.stopPropagation()}
+              placeholder="Type to filter..."
+              className="h-8 w-full rounded-[8px] border border-border-strong bg-transparent pl-7 pr-2 text-xs text-text outline-none placeholder:text-text-dim focus:ring-2 focus:ring-[rgba(59,130,246,0.18)]"
+            />
+          </div>
+        </div>
+      )}
       <div style={{ maxHeight }} className="overflow-y-auto">
-        {options.map((option) => {
-          const isSelected = option.value === value;
-          return (
-            <motion.li
-              key={option.value}
-              variants={itemVariants}
-              onClick={() => {
-                onChange?.(option.value);
-                setOpen(false);
-              }}
-              className={cn(
-                "flex cursor-pointer items-center gap-2 rounded-[8px] px-2.5 py-2 text-xs font-medium transition-colors",
-                option.description ? "whitespace-normal" : "whitespace-nowrap",
-                isSelected
-                  ? "bg-primary/10 text-primary-600"
-                  : "text-text hover:bg-primary/5 hover:text-primary-600"
-              )}
-            >
-              <motion.span
-                variants={actionIconVariants}
-                className="shrink-0 self-start mt-0.5"
-              >
-                {isSelected ? checkIcon : <span className="h-3.5 w-3.5" />}
-              </motion.span>
-              <div className="min-w-0">
-                <span className="truncate block">{option.label}</span>
-                {option.description && (
-                  <span className="block text-[10px] font-normal text-text-muted mt-0.5">{option.description}</span>
+        {filteredOptions.length === 0 && searchable && searchQuery ? (
+          <li className="px-2.5 py-2 text-xs text-text-muted">No matches</li>
+        ) : (
+          filteredOptions.map((option) => {
+            const isSelected = option.value === value;
+            return (
+              <motion.li
+                key={option.value}
+                variants={itemVariants}
+                onClick={() => {
+                  onChange?.(option.value);
+                  setOpen(false);
+                }}
+                className={cn(
+                  "flex cursor-pointer items-center gap-2 rounded-[8px] px-2.5 py-2 text-xs font-medium transition-colors",
+                  option.description ? "whitespace-normal" : "whitespace-nowrap",
+                  isSelected
+                    ? "bg-primary/10 text-primary-600"
+                    : "text-text hover:bg-primary/5 hover:text-primary-600"
                 )}
-              </div>
-            </motion.li>
-          );
-        })}
+              >
+                <motion.span
+                  variants={actionIconVariants}
+                  className="shrink-0 self-start mt-0.5"
+                >
+                  {isSelected ? checkIcon : <span className="h-3.5 w-3.5" />}
+                </motion.span>
+                <div className="min-w-0">
+                  <span className="truncate block">{option.label}</span>
+                  {option.description && (
+                    <span className="block text-[10px] font-normal text-text-muted mt-0.5">{option.description}</span>
+                  )}
+                </div>
+              </motion.li>
+            );
+          })
+        )}
       </div>
     </motion.ul>
   );

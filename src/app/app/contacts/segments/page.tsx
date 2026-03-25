@@ -126,6 +126,7 @@ export default function ContactSegmentsPage() {
             <StaggeredDropDown
               value={area}
               onChange={setArea}
+              searchable
               options={[
                 { value: "", label: "Any" },
                 ...(locations?.map((loc) => ({ value: loc.name, label: loc.name })) ?? []),
