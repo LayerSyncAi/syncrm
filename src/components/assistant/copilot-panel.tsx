@@ -131,11 +131,8 @@ function ThinkingIndicator({
     // Reset to a random starting point each time we start thinking
     setThinkingIdx(Math.floor(Math.random() * THINKING_MESSAGES.length));
     const interval = setInterval(() => {
-      setThinkingIdx((i) => {
-        let next = i + 1 + Math.floor(Math.random() * 2);
-        return next % THINKING_MESSAGES.length;
-      });
-    }, 2200);
+      setThinkingIdx((i) => (i + 1) % THINKING_MESSAGES.length);
+    }, 27000);
     return () => clearInterval(interval);
   }, [status]);
 
