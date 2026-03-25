@@ -61,7 +61,7 @@ export async function POST(req: Request) {
     system: COPILOT_SYSTEM_PROMPT,
     messages: modelMessages,
     tools,
-    stopWhen: stepCountIs(10),
+    stopWhen: stepCountIs(14),
   });
 
   return result.toUIMessageStreamResponse();

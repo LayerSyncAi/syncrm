@@ -144,6 +144,74 @@ export const listUpcomingForMe = query({
   },
 });
 
+/** Open todos with scheduledAt in [rangeStartMs, rangeEndMs], scoped like listAllTasks. */
+export const listTodosScheduledBetween = query({
+  args: {
+    rangeStartMs: v.number(),
+    rangeEndMs: v.number(),
+    includeUnscheduledOpen: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserWithOrg(ctx);
+    const isAdmin = user.role === "admin";
+
+    let activities = await ctx.db
+      .query("activities")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
+
+    if (!isAdmin) {
+      activities = activities.filter((a) => a.assignedToUserId === user._id);
+    }
+
+    const includeUnscheduled = args.includeUnscheduledOpen === true;
+    const { rangeStartMs, rangeEndMs } = args;
+
+    const matched = activities.filter((a) => {
+      if (a.status !== "todo") return false;
+      if (a.scheduledAt !== undefined && a.scheduledAt !== null) {
+        return a.scheduledAt >= rangeStartMs && a.scheduledAt <= rangeEndMs;
+      }
+      return includeUnscheduled;
+    });
+
+    const leadIds = [...new Set(matched.map((a) => a.leadId).filter(Boolean))] as Id<"leads">[];
+    const leadDocs = await Promise.all(leadIds.map((id) => ctx.db.get(id)));
+    const leadMap = new Map(leadDocs.filter(Boolean).map((l) => [l!._id, l!]));
+
+    const enriched = matched.map((a) => {
+      const lead = a.leadId ? leadMap.get(a.leadId) : null;
+      return {
+        _id: a._id,
+        type: a.type,
+        title: a.title,
+        description: a.description,
+        scheduledAt: a.scheduledAt,
+        createdAt: a.createdAt,
+        leadId: a.leadId,
+        leadName: lead?.fullName ?? null,
+        assignedToUserId: a.assignedToUserId,
+      };
+    });
+
+    enriched.sort((a, b) => {
+      const as = a.scheduledAt;
+      const bs = b.scheduledAt;
+      if (as != null && bs != null) return as - bs;
+      if (as != null) return -1;
+      if (bs != null) return 1;
+      return a.title.localeCompare(b.title);
+    });
+
+    return {
+      items: enriched.slice(0, 200),
+      total: enriched.length,
+      rangeStartMs,
+      rangeEndMs,
+    };
+  },
+});
+
 export const listAllTasks = query({
   args: {
     status: v.optional(v.union(v.literal("todo"), v.literal("completed"), v.literal("all"))),
