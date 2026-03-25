@@ -110,6 +110,23 @@ export const CopilotPanel = () => {
 
   const busy = status === "streaming" || status === "submitted";
 
+  // Lock background scroll + allow Escape to close.
+  useEffect(() => {
+    if (!open) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
   // Load stored history once.
   useEffect(() => {
     const loaded = loadChats();
@@ -225,10 +242,10 @@ export const CopilotPanel = () => {
         <div
           key={m.id}
           className={cn(
-            "rounded-[10px] px-3 py-2",
+            "w-fit max-w-[92%] rounded-[10px] px-3 py-2",
             m.role === "user"
-              ? "ml-6 bg-primary-600/15 text-text"
-              : "mr-6 bg-card-bg text-text"
+              ? "self-end bg-primary-600/15 text-text"
+              : "self-start bg-card-bg text-text"
           )}
         >
           <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
@@ -256,13 +273,13 @@ export const CopilotPanel = () => {
 
       {open && (
         <div
-          className="fixed inset-0 z-50 flex items-end justify-end bg-black/40 p-4 pb-24 backdrop-blur-[2px] md:items-center md:justify-end md:p-8 md:pb-8"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 backdrop-blur-[2px] md:items-center md:p-8"
           role="presentation"
           onClick={() => setOpen(false)}
         >
           <Card
             className={cn(
-              "flex max-h-[min(720px,calc(100vh-7rem))] w-full flex-col shadow-[0_20px_48px_rgba(0,0,0,0.35)]",
+              "flex max-h-[min(720px,calc(100vh-4rem))] w-full flex-col shadow-[0_20px_48px_rgba(0,0,0,0.35)]",
               expanded ? "max-w-4xl" : "max-w-md"
             )}
             onClick={(e) => e.stopPropagation()}
