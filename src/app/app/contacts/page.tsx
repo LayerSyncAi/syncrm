@@ -16,9 +16,21 @@ import { Badge } from "@/components/ui/badge";
 import { PaginationControls } from "@/components/ui/pagination";
 import { usePagination } from "@/hooks/usePagination";
 import { ConfirmDeleteDialog } from "@/components/common/confirm-delete-dialog";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { contactToasts, locationToasts } from "@/lib/toast";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Eye, Settings, Trash2 } from "lucide-react";
+
+type PropertyType = "house" | "apartment" | "land" | "commercial" | "other";
+type InterestType = "rent" | "buy";
+
+const PROPERTY_TYPE_OPTIONS: { value: PropertyType; label: string }[] = [
+  { value: "house", label: "House" },
+  { value: "apartment", label: "Apartment" },
+  { value: "land", label: "Land" },
+  { value: "commercial", label: "Commercial" },
+  { value: "other", label: "Other" },
+];
 
 const listVariants = {
   hidden: {},
@@ -39,6 +51,13 @@ type ContactWithOwners = {
   company?: string;
   notes?: string;
   preferredAreas?: string[];
+  interestType?: InterestType;
+  budgetCurrency?: string;
+  budgetMin?: number;
+  budgetMax?: number;
+  preferredPropertyTypes?: PropertyType[];
+  minBedrooms?: number;
+  minBathrooms?: number;
   ownerUserIds: Id<"users">[];
   ownerNames: string[];
   createdByUserId: Id<"users">;
@@ -206,6 +225,18 @@ export default function ContactsPage() {
   const [isAddingLocation, setIsAddingLocation] = React.useState(false);
   const [ownerUserIds, setOwnerUserIds] = React.useState<Id<"users">[]>([]);
 
+  // Preference fields
+  const [interestType, setInterestType] = React.useState<InterestType | "">("");
+  const [budgetCurrency, setBudgetCurrency] = React.useState("USD");
+  const [budgetMin, setBudgetMin] = React.useState("");
+  const [budgetMax, setBudgetMax] = React.useState("");
+  const [preferredPropertyTypes, setPreferredPropertyTypes] = React.useState<PropertyType[]>([]);
+  const [minBedrooms, setMinBedrooms] = React.useState("");
+  const [minBathrooms, setMinBathrooms] = React.useState("");
+
+  // Modal tab
+  const [modalTab, setModalTab] = React.useState<"details" | "preferences">("details");
+
   const isAdmin = currentUser?.role === "admin";
 
   // Validation functions
@@ -265,7 +296,15 @@ export default function ContactsPage() {
       setNotes(selectedContact.notes || "");
       setPreferredAreas(selectedContact.preferredAreas || []);
       setOwnerUserIds(selectedContact.ownerUserIds);
+      setInterestType(selectedContact.interestType || "");
+      setBudgetCurrency(selectedContact.budgetCurrency || "USD");
+      setBudgetMin(selectedContact.budgetMin ? String(selectedContact.budgetMin) : "");
+      setBudgetMax(selectedContact.budgetMax ? String(selectedContact.budgetMax) : "");
+      setPreferredPropertyTypes(selectedContact.preferredPropertyTypes || []);
+      setMinBedrooms(selectedContact.minBedrooms ? String(selectedContact.minBedrooms) : "");
+      setMinBathrooms(selectedContact.minBathrooms ? String(selectedContact.minBathrooms) : "");
       setFormError("");
+      setModalTab("details");
     }
   }, [selectedContact]);
 
@@ -278,7 +317,15 @@ export default function ContactsPage() {
     setPreferredAreas([]);
     setNewLocation("");
     setOwnerUserIds([]);
+    setInterestType("");
+    setBudgetCurrency("USD");
+    setBudgetMin("");
+    setBudgetMax("");
+    setPreferredPropertyTypes([]);
+    setMinBedrooms("");
+    setMinBathrooms("");
     setFormError("");
+    setModalTab("details");
   };
 
   const closeModal = () => {
@@ -305,6 +352,20 @@ export default function ContactsPage() {
     setIsSaving(true);
     setFormError("");
     try {
+      const prefFields = {
+        interestType: interestType || undefined,
+        budgetCurrency: budgetCurrency || undefined,
+        budgetMin: budgetMin ? parseFloat(budgetMin) : undefined,
+        budgetMax: budgetMax ? parseFloat(budgetMax) : undefined,
+        preferredPropertyTypes: preferredPropertyTypes.length > 0 ? preferredPropertyTypes : undefined,
+        minBedrooms: minBedrooms ? parseInt(minBedrooms, 10) : undefined,
+        minBathrooms: minBathrooms ? parseInt(minBathrooms, 10) : undefined,
+      } as Record<string, unknown>;
+      // Strip undefined values so Convex doesn't complain
+      for (const k of Object.keys(prefFields)) {
+        if (prefFields[k] === undefined) delete prefFields[k];
+      }
+
       if (isCreating) {
         await createContact({
           name: name.value.trim(),
@@ -314,7 +375,8 @@ export default function ContactsPage() {
           notes: notes.trim() || undefined,
           preferredAreas: preferredAreas.length > 0 ? preferredAreas : undefined,
           ownerUserIds: ownerUserIds.length > 0 ? ownerUserIds : undefined,
-        });
+          ...prefFields,
+        } as any);
       } else if (selectedContact) {
         await updateContact({
           contactId: selectedContact._id,
@@ -325,7 +387,8 @@ export default function ContactsPage() {
           notes: notes.trim() || undefined,
           preferredAreas: preferredAreas.length > 0 ? preferredAreas : undefined,
           ownerUserIds: ownerUserIds.length > 0 ? ownerUserIds : undefined,
-        });
+          ...prefFields,
+        } as any);
       }
       if (isCreating) {
         contactToasts.created(name.value.trim());
@@ -567,185 +630,310 @@ export default function ContactsPage() {
             </div>
           )}
 
-          <div className="grid gap-4 md:grid-cols-2">
-            {/* Name */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-1">
-                Name <span className="text-danger">*</span>
-              </Label>
-              {name.touched && name.error && (
-                <p className="text-xs text-danger">{name.error}</p>
-              )}
-              <Input
-                value={name.value}
-                onChange={(e) => handleFieldChange("name", e.target.value, validateName)}
-                onBlur={() => handleFieldBlur("name", validateName)}
-                placeholder="John Doe"
-                error={name.touched && !!name.error}
-              />
-            </div>
-
-            {/* Phone */}
-            <div className="space-y-2">
-              <Label>Phone</Label>
-              {phone.touched && phone.error && (
-                <p className="text-xs text-danger">{phone.error}</p>
-              )}
-              <Input
-                value={phone.value}
-                onChange={(e) => handleFieldChange("phone", e.target.value, validatePhone)}
-                onBlur={() => handleFieldBlur("phone", validatePhone)}
-                placeholder="+263 77 123 4567"
-                error={phone.touched && !!phone.error}
-              />
-            </div>
-
-            {/* Email */}
-            <div className="space-y-2">
-              <Label>Email</Label>
-              {email.touched && email.error && (
-                <p className="text-xs text-danger">{email.error}</p>
-              )}
-              <Input
-                type="email"
-                value={email.value}
-                onChange={(e) => handleFieldChange("email", e.target.value, validateEmail)}
-                onBlur={() => handleFieldBlur("email", validateEmail)}
-                placeholder="john@example.com"
-                error={email.touched && !!email.error}
-              />
-            </div>
-
-            {/* Company */}
-            <div className="space-y-2">
-              <Label>Company</Label>
-              <Input
-                value={company}
-                onChange={(e) => setCompany(e.target.value)}
-                placeholder="Company name"
-              />
-            </div>
-          </div>
-
-          {/* Preferred Areas */}
-          <div className="space-y-2">
-            <Label>Preferred Areas</Label>
-            <div className="flex gap-2">
-              <StaggeredDropDown
-                value=""
-                onChange={(val) => {
-                  if (val) {
-                    handleAddArea(val);
-                  }
-                }}
-                className="flex-1"
-                placeholder="Select a location..."
-                options={[
-                  { value: "", label: "Select a location..." },
-                  ...(locations?.map((loc) => ({ value: loc.name, label: loc.name })) ?? []),
-                ]}
-              />
-            </div>
-            <div className="flex gap-2 mt-2">
-              <Input
-                value={newLocation}
-                onChange={(e) => setNewLocation(e.target.value)}
-                placeholder="Add new location..."
-                className="flex-1"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleAddNewLocation();
-                  }
-                }}
-              />
-              <Button
+          {/* Tab navigation */}
+          <div className="flex gap-1 border-b border-border-strong">
+            {(["details", "preferences"] as const).map((tab) => (
+              <button
+                key={tab}
                 type="button"
-                variant="secondary"
-                onClick={handleAddNewLocation}
-                disabled={isAddingLocation || !newLocation.trim()}
+                onClick={() => setModalTab(tab)}
+                className={`px-4 py-2 text-sm font-medium capitalize transition-colors ${
+                  modalTab === tab
+                    ? "border-b-2 border-primary text-primary"
+                    : "text-text-muted hover:text-text"
+                }`}
               >
-                {isAddingLocation ? "Adding..." : "Add"}
-              </Button>
-            </div>
-            {preferredAreas.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                {preferredAreas.map((area) => (
-                  <span
-                    key={area}
-                    className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary"
-                  >
-                    {area}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveArea(area)}
-                      className="hover:text-danger"
-                    >
-                      &times;
-                    </button>
-                  </span>
-                ))}
+                {tab}
+              </button>
+            ))}
+          </div>
+
+          {/* Details tab */}
+          {modalTab === "details" && (
+            <>
+              <div className="grid gap-4 md:grid-cols-2">
+                {/* Name */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1">
+                    Name <span className="text-danger">*</span>
+                  </Label>
+                  {name.touched && name.error && (
+                    <p className="text-xs text-danger">{name.error}</p>
+                  )}
+                  <Input
+                    value={name.value}
+                    onChange={(e) => handleFieldChange("name", e.target.value, validateName)}
+                    onBlur={() => handleFieldBlur("name", validateName)}
+                    placeholder="John Doe"
+                    error={name.touched && !!name.error}
+                  />
+                </div>
+
+                {/* Phone */}
+                <div className="space-y-2">
+                  <Label>Phone</Label>
+                  {phone.touched && phone.error && (
+                    <p className="text-xs text-danger">{phone.error}</p>
+                  )}
+                  <Input
+                    value={phone.value}
+                    onChange={(e) => handleFieldChange("phone", e.target.value, validatePhone)}
+                    onBlur={() => handleFieldBlur("phone", validatePhone)}
+                    placeholder="+263 77 123 4567"
+                    error={phone.touched && !!phone.error}
+                  />
+                </div>
+
+                {/* Email */}
+                <div className="space-y-2">
+                  <Label>Email</Label>
+                  {email.touched && email.error && (
+                    <p className="text-xs text-danger">{email.error}</p>
+                  )}
+                  <Input
+                    type="email"
+                    value={email.value}
+                    onChange={(e) => handleFieldChange("email", e.target.value, validateEmail)}
+                    onBlur={() => handleFieldBlur("email", validateEmail)}
+                    placeholder="john@example.com"
+                    error={email.touched && !!email.error}
+                  />
+                </div>
+
+                {/* Company */}
+                <div className="space-y-2">
+                  <Label>Company</Label>
+                  <Input
+                    value={company}
+                    onChange={(e) => setCompany(e.target.value)}
+                    placeholder="Company name"
+                  />
+                </div>
               </div>
-            )}
-          </div>
 
-          {/* Notes */}
-          <div className="space-y-2">
-            <Label>Notes</Label>
-            <Textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-              placeholder="Add any notes about this contact..."
-            />
-          </div>
+              {/* Notes */}
+              <div className="space-y-2">
+                <Label>Notes</Label>
+                <Textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={3}
+                  placeholder="Add any notes about this contact..."
+                />
+              </div>
 
-          {/* Multi-owner selection for admins */}
-          {isAdmin && (
-            <div className="space-y-2">
-              <Label>Owners (select who can see this contact)</Label>
-              <div className="rounded-md border border-border-strong p-3">
+              {/* Multi-owner selection for admins */}
+              {isAdmin && (
+                <div className="space-y-2">
+                  <Label>Owners (select who can see this contact)</Label>
+                  <div className="rounded-md border border-border-strong p-3">
+                    <div className="flex flex-wrap gap-2">
+                      {users.map((user) => {
+                        const isSelected = ownerUserIds.includes(user._id);
+                        return (
+                          <button
+                            key={user._id}
+                            type="button"
+                            onClick={() => toggleOwner(user._id)}
+                            className={`rounded-full px-3 py-1 text-sm transition-colors ${
+                              isSelected
+                                ? "bg-primary text-white"
+                                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            }`}
+                          >
+                            {user.name}
+                            {isSelected && " ✓"}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {ownerUserIds.length === 0 && (
+                      <p className="mt-2 text-xs text-text-muted">
+                        No owners selected. You will be assigned as the owner.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Show owners for non-admins (read only) */}
+              {!isAdmin && selectedContact && (
+                <div className="space-y-2">
+                  <Label>Owners</Label>
+                  <div className="flex flex-wrap gap-1">
+                    {selectedContact.ownerNames.map((ownerName, i) => (
+                      <Badge key={i} variant="secondary">
+                        {ownerName}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Preferences tab */}
+          {modalTab === "preferences" && (
+            <>
+              <p className="text-xs text-text-muted">
+                Property preferences are linked to the contact and persist even when leads are closed or lost.
+              </p>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                {/* Interest type */}
+                <div className="space-y-2">
+                  <Label>Interest Type</Label>
+                  <StaggeredDropDown
+                    value={interestType}
+                    onChange={(val) => setInterestType(val as InterestType | "")}
+                    options={[
+                      { value: "", label: "Not set" },
+                      { value: "rent", label: "Rent" },
+                      { value: "buy", label: "Buy" },
+                    ]}
+                  />
+                </div>
+
+                {/* Min bedrooms */}
+                <div className="space-y-2">
+                  <Label>Min Bedrooms</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={minBedrooms}
+                    onChange={(e) => setMinBedrooms(e.target.value)}
+                    placeholder="Any"
+                  />
+                </div>
+              </div>
+
+              {/* Budget range */}
+              <div className="space-y-2">
+                <Label>Budget Range</Label>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <CurrencyInput
+                    value={budgetMin}
+                    onChange={setBudgetMin}
+                    currency={budgetCurrency}
+                    onCurrencyChange={setBudgetCurrency}
+                    placeholder="Min budget"
+                  />
+                  <CurrencyInput
+                    value={budgetMax}
+                    onChange={setBudgetMax}
+                    currency={budgetCurrency}
+                    onCurrencyChange={setBudgetCurrency}
+                    placeholder="Max budget"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                {/* Min bathrooms */}
+                <div className="space-y-2">
+                  <Label>Min Bathrooms</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={minBathrooms}
+                    onChange={(e) => setMinBathrooms(e.target.value)}
+                    placeholder="Any"
+                  />
+                </div>
+              </div>
+
+              {/* Property types */}
+              <div className="space-y-2">
+                <Label>Preferred Property Types</Label>
                 <div className="flex flex-wrap gap-2">
-                  {users.map((user) => {
-                    const isSelected = ownerUserIds.includes(user._id);
+                  {PROPERTY_TYPE_OPTIONS.map((opt) => {
+                    const selected = preferredPropertyTypes.includes(opt.value);
                     return (
                       <button
-                        key={user._id}
+                        key={opt.value}
                         type="button"
-                        onClick={() => toggleOwner(user._id)}
+                        onClick={() =>
+                          setPreferredPropertyTypes((prev) =>
+                            selected
+                              ? prev.filter((t) => t !== opt.value)
+                              : [...prev, opt.value]
+                          )
+                        }
                         className={`rounded-full px-3 py-1 text-sm transition-colors ${
-                          isSelected
+                          selected
                             ? "bg-primary text-white"
                             : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                         }`}
                       >
-                        {user.name}
-                        {isSelected && " ✓"}
+                        {opt.label}
+                        {selected && " \u2713"}
                       </button>
                     );
                   })}
                 </div>
-                {ownerUserIds.length === 0 && (
-                  <p className="mt-2 text-xs text-text-muted">
-                    No owners selected. You will be assigned as the owner.
-                  </p>
+              </div>
+
+              {/* Preferred Areas */}
+              <div className="space-y-2">
+                <Label>Preferred Areas</Label>
+                <div className="flex gap-2">
+                  <StaggeredDropDown
+                    value=""
+                    onChange={(val) => {
+                      if (val) handleAddArea(val);
+                    }}
+                    className="flex-1"
+                    placeholder="Select a location..."
+                    searchable
+                    options={[
+                      { value: "", label: "Select a location..." },
+                      ...(locations?.map((loc) => ({ value: loc.name, label: loc.name })) ?? []),
+                    ]}
+                  />
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <Input
+                    value={newLocation}
+                    onChange={(e) => setNewLocation(e.target.value)}
+                    placeholder="Add new location..."
+                    className="flex-1"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddNewLocation();
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={handleAddNewLocation}
+                    disabled={isAddingLocation || !newLocation.trim()}
+                  >
+                    {isAddingLocation ? "Adding..." : "Add"}
+                  </Button>
+                </div>
+                {preferredAreas.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {preferredAreas.map((area) => (
+                      <span
+                        key={area}
+                        className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary"
+                      >
+                        {area}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveArea(area)}
+                          className="hover:text-danger"
+                        >
+                          &times;
+                        </button>
+                      </span>
+                    ))}
+                  </div>
                 )}
               </div>
-            </div>
-          )}
-
-          {/* Show owners for non-admins (read only) */}
-          {!isAdmin && selectedContact && (
-            <div className="space-y-2">
-              <Label>Owners</Label>
-              <div className="flex flex-wrap gap-1">
-                {selectedContact.ownerNames.map((ownerName, i) => (
-                  <Badge key={i} variant="secondary">
-                    {ownerName}
-                  </Badge>
-                ))}
-              </div>
-            </div>
+            </>
           )}
         </div>
       </Modal>

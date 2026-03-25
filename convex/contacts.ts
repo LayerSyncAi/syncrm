@@ -22,6 +22,26 @@ async function canAccessContact(
   return null;
 }
 
+const preferenceArgs = {
+  interestType: v.optional(v.union(v.literal("rent"), v.literal("buy"))),
+  budgetCurrency: v.optional(v.string()),
+  budgetMin: v.optional(v.number()),
+  budgetMax: v.optional(v.number()),
+  preferredPropertyTypes: v.optional(
+    v.array(
+      v.union(
+        v.literal("house"),
+        v.literal("apartment"),
+        v.literal("land"),
+        v.literal("commercial"),
+        v.literal("other")
+      )
+    )
+  ),
+  minBedrooms: v.optional(v.number()),
+  minBathrooms: v.optional(v.number()),
+};
+
 export const create = mutation({
   args: {
     name: v.string(),
@@ -31,6 +51,7 @@ export const create = mutation({
     notes: v.optional(v.string()),
     preferredAreas: v.optional(v.array(v.string())),
     ownerUserIds: v.optional(v.array(v.id("users"))),
+    ...preferenceArgs,
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserWithOrg(ctx);
@@ -51,6 +72,13 @@ export const create = mutation({
       company: args.company,
       notes: args.notes,
       preferredAreas: args.preferredAreas,
+      interestType: args.interestType,
+      budgetCurrency: args.budgetCurrency,
+      budgetMin: args.budgetMin,
+      budgetMax: args.budgetMax,
+      preferredPropertyTypes: args.preferredPropertyTypes,
+      minBedrooms: args.minBedrooms,
+      minBathrooms: args.minBathrooms,
       ownerUserIds: owners,
       createdByUserId: user._id,
       orgId: user.orgId,
@@ -188,6 +216,7 @@ export const update = mutation({
     notes: v.optional(v.string()),
     preferredAreas: v.optional(v.array(v.string())),
     ownerUserIds: v.optional(v.array(v.id("users"))),
+    ...preferenceArgs,
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserWithOrg(ctx);
@@ -213,6 +242,13 @@ export const update = mutation({
     if (args.company !== undefined) updates.company = args.company;
     if (args.notes !== undefined) updates.notes = args.notes;
     if (args.preferredAreas !== undefined) updates.preferredAreas = args.preferredAreas;
+    if (args.interestType !== undefined) updates.interestType = args.interestType;
+    if (args.budgetCurrency !== undefined) updates.budgetCurrency = args.budgetCurrency;
+    if (args.budgetMin !== undefined) updates.budgetMin = args.budgetMin;
+    if (args.budgetMax !== undefined) updates.budgetMax = args.budgetMax;
+    if (args.preferredPropertyTypes !== undefined) updates.preferredPropertyTypes = args.preferredPropertyTypes;
+    if (args.minBedrooms !== undefined) updates.minBedrooms = args.minBedrooms;
+    if (args.minBathrooms !== undefined) updates.minBathrooms = args.minBathrooms;
 
     if (user.role === "admin" && args.ownerUserIds !== undefined) {
       if (args.ownerUserIds.length === 0) {
@@ -332,6 +368,235 @@ export const stats = query({
     return {
       total: accessible.length,
       newThisWeek: accessible.filter((c) => c.createdAt >= oneWeekAgo).length,
+    };
+  },
+});
+
+/**
+ * Match a single contact's preferences against available properties.
+ * Returns properties that satisfy the contact's stored criteria.
+ */
+export const matchProperties = query({
+  args: { contactId: v.id("contacts") },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserWithOrg(ctx);
+    const contact = await canAccessContact(
+      ctx,
+      args.contactId,
+      user._id,
+      user.role === "admin",
+      user.orgId
+    );
+    if (!contact) return [];
+
+    // Needs at least one preference to match on
+    const hasPrefs =
+      contact.interestType ||
+      contact.preferredAreas?.length ||
+      contact.preferredPropertyTypes?.length ||
+      contact.budgetMin ||
+      contact.budgetMax;
+    if (!hasPrefs) return [];
+
+    const properties = await ctx.db
+      .query("properties")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
+
+    return properties
+      .filter((p) => {
+        if (p.isDraft) return false;
+        if (p.status !== "available" && p.status !== "under_offer") return false;
+
+        // Interest type: rent → rent, buy → sale
+        if (contact.interestType) {
+          const wantedListing = contact.interestType === "buy" ? "sale" : "rent";
+          if (p.listingType !== wantedListing) return false;
+        }
+
+        // Property type filter
+        if (contact.preferredPropertyTypes?.length) {
+          if (!contact.preferredPropertyTypes.includes(p.type as any)) return false;
+        }
+
+        // Budget filter
+        if (contact.budgetMin && p.price < contact.budgetMin) return false;
+        if (contact.budgetMax && p.price > contact.budgetMax) return false;
+
+        // Area/location filter (case-insensitive substring)
+        if (contact.preferredAreas?.length) {
+          const locLower = p.location.toLowerCase();
+          const areaMatch = contact.preferredAreas.some((a: string) =>
+            locLower.includes(a.toLowerCase())
+          );
+          if (!areaMatch) return false;
+        }
+
+        // Bedrooms
+        if (contact.minBedrooms && (p.bedrooms ?? 0) < contact.minBedrooms) return false;
+        // Bathrooms
+        if (contact.minBathrooms && (p.bathrooms ?? 0) < contact.minBathrooms) return false;
+
+        return true;
+      })
+      .slice(0, 50)
+      .map((p) => ({
+        _id: p._id,
+        title: p.title,
+        type: p.type,
+        listingType: p.listingType,
+        price: p.price,
+        currency: p.currency,
+        location: p.location,
+        bedrooms: p.bedrooms,
+        bathrooms: p.bathrooms,
+        area: p.area,
+        status: p.status,
+      }));
+  },
+});
+
+/**
+ * Segmented contact list — filter contacts by their stored preferences
+ * and by historical lead interest data (past leads on the contact).
+ */
+export const segmentedList = query({
+  args: {
+    interestType: v.optional(v.union(v.literal("rent"), v.literal("buy"))),
+    propertyType: v.optional(
+      v.union(
+        v.literal("house"),
+        v.literal("apartment"),
+        v.literal("land"),
+        v.literal("commercial"),
+        v.literal("other")
+      )
+    ),
+    area: v.optional(v.string()),
+    budgetMin: v.optional(v.number()),
+    budgetMax: v.optional(v.number()),
+    minBedrooms: v.optional(v.number()),
+    includeHistorical: v.optional(v.boolean()),
+    page: v.optional(v.number()),
+    pageSize: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserWithOrg(ctx);
+
+    const contacts = await ctx.db
+      .query("contacts")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
+
+    const accessible = contacts.filter((c) => {
+      if (user.role === "admin") return true;
+      return c.ownerUserIds.includes(user._id);
+    });
+
+    // If includeHistorical, fetch all leads and build a contactId → lead-prefs map
+    let leadPrefsMap: Map<string, { interestTypes: Set<string>; areas: Set<string>; budgetMin?: number; budgetMax?: number }> | undefined;
+    if (args.includeHistorical) {
+      const leads = await ctx.db
+        .query("leads")
+        .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+        .collect();
+      leadPrefsMap = new Map();
+      for (const lead of leads) {
+        const key = lead.contactId as string;
+        let entry = leadPrefsMap.get(key);
+        if (!entry) {
+          entry = { interestTypes: new Set(), areas: new Set() };
+          leadPrefsMap.set(key, entry);
+        }
+        entry.interestTypes.add(lead.interestType);
+        for (const a of lead.preferredAreas) entry.areas.add(a.toLowerCase());
+        if (lead.budgetMin && (!entry.budgetMin || lead.budgetMin < entry.budgetMin)) {
+          entry.budgetMin = lead.budgetMin;
+        }
+        if (lead.budgetMax && (!entry.budgetMax || lead.budgetMax > entry.budgetMax)) {
+          entry.budgetMax = lead.budgetMax;
+        }
+      }
+    }
+
+    const filtered = accessible.filter((c) => {
+      const historicalPrefs = leadPrefsMap?.get(c._id as string);
+
+      // Interest type
+      if (args.interestType) {
+        const contactMatch = c.interestType === args.interestType;
+        const histMatch = historicalPrefs?.interestTypes.has(args.interestType) ?? false;
+        if (!contactMatch && !histMatch) return false;
+      }
+
+      // Property type
+      if (args.propertyType) {
+        if (!c.preferredPropertyTypes?.includes(args.propertyType as any)) return false;
+      }
+
+      // Area
+      if (args.area) {
+        const areaLower = args.area.toLowerCase();
+        const contactAreaMatch = c.preferredAreas?.some((a) =>
+          a.toLowerCase().includes(areaLower)
+        ) ?? false;
+        const histAreaMatch = historicalPrefs
+          ? [...historicalPrefs.areas].some((a) => a.includes(areaLower))
+          : false;
+        if (!contactAreaMatch && !histAreaMatch) return false;
+      }
+
+      // Budget range overlap
+      if (args.budgetMin) {
+        const cMax = c.budgetMax ?? historicalPrefs?.budgetMax;
+        if (cMax !== undefined && cMax < args.budgetMin) return false;
+      }
+      if (args.budgetMax) {
+        const cMin = c.budgetMin ?? historicalPrefs?.budgetMin;
+        if (cMin !== undefined && cMin > args.budgetMax) return false;
+      }
+
+      // Min bedrooms
+      if (args.minBedrooms) {
+        if (c.minBedrooms && c.minBedrooms < args.minBedrooms) return false;
+      }
+
+      return true;
+    });
+
+    // Enrich with owner names
+    const users = await ctx.db
+      .query("users")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
+    const userMap = new Map(users.map((u) => [u._id, u]));
+
+    const enriched = filtered.map((c) => ({
+      ...c,
+      ownerNames: c.ownerUserIds.map((id) => {
+        const owner = userMap.get(id);
+        return owner?.fullName || owner?.name || owner?.email || "Unknown";
+      }),
+      historicalInterests: leadPrefsMap?.get(c._id as string)
+        ? {
+            interestTypes: [...(leadPrefsMap.get(c._id as string)!.interestTypes)],
+            areas: [...(leadPrefsMap.get(c._id as string)!.areas)],
+          }
+        : undefined,
+    }));
+
+    const page = args.page ?? 0;
+    const pageSize = args.pageSize ?? 50;
+    const totalCount = enriched.length;
+    const start = page * pageSize;
+    const items = enriched.slice(start, start + pageSize);
+
+    return {
+      items,
+      totalCount,
+      page,
+      pageSize,
+      hasMore: start + pageSize < totalCount,
     };
   },
 });
