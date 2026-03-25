@@ -745,6 +745,7 @@ export default function NewLeadPage() {
                     }}
                     className="flex-1"
                     placeholder="Select a location..."
+                    searchable
                     options={[
                       { value: "", label: "Select a location..." },
                       ...(locations?.map((loc) => ({ value: loc.name, label: loc.name })) ?? []),
