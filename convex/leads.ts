@@ -106,15 +106,44 @@ export const list = query({
     const user = await getCurrentUserWithOrg(ctx);
     const isAdmin = user.role === "admin";
 
-    // Use Convex searchIndex when text search is provided (server-side search)
+    // Use Convex searchIndex when text search is provided (server-side search on fullName)
     let results;
     if (args.q && args.q.trim().length > 0) {
+      const qTrim = args.q.trim();
       results = await ctx.db
         .query("leads")
         .withSearchIndex("search_leads", (q) =>
-          q.search("fullName", args.q!).eq("orgId", user.orgId)
+          q.search("fullName", qTrim).eq("orgId", user.orgId)
         )
         .collect();
+
+      // Fallback: search index only indexes fullName — miss phone/email/partial matches or empty FTS.
+      if (results.length === 0) {
+        const pool = !isAdmin
+          ? await ctx.db
+              .query("leads")
+              .withIndex("by_owner", (q) => q.eq("ownerUserId", user._id))
+              .collect()
+          : await ctx.db
+              .query("leads")
+              .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+              .collect();
+        const qLower = qTrim.toLowerCase();
+        const digits = qTrim.replace(/\D/g, "");
+        results = pool.filter((lead) => {
+          if (lead.isArchived) return false;
+          if (lead.orgId && lead.orgId !== user.orgId) return false;
+          if (!isAdmin && lead.ownerUserId !== user._id) return false;
+          const nameMatch = lead.fullName.toLowerCase().includes(qLower);
+          const emailMatch = lead.email?.toLowerCase().includes(qLower) ?? false;
+          const phoneMatch =
+            (lead.phone && lead.phone.includes(qTrim)) ||
+            (digits.length > 0 &&
+              lead.normalizedPhone &&
+              lead.normalizedPhone.includes(digits));
+          return nameMatch || emailMatch || phoneMatch;
+        });
+      }
     } else if (!isAdmin) {
       results = await ctx.db
         .query("leads")
@@ -142,8 +171,8 @@ export const list = query({
     // Apply remaining filters that can't be handled by indexes
     const filtered = results.filter((lead) => {
       if (lead.isArchived) return false;
-      // Org scoping for non-org index paths
-      if (lead.orgId !== user.orgId) return false;
+      // Org scoping: legacy rows may omit orgId — only reject when org is set and mismatched
+      if (lead.orgId && lead.orgId !== user.orgId) return false;
       // Non-admin can only see their own leads
       if (!isAdmin && lead.ownerUserId !== user._id) return false;
       // Stage filter
@@ -159,17 +188,6 @@ export const list = query({
           area.toLowerCase().includes(keyword)
         );
         if (!match) return false;
-      }
-      // If search was already handled by searchIndex, also check phone match
-      if (args.q && args.q.trim().length > 0) {
-        const search = args.q.toLowerCase();
-        // searchIndex handles fullName; also allow phone match
-        if (
-          !lead.fullName.toLowerCase().includes(search) &&
-          !(lead.phone && lead.phone.includes(search))
-        ) {
-          return false;
-        }
       }
       if (args.scoreMin !== undefined) {
         if ((lead.score ?? 0) < args.scoreMin) return false;
