@@ -99,6 +99,7 @@ export const CopilotPanel = () => {
   const [expanded, setExpanded] = useState(false);
   const [activeChatId, setActiveChatId] = useState<string>(() => newChatId());
   const [chats, setChats] = useState<CopilotChat[]>([]);
+  const [pendingRestore, setPendingRestore] = useState<UIMessage[] | null>(null);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const persistedSignaturesRef = useRef<Record<string, string>>({});
 
@@ -176,9 +177,17 @@ export const CopilotPanel = () => {
     if (busy) return;
     const id = newChatId();
     setActiveChatId(id);
+    setPendingRestore([]);
     setMessages([]);
     setDraft("");
   }, [busy, setMessages]);
+
+  // Restore messages after switching chat id.
+  useEffect(() => {
+    if (pendingRestore === null) return;
+    setMessages(pendingRestore);
+    setPendingRestore(null);
+  }, [activeChatId, pendingRestore, setMessages]);
 
   const openChat = useCallback(
     (chatId: string) => {
@@ -186,11 +195,29 @@ export const CopilotPanel = () => {
       const found = chats.find((c) => c.id === chatId);
       if (!found) return;
       setActiveChatId(found.id);
-      setMessages(found.messages ?? []);
+      // setMessages must run after `useChat` has switched to the new id.
+      setPendingRestore(found.messages ?? []);
       setDraft("");
     },
     [busy, chats, setMessages]
   );
+
+  const clearHistory = useCallback(() => {
+    if (busy) return;
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // ignore
+    }
+    persistedSignaturesRef.current = {};
+    setChats([]);
+    // Keep current chat open, but start fresh.
+    const id = newChatId();
+    setActiveChatId(id);
+    setPendingRestore([]);
+    setMessages([]);
+    setDraft("");
+  }, [busy, setMessages]);
 
   const messageList = useMemo(
     () =>
@@ -285,7 +312,21 @@ export const CopilotPanel = () => {
             <CardContent className="flex min-h-0 flex-1 gap-3 p-4 pt-3">
               {expanded && (
                 <div className="hidden w-[280px] shrink-0 flex-col gap-2 md:flex">
-                  <p className="text-xs font-semibold text-text-muted">History</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-semibold text-text-muted">History</p>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={busy || chats.length === 0}
+                      onClick={clearHistory}
+                      title="Clear history"
+                      aria-label="Clear history"
+                      className="h-7 px-2 text-xs"
+                    >
+                      Clear
+                    </Button>
+                  </div>
                   <div className="flex flex-1 flex-col gap-1 overflow-y-auto rounded-[10px] border border-border-strong/80 bg-content-bg p-2">
                     {chats.length === 0 ? (
                       <p className="px-2 py-2 text-xs text-text-muted">No chats yet.</p>
@@ -320,9 +361,51 @@ export const CopilotPanel = () => {
                   className="flex min-h-[200px] flex-1 flex-col gap-2 overflow-y-auto rounded-[10px] border border-border-strong/80 bg-content-bg p-3"
                 >
                   {messages.length === 0 && (
-                    <p className="text-sm text-text-muted">
-                      Try: “How many open leads do we have?” or “Search leads named Smith.”
-                    </p>
+                    <div className="rounded-[12px] border border-border-strong bg-card-bg p-3">
+                      <p className="text-sm font-semibold text-text">Welcome to SynCRM Copilot</p>
+                      <p className="mt-1 text-sm text-text-muted">
+                        I can explain SynCRM, answer quick questions, and help you work with leads, contacts,
+                        properties, tasks, and pipeline stages. For live numbers, I’ll fetch your CRM data.
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => setDraft("Tell me about SynCRM")}
+                        >
+                          What is SynCRM?
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => setDraft("Summarize my dashboard: totals, open/won/lost, and stage breakdown")}
+                        >
+                          Dashboard summary
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => setDraft("Show my upcoming tasks in a table")}
+                        >
+                          Upcoming tasks
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => setDraft("Search leads named Smith and show results as a table")}
+                        >
+                          Search leads
+                        </Button>
+                      </div>
+                      <p className="mt-3 text-xs text-text-dim">
+                        Tip: Press <span className="font-semibold text-text-muted">Enter</span> to send,{" "}
+                        <span className="font-semibold text-text-muted">Shift+Enter</span> for a new line.
+                      </p>
+                    </div>
                   )}
                   {messageList}
                 </div>
