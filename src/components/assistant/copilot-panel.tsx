@@ -393,10 +393,10 @@ export const CopilotPanel = () => {
         <div
           key={m.id}
           className={cn(
-            "w-fit max-w-[92%] rounded-[10px] px-3 py-2",
+            "rounded-[10px] px-3 py-2",
             m.role === "user"
-              ? "self-end bg-primary-600/15 text-text"
-              : "self-start bg-card-bg text-text"
+              ? "self-end w-fit max-w-[92%] bg-primary-600/15 text-text"
+              : "self-start w-full max-w-[92%] min-w-0 overflow-hidden bg-card-bg text-text"
           )}
         >
           <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-text-muted">
@@ -535,7 +535,7 @@ export const CopilotPanel = () => {
               <div className="flex min-h-0 flex-1 flex-col gap-3">
                 <div
                   ref={scrollerRef}
-                  className="flex min-h-[200px] flex-1 flex-col gap-2 overflow-y-auto rounded-[10px] border border-border-strong/80 bg-content-bg p-3"
+                  className="flex min-h-[200px] flex-1 flex-col gap-2 overflow-y-auto overflow-x-hidden rounded-[10px] border border-border-strong/80 bg-content-bg p-3"
                 >
                   {messages.length === 0 && (
                     <div className="rounded-[12px] border border-border-strong bg-card-bg p-3">

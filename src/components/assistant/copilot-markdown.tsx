@@ -40,7 +40,7 @@ const markdownComponents: Components = {
   },
   td({ children }) {
     return (
-      <td className="max-w-[220px] px-3 py-2 align-top text-text wrap-break-word hyphens-auto">
+      <td className="max-w-[220px] px-3 py-2 align-top text-text break-words hyphens-auto">
         {children}
       </td>
     );
@@ -109,11 +109,22 @@ const markdownComponents: Components = {
   hr() {
     return <hr className="my-4 border-border-strong" />;
   },
+  img({ src, alt }) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={src ?? ""}
+        alt={alt ?? ""}
+        className="mt-2 max-w-full rounded-lg object-contain"
+        loading="lazy"
+      />
+    );
+  },
 };
 
 export function CopilotMarkdown({ children }: { children: string }) {
   return (
-    <div className="copilot-md max-w-none text-sm leading-relaxed text-text">
+    <div className="copilot-md max-w-none break-words text-sm leading-relaxed text-text">
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
         {children}
       </ReactMarkdown>

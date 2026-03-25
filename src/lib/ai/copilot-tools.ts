@@ -20,6 +20,47 @@ function truncateForModel(value: unknown): unknown {
   return { truncated: true, preview: s.slice(0, MAX_TOOL_JSON) + "…" };
 }
 
+/**
+ * Fields that are purely internal to Convex / the DB and should never
+ * be surfaced to the AI model (and therefore never to the user).
+ * `_id` is kept but renamed to `id` so the model can still use it for
+ * chained tool calls (e.g. passing leadId to getLeadDetails).
+ */
+const INTERNAL_KEYS = new Set([
+  "_creationTime",
+  "orgId",
+  "normalizedPhone",
+  "ownerUserId",
+  "stageId",
+  "contactId",
+  "mergedIntoLeadId",
+  "lastScoredAt",
+  "computedScore",
+  "isArchived",
+  "nextReminderAt",
+  "assignedToUserId",
+]);
+
+function sanitizeItem(obj: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (k === "_id") {
+      out["id"] = v;
+    } else if (!INTERNAL_KEYS.has(k)) {
+      out[k] = v;
+    }
+  }
+  return out;
+}
+
+function sanitizeItems(items: unknown[]): unknown[] {
+  return items.map((item) =>
+    item && typeof item === "object" && !Array.isArray(item)
+      ? sanitizeItem(item as Record<string, unknown>)
+      : item
+  );
+}
+
 const leadSourceSchema = z.enum([
   "walk_in",
   "referral",
@@ -146,7 +187,11 @@ export function createCopilotTools(token: string): ToolSet {
             },
             opts
           );
-          return truncateForModel(result);
+          const r = result as { items?: unknown[]; totalCount?: number; page?: number; hasMore?: boolean };
+          return truncateForModel({
+            ...r,
+            items: sanitizeItems(r.items ?? []),
+          });
         } catch (e) {
           return {
             error: e instanceof Error ? e.message : "Failed to search contacts",
@@ -181,10 +226,12 @@ export function createCopilotTools(token: string): ToolSet {
               opts
             ),
           ]);
+          const rawContacts = (contacts as { items?: unknown[] })?.items ?? (contacts as unknown[]);
+          const rawLeads = (leads as { items?: unknown[] })?.items ?? (leads as unknown[]);
           return truncateForModel({
             query: input.query,
-            contacts: (contacts as { items?: unknown[] })?.items ?? contacts,
-            leads: (leads as { items?: unknown[] })?.items ?? leads,
+            contacts: sanitizeItems(Array.isArray(rawContacts) ? rawContacts : []),
+            leads: sanitizeItems(Array.isArray(rawLeads) ? rawLeads : []),
           });
         } catch (e) {
           return {
@@ -223,7 +270,11 @@ export function createCopilotTools(token: string): ToolSet {
             },
             opts
           );
-          return truncateForModel(result);
+          const r = result as { items?: unknown[]; totalCount?: number; page?: number; hasMore?: boolean };
+          return truncateForModel({
+            ...r,
+            items: sanitizeItems(r.items ?? []),
+          });
         } catch (e) {
           return {
             error: e instanceof Error ? e.message : "Failed to search leads",
@@ -252,7 +303,9 @@ export function createCopilotTools(token: string): ToolSet {
           if (!row) {
             return { error: "Lead not found or access denied" };
           }
-          return truncateForModel(row);
+          return truncateForModel(
+            sanitizeItem(row as Record<string, unknown>)
+          );
         } catch (e) {
           return {
             error: e instanceof Error ? e.message : "Failed to load lead",
@@ -271,7 +324,10 @@ export function createCopilotTools(token: string): ToolSet {
           const sorted = [...rows].sort(
             (a, b) => (a.scheduledAt ?? 0) - (b.scheduledAt ?? 0)
           );
-          return truncateForModel({ items: sorted.slice(0, 25), total: rows.length });
+          return truncateForModel({
+            items: sanitizeItems(sorted.slice(0, 25) as unknown[]),
+            total: rows.length,
+          });
         } catch (e) {
           return {
             error: e instanceof Error ? e.message : "Failed to load tasks",
@@ -327,8 +383,10 @@ export function createCopilotTools(token: string): ToolSet {
             },
             opts
           );
+          const r = result as { items?: unknown[]; [k: string]: unknown };
           return truncateForModel({
-            ...result,
+            ...r,
+            items: sanitizeItems(r.items ?? []),
             note:
               input.preset != null
                 ? "Range uses UTC. If the user cares about local timezone, ask their timezone and switch to explicit rangeStartMs/rangeEndMs."
@@ -364,7 +422,11 @@ export function createCopilotTools(token: string): ToolSet {
             },
             opts
           );
-          return truncateForModel(result);
+          const r = result as { items?: unknown[]; totalCount?: number; page?: number; hasMore?: boolean };
+          return truncateForModel({
+            ...r,
+            items: sanitizeItems(r.items ?? []),
+          });
         } catch (e) {
           return {
             error: e instanceof Error ? e.message : "Failed to list open tasks",
@@ -428,7 +490,11 @@ export function createCopilotTools(token: string): ToolSet {
             },
             opts
           );
-          return truncateForModel(result);
+          const r = result as { items?: unknown[]; totalCount?: number; page?: number; hasMore?: boolean };
+          return truncateForModel({
+            ...r,
+            items: sanitizeItems(r.items ?? []),
+          });
         } catch (e) {
           return {
             error: e instanceof Error ? e.message : "Failed to search properties",
@@ -460,7 +526,11 @@ export function createCopilotTools(token: string): ToolSet {
             },
             opts
           );
-          return truncateForModel(result);
+          const r = result as { items?: unknown[]; totalCount?: number; page?: number; hasMore?: boolean };
+          return truncateForModel({
+            ...r,
+            items: sanitizeItems(r.items ?? []),
+          });
         } catch (e) {
           return {
             error: e instanceof Error ? e.message : "Failed to list leads for property",
