@@ -16,6 +16,12 @@ const OnboardingTour = dynamic(
   { ssr: false }
 );
 
+const CopilotPanel = dynamic(
+  () =>
+    import("@/components/assistant/copilot-panel").then((m) => m.CopilotPanel),
+  { ssr: false }
+);
+
 export default function AppLayout({ children }: { children: ReactNode }) {
   // Middleware handles auth redirects - if we get here, user should be authenticated
   // We need to wait for user data to load for the UI
@@ -168,6 +174,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </ErrorBoundary>
         </div>
       </div>
+      <CopilotPanel />
     </div>
     </StaticDataProvider>
   );

@@ -1,5 +1,12 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Environment variables
+
+Copy `.env.example` to `.env.local` and set at least:
+
+- `NEXT_PUBLIC_CONVEX_URL` — Convex deployment URL
+- `OPENAI_API_KEY` — OpenAI API key for **SynCRM Copilot** (in-app assistant at `/app/*`). The key is only used on the server (`/api/chat`).
+
 ## Getting Started
 
 First, run the development server:
