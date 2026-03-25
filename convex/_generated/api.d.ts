@@ -13,6 +13,7 @@ import type * as activityReminders from "../activityReminders.js";
 import type * as auth from "../auth.js";
 import type * as commissions from "../commissions.js";
 import type * as contacts from "../contacts.js";
+import type * as copilotChats from "../copilotChats.js";
 import type * as crons from "../crons.js";
 import type * as documents from "../documents.js";
 import type * as email from "../email.js";
@@ -46,6 +47,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   commissions: typeof commissions;
   contacts: typeof contacts;
+  copilotChats: typeof copilotChats;
   crons: typeof crons;
   documents: typeof documents;
   email: typeof email;

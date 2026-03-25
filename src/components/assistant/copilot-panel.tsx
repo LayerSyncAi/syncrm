@@ -18,10 +18,13 @@ import {
   Send,
   Square,
   Trash2,
+  Trash,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 import { CopilotMarkdown } from "@/components/assistant/copilot-markdown";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -34,20 +37,7 @@ const copilotTransport = new DefaultChatTransport({
   credentials: "include",
 });
 
-type CopilotChat = {
-  id: string;
-  title: string;
-  updatedAt: number;
-  messages: UIMessage[];
-};
-
-const STORAGE_KEY = "syncrm.copilot.chats.v1";
-const MAX_CHATS = 20;
 const MAX_MESSAGES_PER_CHAT = 80;
-
-function safeNow() {
-  return Date.now();
-}
 
 function newChatId() {
   return typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -63,24 +53,14 @@ function inferTitle(messages: UIMessage[]) {
   return singleLine.length > 42 ? singleLine.slice(0, 42) + "…" : singleLine || "New chat";
 }
 
-function loadChats(): CopilotChat[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return [];
-    return parsed as CopilotChat[];
-  } catch {
-    return [];
-  }
-}
-
-function saveChats(chats: CopilotChat[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(chats));
-  } catch {
-    // ignore quota / privacy mode
-  }
+/** Strip tool parts before persisting — only text matters for history display. */
+function persistableMessages(messages: UIMessage[]): unknown[] {
+  return messages.slice(-MAX_MESSAGES_PER_CHAT).map((m) => ({
+    id: m.id,
+    role: m.role,
+    parts: m.parts.filter((p) => isTextUIPart(p)),
+    createdAt: m.createdAt,
+  }));
 }
 
 /* ─── Friendly tool-name labels for the thinking indicator ─── */
@@ -217,13 +197,11 @@ export const CopilotPanel = () => {
   const [draft, setDraft] = useState("");
   const [expanded, setExpanded] = useState(true);
   const [activeChatId, setActiveChatId] = useState<string>(() => newChatId());
-  const [chats, setChats] = useState<CopilotChat[]>([]);
   const [pendingRestore, setPendingRestore] = useState<UIMessage[] | null>(null);
   const [searchMode, setSearchMode] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
-  const scrollerRef = useRef<HTMLDivElement | null>(null);
   const scrollAnchorRef = useRef<HTMLDivElement | null>(null);
-  const persistedSignaturesRef = useRef<Record<string, string>>({});
+  const prevStatusRef = useRef<string>("idle");
   const { textareaRef, adjustHeight } = useAutoResizeTextarea({
     minHeight: 44,
     maxHeight: 160,
@@ -231,6 +209,12 @@ export const CopilotPanel = () => {
 
   const { user } = useAuth();
   const firstName = user?.fullName?.split(" ")[0] || user?.name?.split(" ")[0] || "";
+
+  // Convex — history is reactive and cross-device
+  const storedChats = useQuery(api.copilotChats.listMine);
+  const upsertChat = useMutation(api.copilotChats.upsert);
+  const removeChat = useMutation(api.copilotChats.remove);
+  const clearAllChats = useMutation(api.copilotChats.clearAll);
 
   const { messages, sendMessage, status, stop, error, setMessages } = useChat({
     id: activeChatId,
@@ -256,49 +240,25 @@ export const CopilotPanel = () => {
     };
   }, [open]);
 
-  // Load stored history once.
+  // Save to Convex once per exchange — only when the stream finishes (idle/ready),
+  // not on every streamed token. Tool parts are stripped to keep documents small.
   useEffect(() => {
-    const loaded = loadChats();
-    setChats(loaded);
-    persistedSignaturesRef.current = Object.fromEntries(
-      loaded.map((chat) => [chat.id, JSON.stringify(chat.messages ?? [])])
-    );
-  }, []);
+    const prev = prevStatusRef.current;
+    prevStatusRef.current = status;
 
-  // Persist current chat whenever messages change.
-  useEffect(() => {
-    const uiMessages = messages as UIMessage[];
-    const trimmed = uiMessages.slice(-MAX_MESSAGES_PER_CHAT);
-    const signature = JSON.stringify(trimmed);
+    const justFinished =
+      status === "ready" &&
+      (prev === "streaming" || prev === "submitted");
 
-    if (persistedSignaturesRef.current[activeChatId] === signature) {
-      return;
-    }
+    if (!justFinished || messages.length === 0) return;
 
-    setChats((prev) => {
-      const next = [...prev];
-      const idx = next.findIndex((c) => c.id === activeChatId);
-      const existing = idx >= 0 ? next[idx] : undefined;
-      const updatedAt =
-        existing && JSON.stringify(existing.messages ?? []) === signature
-          ? existing.updatedAt
-          : safeNow();
-      const nextChat: CopilotChat = {
-        id: activeChatId,
-        title: inferTitle(trimmed),
-        updatedAt,
-        messages: trimmed,
-      };
-      if (idx >= 0) next[idx] = nextChat;
-      else next.unshift(nextChat);
-
-      next.sort((a, b) => b.updatedAt - a.updatedAt);
-      const capped = next.slice(0, MAX_CHATS);
-      persistedSignaturesRef.current[activeChatId] = signature;
-      saveChats(capped);
-      return capped;
+    void upsertChat({
+      chatId: activeChatId,
+      title: inferTitle(messages as UIMessage[]),
+      messages: persistableMessages(messages as UIMessage[]),
+      updatedAt: Date.now(),
     });
-  }, [activeChatId, messages]);
+  }, [status, messages, activeChatId, upsertChat]);
 
   // Auto-scroll to newest message / thinking indicator while panel is open.
   useEffect(() => {
@@ -341,25 +301,19 @@ export const CopilotPanel = () => {
   const openChat = useCallback(
     (chatId: string) => {
       if (busy) return;
-      const found = chats.find((c) => c.id === chatId);
+      const found = storedChats?.find((c) => c.chatId === chatId);
       if (!found) return;
-      setActiveChatId(found.id);
-      setPendingRestore(found.messages ?? []);
+      setActiveChatId(found.chatId);
+      setPendingRestore((found.messages ?? []) as UIMessage[]);
       setDraft("");
     },
-    [busy, chats]
+    [busy, storedChats]
   );
 
   const deleteChat = useCallback(
     (chatId: string) => {
       if (busy) return;
-      setChats((prev) => {
-        const next = prev.filter((c) => c.id !== chatId);
-        delete persistedSignaturesRef.current[chatId];
-        saveChats(next);
-        return next;
-      });
-      // If deleting the active chat, start fresh
+      void removeChat({ chatId });
       if (chatId === activeChatId) {
         const id = newChatId();
         setActiveChatId(id);
@@ -368,24 +322,18 @@ export const CopilotPanel = () => {
         setDraft("");
       }
     },
-    [busy, activeChatId, setMessages]
+    [busy, activeChatId, setMessages, removeChat]
   );
 
   const clearHistory = useCallback(() => {
     if (busy) return;
-    try {
-      localStorage.removeItem(STORAGE_KEY);
-    } catch {
-      // ignore
-    }
-    persistedSignaturesRef.current = {};
-    setChats([]);
+    void clearAllChats();
     const id = newChatId();
     setActiveChatId(id);
     setPendingRestore([]);
     setMessages([]);
     setDraft("");
-  }, [busy, setMessages]);
+  }, [busy, setMessages, clearAllChats]);
 
   const messageList = useMemo(
     () =>
@@ -486,25 +434,38 @@ export const CopilotPanel = () => {
                 <div className="hidden w-[280px] shrink-0 flex-col gap-2 md:flex">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-xs font-semibold text-text-muted">History</p>
+                    {storedChats && storedChats.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={clearHistory}
+                        disabled={busy}
+                        title="Clear all history"
+                        className="rounded-md p-1 text-text-dim transition-colors hover:bg-red-500/15 hover:text-red-400 disabled:opacity-40"
+                      >
+                        <Trash className="h-3 w-3" />
+                      </button>
+                    )}
                   </div>
                   <div className="flex flex-1 flex-col gap-1 overflow-y-auto rounded-[10px] border border-border-strong/80 bg-content-bg p-2">
-                    {chats.length === 0 ? (
+                    {storedChats === undefined ? (
+                      <p className="px-2 py-2 text-xs text-text-muted animate-pulse">Loading…</p>
+                    ) : storedChats.length === 0 ? (
                       <p className="px-2 py-2 text-xs text-text-muted">No chats yet.</p>
                     ) : (
-                      chats.map((c) => (
+                      storedChats.map((c) => (
                         <div
-                          key={c.id}
+                          key={c._id}
                           className="group relative"
                         >
                           <button
                             type="button"
                             className={cn(
                               "w-full rounded-[10px] px-2 py-2 pr-8 text-left text-xs transition-colors",
-                              c.id === activeChatId
+                              c.chatId === activeChatId
                                 ? "bg-white/10 text-text"
                                 : "hover:bg-white/5 text-text-muted"
                             )}
-                            onClick={() => openChat(c.id)}
+                            onClick={() => openChat(c.chatId)}
                             disabled={busy}
                           >
                             <div className="line-clamp-2">{c.title}</div>
@@ -517,7 +478,7 @@ export const CopilotPanel = () => {
                             className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-text-dim opacity-0 transition-all hover:bg-red-500/15 hover:text-red-400 group-hover:opacity-100"
                             onClick={(e) => {
                               e.stopPropagation();
-                              deleteChat(c.id);
+                              deleteChat(c.chatId);
                             }}
                             disabled={busy}
                             aria-label={`Delete chat: ${c.title}`}
@@ -534,7 +495,6 @@ export const CopilotPanel = () => {
 
               <div className="flex min-h-0 flex-1 flex-col gap-3">
                 <div
-                  ref={scrollerRef}
                   className="flex min-h-[200px] flex-1 flex-col gap-2 overflow-y-auto overflow-x-hidden rounded-[10px] border border-border-strong/80 bg-content-bg p-3"
                 >
                   {messages.length === 0 && (

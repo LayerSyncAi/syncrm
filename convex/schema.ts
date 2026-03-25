@@ -375,6 +375,16 @@ export default defineSchema({
     lastRefill: v.number(),
   })
     .index("by_key", ["key"]),
+  copilotChats: defineTable({
+    chatId: v.string(),
+    userId: v.id("users"),
+    orgId: v.id("organizations"),
+    title: v.string(),
+    messages: v.array(v.any()),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_chat_id", ["chatId"]),
   contacts: defineTable({
     name: v.string(),
     phone: v.optional(v.string()),
