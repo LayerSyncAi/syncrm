@@ -569,7 +569,7 @@ export default function LandingPage() {
           <div className="flex items-center gap-2 sm:gap-3">
             <Link
               href="/login"
-              className="whitespace-nowrap text-sm font-medium text-text-muted transition-colors hover:text-text"
+              className="inline-flex items-center whitespace-nowrap rounded-[10px] px-3 py-2 text-sm font-medium text-text-muted transition-colors hover:bg-surface-2 hover:text-text sm:px-4"
             >
               Sign in
             </Link>
