@@ -283,6 +283,131 @@ export const list = query({
   },
 });
 
+export const listByStage = query({
+  args: {
+    interestType: v.optional(v.union(v.literal("rent"), v.literal("buy"))),
+    q: v.optional(v.string()),
+    ownerUserId: v.optional(v.id("users")),
+    scoreMin: v.optional(v.number()),
+    scoreMax: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserWithOrg(ctx);
+    const isAdmin = user.role === "admin";
+
+    // Fetch all stages for this org
+    const stages = await ctx.db
+      .query("pipelineStages")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .collect();
+    const sortedStages = stages.sort((a, b) => a.order - b.order);
+
+    // Fetch leads
+    let results;
+    if (args.q && args.q.trim().length > 0) {
+      const qTrim = args.q.trim();
+      results = await ctx.db
+        .query("leads")
+        .withSearchIndex("search_leads", (q) =>
+          q.search("fullName", qTrim).eq("orgId", user.orgId)
+        )
+        .collect();
+      if (results.length === 0) {
+        const pool = !isAdmin
+          ? await ctx.db.query("leads").withIndex("by_owner", (q) => q.eq("ownerUserId", user._id)).collect()
+          : await ctx.db.query("leads").withIndex("by_org", (q) => q.eq("orgId", user.orgId)).collect();
+        const qLower = qTrim.toLowerCase();
+        const digits = qTrim.replace(/\D/g, "");
+        results = pool.filter((lead) => {
+          if (lead.isArchived) return false;
+          if (lead.orgId && lead.orgId !== user.orgId) return false;
+          if (!isAdmin && lead.ownerUserId !== user._id) return false;
+          const nameMatch = lead.fullName.toLowerCase().includes(qLower);
+          const emailMatch = lead.email?.toLowerCase().includes(qLower) ?? false;
+          const phoneMatch =
+            (lead.phone && lead.phone.includes(qTrim)) ||
+            (digits.length > 0 && lead.normalizedPhone && lead.normalizedPhone.includes(digits));
+          return nameMatch || emailMatch || phoneMatch;
+        });
+      }
+    } else if (!isAdmin) {
+      results = await ctx.db.query("leads").withIndex("by_owner", (q) => q.eq("ownerUserId", user._id)).collect();
+    } else if (args.ownerUserId) {
+      results = await ctx.db.query("leads").withIndex("by_owner", (q) => q.eq("ownerUserId", args.ownerUserId!)).collect();
+    } else {
+      results = await ctx.db.query("leads").withIndex("by_org", (q) => q.eq("orgId", user.orgId)).collect();
+    }
+
+    // Filter
+    const filtered = results.filter((lead) => {
+      if (lead.isArchived) return false;
+      if (lead.orgId && lead.orgId !== user.orgId) return false;
+      if (!isAdmin && lead.ownerUserId !== user._id) return false;
+      if (args.interestType && lead.interestType !== args.interestType) return false;
+      if (args.scoreMin !== undefined && (lead.score ?? 0) < args.scoreMin) return false;
+      if (args.scoreMax !== undefined && (lead.score ?? 0) > args.scoreMax) return false;
+      return true;
+    });
+
+    // Enrich with owner names
+    const users = await ctx.db.query("users").withIndex("by_org", (q) => q.eq("orgId", user.orgId)).collect();
+    const userMap = new Map(users.map((u) => [u._id, u]));
+
+    const enriched = filtered.map((lead) => {
+      const owner = userMap.get(lead.ownerUserId);
+      return {
+        _id: lead._id,
+        contactId: lead.contactId,
+        fullName: lead.fullName,
+        phone: lead.phone,
+        email: lead.email,
+        interestType: lead.interestType,
+        score: lead.score,
+        stageId: lead.stageId,
+        ownerUserId: lead.ownerUserId,
+        ownerName: owner?.fullName || owner?.name || owner?.email || "Unknown",
+        budgetMin: lead.budgetMin,
+        budgetMax: lead.budgetMax,
+        budgetCurrency: lead.budgetCurrency,
+        preferredAreas: lead.preferredAreas,
+        closedAt: lead.closedAt,
+        closeReason: lead.closeReason,
+        updatedAt: lead.updatedAt,
+        createdAt: lead.createdAt,
+        lastActivityAt: lead.lastActivityAt,
+      };
+    });
+
+    // Group by stage
+    const stageMap = new Map<string, typeof enriched>();
+    for (const stage of sortedStages) {
+      stageMap.set(stage._id as string, []);
+    }
+    for (const lead of enriched) {
+      const bucket = stageMap.get(lead.stageId as string);
+      if (bucket) {
+        bucket.push(lead);
+      }
+    }
+
+    // Sort leads within each stage by updatedAt descending
+    for (const bucket of stageMap.values()) {
+      bucket.sort((a, b) => b.updatedAt - a.updatedAt);
+    }
+
+    return {
+      stages: sortedStages.map((s) => ({
+        _id: s._id,
+        name: s.name,
+        order: s.order,
+        isTerminal: s.isTerminal,
+        terminalOutcome: s.terminalOutcome,
+      })),
+      columns: Object.fromEntries(stageMap),
+    };
+  },
+});
+
 export const getById = query({
   args: { leadId: v.id("leads") },
   handler: async (ctx, args) => {
