@@ -226,8 +226,8 @@ export function createCopilotTools(token: string): ToolSet {
               opts
             ),
           ]);
-          const rawContacts = (contacts as { items?: unknown[] })?.items ?? (contacts as unknown[]);
-          const rawLeads = (leads as { items?: unknown[] })?.items ?? (leads as unknown[]);
+          const rawContacts = (contacts as { items?: unknown[] })?.items ?? (contacts as unknown as unknown[]);
+          const rawLeads = (leads as { items?: unknown[] })?.items ?? (leads as unknown as unknown[]);
           return truncateForModel({
             query: input.query,
             contacts: sanitizeItems(Array.isArray(rawContacts) ? rawContacts : []),
