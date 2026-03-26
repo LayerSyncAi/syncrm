@@ -59,7 +59,7 @@ function persistableMessages(messages: UIMessage[]): unknown[] {
     id: m.id,
     role: m.role,
     parts: m.parts.filter((p) => isTextUIPart(p)),
-    createdAt: m.createdAt,
+    createdAt: (m as unknown as Record<string, unknown>).createdAt ?? new Date().toISOString(),
   }));
 }
 
