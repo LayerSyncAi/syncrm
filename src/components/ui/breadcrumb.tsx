@@ -14,12 +14,12 @@ interface BreadcrumbProps {
 
 export function Breadcrumb({ items, className }: BreadcrumbProps) {
   return (
-    <nav aria-label="Breadcrumb" className={cn("flex items-start gap-1.5 text-sm", className)}>
-      <ol className="flex flex-wrap items-center gap-1.5">
+    <nav aria-label="Breadcrumb" className={cn("min-w-0 text-sm", className)}>
+      <ol className="flex items-center gap-1.5 overflow-hidden">
         {items.map((item, index) => {
           const isLast = index === items.length - 1;
           return (
-            <li key={item.label} className="flex items-center gap-1.5">
+            <li key={item.label} className="flex shrink-0 items-center gap-1.5 last:shrink last:min-w-0">
               {index > 0 && (
                 <svg
                   width="16"
