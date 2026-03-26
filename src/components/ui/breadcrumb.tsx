@@ -15,11 +15,11 @@ interface BreadcrumbProps {
 export function Breadcrumb({ items, className }: BreadcrumbProps) {
   return (
     <nav aria-label="Breadcrumb" className={cn("min-w-0 text-sm", className)}>
-      <ol className="flex items-center gap-1.5 overflow-hidden">
+      <ol className="flex items-center gap-1.5">
         {items.map((item, index) => {
           const isLast = index === items.length - 1;
           return (
-            <li key={item.label} className="flex shrink-0 items-center gap-1.5 last:shrink last:min-w-0">
+            <li key={item.label} className="flex items-center gap-1.5 whitespace-nowrap">
               {index > 0 && (
                 <svg
                   width="16"
@@ -38,7 +38,7 @@ export function Breadcrumb({ items, className }: BreadcrumbProps) {
                 </svg>
               )}
               {isLast || !item.href ? (
-                <span className="text-text font-medium truncate max-w-[200px]">
+                <span className="text-text font-medium truncate max-w-[45vw] sm:max-w-[200px]">
                   {item.label}
                 </span>
               ) : (
