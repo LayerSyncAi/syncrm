@@ -45,7 +45,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const validation = safeValidateUIMessages({ messages: parsed.data.messages });
+  const validation = await safeValidateUIMessages({ messages: parsed.data.messages });
   if (!validation.success) {
     return NextResponse.json({ error: "Invalid message format" }, { status: 400 });
   }
