@@ -10,9 +10,8 @@ import React, {
 } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { format } from "date-fns";
-import { ArrowLeft, ArrowRight, Pencil, Clock, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Pencil, Clock, X, ChevronDown } from "lucide-react";
 import { DateObj, useDayzed } from "dayzed";
-import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 
 /* ─── public props ─── */
 export interface FlipCalendarProps {
@@ -378,20 +377,57 @@ const HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) => ({
   label: String(i).padStart(2, "0"),
 }));
 
+const MINUTE_OPTIONS = Array.from({ length: 12 }, (_, i) => ({
+  value: String(i * 5),
+  label: String(i * 5).padStart(2, "0"),
+}));
+
 const TimePicker = ({
   hours,
   minutes,
   onHoursChange,
   onMinutesChange,
 }: TimePickerProps) => {
+  const [hourInput, setHourInput] = useState(
+    String(hours).padStart(2, "0")
+  );
   const [minuteInput, setMinuteInput] = useState(
     String(minutes).padStart(2, "0")
   );
+  const [showHourDropdown, setShowHourDropdown] = useState(false);
+  const [showMinuteDropdown, setShowMinuteDropdown] = useState(false);
+  const hourRef = useRef<HTMLDivElement>(null);
+  const minuteRef = useRef<HTMLDivElement>(null);
 
-  // Keep the text field in sync when the parent value changes
+  // Keep inputs in sync when parent values change
+  useEffect(() => {
+    setHourInput(String(hours).padStart(2, "0"));
+  }, [hours]);
+
   useEffect(() => {
     setMinuteInput(String(minutes).padStart(2, "0"));
   }, [minutes]);
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (hourRef.current && !hourRef.current.contains(e.target as Node)) {
+        setShowHourDropdown(false);
+      }
+      if (minuteRef.current && !minuteRef.current.contains(e.target as Node)) {
+        setShowMinuteDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const commitHours = (raw: string) => {
+    const n = parseInt(raw, 10);
+    const clamped = Number.isNaN(n) ? 0 : Math.min(Math.max(n, 0), 23);
+    setHourInput(String(clamped).padStart(2, "0"));
+    onHoursChange(clamped);
+  };
 
   const commitMinutes = (raw: string) => {
     const n = parseInt(raw, 10);
@@ -404,31 +440,103 @@ const TimePicker = ({
     <div className="mt-3 border-t border-border pt-3">
       <div className="flex items-center gap-2">
         <Clock className="h-4 w-4 shrink-0 text-text-muted" />
-        <div className="w-[72px]">
-          <StaggeredDropDown
-            value={String(hours)}
-            onChange={(val) => onHoursChange(Number(val))}
-            options={HOUR_OPTIONS}
-            maxHeight={192}
-            portal
-          />
+        {/* Hours – type or pick from dropdown */}
+        <div ref={hourRef} className="relative">
+          <div className="flex">
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={2}
+              value={hourInput}
+              onChange={(e) => {
+                const v = e.target.value.replace(/\D/g, "").slice(0, 2);
+                setHourInput(v);
+              }}
+              onBlur={(e) => commitHours(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commitHours(hourInput);
+              }}
+              onFocus={() => setShowHourDropdown(false)}
+              className="h-10 w-14 rounded-l-[10px] border border-r-0 border-border-strong bg-transparent px-2 text-center text-sm text-text outline-none transition duration-150 hover:border-primary/60 focus:ring-4 focus:ring-[rgba(59,130,246,0.18)]"
+            />
+            <button
+              type="button"
+              onClick={() => setShowHourDropdown((p) => !p)}
+              className="flex h-10 w-7 items-center justify-center rounded-r-[10px] border border-border-strong bg-transparent text-text-muted transition duration-150 hover:border-primary/60 hover:text-text"
+            >
+              <ChevronDown className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          {showHourDropdown && (
+            <ul className="absolute z-50 mt-1 max-h-[192px] w-full overflow-y-auto rounded-[10px] border border-border-strong bg-card-bg p-1 shadow-xl">
+              {HOUR_OPTIONS.map((opt) => (
+                <li
+                  key={opt.value}
+                  onClick={() => {
+                    onHoursChange(Number(opt.value));
+                    setShowHourDropdown(false);
+                  }}
+                  className={`cursor-pointer rounded-[8px] px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                    String(hours) === opt.value
+                      ? "bg-primary/10 text-primary-600"
+                      : "text-text hover:bg-primary/5 hover:text-primary-600"
+                  }`}
+                >
+                  {opt.label}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
         <span className="text-text-muted">:</span>
-        <input
-          type="text"
-          inputMode="numeric"
-          maxLength={2}
-          value={minuteInput}
-          onChange={(e) => {
-            const v = e.target.value.replace(/\D/g, "").slice(0, 2);
-            setMinuteInput(v);
-          }}
-          onBlur={(e) => commitMinutes(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") commitMinutes(minuteInput);
-          }}
-          className="h-10 w-14 rounded-[10px] border border-border-strong bg-transparent px-2 text-center text-sm text-text outline-none transition duration-150 hover:border-primary/60 focus:ring-4 focus:ring-[rgba(59,130,246,0.18)]"
-        />
+        {/* Minutes – type or pick from dropdown */}
+        <div ref={minuteRef} className="relative">
+          <div className="flex">
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={2}
+              value={minuteInput}
+              onChange={(e) => {
+                const v = e.target.value.replace(/\D/g, "").slice(0, 2);
+                setMinuteInput(v);
+              }}
+              onBlur={(e) => commitMinutes(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commitMinutes(minuteInput);
+              }}
+              onFocus={() => setShowMinuteDropdown(false)}
+              className="h-10 w-14 rounded-l-[10px] border border-r-0 border-border-strong bg-transparent px-2 text-center text-sm text-text outline-none transition duration-150 hover:border-primary/60 focus:ring-4 focus:ring-[rgba(59,130,246,0.18)]"
+            />
+            <button
+              type="button"
+              onClick={() => setShowMinuteDropdown((p) => !p)}
+              className="flex h-10 w-7 items-center justify-center rounded-r-[10px] border border-border-strong bg-transparent text-text-muted transition duration-150 hover:border-primary/60 hover:text-text"
+            >
+              <ChevronDown className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          {showMinuteDropdown && (
+            <ul className="absolute z-50 mt-1 max-h-[192px] w-full overflow-y-auto rounded-[10px] border border-border-strong bg-card-bg p-1 shadow-xl">
+              {MINUTE_OPTIONS.map((opt) => (
+                <li
+                  key={opt.value}
+                  onClick={() => {
+                    onMinutesChange(Number(opt.value));
+                    setShowMinuteDropdown(false);
+                  }}
+                  className={`cursor-pointer rounded-[8px] px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                    String(minutes) === opt.value
+                      ? "bg-primary/10 text-primary-600"
+                      : "text-text hover:bg-primary/5 hover:text-primary-600"
+                  }`}
+                >
+                  {opt.label}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
     </div>
   );

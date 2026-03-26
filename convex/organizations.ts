@@ -1,6 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { getCurrentUser, getCurrentUserWithOrg } from "./helpers";
+import { getCurrentUser, getCurrentUserOptional, getCurrentUserWithOrg } from "./helpers";
 
 function generateSlug(name: string): string {
   return name
@@ -69,8 +69,8 @@ export const setupOrganization = mutation({
 // Get the current user's organization
 export const getMyOrg = query({
   handler: async (ctx) => {
-    const user = await getCurrentUser(ctx);
-    if (!user.orgId) return null;
+    const user = await getCurrentUserOptional(ctx);
+    if (!user || !user.orgId) return null;
     const org = await ctx.db.get(user.orgId);
     return org;
   },
