@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useRef, useMemo } from "react";
+import React, { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -54,6 +54,22 @@ interface KanbanBoardProps {
   columns: Record<string, KanbanLead[]>;
   onSiblingResolution: (lead: KanbanLead) => void;
 }
+
+// ─── Touch drag state (shared via context to avoid prop drilling) ────
+
+interface TouchDragState {
+  leadId: string | null;
+  overStageId: string | null;
+  ghostPos: { x: number; y: number } | null;
+  onTouchStart: (leadId: string, e: React.TouchEvent) => void;
+}
+
+const TouchDragContext = React.createContext<TouchDragState>({
+  leadId: null,
+  overStageId: null,
+  ghostPos: null,
+  onTouchStart: () => {},
+});
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
@@ -141,29 +157,39 @@ const KanbanCard = React.memo(function KanbanCard({
   isDragging: boolean;
 }) {
   const router = useRouter();
+  const touchDrag = React.useContext(TouchDragContext);
   const budget = formatBudget(lead.budgetMin, lead.budgetMax, lead.budgetCurrency);
   const activity = timeAgo(lead.lastActivityAt);
+  const isTouchDragging = touchDrag.leadId === (lead._id as string);
 
   return (
     <motion.div
       layout
       layoutId={lead._id}
       initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: isDragging ? 0.4 : 1, y: 0, scale: isDragging ? 0.97 : 1 }}
+      animate={{
+        opacity: isDragging || isTouchDragging ? 0.4 : 1,
+        y: 0,
+        scale: isDragging || isTouchDragging ? 0.97 : 1,
+      }}
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ type: "spring", stiffness: 400, damping: 30 }}
       draggable
       onDragStart={(e) => onDragStart(e as unknown as React.DragEvent, lead._id)}
-      onClick={() => router.push(`/app/leads/${lead._id}`)}
+      onClick={() => {
+        // Don't navigate if we just finished a touch drag
+        if (!touchDrag.leadId) router.push(`/app/leads/${lead._id}`);
+      }}
+      onTouchStart={(e) => touchDrag.onTouchStart(lead._id as string, e)}
       className={cn(
         "group relative cursor-grab rounded-[10px] border border-border bg-card-bg p-3 transition-all duration-150",
         "hover:border-border-strong hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)]",
         "active:cursor-grabbing",
-        isDragging && "ring-2 ring-primary/30"
+        (isDragging || isTouchDragging) && "ring-2 ring-primary/30"
       )}
     >
       {/* Drag handle */}
-      <div className="absolute right-1.5 top-1.5 opacity-0 group-hover:opacity-40 transition-opacity">
+      <div className="absolute right-1.5 top-1.5 opacity-40 md:opacity-0 md:group-hover:opacity-40 transition-opacity">
         <GripVertical className="h-3.5 w-3.5 text-text-dim" />
       </div>
 
@@ -232,6 +258,37 @@ const KanbanCard = React.memo(function KanbanCard({
   );
 });
 
+// ─── Touch Ghost (floating card preview) ─────────────────────────────
+
+function TouchGhost({ lead, pos }: { lead: KanbanLead; pos: { x: number; y: number } }) {
+  return (
+    <div
+      className="fixed z-[9999] pointer-events-none w-[240px] rounded-[10px] border border-primary/40 bg-card-bg/95 p-3 shadow-xl backdrop-blur-sm"
+      style={{
+        left: pos.x - 120,
+        top: pos.y - 30,
+      }}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-sm font-medium text-text truncate">{lead.fullName}</span>
+        <span
+          className={cn(
+            "shrink-0 inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+            lead.interestType === "buy"
+              ? "bg-primary/10 text-primary"
+              : "bg-info/10 text-info"
+          )}
+        >
+          {lead.interestType === "buy" ? "Buy" : "Rent"}
+        </span>
+      </div>
+      <p className="text-[11px] text-text-muted mt-1 truncate">
+        {lead.phone || lead.email || "No contact info"}
+      </p>
+    </div>
+  );
+}
+
 // ─── Kanban Column ───────────────────────────────────────────────────
 
 function KanbanColumn({
@@ -253,10 +310,13 @@ function KanbanColumn({
   onDragLeave: () => void;
   onDrop: (e: React.DragEvent, stageId: string) => void;
 }) {
-  const isOver = dragOverStageId === (stage._id as string);
+  const touchDrag = React.useContext(TouchDragContext);
+  const isOver = dragOverStageId === (stage._id as string) ||
+    touchDrag.overStageId === (stage._id as string);
 
   return (
     <div
+      data-stage-id={stage._id as string}
       className={cn(
         "flex w-[280px] min-w-[280px] flex-col rounded-[12px] border transition-all duration-200",
         isOver
@@ -325,6 +385,15 @@ export function KanbanBoard({ stages, columns, onSiblingResolution }: KanbanBoar
   const [draggingLeadId, setDraggingLeadId] = useState<string | null>(null);
   const [dragOverStageId, setDragOverStageId] = useState<string | null>(null);
   const sourceStageRef = useRef<string | null>(null);
+  const boardRef = useRef<HTMLDivElement>(null);
+
+  // Touch drag state
+  const [touchLeadId, setTouchLeadId] = useState<string | null>(null);
+  const [touchOverStageId, setTouchOverStageId] = useState<string | null>(null);
+  const [touchGhostPos, setTouchGhostPos] = useState<{ x: number; y: number } | null>(null);
+  const touchStartPos = useRef<{ x: number; y: number } | null>(null);
+  const touchActive = useRef(false);
+  const touchScrollStartX = useRef(0);
 
   // Find the source stage for the lead being dragged
   const leadStageMap = useMemo(() => {
@@ -348,6 +417,46 @@ export function KanbanBoard({ stages, columns, onSiblingResolution }: KanbanBoar
     },
     [columns]
   );
+
+  // ─── Shared drop logic ──────────────────────────────────────────
+
+  const executeDrop = useCallback(
+    async (leadId: string, targetStageId: string) => {
+      const sourceStageId = leadStageMap.get(leadId);
+      if (sourceStageId === targetStageId) return;
+
+      const targetStage = stages.find((s) => (s._id as string) === targetStageId);
+      if (!targetStage) return;
+
+      const lead = findLead(leadId);
+      if (!lead) return;
+      if (lead.closedAt && lead.closeReason) {
+        leadToasts.stageMoveFailed("This lead is already closed");
+        return;
+      }
+
+      try {
+        await moveStage({
+          leadId: leadId as Id<"leads">,
+          stageId: targetStageId as Id<"pipelineStages">,
+        });
+        leadToasts.stageMoved(targetStage.name);
+
+        const isWon = targetStage.isTerminal && targetStage.terminalOutcome === "won";
+        const isUnderContract = !targetStage.isTerminal && targetStage.name.toLowerCase() === "under contract";
+        if (isWon || isUnderContract) {
+          onSiblingResolution(lead);
+        }
+      } catch (error) {
+        leadToasts.stageMoveFailed(
+          error instanceof Error ? error.message : undefined
+        );
+      }
+    },
+    [leadStageMap, stages, moveStage, findLead, onSiblingResolution]
+  );
+
+  // ─── Desktop drag handlers ──────────────────────────────────────
 
   const handleDragStart = useCallback(
     (e: React.DragEvent, leadId: string) => {
@@ -375,47 +484,11 @@ export function KanbanBoard({ stages, columns, onSiblingResolution }: KanbanBoar
       setDragOverStageId(null);
       const leadId = e.dataTransfer.getData("text/plain") || draggingLeadId;
       setDraggingLeadId(null);
-
       if (!leadId) return;
-
-      const sourceStageId = sourceStageRef.current;
       sourceStageRef.current = null;
-
-      // No-op if dropped on the same stage
-      if (sourceStageId === targetStageId) return;
-
-      // Find the target stage metadata
-      const targetStage = stages.find((s) => (s._id as string) === targetStageId);
-      if (!targetStage) return;
-
-      // Prevent dropping onto closed leads' stages if the lead is already closed
-      const lead = findLead(leadId);
-      if (!lead) return;
-      if (lead.closedAt && lead.closeReason) {
-        leadToasts.stageMoveFailed("This lead is already closed");
-        return;
-      }
-
-      try {
-        await moveStage({
-          leadId: leadId as Id<"leads">,
-          stageId: targetStageId as Id<"pipelineStages">,
-        });
-        leadToasts.stageMoved(targetStage.name);
-
-        // Trigger sibling resolution for won/under-contract
-        const isWon = targetStage.isTerminal && targetStage.terminalOutcome === "won";
-        const isUnderContract = !targetStage.isTerminal && targetStage.name.toLowerCase() === "under contract";
-        if (isWon || isUnderContract) {
-          onSiblingResolution(lead);
-        }
-      } catch (error) {
-        leadToasts.stageMoveFailed(
-          error instanceof Error ? error.message : undefined
-        );
-      }
+      await executeDrop(leadId, targetStageId);
     },
-    [draggingLeadId, stages, moveStage, findLead, onSiblingResolution]
+    [draggingLeadId, executeDrop]
   );
 
   const handleDragEnd = useCallback(() => {
@@ -424,24 +497,145 @@ export function KanbanBoard({ stages, columns, onSiblingResolution }: KanbanBoar
     sourceStageRef.current = null;
   }, []);
 
+  // ─── Touch drag handlers ────────────────────────────────────────
+
+  // Detect which column is under a touch point
+  const getStageAtPoint = useCallback((x: number, y: number): string | null => {
+    const els = document.elementsFromPoint(x, y);
+    for (const el of els) {
+      const stageEl = (el as HTMLElement).closest("[data-stage-id]");
+      if (stageEl) return stageEl.getAttribute("data-stage-id");
+    }
+    return null;
+  }, []);
+
+  const handleTouchStart = useCallback((leadId: string, e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    touchStartPos.current = { x: touch.clientX, y: touch.clientY };
+    touchActive.current = false;
+    touchScrollStartX.current = boardRef.current?.scrollLeft ?? 0;
+    // We store the leadId but don't activate drag mode yet — wait for movement
+    setTouchLeadId(leadId);
+  }, []);
+
+  useEffect(() => {
+    const DRAG_THRESHOLD = 10;
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!touchLeadId) return;
+      const touch = e.touches[0];
+      const start = touchStartPos.current;
+      if (!start) return;
+
+      const dx = Math.abs(touch.clientX - start.x);
+      const dy = Math.abs(touch.clientY - start.y);
+
+      if (!touchActive.current) {
+        // If horizontal movement dominates and exceeds threshold, start drag
+        if (dx > DRAG_THRESHOLD && dx > dy) {
+          touchActive.current = true;
+          e.preventDefault();
+        } else if (dy > DRAG_THRESHOLD) {
+          // Vertical scroll — cancel touch drag
+          setTouchLeadId(null);
+          touchStartPos.current = null;
+          return;
+        } else {
+          return;
+        }
+      }
+
+      e.preventDefault();
+      setTouchGhostPos({ x: touch.clientX, y: touch.clientY });
+
+      // Auto-scroll the board when near edges
+      const board = boardRef.current;
+      if (board) {
+        const rect = board.getBoundingClientRect();
+        const edgeZone = 40;
+        if (touch.clientX < rect.left + edgeZone) {
+          board.scrollLeft -= 8;
+        } else if (touch.clientX > rect.right - edgeZone) {
+          board.scrollLeft += 8;
+        }
+      }
+
+      // Detect column under finger
+      const stageId = getStageAtPoint(touch.clientX, touch.clientY);
+      setTouchOverStageId(stageId);
+    };
+
+    const handleTouchEnd = async () => {
+      const leadId = touchLeadId;
+      const targetStageId = touchOverStageId;
+      const wasActive = touchActive.current;
+
+      // Reset all touch state
+      setTouchLeadId(null);
+      setTouchOverStageId(null);
+      setTouchGhostPos(null);
+      touchStartPos.current = null;
+      touchActive.current = false;
+
+      if (wasActive && leadId && targetStageId) {
+        await executeDrop(leadId, targetStageId);
+      }
+    };
+
+    if (touchLeadId) {
+      document.addEventListener("touchmove", handleTouchMove, { passive: false });
+      document.addEventListener("touchend", handleTouchEnd);
+      document.addEventListener("touchcancel", handleTouchEnd);
+    }
+
+    return () => {
+      document.removeEventListener("touchmove", handleTouchMove);
+      document.removeEventListener("touchend", handleTouchEnd);
+      document.removeEventListener("touchcancel", handleTouchEnd);
+    };
+  }, [touchLeadId, touchOverStageId, executeDrop, getStageAtPoint]);
+
+  // ─── Touch drag context value ───────────────────────────────────
+
+  const touchDragValue = useMemo<TouchDragState>(
+    () => ({
+      leadId: touchActive.current ? touchLeadId : null,
+      overStageId: touchOverStageId,
+      ghostPos: touchGhostPos,
+      onTouchStart: handleTouchStart,
+    }),
+    [touchLeadId, touchOverStageId, touchGhostPos, handleTouchStart]
+  );
+
+  // Find the lead being touch-dragged for the ghost
+  const touchDragLead = touchLeadId ? findLead(touchLeadId) : null;
+
   return (
-    <div
-      className="flex gap-3 overflow-x-auto pb-4"
-      onDragEnd={handleDragEnd}
-    >
-      {stages.map((stage) => (
-        <KanbanColumn
-          key={stage._id}
-          stage={stage}
-          leads={columns[stage._id as string] ?? []}
-          dragOverStageId={dragOverStageId}
-          draggingLeadId={draggingLeadId}
-          onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-        />
-      ))}
-    </div>
+    <TouchDragContext.Provider value={touchDragValue}>
+      <div
+        ref={boardRef}
+        className="flex gap-3 overflow-x-auto pb-4"
+        onDragEnd={handleDragEnd}
+      >
+        {stages.map((stage) => (
+          <KanbanColumn
+            key={stage._id}
+            stage={stage}
+            leads={columns[stage._id as string] ?? []}
+            dragOverStageId={dragOverStageId}
+            draggingLeadId={draggingLeadId}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          />
+        ))}
+      </div>
+
+      {/* Touch drag ghost */}
+      {touchGhostPos && touchDragLead && (
+        <TouchGhost lead={touchDragLead} pos={touchGhostPos} />
+      )}
+    </TouchDragContext.Provider>
   );
 }
