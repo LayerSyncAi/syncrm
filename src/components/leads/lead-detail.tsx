@@ -395,11 +395,11 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <Breadcrumb items={[{ label: "Leads", href: "/app/leads" }, { label: lead.fullName }]} />
+      <div className="flex items-start justify-between gap-3">
+        <Breadcrumb items={[{ label: "Leads", href: "/app/leads" }, { label: lead.fullName }]} className="min-w-0" />
         <Button
           variant="ghost"
-          className="text-danger hover:text-danger hover:bg-danger/10 text-xs h-8 px-3"
+          className="text-danger hover:text-danger hover:bg-danger/10 text-xs h-8 px-3 shrink-0"
           onClick={() => { setShowDeleteModal(true); setDeleteConfirmText(""); }}
         >
           Delete Lead

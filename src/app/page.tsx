@@ -566,16 +566,16 @@ export default function LandingPage() {
               Syn<span className="text-primary-600">CRM</span>
             </span>
           </Link>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <Link
               href="/login"
-              className="text-sm font-medium text-text-muted transition-colors hover:text-text"
+              className="whitespace-nowrap text-sm font-medium text-text-muted transition-colors hover:text-text"
             >
               Sign in
             </Link>
             <Link
               href="/login"
-              className="inline-flex items-center gap-1.5 rounded-[10px] bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-[0_0_0_4px_rgba(236,164,0,0.12)] transition-colors hover:bg-primary"
+              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-[10px] bg-primary-600 px-3 py-2 text-sm font-medium text-white shadow-[0_0_0_4px_rgba(236,164,0,0.12)] transition-colors hover:bg-primary sm:px-4"
             >
               Get Started
               <ArrowRight className="h-3.5 w-3.5" />
