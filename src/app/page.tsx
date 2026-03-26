@@ -557,8 +557,8 @@ export default function LandingPage() {
     <main className="min-h-screen overflow-x-clip bg-content-bg">
       {/* ── Navbar ────────────────────────────────────────────────── */}
       <nav className="sticky top-0 z-50 border-b border-border bg-card-bg/80 backdrop-blur-md">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
-          <Link href="/" className="flex items-center gap-2">
+        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+          <Link href="/" className="flex items-center gap-2 shrink-0">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-600">
               <Sparkles className="h-4 w-4 text-white" />
             </div>
@@ -566,7 +566,7 @@ export default function LandingPage() {
               Syn<span className="text-primary-600">CRM</span>
             </span>
           </Link>
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3">
             <Link
               href="/login"
               className="whitespace-nowrap text-sm font-medium text-text-muted transition-colors hover:text-text"
