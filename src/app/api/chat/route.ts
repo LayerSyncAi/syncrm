@@ -49,7 +49,7 @@ export async function POST(req: Request) {
   if (!validation.success) {
     return NextResponse.json({ error: "Invalid message format" }, { status: 400 });
   }
-  const uiMessages = validation.value;
+  const uiMessages = validation.data;
   const tools = createCopilotTools(token);
 
   const modelMessages = await convertToModelMessages(
