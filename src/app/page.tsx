@@ -557,8 +557,8 @@ export default function LandingPage() {
     <main className="min-h-screen overflow-x-clip bg-content-bg">
       {/* ── Navbar ────────────────────────────────────────────────── */}
       <nav className="sticky top-0 z-50 border-b border-border bg-card-bg/80 backdrop-blur-md">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
-          <Link href="/" className="flex items-center gap-2">
+        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+          <Link href="/" className="flex items-center gap-2 shrink-0">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-600">
               <Sparkles className="h-4 w-4 text-white" />
             </div>
@@ -566,16 +566,16 @@ export default function LandingPage() {
               Syn<span className="text-primary-600">CRM</span>
             </span>
           </Link>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <Link
               href="/login"
-              className="text-sm font-medium text-text-muted transition-colors hover:text-text"
+              className="inline-flex items-center whitespace-nowrap rounded-[10px] px-3 py-2 text-sm font-medium text-text-muted transition-colors hover:bg-surface-2 hover:text-text sm:px-4"
             >
               Sign in
             </Link>
             <Link
               href="/login"
-              className="inline-flex items-center gap-1.5 rounded-[10px] bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-[0_0_0_4px_rgba(236,164,0,0.12)] transition-colors hover:bg-primary"
+              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-[10px] bg-primary-600 px-3 py-2 text-sm font-medium text-white shadow-[0_0_0_4px_rgba(236,164,0,0.12)] transition-colors hover:bg-primary sm:px-4"
             >
               Get Started
               <ArrowRight className="h-3.5 w-3.5" />

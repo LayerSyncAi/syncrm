@@ -4,7 +4,7 @@ import {
   convertToModelMessages,
   streamText,
   stepCountIs,
-  type UIMessage,
+  safeValidateUIMessages,
 } from "ai";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -45,7 +45,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const uiMessages = parsed.data.messages as UIMessage[];
+  const validation = await safeValidateUIMessages({ messages: parsed.data.messages });
+  if (!validation.success) {
+    return NextResponse.json({ error: "Invalid message format" }, { status: 400 });
+  }
+  const uiMessages = validation.data;
   const tools = createCopilotTools(token);
 
   const modelMessages = await convertToModelMessages(

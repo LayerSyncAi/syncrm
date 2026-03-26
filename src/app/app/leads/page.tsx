@@ -18,8 +18,9 @@ import { useRequireAuth } from "@/hooks/useAuth";
 import { leadToasts } from "@/lib/toast";
 import { Modal } from "@/components/ui/modal";
 import { Tooltip } from "@/components/ui/tooltip";
-import { Eye, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Eye, Trash2, ArrowUpDown, ArrowUp, ArrowDown, LayoutList, Columns3 } from "lucide-react";
 import { ErrorBoundary } from "@/components/common/error-boundary";
+import { KanbanBoard } from "@/components/leads/kanban-board";
 
 const listVariants = {
   hidden: {},
@@ -169,6 +170,9 @@ export default function LeadsPage() {
   const { user, isLoading: authLoading, isAdmin } = useRequireAuth();
   const pagination = usePagination(50);
 
+  // View mode state
+  const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
+
   // Filter state
   const [stageFilter, setStageFilter] = useState<string>("");
   const [interestFilter, setInterestFilter] = useState<string>("");
@@ -237,6 +241,23 @@ export default function LeadsPage() {
     page: pagination.page > 0 ? pagination.page : undefined,
     pageSize: pagination.pageSize !== 50 ? pagination.pageSize : undefined,
   });
+
+  // Kanban query (only active in kanban mode)
+  const kanbanData = useQuery(
+    api.leads.listByStage,
+    viewMode === "kanban"
+      ? {
+          interestType:
+            interestFilter === "rent" || interestFilter === "buy"
+              ? interestFilter
+              : undefined,
+          q: debouncedContactName || undefined,
+          ownerUserId: ownerFilter ? (ownerFilter as Id<"users">) : undefined,
+          scoreMin: scoreRange.scoreMin,
+          scoreMax: scoreRange.scoreMax,
+        }
+      : "skip"
+  );
 
   // Sibling leads query (for resolution modal)
   const siblingLeads = useQuery(
@@ -334,6 +355,23 @@ export default function LeadsPage() {
     }
   }, [siblingLeadsToClose, bulkCloseAsLost]);
 
+  // Handle sibling resolution from kanban drag-and-drop
+  const handleKanbanSiblingResolution = useCallback((lead: { _id: Id<"leads">; contactId: Id<"contacts">; fullName: string }) => {
+    setSiblingTriggerLead({
+      _id: lead._id,
+      contactId: lead.contactId,
+      fullName: lead.fullName,
+      phone: "",
+      interestType: "",
+      score: undefined,
+      stageId: "" as Id<"pipelineStages">,
+      ownerName: "",
+      updatedAt: 0,
+    });
+    setSiblingLeadsToClose(new Set());
+    setSiblingCloseConfirmText("");
+  }, []);
+
   const toggleScoreSort = useCallback(() => {
     setScoreSortDir((prev) => {
       if (prev === "") return "score_desc";
@@ -369,7 +407,32 @@ export default function LeadsPage() {
             Manage your leads and track their progress through the pipeline.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          {/* View toggle */}
+          <div className="flex rounded-[10px] border border-border-strong bg-card-bg p-0.5">
+            <button
+              onClick={() => setViewMode("list")}
+              className={`flex items-center gap-1.5 rounded-[8px] px-3 py-1.5 text-xs font-medium transition-all duration-150 ${
+                viewMode === "list"
+                  ? "bg-primary/15 text-primary shadow-sm"
+                  : "text-text-muted hover:text-text hover:bg-surface-2"
+              }`}
+            >
+              <LayoutList className="h-3.5 w-3.5" />
+              List
+            </button>
+            <button
+              onClick={() => setViewMode("kanban")}
+              className={`flex items-center gap-1.5 rounded-[8px] px-3 py-1.5 text-xs font-medium transition-all duration-150 ${
+                viewMode === "kanban"
+                  ? "bg-primary/15 text-primary shadow-sm"
+                  : "text-text-muted hover:text-text hover:bg-surface-2"
+              }`}
+            >
+              <Columns3 className="h-3.5 w-3.5" />
+              Board
+            </button>
+          </div>
           <Button variant="secondary" onClick={() => setBulkMatchingOpen(true)}>
             Bulk Match
           </Button>
@@ -403,18 +466,20 @@ export default function LeadsPage() {
         transition={{ type: "spring", stiffness: 300, damping: 24, delay: 0.06 }}
         className="rounded-[12px] border border-border-strong bg-card-bg p-4"
       >
-        <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
-          <div className="space-y-2">
-            <Label>Stage</Label>
-            <StaggeredDropDown
-              value={stageFilter}
-              onChange={(val) => setStageFilter(val)}
-              options={[
-                { value: "", label: "All stages" },
-                ...(stages?.map((stage) => ({ value: stage._id, label: stage.name })) ?? []),
-              ]}
-            />
-          </div>
+        <div className={`grid gap-3 ${viewMode === "kanban" ? "md:grid-cols-2 xl:grid-cols-4" : "md:grid-cols-3 xl:grid-cols-6"}`}>
+          {viewMode === "list" && (
+            <div className="space-y-2">
+              <Label>Stage</Label>
+              <StaggeredDropDown
+                value={stageFilter}
+                onChange={(val) => setStageFilter(val)}
+                options={[
+                  { value: "", label: "All stages" },
+                  ...(stages?.map((stage) => ({ value: stage._id, label: stage.name })) ?? []),
+                ]}
+              />
+            </div>
+          )}
           <div className="space-y-2">
             <Label>Interest type</Label>
             <StaggeredDropDown
@@ -441,17 +506,19 @@ export default function LeadsPage() {
               ]}
             />
           </div>
-          <div className="space-y-2">
-            <Label>Property</Label>
-            <StaggeredDropDown
-              value={propertyFilter}
-              onChange={(val) => setPropertyFilter(val)}
-              options={[
-                { value: "", label: "All properties" },
-                ...(propertiesList.map((p) => ({ value: p._id, label: p.title })) ?? []),
-              ]}
-            />
-          </div>
+          {viewMode === "list" && (
+            <div className="space-y-2">
+              <Label>Property</Label>
+              <StaggeredDropDown
+                value={propertyFilter}
+                onChange={(val) => setPropertyFilter(val)}
+                options={[
+                  { value: "", label: "All properties" },
+                  ...(propertiesList.map((p) => ({ value: p._id, label: p.title })) ?? []),
+                ]}
+              />
+            </div>
+          )}
           <div className="space-y-2">
             <Label>Contact name</Label>
             <Input
@@ -476,73 +543,97 @@ export default function LeadsPage() {
         </div>
       </motion.div>
 
-      {leads === undefined ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-        </div>
-      ) : leads.length === 0 ? (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ type: "spring", stiffness: 300, damping: 24 }}
-          className="text-center py-12"
-        >
-          <p className="text-text-muted">No leads found.</p>
-          <Link href="/app/leads/new">
-            <Button className="mt-4">Create your first lead</Button>
-          </Link>
-        </motion.div>
-      ) : (
-        <ErrorBoundary sectionName="Lead Table">
-          <Table>
-            <thead>
-              <tr>
-                <TableHead>Contact</TableHead>
-                <TableHead>Interest</TableHead>
-                <TableHead>
-                  <button
-                    onClick={toggleScoreSort}
-                    className="inline-flex items-center gap-1 hover:text-primary transition-colors"
-                  >
-                    Score
-                    {scoreSortDir === "" && <ArrowUpDown className="h-3 w-3 text-text-dim" />}
-                    {scoreSortDir === "score_desc" && <ArrowDown className="h-3 w-3 text-primary" />}
-                    {scoreSortDir === "score_asc" && <ArrowUp className="h-3 w-3 text-primary" />}
-                  </button>
-                </TableHead>
-                <TableHead>Stage</TableHead>
-                <TableHead>Owner</TableHead>
-                <TableHead>Property</TableHead>
-                <TableHead>Actions</TableHead>
-              </tr>
-            </thead>
-            <motion.tbody
-              variants={listVariants}
-              initial="hidden"
-              animate="show"
-              key="data"
+      {viewMode === "kanban" ? (
+        /* ── Kanban Board View ── */
+        kanbanData === undefined ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+          </div>
+        ) : (
+          <ErrorBoundary sectionName="Kanban Board">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ type: "spring", stiffness: 300, damping: 24 }}
             >
-              {leads.map((lead: LeadRowData) => (
-                <LeadTableRow
-                  key={lead._id}
-                  lead={lead}
-                  stages={stages}
-                  onStageChange={handleStageChange}
-                  onDelete={(l) => { setDeleteTarget(l); setDeleteConfirmText(""); }}
-                  onRowClick={(l) => router.push(`/app/leads/${l._id}`)}
-                />
-              ))}
-            </motion.tbody>
-          </Table>
-          <PaginationControls
-            page={pagination.page}
-            pageSize={pagination.pageSize}
-            totalCount={totalCount}
-            hasMore={hasMore}
-            onNextPage={pagination.nextPage}
-            onPrevPage={pagination.prevPage}
-          />
-        </ErrorBoundary>
+              <KanbanBoard
+                stages={kanbanData.stages}
+                columns={kanbanData.columns}
+                onSiblingResolution={handleKanbanSiblingResolution}
+              />
+            </motion.div>
+          </ErrorBoundary>
+        )
+      ) : (
+        /* ── List View ── */
+        leads === undefined ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+          </div>
+        ) : leads.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 24 }}
+            className="text-center py-12"
+          >
+            <p className="text-text-muted">No leads found.</p>
+            <Link href="/app/leads/new">
+              <Button className="mt-4">Create your first lead</Button>
+            </Link>
+          </motion.div>
+        ) : (
+          <ErrorBoundary sectionName="Lead Table">
+            <Table>
+              <thead>
+                <tr>
+                  <TableHead>Contact</TableHead>
+                  <TableHead>Interest</TableHead>
+                  <TableHead>
+                    <button
+                      onClick={toggleScoreSort}
+                      className="inline-flex items-center gap-1 hover:text-primary transition-colors"
+                    >
+                      Score
+                      {scoreSortDir === "" && <ArrowUpDown className="h-3 w-3 text-text-dim" />}
+                      {scoreSortDir === "score_desc" && <ArrowDown className="h-3 w-3 text-primary" />}
+                      {scoreSortDir === "score_asc" && <ArrowUp className="h-3 w-3 text-primary" />}
+                    </button>
+                  </TableHead>
+                  <TableHead>Stage</TableHead>
+                  <TableHead>Owner</TableHead>
+                  <TableHead>Property</TableHead>
+                  <TableHead>Actions</TableHead>
+                </tr>
+              </thead>
+              <motion.tbody
+                variants={listVariants}
+                initial="hidden"
+                animate="show"
+                key="data"
+              >
+                {leads.map((lead: LeadRowData) => (
+                  <LeadTableRow
+                    key={lead._id}
+                    lead={lead}
+                    stages={stages}
+                    onStageChange={handleStageChange}
+                    onDelete={(l) => { setDeleteTarget(l); setDeleteConfirmText(""); }}
+                    onRowClick={(l) => router.push(`/app/leads/${l._id}`)}
+                  />
+                ))}
+              </motion.tbody>
+            </Table>
+            <PaginationControls
+              page={pagination.page}
+              pageSize={pagination.pageSize}
+              totalCount={totalCount}
+              hasMore={hasMore}
+              onNextPage={pagination.nextPage}
+              onPrevPage={pagination.prevPage}
+            />
+          </ErrorBoundary>
+        )
       )}
 
       {bulkMatchingOpen && (
