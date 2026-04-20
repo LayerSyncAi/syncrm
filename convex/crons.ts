@@ -27,4 +27,12 @@ crons.interval(
   internal.activityReminders.processDailyDigests
 );
 
+// Refresh price/status for properties previously imported from PropertyBook
+// against the agencies each org has chosen to track.
+crons.daily(
+  "propertybook tracked agency refresh",
+  { hourUTC: 2, minuteUTC: 30 },
+  internal.propertyBook.refresh.refreshAllTracked
+);
+
 export default crons;

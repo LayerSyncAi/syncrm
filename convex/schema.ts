@@ -188,13 +188,37 @@ export default defineSchema({
     isDraft: v.optional(v.boolean()),
     createdByUserId: v.optional(v.id("users")),
     orgId: v.optional(v.id("organizations")),
+    pbRefCode: v.optional(v.string()),
+    pbSourceUrl: v.optional(v.string()),
+    pbAgencySlug: v.optional(v.string()),
+    pbLastSyncedAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_location", ["location"])
     .index("by_filters", ["type", "listingType", "status"])
     .index("by_org", ["orgId"])
-    .index("by_creator", ["createdByUserId"]),
+    .index("by_creator", ["createdByUserId"])
+    .index("by_pb_ref", ["orgId", "pbRefCode"]),
+  // Propertybook.co.zw agencies that an org "follows" for scheduled daily refresh
+  trackedAgencies: defineTable({
+    slug: v.string(),
+    name: v.string(),
+    logoUrl: v.optional(v.string()),
+    orgId: v.id("organizations"),
+    addedByUserId: v.id("users"),
+    isActive: v.boolean(),
+    lastRefreshAt: v.optional(v.number()),
+    lastRefreshStatus: v.optional(
+      v.union(v.literal("ok"), v.literal("error"))
+    ),
+    lastRefreshError: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_slug", ["orgId", "slug"])
+    .index("by_active", ["isActive"]),
   // Property shares: Agent A shares a property with Agent B (who has a matching lead)
   propertyShares: defineTable({
     propertyId: v.id("properties"),

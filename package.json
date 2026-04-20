@@ -17,6 +17,7 @@
     "@convex-dev/auth": "^0.0.90",
     "@types/three": "^0.183.1",
     "ai": "^6.0.138",
+    "cheerio": "^1.2.0",
     "clsx": "^2.1.1",
     "convex": "^1.31.7",
     "date-fns": "^4.1.0",
