@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import {
   action,
+  ActionCtx,
   internalMutation,
   internalQuery,
   mutation,
@@ -14,6 +15,9 @@ import { checkRateLimit } from "./rateLimit";
 const MAX_BATCH_SIZE = 25;
 const MAX_IMAGES_PER_LISTING = 10;
 const IMAGE_DOWNLOAD_DELAY_MS = 200;
+const IMAGE_DOWNLOAD_CONCURRENCY = 3;
+const PB_AGENCY_CACHE_KEY = "agencies:directory";
+const PB_AGENCY_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 
 const listingTypeValidator = v.union(v.literal("rent"), v.literal("sale"));
 const propertyTypeValidator = v.union(
@@ -70,13 +74,80 @@ type PublicListing = {
 };
 
 export const listAgencies = action({
-  args: { query: v.optional(v.string()) },
+  args: {
+    query: v.optional(v.string()),
+    force: v.optional(v.boolean()),
+  },
   handler: async (ctx, args): Promise<PublicAgency[]> => {
     await ctx.runQuery(internal.propertyBook.assertAdminAccess, {});
     assertNotDisabled();
-    return await ctx.runAction(internal.propertyBook.scraper.listAgencies, {
-      query: args.query,
-    });
+
+    let agencies: PublicAgency[] | null = null;
+
+    if (!args.force) {
+      const cached: { payload: string; fetchedAt: number } | null =
+        await ctx.runQuery(internal.propertyBook.getCachedAgencies, {});
+      if (cached && Date.now() - cached.fetchedAt < PB_AGENCY_CACHE_TTL_MS) {
+        try {
+          agencies = JSON.parse(cached.payload) as PublicAgency[];
+        } catch {
+          agencies = null;
+        }
+      }
+    }
+
+    if (agencies === null) {
+      agencies = await ctx.runAction(
+        internal.propertyBook.scraper.listAgencies,
+        {}
+      );
+      await ctx.runMutation(internal.propertyBook.setCachedAgencies, {
+        payload: JSON.stringify(agencies),
+      });
+    }
+
+    const needle = (args.query || "").trim().toLowerCase();
+    if (!needle) return agencies;
+    return agencies.filter(
+      (a) =>
+        a.name.toLowerCase().includes(needle) ||
+        a.slug.toLowerCase().includes(needle)
+    );
+  },
+});
+
+export const getCachedAgencies = internalQuery({
+  args: {},
+  handler: async (
+    ctx
+  ): Promise<{ payload: string; fetchedAt: number } | null> => {
+    const row = await ctx.db
+      .query("propertyBookCache")
+      .withIndex("by_key", (q) => q.eq("key", PB_AGENCY_CACHE_KEY))
+      .first();
+    return row
+      ? { payload: row.payload, fetchedAt: row.fetchedAt }
+      : null;
+  },
+});
+
+export const setCachedAgencies = internalMutation({
+  args: { payload: v.string() },
+  handler: async (ctx, { payload }) => {
+    const now = Date.now();
+    const existing = await ctx.db
+      .query("propertyBookCache")
+      .withIndex("by_key", (q) => q.eq("key", PB_AGENCY_CACHE_KEY))
+      .first();
+    if (existing) {
+      await ctx.db.patch(existing._id, { payload, fetchedAt: now });
+    } else {
+      await ctx.db.insert("propertyBookCache", {
+        key: PB_AGENCY_CACHE_KEY,
+        payload,
+        fetchedAt: now,
+      });
+    }
   },
 });
 
@@ -178,26 +249,15 @@ export const importBatch = action({
 
     for (let i = 0; i < args.listings.length; i++) {
       const listing = args.listings[i];
-      const images: string[] = [];
       const urls = listing.imageUrls.slice(0, MAX_IMAGES_PER_LISTING);
-      for (const url of urls) {
-        try {
-          const storageId: string = await ctx.runAction(
-            internal.propertyBook.scraper.downloadImage,
-            { url }
-          );
-          images.push(storageId);
-        } catch (e: unknown) {
-          imageFailures.push({
-            row: i,
-            url,
-            message: (e as Error).message || "download_failed",
-          });
-        }
-        if (urls.length > 1) {
-          await new Promise((r) => setTimeout(r, IMAGE_DOWNLOAD_DELAY_MS));
-        }
-      }
+      const { images, failures } = await downloadImagesConcurrent(
+        ctx,
+        urls,
+        i,
+        IMAGE_DOWNLOAD_CONCURRENCY,
+        IMAGE_DOWNLOAD_DELAY_MS
+      );
+      imageFailures.push(...failures);
       resolved.push({ row: i, listing, images });
     }
 
@@ -500,6 +560,58 @@ function assertNotDisabled() {
   if (process.env.PB_IMPORT_DISABLED === "true") {
     throw new ConvexError("PropertyBook import is temporarily disabled");
   }
+}
+
+// Downloads a listing's images via a fixed-size worker pool.
+// Each worker pulls the next URL, calls downloadImage, then sleeps the
+// per-slot delay before grabbing the next. Steady-state concurrency is
+// `concurrency`, so politeness is the same as a serial loop with shorter
+// effective per-image overhead.
+async function downloadImagesConcurrent(
+  ctx: ActionCtx,
+  urls: string[],
+  rowIndex: number,
+  concurrency: number,
+  perSlotDelayMs: number
+): Promise<{
+  images: string[];
+  failures: Array<{ row: number; url: string; message: string }>;
+}> {
+  if (urls.length === 0) return { images: [], failures: [] };
+  const slots: Array<string | null> = new Array(urls.length).fill(null);
+  const failures: Array<{ row: number; url: string; message: string }> = [];
+  let next = 0;
+
+  const runWorker = async () => {
+    while (true) {
+      const i = next++;
+      if (i >= urls.length) return;
+      try {
+        const storageId = (await ctx.runAction(
+          internal.propertyBook.scraper.downloadImage,
+          { url: urls[i] }
+        )) as string;
+        slots[i] = storageId;
+      } catch (e: unknown) {
+        failures.push({
+          row: rowIndex,
+          url: urls[i],
+          message: (e as Error).message || "download_failed",
+        });
+      }
+      if (next < urls.length) {
+        await new Promise((r) => setTimeout(r, perSlotDelayMs));
+      }
+    }
+  };
+
+  const workerCount = Math.min(concurrency, urls.length);
+  await Promise.all(Array.from({ length: workerCount }, runWorker));
+
+  return {
+    images: slots.filter((s): s is string => s !== null),
+    failures,
+  };
 }
 
 // Exported type helper for frontend consumption
