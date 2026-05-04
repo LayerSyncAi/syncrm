@@ -2,7 +2,7 @@
 
 import { v } from "convex/values";
 import { internalAction } from "../_generated/server";
-import * as cheerio from "cheerio";
+import { parse, HTMLElement } from "node-html-parser";
 import {
   capString,
   extractRefCodeFromUrl,
@@ -84,25 +84,37 @@ export type ParsedListing = {
   status: "available";
 };
 
+function attr(el: HTMLElement | null, name: string): string | undefined {
+  if (!el) return undefined;
+  const v = el.getAttribute(name);
+  return v ?? undefined;
+}
+
+function textOf(el: HTMLElement | null): string {
+  return (el?.text ?? "").trim();
+}
+
 function parseAgencyIndexPage(html: string): ParsedAgency[] {
-  const $ = cheerio.load(html);
+  const root = parse(html);
   const out: ParsedAgency[] = [];
-  $("div.propertyListings > div.listingItem").each((_, el) => {
-    const $el = $(el);
-    const href = $el.find("a.btn-agency").attr("href") || "";
+  const items = root.querySelectorAll("div.propertyListings > div.listingItem");
+  for (const el of items) {
+    const link = el.querySelector("a.btn-agency");
+    const href = attr(link, "href") || "";
     const slug = href.split("/listed-agencies/")[1]?.replace(/\/+$/, "");
-    if (!slug) return;
+    if (!slug) continue;
+    const logo = el.querySelector("img.agencyLogo");
     const name =
-      $el.find("div.agencyName.agencyList").text().trim() ||
-      $el.find("img.agencyLogo").attr("alt") ||
+      textOf(el.querySelector("div.agencyName.agencyList")) ||
+      attr(logo, "alt") ||
       slug;
-    const logoUrl = $el.find("img.agencyLogo").attr("src") || undefined;
-    const rentalText = $el.find("a.btn-outline-info").text();
-    const salesText = $el.find("a.btn-outline-success").text();
+    const logoUrl = attr(logo, "src");
+    const rentalText = textOf(el.querySelector("a.btn-outline-info"));
+    const salesText = textOf(el.querySelector("a.btn-outline-success"));
     const forRentCount = parseIntSafe(rentalText);
     const forSaleCount = parseIntSafe(salesText);
     out.push({ slug, name, logoUrl, forSaleCount, forRentCount });
-  });
+  }
   return out;
 }
 
@@ -126,58 +138,65 @@ function parseSitemapAgencies(xml: string): ParsedAgency[] {
 }
 
 function parseListingLinks(html: string): string[] {
-  const $ = cheerio.load(html);
+  const root = parse(html);
   const links: string[] = [];
-  $('a[href*="/listings/for-sale/"], a[href*="/listings/to-rent/"]').each(
-    (_, el) => {
-      const href = $(el).attr("href");
-      if (href) links.push(href);
-    }
-  );
+  for (const a of root.querySelectorAll(
+    'a[href*="/listings/for-sale/"], a[href*="/listings/to-rent/"]'
+  )) {
+    const href = attr(a, "href");
+    if (href) links.push(href);
+  }
   return uniqueStrings(links);
 }
 
-function parseFeatures($: cheerio.CheerioAPI): Record<string, string> {
+function parseFeatures(root: HTMLElement): Record<string, string> {
   const features: Record<string, string> = {};
-  $("div.property-features .col-12.feature").each((_, el) => {
-    const $el = $(el);
-    const value = $el.find("span.value").first().text().trim();
-    const label = $el
-      .find("span")
-      .filter((__, s) => !$(s).hasClass("value"))
-      .first()
-      .text()
-      .trim();
+  const rows = root.querySelectorAll("div.property-features .col-12.feature");
+  for (const el of rows) {
+    const valueEl = el.querySelector("span.value");
+    const value = textOf(valueEl);
+    let label = "";
+    for (const span of el.querySelectorAll("span")) {
+      if (span === valueEl) continue;
+      const t = textOf(span);
+      if (t) {
+        label = t;
+        break;
+      }
+    }
     if (label) {
       features[label.toLowerCase()] = value || "yes";
     }
-  });
+  }
   return features;
 }
 
 function extractInlineJsField(html: string, field: string): string | null {
-  const re = new RegExp(`${field}\\s*:\\s*(?:"([^"]*)"|'([^']*)'|(-?\\d+(?:\\.\\d+)?))`, "i");
+  const re = new RegExp(
+    `${field}\\s*:\\s*(?:"([^"]*)"|'([^']*)'|(-?\\d+(?:\\.\\d+)?))`,
+    "i"
+  );
   const m = re.exec(html);
   if (!m) return null;
   return m[1] ?? m[2] ?? m[3] ?? null;
 }
 
 function parseListingDetail(html: string, url: string): ParsedListing {
-  const $ = cheerio.load(html);
+  const root = parse(html);
   const listingType = listingTypeFromUrl(url);
   if (!listingType) {
     throw new Error(`unknown_listing_type:${url}`);
   }
   const pbRefCode =
-    $("span.ref-code").first().text().trim().toUpperCase() ||
+    textOf(root.querySelector("span.ref-code")).toUpperCase() ||
     extractRefCodeFromUrl(url) ||
     "";
   if (!pbRefCode) {
     throw new Error(`missing_ref_code:${url}`);
   }
 
-  const title = $("h1.property-header").first().text().trim() || pbRefCode;
-  const priceRaw = $("h4.propertyPrice").first().text().trim();
+  const title = textOf(root.querySelector("h1.property-header")) || pbRefCode;
+  const priceRaw = textOf(root.querySelector("h4.propertyPrice"));
   const parsedPrice =
     parsePrice(priceRaw) ||
     (() => {
@@ -194,13 +213,13 @@ function parseListingDetail(html: string, url: string): ParsedListing {
   }
 
   const locationParts: string[] = [];
-  $("div.propertyTitle > span").each((_, el) => {
-    const txt = $(el).text().trim();
+  for (const span of root.querySelectorAll("div.propertyTitle > span")) {
+    const txt = textOf(span);
     if (txt) locationParts.push(txt);
-  });
+  }
   const location = uniqueStrings(locationParts).join(", ") || "Unknown";
 
-  const features = parseFeatures($);
+  const features = parseFeatures(root);
   const bedrooms =
     parseIntSafe(features["bedrooms"]) ??
     parseIntSafe(extractInlineJsField(html, "bedrooms") || undefined);
@@ -211,26 +230,30 @@ function parseListingDetail(html: string, url: string): ParsedListing {
   const area = parseArea(landSize ?? undefined, features);
 
   const description = capString(
-    $("div.propertyDescription").text().replace(/\s+\n/g, "\n").trim(),
+    textOf(root.querySelector("div.propertyDescription")).replace(/\s+\n/g, "\n"),
     MAX_DESCRIPTION_LEN
   );
 
   const imageUrls: string[] = [];
-  $("ul#propertySlideShowMobile li").each((_, el) => {
-    const $el = $(el);
-    const src = $el.find("img").attr("src") || $el.attr("data-thumb");
+  for (const li of root.querySelectorAll("ul#propertySlideShowMobile li")) {
+    const img = li.querySelector("img");
+    const src = attr(img, "src") || attr(li, "data-thumb");
     if (src && /^https?:\/\//i.test(src)) imageUrls.push(src);
-  });
+  }
   const dedupedImages = uniqueStrings(imageUrls).slice(0, MAX_IMAGES_PER_LISTING);
 
   const pbAgencySlug = (() => {
     const hint = extractInlineJsField(html, "agency_slug");
     if (hint) return hint;
-    const href = $('a[href*="/listed-agencies/"]').attr("href") || "";
+    const link = root.querySelector('a[href*="/listed-agencies/"]');
+    const href = attr(link, "href") || "";
     return href.split("/listed-agencies/")[1]?.replace(/\/+$/, "") || "";
   })();
 
-  const propertyType = mapPbType(title, extractInlineJsField(html, "type_id") || undefined);
+  const propertyType = mapPbType(
+    title,
+    extractInlineJsField(html, "type_id") || undefined
+  );
 
   return {
     pbRefCode,
@@ -342,15 +365,18 @@ export const fetchAgencyListings = internalAction({
       await sleep(AGENCY_PAGE_DELAY_MS);
     }
 
-    const $root = cheerio.load(
-      await safeFetchOrEmpty(`${PB_BASE}/listed-agencies/${slug}`)
-    );
-    const agencyName =
-      $root("h1").first().text().trim() ||
-      slug
-        .split("-")
-        .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
-        .join(" ");
+    let agencyName = slug
+      .split("-")
+      .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+      .join(" ");
+    try {
+      const indexHtml = await fetchHtml(`${PB_BASE}/listed-agencies/${slug}`);
+      const indexRoot = parse(indexHtml);
+      const h1 = textOf(indexRoot.querySelector("h1"));
+      if (h1) agencyName = h1;
+    } catch {
+      // keep fallback name
+    }
 
     const listings: ParsedListing[] = [];
     for (const url of collected.slice(0, cap)) {
@@ -369,14 +395,6 @@ export const fetchAgencyListings = internalAction({
     return { agency: { slug, name: agencyName }, listings, errors };
   },
 });
-
-async function safeFetchOrEmpty(url: string): Promise<string> {
-  try {
-    return await fetchHtml(url);
-  } catch {
-    return "";
-  }
-}
 
 export const fetchListingByUrl = internalAction({
   args: { url: v.string() },
