@@ -102,6 +102,39 @@ export const previewAgencyListings = action({
   },
 });
 
+export const getAgencyListingUrls = action({
+  args: {
+    slug: v.string(),
+    maxListings: v.optional(v.number()),
+  },
+  handler: async (
+    ctx,
+    args
+  ): Promise<{
+    agency: { slug: string; name: string };
+    urls: string[];
+  }> => {
+    await ctx.runQuery(internal.propertyBook.assertAdminAccess, {});
+    assertNotDisabled();
+    return await ctx.runAction(
+      internal.propertyBook.scraper.collectAgencyUrls,
+      { slug: args.slug, maxListings: args.maxListings }
+    );
+  },
+});
+
+export const fetchOneListing = action({
+  args: { url: v.string() },
+  handler: async (ctx, args): Promise<PublicListing> => {
+    await ctx.runQuery(internal.propertyBook.assertAdminAccess, {});
+    assertNotDisabled();
+    return await ctx.runAction(
+      internal.propertyBook.scraper.fetchListingByUrl,
+      { url: args.url }
+    );
+  },
+});
+
 export const importBatch = action({
   args: {
     listings: v.array(parsedListingValidator),

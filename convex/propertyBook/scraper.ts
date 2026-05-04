@@ -326,6 +326,59 @@ export const listAgencies = internalAction({
   },
 });
 
+export const collectAgencyUrls = internalAction({
+  args: {
+    slug: v.string(),
+    maxListings: v.optional(v.number()),
+  },
+  handler: async (
+    _ctx,
+    { slug, maxListings }
+  ): Promise<{
+    agency: { slug: string; name: string };
+    urls: string[];
+  }> => {
+    const cap = Math.max(1, Math.min(100, maxListings ?? 50));
+    const collected: string[] = [];
+
+    for (let page = 1; page <= 15; page++) {
+      const url = `${PB_BASE}/listed-agencies/${slug}${page === 1 ? "" : `?page=${page}`}`;
+      let html: string;
+      try {
+        html = await fetchHtml(url);
+      } catch {
+        break;
+      }
+      const links = parseListingLinks(html);
+      let added = 0;
+      for (const l of links) {
+        if (collected.includes(l)) continue;
+        collected.push(l);
+        added++;
+        if (collected.length >= cap) break;
+      }
+      if (collected.length >= cap) break;
+      if (added === 0) break;
+      await sleep(AGENCY_PAGE_DELAY_MS);
+    }
+
+    let agencyName = slug
+      .split("-")
+      .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+      .join(" ");
+    try {
+      const indexHtml = await fetchHtml(`${PB_BASE}/listed-agencies/${slug}`);
+      const indexRoot = parse(indexHtml);
+      const h1 = textOf(indexRoot.querySelector("h1"));
+      if (h1) agencyName = h1;
+    } catch {
+      // keep fallback name
+    }
+
+    return { agency: { slug, name: agencyName }, urls: collected.slice(0, cap) };
+  },
+});
+
 export const fetchAgencyListings = internalAction({
   args: {
     slug: v.string(),

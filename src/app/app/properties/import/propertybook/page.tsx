@@ -87,11 +87,16 @@ type BatchResult = {
   imageFailures: Array<{ row: number; url: string; message: string }>;
 };
 
+const PER_LISTING_DELAY_MS = 700;
+
 export default function PropertyBookImportPage() {
   const { isLoading: authLoading, isAdmin } = useRequireAuth();
 
   const listAgencies = useAction(api.propertyBook.listAgencies);
-  const previewListings = useAction(api.propertyBook.previewAgencyListings);
+  const getAgencyListingUrls = useAction(
+    api.propertyBook.getAgencyListingUrls
+  );
+  const fetchOneListing = useAction(api.propertyBook.fetchOneListing);
   const importBatch = useAction(api.propertyBook.importBatch);
   const trackAgencyMutation = useMutation(api.propertyBook.trackAgency);
 
@@ -111,6 +116,12 @@ export default function PropertyBookImportPage() {
     current: number;
     total: number;
   }>({ current: 0, total: 0 });
+  const [previewProgress, setPreviewProgress] = React.useState<{
+    current: number;
+    total: number;
+    failed: number;
+  }>({ current: 0, total: 0, failed: 0 });
+  const cancelPreviewRef = React.useRef(false);
   const [finalResult, setFinalResult] = React.useState<BatchResult | null>(
     null
   );
@@ -151,6 +162,10 @@ export default function PropertyBookImportPage() {
     );
   }, [agencies, agencySearch]);
 
+  const cancelPreview = React.useCallback(() => {
+    cancelPreviewRef.current = true;
+  }, []);
+
   const pickAgency = React.useCallback(
     async (agency: Agency) => {
       setSelectedAgency(agency);
@@ -158,22 +173,75 @@ export default function PropertyBookImportPage() {
       setError("");
       setListings([]);
       setSelected(new Set());
+      setPreviewProgress({ current: 0, total: 0, failed: 0 });
+      cancelPreviewRef.current = false;
+
+      let urls: string[] = [];
       try {
-        const result = (await previewListings({
+        const discovery = (await getAgencyListingUrls({
           slug: agency.slug,
           maxListings: 50,
-        })) as { listings: PreviewListing[]; errors: unknown[] };
-        setListings(result.listings);
-        setSelected(
-          new Set(result.listings.map((l: PreviewListing) => l.pbRefCode))
-        );
-        setStep("selecting");
+        })) as { agency: { slug: string; name: string }; urls: string[] };
+        urls = discovery.urls;
       } catch (e: unknown) {
-        setError((e as Error).message || "Failed to fetch listings");
+        setError(
+          (e as Error).message || "Failed to discover listings for this agency"
+        );
         setStep("picking_agency");
+        return;
       }
+
+      if (urls.length === 0) {
+        setError(`No listings found for ${agency.name} on PropertyBook.`);
+        setStep("picking_agency");
+        return;
+      }
+
+      setPreviewProgress({ current: 0, total: urls.length, failed: 0 });
+
+      const collected: PreviewListing[] = [];
+      let failed = 0;
+      for (let i = 0; i < urls.length; i++) {
+        if (cancelPreviewRef.current) break;
+        try {
+          const listing = (await fetchOneListing({
+            url: urls[i],
+          })) as PreviewListing;
+          collected.push(listing);
+          setListings([...collected]);
+        } catch {
+          failed++;
+        }
+        setPreviewProgress({
+          current: i + 1,
+          total: urls.length,
+          failed,
+        });
+        if (i < urls.length - 1 && !cancelPreviewRef.current) {
+          await new Promise((r) => setTimeout(r, PER_LISTING_DELAY_MS));
+        }
+      }
+
+      if (cancelPreviewRef.current) {
+        cancelPreviewRef.current = false;
+        if (collected.length === 0) {
+          setStep("picking_agency");
+          return;
+        }
+      }
+
+      if (collected.length === 0) {
+        setError(
+          `Couldn't fetch any listings for ${agency.name}. PropertyBook may have changed its layout or be temporarily unreachable.`
+        );
+        setStep("picking_agency");
+        return;
+      }
+
+      setSelected(new Set(collected.map((l) => l.pbRefCode)));
+      setStep("selecting");
     },
-    [previewListings]
+    [getAgencyListingUrls, fetchOneListing]
   );
 
   const toggle = (refCode: string) => {
@@ -474,12 +542,55 @@ export default function PropertyBookImportPage() {
             <Card>
               <CardContent className="flex flex-col items-center py-16">
                 <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary-600 border-t-transparent" />
-                <p className="mt-4 text-sm text-text-muted">
-                  Fetching listings from {selectedAgency?.name}…
+                <p className="mt-4 text-sm font-medium text-text">
+                  {previewProgress.total === 0
+                    ? `Discovering listings for ${selectedAgency?.name}…`
+                    : `Fetched ${previewProgress.current} of ${previewProgress.total} listings`}
                 </p>
                 <p className="mt-1 text-xs text-text-muted">
-                  This may take a minute while we pull each listing politely.
+                  {previewProgress.total === 0
+                    ? "Asking PropertyBook for the agency's listing URLs."
+                    : `Estimated ${Math.max(
+                        1,
+                        Math.ceil(
+                          ((previewProgress.total - previewProgress.current) *
+                            (PER_LISTING_DELAY_MS + 800)) /
+                            1000
+                        )
+                      )}s remaining · throttled to be polite to PropertyBook.`}
                 </p>
+                {previewProgress.failed > 0 && (
+                  <p className="mt-1 text-xs text-amber-700">
+                    {previewProgress.failed} listing
+                    {previewProgress.failed === 1 ? "" : "s"} failed to parse
+                    (will be skipped).
+                  </p>
+                )}
+                {previewProgress.total > 0 && (
+                  <div className="mt-4 h-2 w-full max-w-md overflow-hidden rounded-full bg-gray-100">
+                    <div
+                      className="h-full bg-primary-600 transition-all"
+                      style={{
+                        width: `${Math.round(
+                          (previewProgress.current / previewProgress.total) *
+                            100
+                        )}%`,
+                      }}
+                    />
+                  </div>
+                )}
+                <div className="mt-5 flex items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={cancelPreview}
+                    disabled={previewProgress.total === 0}
+                  >
+                    {previewProgress.current > 0
+                      ? `Stop & use ${previewProgress.current} fetched`
+                      : "Cancel"}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </motion.div>
