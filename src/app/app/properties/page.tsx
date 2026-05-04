@@ -25,6 +25,7 @@ import { LocationTypeahead } from "@/components/ui/location-typeahead";
 import { propertyToasts } from "@/lib/toast";
 import { DocumentManager } from "@/components/documents/document-manager";
 import { PropertyShare } from "@/components/properties/property-share";
+import { PropertyBookBadge } from "@/components/properties/property-book-badge";
 import { Tooltip } from "@/components/ui/tooltip";
 import { UserPlus, Eye, Trash2 } from "lucide-react";
 
@@ -75,6 +76,8 @@ type Property = {
   images: string[];
   createdByUserId?: Id<"users">;
   createdByName?: string;
+  pbRefCode?: string;
+  pbSourceUrl?: string;
   createdAt: number;
   updatedAt: number;
 };
@@ -567,6 +570,13 @@ export default function PropertiesPage() {
               Cards
             </Button>
           </div>
+          {isAdmin && (
+            <Link href="/app/properties/import/propertybook">
+              <Button variant="secondary" className="h-10">
+                Import from PropertyBook
+              </Button>
+            </Link>
+          )}
           <Link
             href="/app/properties/new"
             className="group flex h-10 items-center gap-2 rounded-full bg-border pl-3 pr-4 transition-all duration-300 ease-in-out hover:bg-primary hover:pl-2 hover:text-white active:bg-primary-600"
@@ -709,7 +719,17 @@ export default function PropertiesPage() {
                   className="group h-11 cursor-pointer border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)]"
                   onClick={() => setSelectedProperty(property)}
                 >
-                  <TableCell className="font-medium">{property.title}</TableCell>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      <span>{property.title}</span>
+                      {property.pbRefCode && (
+                        <PropertyBookBadge
+                          refCode={property.pbRefCode}
+                          sourceUrl={property.pbSourceUrl}
+                        />
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell>{formatType(property.type)}</TableCell>
                   <TableCell>{formatListingType(property.listingType)}</TableCell>
                   <TableCell>{formatPrice(property.price, property.currency)}</TableCell>
@@ -831,6 +851,14 @@ export default function PropertiesPage() {
                         {formatListingType(property.listingType)} • {formatType(property.type)}
                       </p>
                       <h3 className="text-base font-semibold">{property.title}</h3>
+                      {property.pbRefCode && (
+                        <div className="mt-1">
+                          <PropertyBookBadge
+                            refCode={property.pbRefCode}
+                            sourceUrl={property.pbSourceUrl}
+                          />
+                        </div>
+                      )}
                     </div>
                     <span className="rounded-full border border-border-strong px-2 py-1 text-xs text-text-muted">
                       {formatStatus(property.status)}

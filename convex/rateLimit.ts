@@ -14,6 +14,7 @@ interface RateLimitConfig {
 export const RATE_LIMITS = {
   leadCreate: { maxTokens: 10, refillIntervalMs: 60 * 1000 } as RateLimitConfig,       // 10 per minute
   importBulk: { maxTokens: 5, refillIntervalMs: 5 * 60 * 1000 } as RateLimitConfig,    // 5 per 5 minutes
+  pbImport: { maxTokens: 10, refillIntervalMs: 10 * 60 * 1000 } as RateLimitConfig,    // 10 per 10 minutes
 };
 
 /**

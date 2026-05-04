@@ -481,3 +481,45 @@ export const locationToasts = {
       description: detail || "Something went wrong. Please try again.",
     }),
 };
+
+// ── PropertyBook Import ───────────────────────────────────
+
+export const propertyBookToasts = {
+  importStarted: (count: number, batches: number) =>
+    animatedToast.info("Import started", {
+      description:
+        batches === 1
+          ? `Importing ${count} properties from PropertyBook...`
+          : `Importing ${count} properties across ${batches} batches...`,
+    }),
+
+  importSuccess: (created: number) =>
+    animatedToast.success("Import complete", {
+      description: `${created} ${created === 1 ? "property" : "properties"} added to your inventory.`,
+    }),
+
+  importPartial: (created: number, skipped: number, failed: number) =>
+    animatedToast.warning("Import finished with issues", {
+      description: `Created ${created}, skipped ${skipped}, failed ${failed}. See details below.`,
+    }),
+
+  importFailed: (detail?: string) =>
+    animatedToast.error("Import failed", {
+      description: detail || "Something went wrong during import.",
+    }),
+
+  agencyTracked: (name: string) =>
+    animatedToast.success("Agency tracked", {
+      description: `"${name}" will be refreshed daily.`,
+    }),
+
+  agencyUntracked: (name: string) =>
+    animatedToast.success("Agency untracked", {
+      description: `"${name}" will no longer refresh automatically.`,
+    }),
+
+  trackFailed: (detail?: string) =>
+    animatedToast.error("Failed to track agency", {
+      description: detail || "Something went wrong. Please try again.",
+    }),
+};
