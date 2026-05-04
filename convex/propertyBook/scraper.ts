@@ -255,17 +255,28 @@ export const listAgencies = internalAction({
   args: { query: v.optional(v.string()) },
   handler: async (_ctx, { query }): Promise<ParsedAgency[]> => {
     let agencies: ParsedAgency[] = [];
+    const errors: string[] = [];
+
     try {
       const xml = await fetchHtml(`${PB_BASE}/sitemap_others.xml`);
       agencies = parseSitemapAgencies(xml);
-    } catch {
-      const html = await fetchHtml(`${PB_BASE}/listed-agencies`);
-      agencies = parseAgencyIndexPage(html);
+    } catch (e) {
+      errors.push(`sitemap: ${(e as Error).message}`);
     }
 
     if (agencies.length === 0) {
-      const html = await fetchHtml(`${PB_BASE}/listed-agencies`);
-      agencies = parseAgencyIndexPage(html);
+      try {
+        const html = await fetchHtml(`${PB_BASE}/listed-agencies`);
+        agencies = parseAgencyIndexPage(html);
+      } catch (e) {
+        errors.push(`index: ${(e as Error).message}`);
+      }
+    }
+
+    if (agencies.length === 0) {
+      throw new Error(
+        `propertybook_unreachable_or_empty: ${errors.join("; ") || "no entries parsed"}`
+      );
     }
 
     const needle = (query || "").trim().toLowerCase();

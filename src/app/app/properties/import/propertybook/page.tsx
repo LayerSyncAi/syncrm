@@ -98,6 +98,7 @@ export default function PropertyBookImportPage() {
   const [step, setStep] = React.useState<Step>("picking_agency");
   const [agencies, setAgencies] = React.useState<Agency[]>([]);
   const [agenciesLoading, setAgenciesLoading] = React.useState(false);
+  const [agenciesAttempted, setAgenciesAttempted] = React.useState(false);
   const [agencySearch, setAgencySearch] = React.useState("");
   const [selectedAgency, setSelectedAgency] = React.useState<Agency | null>(
     null
@@ -126,16 +127,19 @@ export default function PropertyBookImportPage() {
         setError((e as Error).message || "Failed to load agencies");
       } finally {
         setAgenciesLoading(false);
+        setAgenciesAttempted(true);
       }
     },
     [listAgencies]
   );
 
+  const didAutoFetchRef = React.useRef(false);
   React.useEffect(() => {
-    if (step === "picking_agency" && agencies.length === 0 && !agenciesLoading) {
-      void loadAgencies("");
-    }
-  }, [step, agencies.length, agenciesLoading, loadAgencies]);
+    if (didAutoFetchRef.current) return;
+    if (step !== "picking_agency") return;
+    didAutoFetchRef.current = true;
+    void loadAgencies("");
+  }, [step, loadAgencies]);
 
   const filteredAgencies = React.useMemo(() => {
     if (!agencySearch.trim()) return agencies;
@@ -360,14 +364,24 @@ export default function PropertyBookImportPage() {
                   <h2 className="text-base font-semibold">
                     Step 1 — Pick an agency
                   </h2>
-                  <div className="relative w-full max-w-sm">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-                    <Input
-                      placeholder="Search by name or slug..."
-                      value={agencySearch}
-                      onChange={(e) => setAgencySearch(e.target.value)}
-                      className="pl-9"
-                    />
+                  <div className="flex w-full max-w-sm items-center gap-2">
+                    <div className="relative flex-1">
+                      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+                      <Input
+                        placeholder="Search by name or slug..."
+                        value={agencySearch}
+                        onChange={(e) => setAgencySearch(e.target.value)}
+                        className="pl-9"
+                      />
+                    </div>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      disabled={agenciesLoading}
+                      onClick={() => loadAgencies("")}
+                    >
+                      {agenciesLoading ? "Loading…" : "Refresh"}
+                    </Button>
                   </div>
                 </div>
               </CardHeader>
@@ -378,9 +392,27 @@ export default function PropertyBookImportPage() {
                       <Skeleton key={i} className="h-20 w-full" />
                     ))}
                   </div>
+                ) : agenciesAttempted && agencies.length === 0 ? (
+                  <div className="py-10 text-center">
+                    <p className="text-sm text-text-muted">
+                      No agencies returned from PropertyBook.
+                    </p>
+                    <p className="mt-1 text-xs text-text-muted">
+                      The site may be unreachable from this deployment, or its
+                      structure may have changed.
+                    </p>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="mt-3"
+                      onClick={() => loadAgencies("")}
+                    >
+                      Try again
+                    </Button>
+                  </div>
                 ) : filteredAgencies.length === 0 ? (
                   <p className="py-10 text-center text-sm text-text-muted">
-                    No agencies found.
+                    No agencies match &quot;{agencySearch}&quot;.
                   </p>
                 ) : (
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
