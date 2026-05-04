@@ -21,13 +21,14 @@ Imported records show a small "PropertyBook" badge linking to the original listi
 ## User flow
 
 ### Picker (Step 1)
-- Loads the agency directory by scraping `/sitemap_others.xml` (and `/listed-agencies` as fallback / enrichment for logos and counts).
+- Loads the agency directory by scraping `/sitemap_others.xml` (and `/listed-agencies` for logos and counts).
+- The scrape result is cached in the `propertyBookCache` table for 24 hours, so subsequent visits hit Convex only — no HTTP to PropertyBook.
 - Search filters by name or slug client-side.
-- **Refresh** button re-runs the scrape.
+- **Refresh** button bypasses the cache and forces a fresh scrape.
 
 ### Preview (Step 2)
 - Discovers the agency's listing URLs (paginated `/listed-agencies/{slug}?page=N`, max 50 by default).
-- Then fetches each listing detail page **one at a time** with a 700 ms gap, updating the progress bar as each lands.
+- Then fetches listing detail pages with a **3-wide client-side worker pool** (1000 ms per-slot delay → ~3 req/sec to PropertyBook), updating the progress bar as each lands.
 - **Stop & use N fetched** lets the admin bail out early and proceed to selection with whatever has loaded.
 
 ### Select & import (Step 3)
@@ -35,7 +36,7 @@ Imported records show a small "PropertyBook" badge linking to the original listi
 - Confirm the permission acknowledgement.
 - The UI sends each batch sequentially. Each batch is one `importBatch` action that:
   - Verifies admin + consumes a `pbImport` rate-limit token.
-  - Downloads each listing's images into Convex Storage (sequential, 200 ms gap).
+  - For each listing, downloads images **concurrently** via a 3-wide pool with a 200 ms per-slot delay.
   - Writes the property row, deduping by `pbRefCode` within the org.
 
 ### Results (Step 4)
@@ -136,6 +137,17 @@ Per-org list of agencies the org is following for nightly refresh.
 
 Indexes: `by_org`, `by_org_slug`, `by_active`.
 
+### `propertyBookCache` (new table)
+Generic key/value cache for PropertyBook scrapes. Currently used only for the agency directory, but the schema accepts any opaque key so additional caches (e.g. per-agency listing URLs) can reuse it without a migration.
+
+| Field | Purpose |
+|---|---|
+| `key` | Cache key (e.g. `"agencies:directory"`). |
+| `payload` | JSON-encoded cached value. |
+| `fetchedAt` | Timestamp; readers compare against the TTL. |
+
+Index: `by_key`.
+
 ---
 
 ## Configuration
@@ -158,7 +170,10 @@ const LISTING_DELAY_MS = 1000;              // between listing-detail fetches (s
 ```ts
 const MAX_BATCH_SIZE = 25;                  // hard cap per importBatch call
 const MAX_IMAGES_PER_LISTING = 10;
-const IMAGE_DOWNLOAD_DELAY_MS = 200;        // between image downloads
+const IMAGE_DOWNLOAD_DELAY_MS = 200;        // per-slot delay inside the image pool
+const IMAGE_DOWNLOAD_CONCURRENCY = 3;       // parallel image downloads per listing
+const PB_AGENCY_CACHE_KEY = "agencies:directory";
+const PB_AGENCY_CACHE_TTL_MS = 24 * 60 * 60 * 1000;   // 24 hours
 ```
 
 ### `convex/rateLimit.ts`
@@ -169,7 +184,8 @@ pbImport: { maxTokens: 10, refillIntervalMs: 10 * 60 * 1000 }
 
 ### `src/app/app/properties/import/propertybook/page.tsx`
 ```ts
-const PER_LISTING_DELAY_MS = 700;           // client-side delay between fetchOneListing calls
+const PER_LISTING_DELAY_MS = 1000;          // per-slot delay inside the preview pool
+const PREVIEW_CONCURRENCY = 3;              // parallel listing fetches during preview
 const MAX_BATCH_SIZE = 25;
 const BATCH_SIZE_OPTIONS = [5, 10, 25];     // user-selectable batch sizes
 ```
@@ -185,7 +201,7 @@ All under `api.propertyBook.*`. All admin-gated unless noted.
 
 | Function | Type | Purpose |
 |---|---|---|
-| `listAgencies({ query? })` | action | Returns the agency directory (filterable). |
+| `listAgencies({ query?, force? })` | action | Returns the agency directory (filterable). Reads from `propertyBookCache` if a fresh entry exists; pass `force: true` to bypass the cache and re-scrape. |
 | `previewAgencyListings({ slug, maxListings? })` | action | One-shot preview (legacy; the UI uses the two-phase flow below). |
 | `getAgencyListingUrls({ slug, maxListings? })` | action | Phase 1 of preview — discovers listing URLs only. |
 | `fetchOneListing({ url })` | action | Phase 2 — parses one listing detail page. |
@@ -214,6 +230,9 @@ Convex dashboard → **Tables** → `trackedAgencies`. Each row stores `lastRefr
 Imported listings are deduped by `(orgId, pbRefCode)`. To re-import:
 1. Convex dashboard → `properties` → delete the row(s) (or null out the `pbRefCode` field).
 2. In the UI, run the import again — it'll insert fresh.
+
+### Invalidate the agency-directory cache
+Convex dashboard → **Tables** → `propertyBookCache` → delete the row whose `key` is `"agencies:directory"`. The next picker visit re-scrapes and repopulates. The **Refresh** button in the picker does the same thing without needing dashboard access.
 
 ### Disable the feature temporarily
 Set `PB_IMPORT_DISABLED=true` in the Convex deployment environment variables (Convex dashboard → **Settings** → **Environment Variables**). Re-run `npx convex dev` or redeploy. Both the manual flow and the cron will refuse to run with a clear error message.
