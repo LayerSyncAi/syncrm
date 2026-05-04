@@ -274,55 +274,49 @@ function parseListingDetail(html: string, url: string): ParsedListing {
   };
 }
 
+// Scrapes the full agency directory once. Caller (convex/propertyBook.ts)
+// is expected to cache the result — this action always performs HTTP work
+// and is therefore intended to be called rarely (cache miss / force refresh).
+//
+// Returns the enriched form: every agency we can discover via the sitemap,
+// merged with logo + sale/rent counts from the HTML index page when present.
 export const listAgencies = internalAction({
-  args: { query: v.optional(v.string()) },
-  handler: async (_ctx, { query }): Promise<ParsedAgency[]> => {
-    let agencies: ParsedAgency[] = [];
+  args: {},
+  handler: async (): Promise<ParsedAgency[]> => {
     const errors: string[] = [];
+    let sitemapAgencies: ParsedAgency[] = [];
+    let indexAgencies: ParsedAgency[] = [];
 
     try {
       const xml = await fetchHtml(`${PB_BASE}/sitemap_others.xml`);
-      agencies = parseSitemapAgencies(xml);
+      sitemapAgencies = parseSitemapAgencies(xml);
     } catch (e) {
       errors.push(`sitemap: ${(e as Error).message}`);
     }
 
-    if (agencies.length === 0) {
-      try {
-        const html = await fetchHtml(`${PB_BASE}/listed-agencies`);
-        agencies = parseAgencyIndexPage(html);
-      } catch (e) {
-        errors.push(`index: ${(e as Error).message}`);
-      }
+    try {
+      const html = await fetchHtml(`${PB_BASE}/listed-agencies`);
+      indexAgencies = parseAgencyIndexPage(html);
+    } catch (e) {
+      errors.push(`index: ${(e as Error).message}`);
     }
 
-    if (agencies.length === 0) {
+    // Merge: sitemap is the broader set of slugs, index has logos + counts.
+    const bySlug = new Map<string, ParsedAgency>();
+    for (const a of sitemapAgencies) bySlug.set(a.slug, a);
+    for (const a of indexAgencies) {
+      const existing = bySlug.get(a.slug);
+      bySlug.set(a.slug, existing ? { ...existing, ...a } : a);
+    }
+
+    const merged = Array.from(bySlug.values());
+    if (merged.length === 0) {
       throw new Error(
         `propertybook_unreachable_or_empty: ${errors.join("; ") || "no entries parsed"}`
       );
     }
 
-    const needle = (query || "").trim().toLowerCase();
-    const filtered = needle
-      ? agencies.filter(
-          (a) =>
-            a.name.toLowerCase().includes(needle) ||
-            a.slug.toLowerCase().includes(needle)
-        )
-      : agencies;
-
-    if (filtered.length <= 60) {
-      try {
-        const html = await fetchHtml(`${PB_BASE}/listed-agencies`);
-        const enriched = parseAgencyIndexPage(html);
-        const byslug = new Map(enriched.map((a) => [a.slug, a]));
-        return filtered.map((a) => ({ ...a, ...(byslug.get(a.slug) || {}) }));
-      } catch {
-        return filtered;
-      }
-    }
-
-    return filtered.slice(0, 200);
+    return merged.slice(0, 500);
   },
 });
 

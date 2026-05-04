@@ -219,6 +219,13 @@ export default defineSchema({
     .index("by_org", ["orgId"])
     .index("by_org_slug", ["orgId", "slug"])
     .index("by_active", ["isActive"]),
+  // Cached scrapes from propertybook.co.zw (e.g. agency directory).
+  // Keyed by an opaque string; payload is a JSON-encoded blob with a TTL.
+  propertyBookCache: defineTable({
+    key: v.string(),
+    payload: v.string(),
+    fetchedAt: v.number(),
+  }).index("by_key", ["key"]),
   // Property shares: Agent A shares a property with Agent B (who has a matching lead)
   propertyShares: defineTable({
     propertyId: v.id("properties"),
