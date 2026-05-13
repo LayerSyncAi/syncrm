@@ -1,11 +1,13 @@
 /**
  * Email sender with Resend integration.
- * Set the RESEND_API_KEY environment variable to enable real email delivery.
- * Set EMAIL_FROM to customize the sender address (default: "SynCRM <noreply@syncrm.app>").
- * Without an API key, emails are logged to the console for development.
+ *
+ * Required env vars (set in the deployed environment, e.g. Vercel/Convex):
+ *   - RESEND_API_KEY: API key from https://resend.com (format: re_...)
+ *   - EMAIL_FROM:     Sender address using a domain verified in Resend so
+ *                     Gmail accepts the message (SPF/DKIM/DMARC must align).
+ *
+ * Without a real API key, emails are logged to the console for development.
  */
-
-import { Resend } from "resend";
 
 export interface EmailSendResult {
   success: boolean;
@@ -20,12 +22,18 @@ export interface EmailOptions {
   text?: string;
 }
 
-const resendApiKey = process.env.RESEND_API_KEY;
-const emailFrom = process.env.EMAIL_FROM || "SynCRM <noreply@syncrm.app>";
+const DEFAULT_FROM = "Syncrm <admin@accesshealthcare.co.zw>";
+
+function isUsableApiKey(key: string | undefined): key is string {
+  // Skip placeholders like `re_[your_key]` that appear in env templates.
+  return !!key && !key.startsWith("re_[");
+}
 
 export async function sendEmail(options: EmailOptions): Promise<EmailSendResult> {
-  if (!resendApiKey) {
-    // Development fallback: log to console
+  const resendApiKey = process.env.RESEND_API_KEY;
+  const emailFrom = process.env.EMAIL_FROM || DEFAULT_FROM;
+
+  if (!isUsableApiKey(resendApiKey)) {
     console.log("=== EMAIL (no RESEND_API_KEY configured) ===");
     console.log("To:", options.to);
     console.log("Subject:", options.subject);
@@ -38,6 +46,7 @@ export async function sendEmail(options: EmailOptions): Promise<EmailSendResult>
   }
 
   try {
+    const { Resend } = await import("resend");
     const resend = new Resend(resendApiKey);
     const { data, error } = await resend.emails.send({
       from: emailFrom,
