@@ -25,6 +25,7 @@ import type * as leadMerge from "../leadMerge.js";
 import type * as leadScoring from "../leadScoring.js";
 import type * as leads from "../leads.js";
 import type * as locations from "../locations.js";
+import type * as logs from "../logs.js";
 import type * as matches from "../matches.js";
 import type * as organizations from "../organizations.js";
 import type * as passwordReset from "../passwordReset.js";
@@ -63,6 +64,7 @@ declare const fullApi: ApiFromModules<{
   leadScoring: typeof leadScoring;
   leads: typeof leads;
   locations: typeof locations;
+  logs: typeof logs;
   matches: typeof matches;
   organizations: typeof organizations;
   passwordReset: typeof passwordReset;

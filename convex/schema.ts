@@ -416,6 +416,70 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_chat_id", ["chatId"]),
+  // Audit log: records user actions (logins, admin operations, key mutations).
+  auditLogs: defineTable({
+    // The user who performed the action. Null for system / unauthenticated events.
+    actorUserId: v.optional(v.id("users")),
+    // Human-readable cached name/email for the actor (denormalized for log readability
+    // even if the user is later deleted/renamed).
+    actorLabel: v.optional(v.string()),
+    // Machine-readable action key, e.g. "user.create", "user.role_change",
+    // "user.password_reset", "user.login", "lead.create", "lead.merge".
+    action: v.string(),
+    // Optional category for filtering: "auth", "user", "lead", "property",
+    // "email", "system", "other".
+    category: v.union(
+      v.literal("auth"),
+      v.literal("user"),
+      v.literal("lead"),
+      v.literal("property"),
+      v.literal("email"),
+      v.literal("system"),
+      v.literal("other")
+    ),
+    // Optional polymorphic target reference, e.g. the user/lead/property acted on.
+    targetType: v.optional(v.string()),
+    targetId: v.optional(v.string()),
+    targetLabel: v.optional(v.string()),
+    // Short human-readable description for the log UI.
+    description: v.string(),
+    // Arbitrary metadata (JSON-stringified to avoid schema churn).
+    metadata: v.optional(v.string()),
+    orgId: v.optional(v.id("organizations")),
+    createdAt: v.number(),
+  })
+    .index("by_org_created", ["orgId", "createdAt"])
+    .index("by_actor", ["actorUserId"])
+    .index("by_category", ["category"])
+    .index("by_action", ["action"]),
+  // Email log: one row per email send attempt (including dev-mode and failures).
+  emailLogs: defineTable({
+    to: v.string(),
+    from: v.string(),
+    subject: v.string(),
+    // Logical email kind, e.g. "password_reset", "activity_pre_reminder",
+    // "activity_overdue_reminder", "daily_digest", "other".
+    kind: v.string(),
+    status: v.union(
+      v.literal("sent"),
+      v.literal("failed"),
+      v.literal("dev_logged")
+    ),
+    messageId: v.optional(v.string()),
+    error: v.optional(v.string()),
+    // Optional triggering user (e.g. the recipient or the admin who caused the send).
+    triggeredByUserId: v.optional(v.id("users")),
+    triggeredByLabel: v.optional(v.string()),
+    // Optional related record (activity, lead, etc.)
+    relatedType: v.optional(v.string()),
+    relatedId: v.optional(v.string()),
+    orgId: v.optional(v.id("organizations")),
+    createdAt: v.number(),
+  })
+    .index("by_org_created", ["orgId", "createdAt"])
+    .index("by_to", ["to"])
+    .index("by_kind", ["kind"])
+    .index("by_status", ["status"]),
   contacts: defineTable({
     name: v.string(),
     phone: v.optional(v.string()),

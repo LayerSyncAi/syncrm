@@ -4,6 +4,7 @@ import { internal } from "./_generated/api";
 import { getCurrentUser, requireAdmin, getCurrentUserOptional, getCurrentUserWithOrg } from "./helpers";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Scrypt } from "lucia";
+import { recordAudit } from "./logs";
 
 /** Default temporary password for admin-created users */
 const DEFAULT_TEMP_PASSWORD = "12345678";
@@ -112,6 +113,20 @@ export const adminCreateUserInternal = internalMutation({
       `[Admin] User created by admin ${args.adminId}: ${args.email} (${args.role}), resetPasswordOnNextLogin=true`
     );
 
+    const admin = await ctx.db.get(args.adminId);
+    await recordAudit(ctx, {
+      actorUserId: args.adminId,
+      actorLabel: admin?.fullName || admin?.name || admin?.email,
+      action: "user.create",
+      category: "user",
+      description: `Created ${args.role} account for ${args.fullName} (${args.email})`,
+      targetType: "user",
+      targetId: userId,
+      targetLabel: args.email,
+      metadata: { role: args.role, isActive: args.isActive },
+      orgId: args.orgId,
+    });
+
     return { userId, alreadyExisted: false };
   },
 });
@@ -163,6 +178,17 @@ export const adminSetUserActive = mutation({
       isActive: args.isActive,
       updatedAt: Date.now(),
     });
+    await recordAudit(ctx, {
+      actorUserId: admin._id,
+      actorLabel: admin.fullName || admin.name || admin.email,
+      action: args.isActive ? "user.activate" : "user.deactivate",
+      category: "user",
+      description: `${args.isActive ? "Activated" : "Deactivated"} ${targetUser.email || targetUser.fullName || "user"}`,
+      targetType: "user",
+      targetId: args.userId,
+      targetLabel: targetUser.email,
+      orgId: admin.orgId,
+    });
   },
 });
 
@@ -200,9 +226,22 @@ export const adminSetUserRole = mutation({
       }
     }
 
+    const oldRole = targetUser.role;
     await ctx.db.patch(args.userId, {
       role: args.role,
       updatedAt: Date.now(),
+    });
+    await recordAudit(ctx, {
+      actorUserId: currentAdmin._id,
+      actorLabel: currentAdmin.fullName || currentAdmin.name || currentAdmin.email,
+      action: "user.role_change",
+      category: "user",
+      description: `Changed role for ${targetUser.email || "user"}: ${oldRole} → ${args.role}`,
+      targetType: "user",
+      targetId: args.userId,
+      targetLabel: targetUser.email,
+      metadata: { from: oldRole, to: args.role },
+      orgId: currentAdmin.orgId,
     });
   },
 });
@@ -382,6 +421,19 @@ export const adminResetUserPasswordInternal = internalMutation({
       `[Admin] Password reset by admin ${args.adminId} for user ${args.targetUserId}, resetPasswordOnNextLogin=true`
     );
 
+    const admin = await ctx.db.get(args.adminId);
+    await recordAudit(ctx, {
+      actorUserId: args.adminId,
+      actorLabel: admin?.fullName || admin?.name || admin?.email,
+      action: "user.password_reset_by_admin",
+      category: "user",
+      description: `Reset password for ${targetUser.email || "user"} (temp password issued)`,
+      targetType: "user",
+      targetId: args.targetUserId,
+      targetLabel: targetUser.email,
+      orgId: args.orgId,
+    });
+
     return { success: true };
   },
 });
@@ -444,6 +496,18 @@ export const forceChangePasswordInternal = internalMutation({
       resetPasswordOnNextLogin: false,
       passwordUpdatedAt: now,
       updatedAt: now,
+    });
+
+    await recordAudit(ctx, {
+      actorUserId: user._id,
+      actorLabel: user.fullName || user.name || user.email,
+      action: "user.password_change",
+      category: "auth",
+      description: `${user.email || "User"} changed their password`,
+      targetType: "user",
+      targetId: user._id,
+      targetLabel: user.email,
+      orgId: user.orgId,
     });
 
     return { success: true };

@@ -13,6 +13,7 @@ import {
   DollarSign,
   Download,
   LayoutDashboard,
+  ScrollText,
   Search,
   Shield,
   SlidersHorizontal,
@@ -49,6 +50,7 @@ const adminItems = [
   { label: "Stages", href: "/app/admin/stages", icon: Waypoints },
   { label: "Lead Scoring", href: "/app/admin/lead-scoring", icon: Star },
   { label: "Commissions", href: "/app/admin/commissions", icon: DollarSign },
+  { label: "Logs", href: "/app/admin/logs", icon: ScrollText },
 ];
 
 interface SidebarProps {

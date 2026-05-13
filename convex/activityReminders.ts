@@ -385,6 +385,13 @@ export const processPreReminders = internalAction({
           </div>
         `,
         text: `Hi ${userName}, please note your ${typeLabel.toLowerCase()} "${activity.title}" is meant to start in an hour at ${timeStr}.${leadText}`,
+      }, ctx, {
+        kind: "activity_pre_reminder",
+        triggeredByUserId: user._id,
+        triggeredByLabel: user.email,
+        relatedType: "activity",
+        relatedId: activity._id,
+        orgId: user.orgId,
       });
 
       await ctx.runMutation(internal.activityReminders.recordReminder, {
@@ -454,6 +461,13 @@ export const processOverdueReminders = internalAction({
           </div>
         `,
         text: `Hi ${userName}, your ${typeLabel.toLowerCase()} "${activity.title}" was scheduled for ${timeStr} and is still open.${leadText} Please log in to SynCRM to update this activity.`,
+      }, ctx, {
+        kind: "activity_overdue_reminder",
+        triggeredByUserId: user._id,
+        triggeredByLabel: user.email,
+        relatedType: "activity",
+        relatedId: activity._id,
+        orgId: user.orgId,
       });
 
       await ctx.runMutation(internal.activityReminders.recordReminder, {
@@ -598,10 +612,15 @@ export const processDailyDigests = internalAction({
             const timeStr = a.scheduledAt
               ? formatTime(a.scheduledAt, timezone)
               : "No time";
-            const ctx = lead ? `Lead: ${lead.fullName}` : "Standalone task";
-            return `${timeStr} - ${activityTypeLabel(a.type)}: ${a.title} (${ctx})`;
+            const leadCtx = lead ? `Lead: ${lead.fullName}` : "Standalone task";
+            return `${timeStr} - ${activityTypeLabel(a.type)}: ${a.title} (${leadCtx})`;
           })
           .join("; ")}`,
+      }, ctx, {
+        kind: "daily_digest",
+        triggeredByUserId: user._id,
+        triggeredByLabel: user.email,
+        orgId: user.orgId,
       });
 
       await ctx.runMutation(internal.activityReminders.recordReminder, {

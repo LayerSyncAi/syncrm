@@ -35,7 +35,7 @@ export const createResetToken = internalMutation({
 
     if (!user) {
       // Don't reveal whether email exists
-      return { success: true };
+      return { success: true } as const;
     }
 
     // Generate token
@@ -64,7 +64,27 @@ export const createResetToken = internalMutation({
       createdAt: now,
     });
 
-    return { success: true, token, email: user.email };
+    // Audit log: password reset requested (no actor — public endpoint)
+    await ctx.db.insert("auditLogs", {
+      actorUserId: user._id,
+      actorLabel: user.email,
+      action: "user.password_reset_requested",
+      category: "auth",
+      description: `Password reset requested for ${user.email}`,
+      targetType: "user",
+      targetId: user._id,
+      targetLabel: user.email,
+      orgId: user.orgId,
+      createdAt: now,
+    });
+
+    return {
+      success: true,
+      token,
+      email: user.email,
+      userId: user._id,
+      orgId: user.orgId,
+    } as const;
   },
 });
 
@@ -82,7 +102,11 @@ export const requestPasswordReset = action({
 
     // Send email if token was created (user exists)
     if (result.token && result.email) {
-      await sendPasswordResetEmail(result.email, result.token, args.baseUrl);
+      await sendPasswordResetEmail(result.email, result.token, args.baseUrl, ctx, {
+        triggeredByUserId: result.userId,
+        triggeredByLabel: result.email,
+        orgId: result.orgId,
+      });
     }
 
     // Always return success to not reveal email existence
@@ -174,6 +198,19 @@ export const resetPasswordInternal = internalMutation({
 
     // Update user timestamp
     await ctx.db.patch(user._id, { updatedAt: Date.now() });
+
+    await ctx.db.insert("auditLogs", {
+      actorUserId: user._id,
+      actorLabel: user.email,
+      action: "user.password_reset_completed",
+      category: "auth",
+      description: `${user.email || "User"} reset their password via email link`,
+      targetType: "user",
+      targetId: user._id,
+      targetLabel: user.email,
+      orgId: user.orgId,
+      createdAt: Date.now(),
+    });
 
     return { success: true };
   },

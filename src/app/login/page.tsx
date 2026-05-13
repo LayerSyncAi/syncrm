@@ -22,6 +22,7 @@ export default function LoginPage() {
   const { signIn } = useAuthActions();
   const { isLoading: authLoading, isSessionAuthenticated } = useAuth();
   const setupOrganization = useMutation(api.organizations.setupOrganization);
+  const recordLogin = useMutation(api.logs.recordLogin);
 
   const [mode, setMode] = useState<AuthMode>("signIn");
   const [email, setEmail] = useState("");
@@ -89,6 +90,13 @@ export default function LoginPage() {
 
       if (mode === "signUp") {
         await setupOrganization({ orgName: orgName.trim() });
+      }
+
+      // Record login event in audit trail (best-effort — never block sign-in).
+      try {
+        await recordLogin();
+      } catch (logErr) {
+        console.error("[LoginPage] Failed to record login audit:", logErr);
       }
 
       if (process.env.NODE_ENV === "development") {
