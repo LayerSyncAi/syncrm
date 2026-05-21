@@ -6,6 +6,8 @@ import { useRouter, usePathname } from "next/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { useAuth } from "@/hooks/useAuth";
+import { useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 import { Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ErrorBoundary } from "@/components/common/error-boundary";
@@ -37,6 +39,13 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   }, []);
 
   const isForceChangePasswordPage = pathname === "/app/force-change-password";
+
+  // When the session is valid but getMe returns null, find out why so we can
+  // show an accurate message (deactivated account vs. genuinely missing record).
+  const accountStatus = useQuery(
+    api.users.getAccountStatus,
+    !isLoading && isSessionAuthenticated && user === null ? {} : "skip"
+  );
 
   // Redirect to login if not authenticated (must be in useEffect to avoid state update during render)
   useEffect(() => {
@@ -71,22 +80,28 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   // - The user lookup query failed
   // Show an error state with option to sign out, don't auto sign-out to avoid loops
   if (isSessionAuthenticated && !user) {
+    const isDeactivated = accountStatus === "deactivated";
     return (
       <div className="min-h-screen bg-content-bg flex items-center justify-center">
         <div className="flex flex-col items-center gap-4 max-w-md text-center p-6">
           <AlertCircle className="h-12 w-12 text-amber-500" />
-          <h2 className="text-lg font-semibold text-text-primary">Account Setup Issue</h2>
+          <h2 className="text-lg font-semibold text-text-primary">
+            {isDeactivated ? "Account deactivated" : "Account Setup Issue"}
+          </h2>
           <p className="text-sm text-text-muted">
-            Your session is valid but we couldn&apos;t find your account record.
-            This can happen if your account is still being set up or if there was a sync issue.
+            {isDeactivated
+              ? "Your account has been deactivated. Please contact your administrator to regain access."
+              : "Your session is valid but we couldn't find your account record. This can happen if your account is still being set up or if there was a sync issue."}
           </p>
           <div className="flex gap-3 mt-4">
-            <Button
-              variant="secondary"
-              onClick={() => window.location.reload()}
-            >
-              Try Again
-            </Button>
+            {!isDeactivated && (
+              <Button
+                variant="secondary"
+                onClick={() => window.location.reload()}
+              >
+                Try Again
+              </Button>
+            )}
             <Button
               variant="destructive"
               onClick={async () => {

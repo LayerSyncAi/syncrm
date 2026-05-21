@@ -180,24 +180,38 @@ export const resetPasswordInternal = internalMutation({
       return { success: false, error: "User not found" };
     }
 
-    // Find and update the auth account
+    // Find and update the password auth account. Filter by provider so we
+    // never patch a non-password account, and treat a missing account as a
+    // hard failure rather than silently reporting success.
     const account = await ctx.db
       .query("authAccounts")
-      .filter((q) => q.eq(q.field("userId"), user._id))
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("userId"), user._id),
+          q.eq(q.field("provider"), "password")
+        )
+      )
       .first();
 
-    if (account) {
-      // Update the password hash in authAccounts
-      await ctx.db.patch(account._id, {
-        secret: args.newPasswordHash,
-      });
+    if (!account) {
+      return { success: false, error: "No password account found for this user" };
     }
 
-    // Mark token as used
-    await ctx.db.patch(resetToken._id, { usedAt: Date.now() });
+    await ctx.db.patch(account._id, {
+      secret: args.newPasswordHash,
+    });
 
-    // Update user timestamp
-    await ctx.db.patch(user._id, { updatedAt: Date.now() });
+    // Mark token as used
+    const now = Date.now();
+    await ctx.db.patch(resetToken._id, { usedAt: now });
+
+    // Clear any forced-reset flag — completing an email reset satisfies it —
+    // and record when the password was updated.
+    await ctx.db.patch(user._id, {
+      resetPasswordOnNextLogin: false,
+      passwordUpdatedAt: now,
+      updatedAt: now,
+    });
 
     await ctx.db.insert("auditLogs", {
       actorUserId: user._id,
