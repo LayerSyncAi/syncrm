@@ -40,3 +40,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# PWA - intermediate build artifacts
+/public/sw.js.map
+/.sw-out
