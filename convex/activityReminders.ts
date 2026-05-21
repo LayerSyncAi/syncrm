@@ -7,6 +7,18 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { sendEmail } from "./email";
 import { generateGoogleCalendarUrl } from "./lib/calendar";
+import {
+  renderEmailShell,
+  emailEyebrow,
+  emailHeading,
+  emailText,
+  emailButton,
+  emailSecondaryLink,
+  detailCard,
+  escapeHtml,
+  ACCENTS,
+  EMAIL_FONT,
+} from "./emailLayout";
 
 // =====================
 // Formatting helpers
@@ -365,43 +377,54 @@ export const processPreReminders = internalAction({
       const timeStr = formatTime(activity.scheduledAt!, timezone);
       const leadName = lead?.fullName || null;
       const typeLabel = activityTypeLabel(activity.type);
-      const leadLine = leadName ? `<p style="margin: 4px 0;"><strong>Lead:</strong> ${leadName}</p>` : "";
       const leadText = leadName ? ` Lead: ${leadName}.` : "";
 
-      // Map the activity onto the generic calendar-event model and build the
-      // "add to calendar" links for the email body.
+      const { accent, tint } = ACCENTS.blue;
       const siteUrl = process.env.SITE_URL || "http://localhost:3000";
+      const tasksUrl = `${siteUrl}/app/tasks`;
+      const safeTitle = escapeHtml(activity.title);
+
+      // Map the activity onto the generic calendar-event model for the
+      // "Add to Google Calendar" link.
       const googleCalendarUrl = generateGoogleCalendarUrl({
         title: activity.title,
         description: activity.description || typeLabel,
         start: new Date(activity.scheduledAt!),
-        url: `${siteUrl}/app/tasks`,
+        url: tasksUrl,
       });
-      const icsDownloadUrl = `${siteUrl}/api/calendar/${activity._id}`;
+
+      const detailRows = [
+        { label: "Activity", value: safeTitle },
+        { label: "Type", value: typeLabel },
+        { label: "Starts at", value: timeStr },
+      ];
+      if (leadName) {
+        detailRows.push({ label: "Lead", value: escapeHtml(leadName) });
+      }
+
+      const content =
+        emailEyebrow("Upcoming Activity", accent, tint) +
+        emailHeading(`${typeLabel} starting soon`) +
+        emailText(
+          `Hi ${escapeHtml(userName)}, your ${typeLabel.toLowerCase()} &ldquo;<strong style="color:#0f172a;">${safeTitle}</strong>&rdquo; is scheduled to begin in about an hour, at <strong style="color:#0f172a;">${timeStr}</strong>.`
+        ) +
+        detailCard(detailRows) +
+        emailButton({
+          href: googleCalendarUrl,
+          label: "Add to Google Calendar",
+          accentColor: accent,
+        }) +
+        emailSecondaryLink(tasksUrl, "Want the full details?");
 
       await sendEmail({
         to: user.email,
         subject: `Reminder: ${typeLabel} "${activity.title}" starts in 1 hour`,
-        html: `
-          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #2563eb;">Upcoming Activity Reminder</h2>
-            <p>Hi ${userName},</p>
-            <p>Please note your <strong>${typeLabel.toLowerCase()}</strong> &ldquo;<strong>${activity.title}</strong>&rdquo; is meant to start in an hour at <strong>${timeStr}</strong>.</p>
-            <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin: 16px 0;">
-              <p style="margin: 4px 0;"><strong>Activity:</strong> ${activity.title}</p>
-              <p style="margin: 4px 0;"><strong>Type:</strong> ${typeLabel}</p>
-              <p style="margin: 4px 0;"><strong>Scheduled:</strong> ${timeStr}</p>
-              ${leadLine}
-            </div>
-            <div style="margin: 16px 0;">
-              <p style="margin: 0 0 8px 0; font-weight: bold; color: #111827;">Add to calendar</p>
-              <a href="${googleCalendarUrl}" style="display: inline-block; background: #2563eb; color: #ffffff; text-decoration: none; padding: 10px 16px; border-radius: 6px; font-size: 14px; font-weight: 600; margin: 0 8px 8px 0;">Add to Google Calendar</a>
-              <a href="${icsDownloadUrl}" style="display: inline-block; background: #f3f4f6; color: #111827; text-decoration: none; padding: 10px 16px; border-radius: 6px; font-size: 14px; font-weight: 600; margin: 0 0 8px 0; border: 1px solid #d1d5db;">Download (.ics)</a>
-            </div>
-            <p style="color: #666; font-size: 14px;">Log in to SynCRM to view full details and prepare for your activity.</p>
-          </div>
-        `,
-        text: `Hi ${userName}, please note your ${typeLabel.toLowerCase()} "${activity.title}" is meant to start in an hour at ${timeStr}.${leadText}\n\nAdd to Google Calendar: ${googleCalendarUrl}\nDownload (.ics): ${icsDownloadUrl}`,
+        html: renderEmailShell({
+          accentColor: accent,
+          preheader: `Starts at ${timeStr} — about an hour from now.`,
+          content,
+        }),
+        text: `Hi ${userName}, your ${typeLabel.toLowerCase()} "${activity.title}" is scheduled to begin in about an hour, at ${timeStr}.${leadText}\n\nAdd to Google Calendar: ${googleCalendarUrl}\n\nView in SynCRM: ${tasksUrl}`,
       }, ctx, {
         kind: "activity_pre_reminder",
         triggeredByUserId: user._id,
@@ -451,33 +474,53 @@ export const processOverdueReminders = internalAction({
       const timeStr = formatTime(activity.scheduledAt!, timezone);
       const leadName = lead?.fullName || null;
       const typeLabel = activityTypeLabel(activity.type);
-      const leadLine = leadName ? `<p style="margin: 4px 0;"><strong>Lead:</strong> ${leadName}</p>` : "";
       const leadText = leadName ? ` Lead: ${leadName}.` : "";
+
+      const { accent, tint } = ACCENTS.red;
+      const siteUrl = process.env.SITE_URL || "http://localhost:3000";
+      const tasksUrl = `${siteUrl}/app/tasks`;
+      const safeTitle = escapeHtml(activity.title);
+
+      const detailRows = [
+        { label: "Activity", value: safeTitle },
+        { label: "Type", value: typeLabel },
+        { label: "Was due", value: timeStr },
+      ];
+      if (leadName) {
+        detailRows.push({ label: "Lead", value: escapeHtml(leadName) });
+      }
+      detailRows.push({
+        label: "Status",
+        value: `<span style="color:${accent};">Still open</span>`,
+      });
+
+      const content =
+        emailEyebrow("Action Needed", accent, tint) +
+        emailHeading(`${typeLabel} needs a follow-up`) +
+        emailText(
+          `Hi ${escapeHtml(userName)}, your ${typeLabel.toLowerCase()} &ldquo;<strong style="color:#0f172a;">${safeTitle}</strong>&rdquo; was scheduled for <strong style="color:#0f172a;">${timeStr}</strong> and is still marked open.`
+        ) +
+        detailCard(detailRows) +
+        emailText("Take a moment to close the loop:") +
+        `<ul style="margin:10px 0 0 0;padding-left:22px;font-family:${EMAIL_FONT};font-size:15px;line-height:24px;color:#475569;">` +
+        `<li style="margin:5px 0;">Mark it complete with a note on what happened</li>` +
+        `<li style="margin:5px 0;">Or leave a progress update for your team</li>` +
+        `</ul>` +
+        emailButton({
+          href: tasksUrl,
+          label: "Update this activity",
+          accentColor: accent,
+        });
 
       await sendEmail({
         to: user.email,
         subject: `Follow-up needed: ${typeLabel} "${activity.title}" is overdue`,
-        html: `
-          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #dc2626;">Overdue Activity Reminder</h2>
-            <p>Hi ${userName},</p>
-            <p>Your <strong>${typeLabel.toLowerCase()}</strong> &ldquo;<strong>${activity.title}</strong>&rdquo; was scheduled for <strong>${timeStr}</strong> and is still open.</p>
-            <div style="background: #fef2f2; border-radius: 8px; padding: 16px; margin: 16px 0;">
-              <p style="margin: 4px 0;"><strong>Activity:</strong> ${activity.title}</p>
-              <p style="margin: 4px 0;"><strong>Type:</strong> ${typeLabel}</p>
-              <p style="margin: 4px 0;"><strong>Was scheduled for:</strong> ${timeStr}</p>
-              ${leadLine}
-              <p style="margin: 4px 0;"><strong>Status:</strong> <span style="color: #dc2626;">Still open</span></p>
-            </div>
-            <p>Please check in and either:</p>
-            <ul>
-              <li>Mark the activity as completed with notes on what happened</li>
-              <li>Leave a progress update or comment</li>
-            </ul>
-            <p style="color: #666; font-size: 14px;">Log in to SynCRM to update this activity.</p>
-          </div>
-        `,
-        text: `Hi ${userName}, your ${typeLabel.toLowerCase()} "${activity.title}" was scheduled for ${timeStr} and is still open.${leadText} Please log in to SynCRM to update this activity.`,
+        html: renderEmailShell({
+          accentColor: accent,
+          preheader: `Scheduled for ${timeStr} and still open.`,
+          content,
+        }),
+        text: `Hi ${userName}, your ${typeLabel.toLowerCase()} "${activity.title}" was scheduled for ${timeStr} and is still open.${leadText} Update it in SynCRM: ${tasksUrl}`,
       }, ctx, {
         kind: "activity_overdue_reminder",
         triggeredByUserId: user._id,
@@ -562,67 +605,77 @@ export const processDailyDigests = internalAction({
       // Use noon for safe date formatting (avoids midnight edge-case)
       const dateLabel = formatDate(dayStart + 12 * 60 * 60 * 1000, timezone);
 
-      const activityRows = sorted
-        .map((a) => {
-          const lead = a.leadId ? leads[a.leadId as string] : null;
-          const leadName = lead?.fullName || (a.leadId ? "Unknown" : "Standalone");
-          const leadPhone = lead?.phone || "";
-          const timeStr = a.scheduledAt
-            ? formatTime(a.scheduledAt, timezone)
-            : "No time set";
-          const typeLabel = activityTypeLabel(a.type);
-          const statusBadge =
-            a.status === "completed"
-              ? '<span style="color: #16a34a;">Completed</span>'
-              : '<span style="color: #f59e0b;">To Do</span>';
-
-          return `
-            <tr>
-              <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${timeStr}</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${typeLabel}</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${a.title}</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${leadName}${leadPhone ? ` (${leadPhone})` : ""}</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${statusBadge}</td>
-            </tr>
-          `;
-        })
-        .join("");
+      const { accent, tint } = ACCENTS.blue;
+      const siteUrl = process.env.SITE_URL || "http://localhost:3000";
+      const tasksUrl = `${siteUrl}/app/tasks`;
 
       const todoCount = sorted.filter((a) => a.status === "todo").length;
       const completedCount = sorted.filter(
         (a) => a.status === "completed"
       ).length;
 
+      const activityRows = sorted
+        .map((a, i) => {
+          const lead = a.leadId ? leads[a.leadId as string] : null;
+          const leadName = lead?.fullName || (a.leadId ? "Lead" : null);
+          const timeStr = a.scheduledAt
+            ? formatTime(a.scheduledAt, timezone)
+            : "Anytime";
+          const rowTypeLabel = activityTypeLabel(a.type);
+          const subline = leadName
+            ? `${rowTypeLabel} &middot; ${escapeHtml(leadName)}`
+            : rowTypeLabel;
+          const statusPill =
+            a.status === "completed"
+              ? `<span style="display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;background-color:#dcfce7;color:#15803d;">Done</span>`
+              : `<span style="display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;background-color:#fef3c7;color:#b45309;">To do</span>`;
+          return `<tr><td style="padding:14px 0;${i > 0 ? "border-top:1px solid #e2e8f0;" : ""}">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+<td width="62" valign="top" style="font-family:${EMAIL_FONT};font-size:13px;font-weight:700;color:#0f172a;white-space:nowrap;">${timeStr}</td>
+<td valign="top" style="padding:0 12px;">
+<p style="margin:0;font-family:${EMAIL_FONT};font-size:14px;line-height:20px;font-weight:600;color:#0f172a;">${escapeHtml(a.title)}</p>
+<p style="margin:3px 0 0 0;font-family:${EMAIL_FONT};font-size:12px;line-height:18px;color:#94a3b8;">${subline}</p>
+</td>
+<td width="72" valign="top" align="right">${statusPill}</td>
+</tr></table>
+</td></tr>`;
+        })
+        .join("");
+
+      const statCard = (count: number, label: string) =>
+        `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;">
+<tr><td style="padding:16px 10px;text-align:center;">
+<p style="margin:0;font-family:${EMAIL_FONT};font-size:26px;line-height:30px;font-weight:700;color:#0f172a;">${count}</p>
+<p style="margin:4px 0 0 0;font-family:${EMAIL_FONT};font-size:11px;font-weight:700;letter-spacing:0.4px;text-transform:uppercase;color:#94a3b8;">${label}</p>
+</td></tr></table>`;
+
+      const content =
+        emailEyebrow("Daily Agenda", accent, tint) +
+        emailHeading(`Good morning, ${escapeHtml(userName)}`) +
+        emailText(
+          `Here's everything on your plate for <strong style="color:#0f172a;">${dateLabel}</strong>.`
+        ) +
+        `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 0 0;"><tr>` +
+        `<td width="33.33%" valign="top" style="padding-right:6px;">${statCard(todoCount, "To do")}</td>` +
+        `<td width="33.33%" valign="top" style="padding:0 6px;">${statCard(completedCount, "Done")}</td>` +
+        `<td width="33.33%" valign="top" style="padding-left:6px;">${statCard(sorted.length, "Total")}</td>` +
+        `</tr></table>` +
+        `<p style="margin:30px 0 0 0;font-family:${EMAIL_FONT};font-size:12px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:#94a3b8;">Today's activities</p>` +
+        `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:4px 0 0 0;">${activityRows}</table>` +
+        emailButton({
+          href: tasksUrl,
+          label: "Open my agenda",
+          accentColor: accent,
+        });
+
       await sendEmail({
         to: user.email,
         subject: `Your daily agenda for ${dateLabel} — ${todoCount} task${todoCount !== 1 ? "s" : ""} scheduled`,
-        html: `
-          <div style="font-family: sans-serif; max-width: 700px; margin: 0 auto;">
-            <h2 style="color: #2563eb;">Daily Agenda</h2>
-            <p>Good morning ${userName},</p>
-            <p>Here&rsquo;s your schedule for <strong>${dateLabel}</strong>:</p>
-            <p style="margin: 8px 0;">
-              <strong>${todoCount}</strong> to do &middot;
-              <strong>${completedCount}</strong> completed &middot;
-              <strong>${sorted.length}</strong> total
-            </p>
-            <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
-              <thead>
-                <tr style="background: #f3f4f6;">
-                  <th style="padding: 8px; text-align: left; border-bottom: 2px solid #d1d5db;">Time</th>
-                  <th style="padding: 8px; text-align: left; border-bottom: 2px solid #d1d5db;">Type</th>
-                  <th style="padding: 8px; text-align: left; border-bottom: 2px solid #d1d5db;">Activity</th>
-                  <th style="padding: 8px; text-align: left; border-bottom: 2px solid #d1d5db;">Lead</th>
-                  <th style="padding: 8px; text-align: left; border-bottom: 2px solid #d1d5db;">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${activityRows}
-              </tbody>
-            </table>
-            <p style="color: #666; font-size: 14px;">Log in to SynCRM to manage your activities and update your progress.</p>
-          </div>
-        `,
+        html: renderEmailShell({
+          accentColor: accent,
+          preheader: `${todoCount} task${todoCount !== 1 ? "s" : ""} to do${completedCount ? `, ${completedCount} already done` : ""}.`,
+          content,
+        }),
         text: `Good morning ${userName}, here's your schedule for ${dateLabel}: ${sorted
           .map((a) => {
             const lead = a.leadId ? leads[a.leadId as string] : null;

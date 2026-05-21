@@ -346,24 +346,6 @@ export const getById = query({
   },
 });
 
-// Public (unauthenticated) lookup for the .ics download endpoint. The endpoint
-// is opened directly from an email client, which cannot carry an auth session,
-// so this exposes only the minimal fields needed to build a calendar event.
-export const getForCalendar = query({
-  args: { activityId: v.id("activities") },
-  handler: async (ctx, args) => {
-    const activity = await ctx.db.get(args.activityId);
-    if (!activity || !activity.scheduledAt) return null;
-    return {
-      _id: activity._id,
-      title: activity.title,
-      description: activity.description,
-      type: activity.type,
-      scheduledAt: activity.scheduledAt,
-    };
-  },
-});
-
 export const update = mutation({
   args: {
     activityId: v.id("activities"),

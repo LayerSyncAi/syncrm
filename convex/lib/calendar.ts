@@ -1,18 +1,13 @@
 /**
- * Generic calendar-event utilities.
+ * Generic calendar-event utility.
  *
- * The event model and the two generators contain no app-specific text —
- * callers map their domain objects (tasks, activities, …) onto `CalendarEvent`
- * before calling in.
- *
- * Note: the `.ics` generator lives in `src/lib/calendar-ics.ts`, not here.
- * It depends on `ical-generator`, which the Convex bundler cannot bundle, and
- * Convex bundles every file under `convex/`. This file holds only the pieces
- * that are safe to run inside Convex (the reminder cron builds Google links).
+ * The event model and URL builder contain no app-specific text — callers map
+ * their domain objects (tasks, activities, …) onto `CalendarEvent` before
+ * calling in.
  */
 
 /** Default event length used when no explicit end is supplied. */
-export const DEFAULT_DURATION_MS = 2 * 60 * 60 * 1000;
+const DEFAULT_DURATION_MS = 2 * 60 * 60 * 1000;
 
 export interface CalendarEvent {
   title: string;
@@ -41,7 +36,7 @@ function toDate(value: Date | string): Date {
 }
 
 /** Resolve the start/end pair, applying the default duration when needed. */
-export function resolveRange(event: CalendarEvent): { start: Date; end: Date } {
+function resolveRange(event: CalendarEvent): { start: Date; end: Date } {
   const start = toDate(event.start);
   const end = event.end
     ? toDate(event.end)
