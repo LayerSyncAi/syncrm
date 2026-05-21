@@ -6,6 +6,7 @@ import {
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { sendEmail } from "./email";
+import { generateGoogleCalendarUrl } from "./lib/calendar";
 
 // =====================
 // Formatting helpers
@@ -367,6 +368,17 @@ export const processPreReminders = internalAction({
       const leadLine = leadName ? `<p style="margin: 4px 0;"><strong>Lead:</strong> ${leadName}</p>` : "";
       const leadText = leadName ? ` Lead: ${leadName}.` : "";
 
+      // Map the activity onto the generic calendar-event model and build the
+      // "add to calendar" links for the email body.
+      const siteUrl = process.env.SITE_URL || "http://localhost:3000";
+      const googleCalendarUrl = generateGoogleCalendarUrl({
+        title: activity.title,
+        description: activity.description || typeLabel,
+        start: new Date(activity.scheduledAt!),
+        url: `${siteUrl}/app/tasks`,
+      });
+      const icsDownloadUrl = `${siteUrl}/api/calendar/${activity._id}`;
+
       await sendEmail({
         to: user.email,
         subject: `Reminder: ${typeLabel} "${activity.title}" starts in 1 hour`,
@@ -381,10 +393,15 @@ export const processPreReminders = internalAction({
               <p style="margin: 4px 0;"><strong>Scheduled:</strong> ${timeStr}</p>
               ${leadLine}
             </div>
+            <div style="margin: 16px 0;">
+              <p style="margin: 0 0 8px 0; font-weight: bold; color: #111827;">Add to calendar</p>
+              <a href="${googleCalendarUrl}" style="display: inline-block; background: #2563eb; color: #ffffff; text-decoration: none; padding: 10px 16px; border-radius: 6px; font-size: 14px; font-weight: 600; margin: 0 8px 8px 0;">Add to Google Calendar</a>
+              <a href="${icsDownloadUrl}" style="display: inline-block; background: #f3f4f6; color: #111827; text-decoration: none; padding: 10px 16px; border-radius: 6px; font-size: 14px; font-weight: 600; margin: 0 0 8px 0; border: 1px solid #d1d5db;">Download (.ics)</a>
+            </div>
             <p style="color: #666; font-size: 14px;">Log in to SynCRM to view full details and prepare for your activity.</p>
           </div>
         `,
-        text: `Hi ${userName}, please note your ${typeLabel.toLowerCase()} "${activity.title}" is meant to start in an hour at ${timeStr}.${leadText}`,
+        text: `Hi ${userName}, please note your ${typeLabel.toLowerCase()} "${activity.title}" is meant to start in an hour at ${timeStr}.${leadText}\n\nAdd to Google Calendar: ${googleCalendarUrl}\nDownload (.ics): ${icsDownloadUrl}`,
       }, ctx, {
         kind: "activity_pre_reminder",
         triggeredByUserId: user._id,
