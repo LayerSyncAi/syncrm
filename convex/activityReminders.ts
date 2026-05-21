@@ -6,6 +6,19 @@ import {
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { sendEmail } from "./email";
+import { generateGoogleCalendarUrl } from "./lib/calendar";
+import {
+  renderEmailShell,
+  emailEyebrow,
+  emailHeading,
+  emailText,
+  emailButton,
+  emailSecondaryLink,
+  detailCard,
+  escapeHtml,
+  ACCENTS,
+  EMAIL_FONT,
+} from "./emailLayout";
 
 // =====================
 // Formatting helpers
@@ -151,36 +164,65 @@ function activityTypeLabel(type: string): string {
 // =====================
 
 /**
- * Get todo activities with scheduledAt in the pre-reminder window (50–70 min from now).
- * Uses the by_next_reminder index to query only due activities in batches
- * instead of scanning all todo activities.
+ * Maximum age of a missed reminder we'll still send, in minutes. Caps
+ * catch-up after an outage so a long downtime can't blast stale reminders for
+ * events that already started. Override with the REMINDER_MAX_CATCHUP_MINUTES
+ * env var; defaults to 60.
  */
-export const getUpcomingActivities = internalQuery({
+const DEFAULT_REMINDER_MAX_CATCHUP_MINUTES = 60;
+
+/**
+ * Most reminders claimed per run. The per-minute cadence and the catch-up cap
+ * keep this comfortably within Convex transaction limits; the next run picks
+ * up any remainder.
+ */
+const PRE_REMINDER_BATCH_LIMIT = 100;
+
+function getMaxCatchupMinutes(): number {
+  const parsed = parseInt(process.env.REMINDER_MAX_CATCHUP_MINUTES ?? "", 10);
+  return Number.isFinite(parsed) && parsed > 0
+    ? parsed
+    : DEFAULT_REMINDER_MAX_CATCHUP_MINUTES;
+}
+
+/**
+ * Atomically claim pre-reminders that are due to send.
+ *
+ * "Due" means the reminder's due time — nextReminderAt, which equals
+ * scheduledAt − 1 hour — is at or before now, the activity is still open, and
+ * no reminder has been sent yet. This `due_at <= now AND not-yet-sent`
+ * window (rather than an exact 60-minute match) fires reminders within ~1
+ * minute of the hour mark and automatically catches up missed ticks.
+ * Reminders whose due time is older than the catch-up cap are skipped.
+ *
+ * The claim — setting reminderSentAt — happens here, inside one serializable
+ * transaction, *before* any email is sent. Two overlapping cron runs
+ * therefore cannot both claim the same activity (the second sees the marker
+ * already set), and a restart cannot re-send. All times are absolute UTC
+ * instants (unix ms), so there is no local-timezone drift.
+ */
+export const claimDuePreReminders = internalMutation({
   handler: async (ctx) => {
     const now = Date.now();
-    const windowStart = now + 50 * 60 * 1000;
-    const windowEnd = now + 70 * 60 * 1000;
-    // nextReminderAt = scheduledAt - 60min, so pre-reminder window maps to
-    // nextReminderAt between (now - 10min) and (now + 10min)
-    const reminderWindowStart = windowStart - 60 * 60 * 1000;
-    const reminderWindowEnd = windowEnd - 60 * 60 * 1000;
+    const cutoff = now - getMaxCatchupMinutes() * 60 * 1000;
 
-    // Use index-based query: only fetch activities with nextReminderAt in range
-    const activities = await ctx.db
+    const due = await ctx.db
       .query("activities")
       .withIndex("by_next_reminder", (q) =>
-        q.gte("nextReminderAt", reminderWindowStart).lte("nextReminderAt", reminderWindowEnd)
+        q.gte("nextReminderAt", cutoff).lte("nextReminderAt", now)
       )
-      .collect();
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("status"), "todo"),
+          q.eq(q.field("reminderSentAt"), undefined)
+        )
+      )
+      .take(PRE_REMINDER_BATCH_LIMIT);
 
-    // Filter to only uncompleted activities with valid scheduledAt
-    return activities.filter(
-      (a) =>
-        a.status === "todo" &&
-        a.scheduledAt &&
-        a.scheduledAt >= windowStart &&
-        a.scheduledAt <= windowEnd
-    );
+    for (const activity of due) {
+      await ctx.db.patch(activity._id, { reminderSentAt: now });
+    }
+    return due;
   },
 });
 
@@ -335,56 +377,83 @@ export const recordReminder = internalMutation({
 
 /**
  * Sends "1 hour before" email reminders for upcoming activities.
- * Runs every 5 minutes via cron; deduplication prevents repeat sends.
+ *
+ * Runs once per minute. It claims every reminder whose due time has passed
+ * (see claimDuePreReminders) rather than matching an exact 60-minute offset,
+ * so reminders fire within ~1 minute of the hour mark and ticks missed during
+ * downtime are caught up automatically, bounded by the catch-up cap.
  */
 export const processPreReminders = internalAction({
   handler: async (ctx) => {
-    const activities = await ctx.runQuery(
-      internal.activityReminders.getUpcomingActivities
+    // Claiming marks reminderSentAt inside one transaction, so the send below
+    // is already deduplicated against overlapping runs and restarts.
+    const activities = await ctx.runMutation(
+      internal.activityReminders.claimDuePreReminders
     );
 
     for (const activity of activities) {
-      const alreadySent = await ctx.runQuery(
-        internal.activityReminders.checkReminderSent,
-        { activityId: activity._id, reminderType: "pre_reminder" }
-      );
-      if (alreadySent) continue;
-
       const user = await ctx.runQuery(internal.activityReminders.getUserById, {
         userId: activity.assignedToUserId,
       });
+      if (!user || !user.email || !user.isActive) continue;
+
       const lead = activity.leadId
         ? await ctx.runQuery(internal.activityReminders.getLeadById, { leadId: activity.leadId })
         : null;
-
-      if (!user || !user.email || !user.isActive) continue;
 
       const timezone = user.timezone || "UTC";
       const userName = user.fullName || user.name || "there";
       const timeStr = formatTime(activity.scheduledAt!, timezone);
       const leadName = lead?.fullName || null;
       const typeLabel = activityTypeLabel(activity.type);
-      const leadLine = leadName ? `<p style="margin: 4px 0;"><strong>Lead:</strong> ${leadName}</p>` : "";
       const leadText = leadName ? ` Lead: ${leadName}.` : "";
+
+      const { accent, tint } = ACCENTS.blue;
+      const siteUrl = process.env.SITE_URL || "http://localhost:3000";
+      const tasksUrl = `${siteUrl}/app/tasks`;
+      const safeTitle = escapeHtml(activity.title);
+
+      // Map the activity onto the generic calendar-event model for the
+      // "Add to Google Calendar" link.
+      const googleCalendarUrl = generateGoogleCalendarUrl({
+        title: activity.title,
+        description: activity.description || typeLabel,
+        start: new Date(activity.scheduledAt!),
+        url: tasksUrl,
+      });
+
+      const detailRows = [
+        { label: "Activity", value: safeTitle },
+        { label: "Type", value: typeLabel },
+        { label: "Starts at", value: timeStr },
+      ];
+      if (leadName) {
+        detailRows.push({ label: "Lead", value: escapeHtml(leadName) });
+      }
+
+      const content =
+        emailEyebrow("Upcoming Activity", accent, tint) +
+        emailHeading(`${typeLabel} starting soon`) +
+        emailText(
+          `Hi ${escapeHtml(userName)}, your ${typeLabel.toLowerCase()} &ldquo;<strong style="color:#0f172a;">${safeTitle}</strong>&rdquo; is scheduled to begin in about an hour, at <strong style="color:#0f172a;">${timeStr}</strong>.`
+        ) +
+        detailCard(detailRows) +
+        emailButton({
+          href: googleCalendarUrl,
+          label: "Add to Google Calendar",
+          accentColor: accent,
+        }) +
+        emailSecondaryLink(tasksUrl, "Want the full details?");
 
       await sendEmail({
         to: user.email,
         subject: `Reminder: ${typeLabel} "${activity.title}" starts in 1 hour`,
-        html: `
-          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #2563eb;">Upcoming Activity Reminder</h2>
-            <p>Hi ${userName},</p>
-            <p>Please note your <strong>${typeLabel.toLowerCase()}</strong> &ldquo;<strong>${activity.title}</strong>&rdquo; is meant to start in an hour at <strong>${timeStr}</strong>.</p>
-            <div style="background: #f3f4f6; border-radius: 8px; padding: 16px; margin: 16px 0;">
-              <p style="margin: 4px 0;"><strong>Activity:</strong> ${activity.title}</p>
-              <p style="margin: 4px 0;"><strong>Type:</strong> ${typeLabel}</p>
-              <p style="margin: 4px 0;"><strong>Scheduled:</strong> ${timeStr}</p>
-              ${leadLine}
-            </div>
-            <p style="color: #666; font-size: 14px;">Log in to SynCRM to view full details and prepare for your activity.</p>
-          </div>
-        `,
-        text: `Hi ${userName}, please note your ${typeLabel.toLowerCase()} "${activity.title}" is meant to start in an hour at ${timeStr}.${leadText}`,
+        html: renderEmailShell({
+          accentColor: accent,
+          preheader: `Starts at ${timeStr} — about an hour from now.`,
+          content,
+        }),
+        text: `Hi ${userName}, your ${typeLabel.toLowerCase()} "${activity.title}" is scheduled to begin in about an hour, at ${timeStr}.${leadText}\n\nAdd to Google Calendar: ${googleCalendarUrl}\n\nView in SynCRM: ${tasksUrl}`,
       }, ctx, {
         kind: "activity_pre_reminder",
         triggeredByUserId: user._id,
@@ -392,12 +461,6 @@ export const processPreReminders = internalAction({
         relatedType: "activity",
         relatedId: activity._id,
         orgId: user.orgId,
-      });
-
-      await ctx.runMutation(internal.activityReminders.recordReminder, {
-        activityId: activity._id,
-        reminderType: "pre_reminder",
-        userId: user._id,
       });
     }
   },
@@ -434,33 +497,53 @@ export const processOverdueReminders = internalAction({
       const timeStr = formatTime(activity.scheduledAt!, timezone);
       const leadName = lead?.fullName || null;
       const typeLabel = activityTypeLabel(activity.type);
-      const leadLine = leadName ? `<p style="margin: 4px 0;"><strong>Lead:</strong> ${leadName}</p>` : "";
       const leadText = leadName ? ` Lead: ${leadName}.` : "";
+
+      const { accent, tint } = ACCENTS.red;
+      const siteUrl = process.env.SITE_URL || "http://localhost:3000";
+      const tasksUrl = `${siteUrl}/app/tasks`;
+      const safeTitle = escapeHtml(activity.title);
+
+      const detailRows = [
+        { label: "Activity", value: safeTitle },
+        { label: "Type", value: typeLabel },
+        { label: "Was due", value: timeStr },
+      ];
+      if (leadName) {
+        detailRows.push({ label: "Lead", value: escapeHtml(leadName) });
+      }
+      detailRows.push({
+        label: "Status",
+        value: `<span style="color:${accent};">Still open</span>`,
+      });
+
+      const content =
+        emailEyebrow("Action Needed", accent, tint) +
+        emailHeading(`${typeLabel} needs a follow-up`) +
+        emailText(
+          `Hi ${escapeHtml(userName)}, your ${typeLabel.toLowerCase()} &ldquo;<strong style="color:#0f172a;">${safeTitle}</strong>&rdquo; was scheduled for <strong style="color:#0f172a;">${timeStr}</strong> and is still marked open.`
+        ) +
+        detailCard(detailRows) +
+        emailText("Take a moment to close the loop:") +
+        `<ul style="margin:10px 0 0 0;padding-left:22px;font-family:${EMAIL_FONT};font-size:15px;line-height:24px;color:#475569;">` +
+        `<li style="margin:5px 0;">Mark it complete with a note on what happened</li>` +
+        `<li style="margin:5px 0;">Or leave a progress update for your team</li>` +
+        `</ul>` +
+        emailButton({
+          href: tasksUrl,
+          label: "Update this activity",
+          accentColor: accent,
+        });
 
       await sendEmail({
         to: user.email,
         subject: `Follow-up needed: ${typeLabel} "${activity.title}" is overdue`,
-        html: `
-          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #dc2626;">Overdue Activity Reminder</h2>
-            <p>Hi ${userName},</p>
-            <p>Your <strong>${typeLabel.toLowerCase()}</strong> &ldquo;<strong>${activity.title}</strong>&rdquo; was scheduled for <strong>${timeStr}</strong> and is still open.</p>
-            <div style="background: #fef2f2; border-radius: 8px; padding: 16px; margin: 16px 0;">
-              <p style="margin: 4px 0;"><strong>Activity:</strong> ${activity.title}</p>
-              <p style="margin: 4px 0;"><strong>Type:</strong> ${typeLabel}</p>
-              <p style="margin: 4px 0;"><strong>Was scheduled for:</strong> ${timeStr}</p>
-              ${leadLine}
-              <p style="margin: 4px 0;"><strong>Status:</strong> <span style="color: #dc2626;">Still open</span></p>
-            </div>
-            <p>Please check in and either:</p>
-            <ul>
-              <li>Mark the activity as completed with notes on what happened</li>
-              <li>Leave a progress update or comment</li>
-            </ul>
-            <p style="color: #666; font-size: 14px;">Log in to SynCRM to update this activity.</p>
-          </div>
-        `,
-        text: `Hi ${userName}, your ${typeLabel.toLowerCase()} "${activity.title}" was scheduled for ${timeStr} and is still open.${leadText} Please log in to SynCRM to update this activity.`,
+        html: renderEmailShell({
+          accentColor: accent,
+          preheader: `Scheduled for ${timeStr} and still open.`,
+          content,
+        }),
+        text: `Hi ${userName}, your ${typeLabel.toLowerCase()} "${activity.title}" was scheduled for ${timeStr} and is still open.${leadText} Update it in SynCRM: ${tasksUrl}`,
       }, ctx, {
         kind: "activity_overdue_reminder",
         triggeredByUserId: user._id,
@@ -545,67 +628,77 @@ export const processDailyDigests = internalAction({
       // Use noon for safe date formatting (avoids midnight edge-case)
       const dateLabel = formatDate(dayStart + 12 * 60 * 60 * 1000, timezone);
 
-      const activityRows = sorted
-        .map((a) => {
-          const lead = a.leadId ? leads[a.leadId as string] : null;
-          const leadName = lead?.fullName || (a.leadId ? "Unknown" : "Standalone");
-          const leadPhone = lead?.phone || "";
-          const timeStr = a.scheduledAt
-            ? formatTime(a.scheduledAt, timezone)
-            : "No time set";
-          const typeLabel = activityTypeLabel(a.type);
-          const statusBadge =
-            a.status === "completed"
-              ? '<span style="color: #16a34a;">Completed</span>'
-              : '<span style="color: #f59e0b;">To Do</span>';
-
-          return `
-            <tr>
-              <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${timeStr}</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${typeLabel}</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${a.title}</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${leadName}${leadPhone ? ` (${leadPhone})` : ""}</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${statusBadge}</td>
-            </tr>
-          `;
-        })
-        .join("");
+      const { accent, tint } = ACCENTS.blue;
+      const siteUrl = process.env.SITE_URL || "http://localhost:3000";
+      const tasksUrl = `${siteUrl}/app/tasks`;
 
       const todoCount = sorted.filter((a) => a.status === "todo").length;
       const completedCount = sorted.filter(
         (a) => a.status === "completed"
       ).length;
 
+      const activityRows = sorted
+        .map((a, i) => {
+          const lead = a.leadId ? leads[a.leadId as string] : null;
+          const leadName = lead?.fullName || (a.leadId ? "Lead" : null);
+          const timeStr = a.scheduledAt
+            ? formatTime(a.scheduledAt, timezone)
+            : "Anytime";
+          const rowTypeLabel = activityTypeLabel(a.type);
+          const subline = leadName
+            ? `${rowTypeLabel} &middot; ${escapeHtml(leadName)}`
+            : rowTypeLabel;
+          const statusPill =
+            a.status === "completed"
+              ? `<span style="display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;background-color:#dcfce7;color:#15803d;">Done</span>`
+              : `<span style="display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;background-color:#fef3c7;color:#b45309;">To do</span>`;
+          return `<tr><td style="padding:14px 0;${i > 0 ? "border-top:1px solid #e2e8f0;" : ""}">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+<td width="62" valign="top" style="font-family:${EMAIL_FONT};font-size:13px;font-weight:700;color:#0f172a;white-space:nowrap;">${timeStr}</td>
+<td valign="top" style="padding:0 12px;">
+<p style="margin:0;font-family:${EMAIL_FONT};font-size:14px;line-height:20px;font-weight:600;color:#0f172a;">${escapeHtml(a.title)}</p>
+<p style="margin:3px 0 0 0;font-family:${EMAIL_FONT};font-size:12px;line-height:18px;color:#94a3b8;">${subline}</p>
+</td>
+<td width="72" valign="top" align="right">${statusPill}</td>
+</tr></table>
+</td></tr>`;
+        })
+        .join("");
+
+      const statCard = (count: number, label: string) =>
+        `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;">
+<tr><td style="padding:16px 10px;text-align:center;">
+<p style="margin:0;font-family:${EMAIL_FONT};font-size:26px;line-height:30px;font-weight:700;color:#0f172a;">${count}</p>
+<p style="margin:4px 0 0 0;font-family:${EMAIL_FONT};font-size:11px;font-weight:700;letter-spacing:0.4px;text-transform:uppercase;color:#94a3b8;">${label}</p>
+</td></tr></table>`;
+
+      const content =
+        emailEyebrow("Daily Agenda", accent, tint) +
+        emailHeading(`Good morning, ${escapeHtml(userName)}`) +
+        emailText(
+          `Here's everything on your plate for <strong style="color:#0f172a;">${dateLabel}</strong>.`
+        ) +
+        `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 0 0;"><tr>` +
+        `<td width="33.33%" valign="top" style="padding-right:6px;">${statCard(todoCount, "To do")}</td>` +
+        `<td width="33.33%" valign="top" style="padding:0 6px;">${statCard(completedCount, "Done")}</td>` +
+        `<td width="33.33%" valign="top" style="padding-left:6px;">${statCard(sorted.length, "Total")}</td>` +
+        `</tr></table>` +
+        `<p style="margin:30px 0 0 0;font-family:${EMAIL_FONT};font-size:12px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:#94a3b8;">Today's activities</p>` +
+        `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:4px 0 0 0;">${activityRows}</table>` +
+        emailButton({
+          href: tasksUrl,
+          label: "Open my agenda",
+          accentColor: accent,
+        });
+
       await sendEmail({
         to: user.email,
         subject: `Your daily agenda for ${dateLabel} — ${todoCount} task${todoCount !== 1 ? "s" : ""} scheduled`,
-        html: `
-          <div style="font-family: sans-serif; max-width: 700px; margin: 0 auto;">
-            <h2 style="color: #2563eb;">Daily Agenda</h2>
-            <p>Good morning ${userName},</p>
-            <p>Here&rsquo;s your schedule for <strong>${dateLabel}</strong>:</p>
-            <p style="margin: 8px 0;">
-              <strong>${todoCount}</strong> to do &middot;
-              <strong>${completedCount}</strong> completed &middot;
-              <strong>${sorted.length}</strong> total
-            </p>
-            <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
-              <thead>
-                <tr style="background: #f3f4f6;">
-                  <th style="padding: 8px; text-align: left; border-bottom: 2px solid #d1d5db;">Time</th>
-                  <th style="padding: 8px; text-align: left; border-bottom: 2px solid #d1d5db;">Type</th>
-                  <th style="padding: 8px; text-align: left; border-bottom: 2px solid #d1d5db;">Activity</th>
-                  <th style="padding: 8px; text-align: left; border-bottom: 2px solid #d1d5db;">Lead</th>
-                  <th style="padding: 8px; text-align: left; border-bottom: 2px solid #d1d5db;">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${activityRows}
-              </tbody>
-            </table>
-            <p style="color: #666; font-size: 14px;">Log in to SynCRM to manage your activities and update your progress.</p>
-          </div>
-        `,
+        html: renderEmailShell({
+          accentColor: accent,
+          preheader: `${todoCount} task${todoCount !== 1 ? "s" : ""} to do${completedCount ? `, ${completedCount} already done` : ""}.`,
+          content,
+        }),
         text: `Good morning ${userName}, here's your schedule for ${dateLabel}: ${sorted
           .map((a) => {
             const lead = a.leadId ? leads[a.leadId as string] : null;

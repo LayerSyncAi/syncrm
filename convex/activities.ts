@@ -376,10 +376,12 @@ export const update = mutation({
     if (args.description !== undefined) updates.description = args.description;
     if (args.scheduledAt !== undefined) {
       updates.scheduledAt = args.scheduledAt;
-      // Recompute nextReminderAt when schedule changes
+      // Recompute nextReminderAt when schedule changes, and clear the
+      // sent marker so a reminder fires for the new time.
       updates.nextReminderAt = args.scheduledAt
         ? args.scheduledAt - 60 * 60 * 1000
         : undefined;
+      updates.reminderSentAt = undefined;
     }
     if (args.type !== undefined) updates.type = args.type;
 
@@ -440,6 +442,9 @@ export const reopen = mutation({
       completedAt: undefined,
       status: "todo",
       nextReminderAt,
+      // Clear the sent marker so a reopened, still-future activity can
+      // receive a fresh reminder.
+      reminderSentAt: undefined,
       updatedAt: Date.now(),
     });
   },

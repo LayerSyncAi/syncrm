@@ -15,6 +15,15 @@
 import { ActionCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
+import {
+  renderEmailShell,
+  emailEyebrow,
+  emailHeading,
+  emailText,
+  emailButton,
+  ACCENTS,
+  EMAIL_FONT,
+} from "./emailLayout";
 
 export interface EmailSendResult {
   success: boolean;
@@ -133,27 +142,37 @@ export async function sendPasswordResetEmail(
   log?: Omit<EmailLogContext, "kind">
 ): Promise<EmailSendResult> {
   const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
+  const { accent, tint } = ACCENTS.blue;
+
+  const content =
+    emailEyebrow("Account Security", accent, tint) +
+    emailHeading("Reset your password") +
+    emailText(
+      "We received a request to reset the password for your SynCRM account. Choose a new password using the button below."
+    ) +
+    emailButton({
+      href: resetUrl,
+      label: "Reset password",
+      accentColor: accent,
+    }) +
+    emailText(
+      `<span style="color:#94a3b8;">Or paste this link into your browser:</span><br><a href="${resetUrl}" style="color:#64748b;word-break:break-all;">${resetUrl}</a>`
+    ) +
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 0 0;background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;">` +
+    `<tr><td style="padding:16px 20px;font-family:${EMAIL_FONT};font-size:13px;line-height:20px;color:#64748b;">` +
+    `This link expires in <strong style="color:#0f172a;">1 hour</strong>. If you didn't request a password reset, you can safely ignore this email — your password won't change.` +
+    `</td></tr></table>`;
 
   return sendEmail(
     {
       to: email,
       subject: "Reset your SynCRM password",
-      html: `
-      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #333;">Reset Your Password</h2>
-        <p>You requested to reset your password for SynCRM.</p>
-        <p>Click the button below to set a new password:</p>
-        <a href="${resetUrl}" style="display: inline-block; background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 16px 0;">
-          Reset Password
-        </a>
-        <p>Or copy and paste this link in your browser:</p>
-        <p style="color: #666; word-break: break-all;">${resetUrl}</p>
-        <p style="color: #999; font-size: 14px; margin-top: 32px;">
-          This link will expire in 1 hour. If you didn't request this, you can safely ignore this email.
-        </p>
-      </div>
-    `,
-      text: `Reset your SynCRM password by visiting: ${resetUrl}\n\nThis link will expire in 1 hour.`,
+      html: renderEmailShell({
+        accentColor: accent,
+        preheader: "Reset your SynCRM password — this link expires in 1 hour.",
+        content,
+      }),
+      text: `Reset your SynCRM password by visiting: ${resetUrl}\n\nThis link expires in 1 hour. If you didn't request this, you can safely ignore this email.`,
     },
     ctx,
     { kind: "password_reset", ...(log || {}) }

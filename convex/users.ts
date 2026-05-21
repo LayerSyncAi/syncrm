@@ -15,6 +15,19 @@ export const getMe = query({
   },
 });
 
+// Distinguishes why getMe returned null: a deactivated account is a different
+// situation from a session whose user record genuinely doesn't exist.
+export const getAccountStatus = query({
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return "unauthenticated" as const;
+    const user = await ctx.db.get(userId);
+    if (!user) return "no_account" as const;
+    if (!user.isActive) return "deactivated" as const;
+    return "active" as const;
+  },
+});
+
 // Debug query to understand auth state - helps diagnose user lookup issues
 export const debugAuthState = query({
   handler: async (ctx) => {

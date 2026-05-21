@@ -341,8 +341,12 @@ export default defineSchema({
     completionNotes: v.optional(v.string()),
     assignedToUserId: v.id("users"),
     createdByUserId: v.id("users"),
-    // Precomputed next reminder timestamp for efficient cron queries
+    // Precomputed next reminder timestamp for efficient cron queries.
+    // Equals scheduledAt - 1h; this is the reminder's "due at" instant.
     nextReminderAt: v.optional(v.number()),
+    // Absolute instant (unix ms, UTC) the 1-hour-before reminder was sent.
+    // Idempotency marker for the pre-reminder job — unset means not yet sent.
+    reminderSentAt: v.optional(v.number()),
     orgId: v.optional(v.id("organizations")),
     createdAt: v.number(),
     updatedAt: v.optional(v.number()),

@@ -4,10 +4,12 @@ import { internal } from "./_generated/api";
 const crons = cronJobs();
 
 // Send "1 hour before" reminders for upcoming scheduled activities.
-// Runs every 5 minutes; deduplication in the handler prevents repeat emails.
+// Runs once per minute: each run claims every reminder whose due time has
+// passed and hasn't been sent, so reminders fire within ~1 minute of the
+// hour mark and missed ticks are caught up automatically.
 crons.interval(
   "pre-activity reminders",
-  { minutes: 5 },
+  { minutes: 1 },
   internal.activityReminders.processPreReminders
 );
 
