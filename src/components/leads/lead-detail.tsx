@@ -215,6 +215,7 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
     title: string;
     description: string;
     scheduledAt?: number;
+    scheduledTimezone?: string;
   }) => {
     try {
       await createActivity({ leadId, ...data });

@@ -13,6 +13,7 @@ import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 import { Textarea } from "@/components/ui/textarea";
 import { FlipCalendar } from "@/components/ui/flip-calendar";
 import { DueDateRing } from "@/components/ui/due-date-ring";
+import { detectBrowserTimezone } from "@/lib/timezones";
 
 const timelineContainerVariants = {
   hidden: {},
@@ -136,6 +137,7 @@ interface ActivityTimelineProps {
     title: string;
     description: string;
     scheduledAt?: number;
+    scheduledTimezone?: string;
   }) => Promise<void>;
   onMarkComplete: (activityId: Id<"activities">, notes: string) => Promise<void>;
   onDeleteActivity: (activityId: Id<"activities">) => Promise<void>;
@@ -195,6 +197,7 @@ export const ActivityTimeline = React.memo(function ActivityTimeline({
         title: activityTitle.trim(),
         description: activityDescription.trim(),
         scheduledAt: activityScheduledAt ? activityScheduledAt.getTime() : undefined,
+        scheduledTimezone: activityScheduledAt ? detectBrowserTimezone() : undefined,
       });
       setActivityTitle("");
       setActivityDescription("");
