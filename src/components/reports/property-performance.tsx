@@ -20,9 +20,11 @@ import {
   EmptyState,
   PieCard,
   KpiCard,
+  SectionToolbar,
   formatCurrencyMap,
 } from "./report-ui";
 import { MarketingSpendModal } from "./marketing-spend-modal";
+import type { ExportPayload } from "@/lib/report-export";
 
 const STATUS_LABELS: Record<string, string> = {
   available: "Available",
@@ -36,10 +38,12 @@ export function PropertyPerformanceSection({
   start,
   end,
   ownerUserId,
+  periodLabel,
 }: {
   start: number;
   end: number;
   ownerUserId?: Id<"users">;
+  periodLabel: string;
 }) {
   const data = useQuery(api.reports.propertyPerformance, { start, end, ownerUserId });
   const [spendOpen, setSpendOpen] = useState(false);
@@ -56,8 +60,38 @@ export function PropertyPerformanceSection({
     count,
   }));
 
+  const buildExport = (): ExportPayload => ({
+    filename: `property-performance-${periodLabel}`.replace(/\s+/g, "-"),
+    title: "Property Performance",
+    subtitle: periodLabel,
+    summary: Object.entries(data.statusCounts).map(([status, count]) => ({
+      label: STATUS_LABELS[status] ?? status,
+      value: String(count),
+    })),
+    tables: [
+      {
+        name: "Property engagement",
+        columns: [
+          { key: "title", label: "Property" },
+          { key: "status", label: "Status" },
+          { key: "inquiries", label: "Inquiries" },
+          { key: "viewings", label: "Viewings" },
+          { key: "offers", label: "Offers" },
+          { key: "daysOnMarket", label: "Days on market" },
+          { key: "spendText", label: "Marketing spend" },
+        ],
+        rows: data.rows.map((r) => ({
+          ...r,
+          status: STATUS_LABELS[r.status] ?? r.status,
+          spendText: formatCurrencyMap(r.spend),
+        })),
+      },
+    ],
+  });
+
   return (
     <div className="space-y-6">
+      <SectionToolbar title="Property performance" build={buildExport} />
       <div className="flex items-center justify-between">
         <div className="grid flex-1 grid-cols-2 gap-3 sm:grid-cols-4">
           {(["available", "under_offer", "sold", "let"] as const).map((s) => (

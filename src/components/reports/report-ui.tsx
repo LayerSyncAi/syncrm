@@ -14,9 +14,14 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { Loader2 } from "lucide-react";
+import { Loader2, FileText, Download } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/currency";
+import {
+  exportReportCsv,
+  exportReportPdf,
+  type ExportPayload,
+} from "@/lib/report-export";
 
 // Theme colours pulled from the app's CSS tokens (see globals.css).
 export const COLOR = {
@@ -56,10 +61,50 @@ export function currencyMapTotal(map: Record<string, number> | undefined): numbe
   return Object.values(map).reduce((a, b) => a + b, 0);
 }
 
+/** CSV / PDF export controls. `build` is called lazily on click for fresh data. */
+export function ExportButtons({ build }: { build: () => ExportPayload }) {
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={() => exportReportCsv(build())}
+        className="inline-flex h-9 items-center gap-1.5 rounded-[10px] border border-border-strong px-3 text-xs font-medium text-text-muted transition-colors hover:border-primary/60 hover:text-text"
+      >
+        <Download className="h-3.5 w-3.5" />
+        CSV
+      </button>
+      <button
+        type="button"
+        onClick={() => void exportReportPdf(build())}
+        className="inline-flex h-9 items-center gap-1.5 rounded-[10px] border border-border-strong px-3 text-xs font-medium text-text-muted transition-colors hover:border-primary/60 hover:text-text"
+      >
+        <FileText className="h-3.5 w-3.5" />
+        PDF
+      </button>
+    </div>
+  );
+}
+
 export function SectionLoader() {
   return (
     <div className="flex items-center justify-center py-16">
       <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+    </div>
+  );
+}
+
+/** Header row with a section title on the left and export controls on the right. */
+export function SectionToolbar({
+  title,
+  build,
+}: {
+  title: string;
+  build: () => ExportPayload;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <h3 className="text-sm font-semibold text-text">{title}</h3>
+      <ExportButtons build={build} />
     </div>
   );
 }

@@ -18,18 +18,22 @@ import {
   EmptyState,
   BarsCard,
   PieCard,
+  SectionToolbar,
   COLOR,
   formatCurrencyMap,
 } from "./report-ui";
+import type { ExportPayload } from "@/lib/report-export";
 
 export function LeadSourceSection({
   start,
   end,
   ownerUserId,
+  periodLabel,
 }: {
   start: number;
   end: number;
   ownerUserId?: Id<"users">;
+  periodLabel: string;
 }) {
   const data = useQuery(api.reports.leadSourceAnalytics, { start, end, ownerUserId });
 
@@ -44,8 +48,34 @@ export function LeadSourceSection({
     conversionRate: s.conversionRate,
   }));
 
+  const buildExport = (): ExportPayload => ({
+    filename: `lead-sources-${periodLabel}`.replace(/\s+/g, "-"),
+    title: "Lead Source Analytics",
+    subtitle: periodLabel,
+    tables: [
+      {
+        name: "Lead source breakdown",
+        columns: [
+          { key: "sourceLabel", label: "Source" },
+          { key: "leads", label: "Leads" },
+          { key: "won", label: "Won" },
+          { key: "conversionRate", label: "Conversion %" },
+          { key: "salesValueText", label: "Sales value" },
+          { key: "spendText", label: "Marketing spend" },
+        ],
+        rows: data.bySource.map((s) => ({
+          ...s,
+          sourceLabel: leadSourceLabel(s.source),
+          salesValueText: formatCurrencyMap(s.salesValue),
+          spendText: formatCurrencyMap(s.spend),
+        })),
+      },
+    ],
+  });
+
   return (
     <div className="space-y-6">
+      <SectionToolbar title="Lead source analytics" build={buildExport} />
       <div className="grid gap-6 lg:grid-cols-2">
         <PieCard title="Leads by source" data={chartData} nameKey="name" valueKey="leads" />
         <BarsCard

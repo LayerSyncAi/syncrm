@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { Trophy, DollarSign, TrendingUp, Wallet } from "lucide-react";
+import { DollarSign, TrendingUp, Wallet } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -15,72 +15,27 @@ import {
 } from "@/components/ui/table";
 import {
   SectionLoader,
+  SectionToolbar,
   BarsCard,
   KpiCard,
   COLOR,
   formatCurrencyMap,
   currencyMapTotal,
 } from "./report-ui";
+import type { ExportPayload } from "@/lib/report-export";
 
-function Leaderboard({
-  title,
-  rows,
-  format: fmt,
-}: {
-  title: string;
-  rows: { userId: string; name: string; value: number; mixedCurrency?: boolean }[];
-  format: (v: number) => string;
-}) {
-  return (
-    <Card>
-      <CardHeader>
-        <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-text-muted">
-          <Trophy className="h-4 w-4 text-primary" />
-          {title}
-        </h3>
-      </CardHeader>
-      <CardContent>
-        {rows.length === 0 ? (
-          <p className="py-4 text-center text-sm text-text-muted">No data for this period</p>
-        ) : (
-          <ol className="space-y-2">
-            {rows.map((r, i) => (
-              <li key={r.userId} className="flex items-center justify-between gap-2 text-sm">
-                <span className="flex items-center gap-2">
-                  <span
-                    className={`flex h-5 w-5 items-center justify-center rounded-full text-xs font-semibold ${
-                      i === 0
-                        ? "bg-primary/15 text-primary"
-                        : "bg-border text-text-muted"
-                    }`}
-                  >
-                    {i + 1}
-                  </span>
-                  {r.name}
-                </span>
-                <span className="font-medium">
-                  {fmt(r.value)}
-                  {r.mixedCurrency ? <span className="ml-1 text-xs text-text-dim">*</span> : null}
-                </span>
-              </li>
-            ))}
-          </ol>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-export function RevenueLeaderboardsSection({
+export function RevenueSummarySection({
   start,
   end,
   ownerUserId,
+  periodLabel,
 }: {
   start: number;
   end: number;
   ownerUserId?: Id<"users">;
+  periodLabel: string;
 }) {
-  const data = useQuery(api.reports.revenueAndLeaderboards, { start, end, ownerUserId });
+  const data = useQuery(api.reports.revenueSummary, { start, end, ownerUserId });
 
   if (data === undefined) return <SectionLoader />;
 
@@ -90,8 +45,40 @@ export function RevenueLeaderboardsSection({
     estimated: Math.round(currencyMapTotal(s.estimatedValue)),
   }));
 
+  const buildExport = (): ExportPayload => ({
+    filename: `revenue-${periodLabel}`.replace(/\s+/g, "-"),
+    title: "Revenue & Pipeline",
+    subtitle: periodLabel,
+    summary: [
+      { label: "Sales value (closed)", value: formatCurrencyMap(data.salesValue) },
+      { label: "Commission earned", value: formatCurrencyMap(data.commission) },
+      { label: "Forecast (open pipeline)", value: formatCurrencyMap(data.forecast) },
+    ],
+    tables: [
+      {
+        name: "Pipeline by stage",
+        columns: [
+          { key: "name", label: "Stage" },
+          { key: "openCount", label: "Open" },
+          { key: "winProbabilityText", label: "Win %" },
+          { key: "estimatedText", label: "Estimated" },
+          { key: "weightedText", label: "Weighted" },
+        ],
+        rows: data.pipelineByStage.map((s) => ({
+          name: s.name,
+          openCount: s.openCount,
+          winProbabilityText: s.winProbability !== null ? `${s.winProbability}%` : "-",
+          estimatedText: formatCurrencyMap(s.estimatedValue),
+          weightedText: formatCurrencyMap(s.weightedValue),
+        })),
+      },
+    ],
+  });
+
   return (
     <div className="space-y-6">
+      <SectionToolbar title="Revenue & pipeline" build={buildExport} />
+
       <div className="grid gap-4 sm:grid-cols-3">
         <KpiCard
           label="Sales value (closed)"
@@ -155,30 +142,10 @@ export function RevenueLeaderboardsSection({
         </CardContent>
       </Card>
 
-      {data.leaderboards ? (
-        <div className="grid gap-6 lg:grid-cols-3">
-          <Leaderboard
-            title="Most leads managed"
-            rows={data.leaderboards.leadsManaged}
-            format={(v) => String(v)}
-          />
-          <Leaderboard
-            title="Most deals closed"
-            rows={data.leaderboards.dealsClosed}
-            format={(v) => String(v)}
-          />
-          <Leaderboard
-            title="Highest revenue"
-            rows={data.leaderboards.revenue}
-            format={(v) => Math.round(v).toLocaleString("en-US")}
-          />
-        </div>
-      ) : null}
-
       <p className="text-xs text-text-dim">
         Forecast estimates open-lead value from deal value or budget, weighted by each
-        stage&apos;s win-probability (set under Admin → Stages). Revenue leaderboard sums
-        deal values across currencies for ranking; * marks agents with mixed currencies.
+        stage&apos;s win-probability (set under Admin → Stages). Sales value and commission
+        are grouped by currency (no exchange-rate conversion).
       </p>
     </div>
   );

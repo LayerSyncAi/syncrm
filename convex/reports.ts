@@ -309,20 +309,18 @@ export const propertyPerformance = query({
 });
 
 // ── Revenue, pipeline & leaderboards ────────────────────────────────
-export const revenueAndLeaderboards = query({
+export const revenueSummary = query({
   args: windowArgs,
   handler: async (ctx, args) => {
     const { user, isAdmin, focusUserId } = await resolveScope(ctx, args);
 
-    const [allLeads, commissions, stages, users] = await Promise.all([
+    const [allLeads, commissions, stages] = await Promise.all([
       ctx.db.query("leads").withIndex("by_org", (q) => q.eq("orgId", user.orgId)).collect(),
       ctx.db.query("dealCommissions").withIndex("by_org", (q) => q.eq("orgId", user.orgId)).collect(),
       ctx.db.query("pipelineStages").withIndex("by_org", (q) => q.eq("orgId", user.orgId)).collect(),
-      ctx.db.query("users").withIndex("by_org", (q) => q.eq("orgId", user.orgId)).collect(),
     ]);
     stages.sort((a, b) => a.order - b.order);
 
-    const userMap = new Map(users.map((u) => [u._id, u]));
     const wonStageIds = new Set(stages.filter((s) => s.terminalOutcome === "won").map((s) => s._id));
 
     const leads = allLeads.filter(
@@ -381,50 +379,112 @@ export const revenueAndLeaderboards = query({
         };
       });
 
-    // Leaderboards (admin only; agents have no cross-agent ranking).
-    let leaderboards: {
-      leadsManaged: { userId: Id<"users">; name: string; value: number }[];
-      dealsClosed: { userId: Id<"users">; name: string; value: number }[];
-      revenue: { userId: Id<"users">; name: string; value: number; mixedCurrency: boolean }[];
-    } | null = null;
+    return { salesValue, commission, pipelineByStage, forecast, isAdmin };
+  },
+});
 
-    if (isAdmin && !focusUserId) {
-      const managed = new Map<string, number>();
-      const closed = new Map<string, number>();
-      const revenue = new Map<string, { value: number; currencies: Set<string> }>();
-      for (const lead of allLeads) {
-        const owner = lead.ownerUserId as string;
-        managed.set(owner, (managed.get(owner) ?? 0) + 1);
-        if (inWindow(lead.closedAt, args.start, args.end) && wonStageIds.has(lead.stageId)) {
-          closed.set(owner, (closed.get(owner) ?? 0) + 1);
+// ── Leaderboards (own tab) ──────────────────────────────────────────
+export const leaderboards = query({
+  args: windowArgs,
+  handler: async (ctx, args) => {
+    const { user, isAdmin, focusUserId } = await resolveScope(ctx, args);
+
+    const [allLeads, activities, matches, stages, users] = await Promise.all([
+      ctx.db.query("leads").withIndex("by_org", (q) => q.eq("orgId", user.orgId)).collect(),
+      ctx.db.query("activities").withIndex("by_org", (q) => q.eq("orgId", user.orgId)).collect(),
+      ctx.db.query("leadPropertyMatches").withIndex("by_org", (q) => q.eq("orgId", user.orgId)).collect(),
+      ctx.db.query("pipelineStages").withIndex("by_org", (q) => q.eq("orgId", user.orgId)).collect(),
+      ctx.db.query("users").withIndex("by_org", (q) => q.eq("orgId", user.orgId)).collect(),
+    ]);
+
+    const userMap = new Map(users.map((u) => [u._id, u]));
+    const wonStageIds = new Set(stages.filter((s) => s.terminalOutcome === "won").map((s) => s._id));
+    const lostStageIds = new Set(stages.filter((s) => s.terminalOutcome === "lost").map((s) => s._id));
+
+    // Leaderboards are a cross-agent ranking, so they only render for an admin
+    // viewing the whole org (not filtered to a single agent).
+    if (!isAdmin || focusUserId) {
+      return { available: false as const };
+    }
+
+    const managed = new Map<string, number>(); // leads assigned in window
+    const viewings = new Map<string, number>();
+    const closed = new Map<string, number>();
+    const won = new Map<string, number>();
+    const lost = new Map<string, number>();
+    const revenue = new Map<string, { value: number; currencies: Set<string> }>();
+
+    const bump = (m: Map<string, number>, id: string | undefined, by = 1) => {
+      if (!id) return;
+      m.set(id, (m.get(id) ?? 0) + by);
+    };
+
+    for (const lead of allLeads) {
+      const owner = lead.ownerUserId as string;
+      if (inWindow(lead.createdAt, args.start, args.end)) bump(managed, owner);
+      if (inWindow(lead.closedAt, args.start, args.end)) {
+        if (wonStageIds.has(lead.stageId)) {
+          bump(closed, owner);
+          bump(won, owner);
           if (typeof lead.dealValue === "number") {
             const r = revenue.get(owner) ?? { value: 0, currencies: new Set<string>() };
             r.value += lead.dealValue; // currency-agnostic for ranking only
             r.currencies.add(lead.dealCurrency || "USD");
             revenue.set(owner, r);
           }
+        } else if (lostStageIds.has(lead.stageId)) {
+          bump(lost, owner);
         }
       }
-      const top = (m: Map<string, number>) =>
-        [...m.entries()]
-          .map(([id, value]) => ({ userId: id as Id<"users">, name: userLabel(userMap.get(id as Id<"users">)), value }))
-          .sort((a, b) => b.value - a.value)
-          .slice(0, 10);
-      leaderboards = {
-        leadsManaged: top(managed),
-        dealsClosed: top(closed),
-        revenue: [...revenue.entries()]
-          .map(([id, r]) => ({
-            userId: id as Id<"users">,
-            name: userLabel(userMap.get(id as Id<"users">)),
-            value: r.value,
-            mixedCurrency: r.currencies.size > 1,
-          }))
-          .sort((a, b) => b.value - a.value)
-          .slice(0, 10),
-      };
+    }
+    for (const act of activities) {
+      if (act.type === "viewing" && inWindow(act.createdAt, args.start, args.end)) {
+        bump(viewings, act.assignedToUserId as string);
+      }
+    }
+    for (const m of matches) {
+      if (m.matchType === "viewed" && inWindow(m.createdAt, args.start, args.end)) {
+        bump(viewings, m.createdByUserId as string);
+      }
     }
 
-    return { salesValue, commission, pipelineByStage, forecast, leaderboards, isAdmin };
+    const top = (m: Map<string, number>) =>
+      [...m.entries()]
+        .map(([id, value]) => ({ userId: id as Id<"users">, name: userLabel(userMap.get(id as Id<"users">)), value }))
+        .filter((r) => r.value > 0)
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 10);
+
+    const conversion = [...managed.keys()]
+      .map((id) => {
+        const w = won.get(id) ?? 0;
+        const closedTotal = w + (lost.get(id) ?? 0);
+        return {
+          userId: id as Id<"users">,
+          name: userLabel(userMap.get(id as Id<"users">)),
+          value: conversionRate(w, closedTotal),
+        };
+      })
+      .filter((r) => r.value > 0)
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 10);
+
+    return {
+      available: true as const,
+      leadsManaged: top(managed),
+      viewings: top(viewings),
+      dealsClosed: top(closed),
+      revenue: [...revenue.entries()]
+        .map(([id, r]) => ({
+          userId: id as Id<"users">,
+          name: userLabel(userMap.get(id as Id<"users">)),
+          value: r.value,
+          mixedCurrency: r.currencies.size > 1,
+        }))
+        .filter((r) => r.value > 0)
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 10),
+      conversionRate: conversion,
+    };
   },
 });

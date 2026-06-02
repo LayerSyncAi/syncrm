@@ -16,18 +16,22 @@ import {
   SectionLoader,
   EmptyState,
   BarsCard,
+  SectionToolbar,
   COLOR,
   formatCurrencyMap,
 } from "./report-ui";
+import type { ExportPayload } from "@/lib/report-export";
 
 export function AgentPerformanceSection({
   start,
   end,
   ownerUserId,
+  periodLabel,
 }: {
   start: number;
   end: number;
   ownerUserId?: Id<"users">;
+  periodLabel: string;
 }) {
   const data = useQuery(api.reports.agentPerformance, { start, end, ownerUserId });
 
@@ -40,8 +44,36 @@ export function AgentPerformanceSection({
     .slice(0, 8)
     .map((r) => ({ name: r.name, leadsAssigned: r.leadsAssigned, dealsClosed: r.dealsClosed }));
 
+  const buildExport = (): ExportPayload => ({
+    filename: `agent-performance-${periodLabel}`.replace(/\s+/g, "-"),
+    title: "Agent Performance",
+    subtitle: periodLabel,
+    tables: [
+      {
+        name: "Agent performance",
+        columns: [
+          { key: "name", label: "Agent" },
+          { key: "leadsAssigned", label: "Assigned" },
+          { key: "leadsContacted", label: "Contacted" },
+          { key: "viewingsBooked", label: "Viewings" },
+          { key: "offersReceived", label: "Offers" },
+          { key: "dealsClosed", label: "Closed" },
+          { key: "conversionRate", label: "Conversion %" },
+          { key: "salesValueText", label: "Sales value" },
+          { key: "commissionText", label: "Commission" },
+        ],
+        rows: data.rows.map((r) => ({
+          ...r,
+          salesValueText: formatCurrencyMap(r.salesValue),
+          commissionText: formatCurrencyMap(r.commission),
+        })),
+      },
+    ],
+  });
+
   return (
     <div className="space-y-6">
+      <SectionToolbar title="Agent performance" build={buildExport} />
       <BarsCard
         title="Leads assigned vs deals closed"
         data={chartData}
