@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
 import {
+  BarChart3,
   Building2,
   ClipboardList,
   ChevronLeft,
@@ -32,6 +33,7 @@ const navItems = [
   { label: "Contacts", href: "/app/contacts", icon: Users },
   { label: "Properties", href: "/app/properties", icon: Building2 },
   { label: "Tasks", href: "/app/tasks", icon: ClipboardList },
+  { label: "Reports", href: "/app/reports", icon: BarChart3 },
 ];
 
 const contactToolItems = [

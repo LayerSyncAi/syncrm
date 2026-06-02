@@ -53,6 +53,9 @@ export default defineSchema({
       v.literal("lost"),
       v.null()
     ),
+    // Expected probability (0–100) that an open lead in this stage will close as won.
+    // Drives forecasted / expected pipeline revenue in the reporting module.
+    winProbability: v.optional(v.number()),
     orgId: v.optional(v.id("organizations")),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -71,6 +74,8 @@ export default defineSchema({
       v.literal("walk_in"),
       v.literal("referral"),
       v.literal("facebook"),
+      v.literal("instagram"),
+      v.literal("tiktok"),
       v.literal("whatsapp"),
       v.literal("website"),
       v.literal("property_portal"),
@@ -525,4 +530,22 @@ export default defineSchema({
     .index("by_normalized_phone", ["normalizedPhone"])
     .index("by_name", ["name"])
     .index("by_org", ["orgId"]),
+  // Marketing spend records, used by the reporting module for property ROI and
+  // per-channel return-on-ad-spend. Spend can be attributed to a specific property
+  // (propertyId set) or to a channel generally (propertyId unset).
+  marketingExpenses: defineTable({
+    propertyId: v.optional(v.id("properties")),
+    // Channel string aligns with lead `source` values where applicable
+    // (e.g. "facebook", "instagram", "tiktok", "property_portal", "other").
+    channel: v.string(),
+    amount: v.number(),
+    currency: v.string(),
+    spentAt: v.number(),
+    note: v.optional(v.string()),
+    createdByUserId: v.id("users"),
+    orgId: v.optional(v.id("organizations")),
+    createdAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_property", ["propertyId"]),
 });

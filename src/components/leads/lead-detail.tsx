@@ -21,6 +21,7 @@ import { LeadHeroCard } from "@/components/leads/lead-hero-card";
 import { ActivityTimeline } from "@/components/leads/activity-timeline";
 import { PropertyViewModal } from "@/components/leads/property-view-modal";
 import { leadToasts, activityToasts, propertyToasts } from "@/lib/toast";
+import { leadSourceLabel } from "@/lib/lead-sources";
 
 const PropertySuggestions = lazy(() =>
   import("./property-suggestions").then((m) => ({ default: m.PropertySuggestions }))
@@ -616,7 +617,7 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
             { label: "Email", value: lead.email || "Not provided" },
             { label: "Owner", value: owner?.fullName || owner?.name || owner?.email || "Unassigned" },
             { label: "Interest", value: lead.interestType === "buy" ? "Buying" : "Renting" },
-            { label: "Source", value: lead.source.replace("_", " ").replace(/^\w/, (c: string) => c.toUpperCase()) },
+            { label: "Source", value: leadSourceLabel(lead.source) },
           ].map(({ label, value }) => (
             <motion.div
               key={label}

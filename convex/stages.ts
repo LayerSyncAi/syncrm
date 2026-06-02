@@ -2,6 +2,13 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireAdmin, getCurrentUserWithOrg, assertOrgAccess } from "./helpers";
 
+// Normalize an optional win-probability into the 0–100 range (undefined stays undefined).
+function clampProbability(value: number | undefined): number | undefined {
+  if (value === undefined) return undefined;
+  if (Number.isNaN(value)) return undefined;
+  return Math.max(0, Math.min(100, value));
+}
+
 const defaultStages = [
   {
     name: "New Lead",
@@ -10,6 +17,7 @@ const defaultStages = [
     order: 1,
     isTerminal: false,
     terminalOutcome: null,
+    winProbability: 10,
   },
   {
     name: "Contacted",
@@ -18,6 +26,7 @@ const defaultStages = [
     order: 2,
     isTerminal: false,
     terminalOutcome: null,
+    winProbability: 20,
   },
   {
     name: "Qualified",
@@ -26,6 +35,7 @@ const defaultStages = [
     order: 3,
     isTerminal: false,
     terminalOutcome: null,
+    winProbability: 40,
   },
   {
     name: "Follow-Up",
@@ -34,6 +44,7 @@ const defaultStages = [
     order: 4,
     isTerminal: false,
     terminalOutcome: null,
+    winProbability: 30,
   },
   {
     name: "Offer Made",
@@ -42,6 +53,7 @@ const defaultStages = [
     order: 5,
     isTerminal: false,
     terminalOutcome: null,
+    winProbability: 60,
   },
   {
     name: "Under Contract",
@@ -50,6 +62,7 @@ const defaultStages = [
     order: 6,
     isTerminal: false,
     terminalOutcome: null,
+    winProbability: 85,
   },
   {
     name: "Closed",
@@ -58,6 +71,7 @@ const defaultStages = [
     order: 7,
     isTerminal: true,
     terminalOutcome: "won" as const,
+    winProbability: 100,
   },
   {
     name: "Lost",
@@ -66,6 +80,7 @@ const defaultStages = [
     order: 8,
     isTerminal: true,
     terminalOutcome: "lost" as const,
+    winProbability: 0,
   },
 ];
 
@@ -139,12 +154,14 @@ export const adminCreate = mutation({
       v.literal("lost"),
       v.null()
     ),
+    winProbability: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const user = await requireAdmin(ctx);
     const timestamp = Date.now();
     return ctx.db.insert("pipelineStages", {
       ...args,
+      winProbability: clampProbability(args.winProbability),
       orgId: user.orgId,
       createdAt: timestamp,
       updatedAt: timestamp,
@@ -165,6 +182,7 @@ export const adminUpdate = mutation({
       v.literal("lost"),
       v.null()
     ),
+    winProbability: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const user = await requireAdmin(ctx);
@@ -179,6 +197,7 @@ export const adminUpdate = mutation({
       order: args.order,
       isTerminal: args.isTerminal,
       terminalOutcome: args.terminalOutcome,
+      winProbability: clampProbability(args.winProbability),
       updatedAt: Date.now(),
     });
   },

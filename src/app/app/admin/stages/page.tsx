@@ -64,7 +64,7 @@ function StageRow({
   onEdit,
   onDelete,
 }: {
-  stage: { _id: Id<"pipelineStages">; name: string; description?: string; action?: string; order: number; isTerminal: boolean; terminalOutcome: "won" | "lost" | null };
+  stage: { _id: Id<"pipelineStages">; name: string; description?: string; action?: string; order: number; isTerminal: boolean; terminalOutcome: "won" | "lost" | null; winProbability?: number };
   index: number;
   onEdit: (id: Id<"pipelineStages">) => void;
   onDelete: (id: Id<"pipelineStages">) => void;
@@ -122,6 +122,9 @@ function StageRow({
           <span className="text-text-muted">—</span>
         )}
       </TableCell>
+      <TableCell className="hidden sm:table-cell text-text-muted text-sm">
+        {stage.winProbability !== undefined ? `${stage.winProbability}%` : "—"}
+      </TableCell>
       <TableCell>
         <div className="flex items-center justify-end gap-1">
           <Button
@@ -153,6 +156,7 @@ interface StageFormData {
   action: string;
   isTerminal: boolean;
   terminalOutcome: "won" | "lost" | null;
+  winProbability: string; // kept as string for the input; parsed on submit
 }
 
 const defaultFormData: StageFormData = {
@@ -161,6 +165,7 @@ const defaultFormData: StageFormData = {
   action: "",
   isTerminal: false,
   terminalOutcome: null,
+  winProbability: "",
 };
 
 export default function StagesPage() {
@@ -247,6 +252,8 @@ export default function StagesPage() {
         action: stage.action || "",
         isTerminal: stage.isTerminal,
         terminalOutcome: stage.terminalOutcome,
+        winProbability:
+          stage.winProbability !== undefined ? String(stage.winProbability) : "",
       });
       setError(null);
       setDrawerOpen(true);
@@ -266,6 +273,16 @@ export default function StagesPage() {
       return;
     }
 
+    let winProbability: number | undefined;
+    if (formData.winProbability.trim() !== "") {
+      const parsed = Number(formData.winProbability);
+      if (Number.isNaN(parsed) || parsed < 0 || parsed > 100) {
+        setError("Win probability must be a number between 0 and 100");
+        return;
+      }
+      winProbability = parsed;
+    }
+
     setIsSubmitting(true);
     setError(null);
 
@@ -279,6 +296,7 @@ export default function StagesPage() {
           order: stages?.find((s) => s._id === editingStage)?.order || 1,
           isTerminal: formData.isTerminal,
           terminalOutcome: formData.isTerminal ? formData.terminalOutcome : null,
+          winProbability,
         });
       } else {
         const maxOrder = stages?.reduce((max, s) => Math.max(max, s.order), 0) || 0;
@@ -289,6 +307,7 @@ export default function StagesPage() {
           order: maxOrder + 1,
           isTerminal: formData.isTerminal,
           terminalOutcome: formData.isTerminal ? formData.terminalOutcome : null,
+          winProbability,
         });
       }
       if (editingStage) {
@@ -421,6 +440,7 @@ export default function StagesPage() {
                 <TableHead className="hidden lg:table-cell">Action</TableHead>
                 <TableHead className="w-24">Terminal</TableHead>
                 <TableHead className="w-24">Outcome</TableHead>
+                <TableHead className="hidden sm:table-cell w-20">Win %</TableHead>
                 <TableHead className="w-28 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -544,6 +564,24 @@ export default function StagesPage() {
                 />
               </div>
             )}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Win Probability (%)</Label>
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              placeholder="e.g., 40"
+              value={formData.winProbability}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, winProbability: e.target.value }))
+              }
+            />
+            <p className="text-xs text-text-muted">
+              Expected chance an open lead in this stage closes as won. Powers
+              forecasted pipeline revenue in Reports. Leave blank if unknown.
+            </p>
           </div>
         </div>
       </RightDrawer>

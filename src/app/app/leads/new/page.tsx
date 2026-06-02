@@ -17,15 +17,9 @@ import { CurrencyInput } from "@/components/ui/currency-input";
 import { useRequireAuth } from "@/hooks/useAuth";
 import { DuplicateWarning } from "@/components/leads/duplicate-warning";
 import { leadToasts, contactToasts, locationToasts } from "@/lib/toast";
+import { LEAD_SOURCE_OPTIONS, type LeadSource } from "@/lib/lead-sources";
 
-type Source =
-  | "walk_in"
-  | "referral"
-  | "facebook"
-  | "whatsapp"
-  | "website"
-  | "property_portal"
-  | "other";
+type Source = LeadSource;
 
 type InterestType = "rent" | "buy";
 
@@ -659,15 +653,7 @@ export default function NewLeadPage() {
                 <StaggeredDropDown
                   value={source}
                   onChange={(val) => setSource(val as Source)}
-                  options={[
-                    { value: "walk_in", label: "Walk-in" },
-                    { value: "referral", label: "Referral" },
-                    { value: "facebook", label: "Facebook" },
-                    { value: "whatsapp", label: "WhatsApp" },
-                    { value: "website", label: "Website" },
-                    { value: "property_portal", label: "Property portal" },
-                    { value: "other", label: "Other" },
-                  ]}
+                  options={LEAD_SOURCE_OPTIONS}
                 />
               </div>
 

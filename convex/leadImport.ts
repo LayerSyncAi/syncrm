@@ -14,7 +14,7 @@ function normalizePhone(phone: string): string {
 }
 
 const sourceValues = [
-  "walk_in", "referral", "facebook", "whatsapp", "website", "property_portal", "other",
+  "walk_in", "referral", "facebook", "instagram", "tiktok", "whatsapp", "website", "property_portal", "other",
 ] as const;
 
 const interestValues = ["rent", "buy"] as const;

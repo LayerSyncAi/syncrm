@@ -65,6 +65,8 @@ const leadSourceSchema = z.enum([
   "walk_in",
   "referral",
   "facebook",
+  "instagram",
+  "tiktok",
   "whatsapp",
   "website",
   "property_portal",
