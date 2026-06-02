@@ -27,6 +27,7 @@ export const createForLead = mutation({
     title: v.string(),
     description: v.string(),
     scheduledAt: v.optional(v.number()),
+    scheduledTimezone: v.optional(v.string()),
     assignedToUserId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
@@ -47,6 +48,9 @@ export const createForLead = mutation({
       title: args.title,
       description: args.description,
       scheduledAt: args.scheduledAt,
+      // Only meaningful alongside a scheduledAt; lets reminders render the
+      // exact local time the user picked.
+      scheduledTimezone: args.scheduledAt ? args.scheduledTimezone : undefined,
       completedAt: undefined,
       status: "todo",
       completionNotes: undefined,
@@ -82,6 +86,7 @@ export const createStandalone = mutation({
     title: v.string(),
     description: v.string(),
     scheduledAt: v.optional(v.number()),
+    scheduledTimezone: v.optional(v.string()),
     assignedToUserId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
@@ -99,6 +104,9 @@ export const createStandalone = mutation({
       title: args.title,
       description: args.description,
       scheduledAt: args.scheduledAt,
+      // Only meaningful alongside a scheduledAt; lets reminders render the
+      // exact local time the user picked.
+      scheduledTimezone: args.scheduledAt ? args.scheduledTimezone : undefined,
       completedAt: undefined,
       status: "todo",
       completionNotes: undefined,
@@ -352,6 +360,7 @@ export const update = mutation({
     title: v.optional(v.string()),
     description: v.optional(v.string()),
     scheduledAt: v.optional(v.number()),
+    scheduledTimezone: v.optional(v.string()),
     type: v.optional(v.union(
       v.literal("call"),
       v.literal("whatsapp"),
@@ -376,6 +385,11 @@ export const update = mutation({
     if (args.description !== undefined) updates.description = args.description;
     if (args.scheduledAt !== undefined) {
       updates.scheduledAt = args.scheduledAt;
+      // Capture the timezone the new time was picked in so reminders show the
+      // exact local "starts at"; clear it when the schedule is removed.
+      updates.scheduledTimezone = args.scheduledAt
+        ? args.scheduledTimezone
+        : undefined;
       // Recompute nextReminderAt when schedule changes, and clear the
       // sent marker so a reminder fires for the new time.
       updates.nextReminderAt = args.scheduledAt

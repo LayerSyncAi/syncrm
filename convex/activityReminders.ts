@@ -24,7 +24,7 @@ import {
 // Formatting helpers
 // =====================
 
-function formatTime(timestamp: number, timezone: string = "UTC"): string {
+export function formatTime(timestamp: number, timezone: string = "UTC"): string {
   try {
     return new Intl.DateTimeFormat("en-US", {
       hour: "numeric",
@@ -40,6 +40,20 @@ function formatTime(timestamp: number, timezone: string = "UTC"): string {
       timeZone: "UTC",
     }).format(new Date(timestamp));
   }
+}
+
+/**
+ * Resolve the timezone to render an activity's scheduled time in. Prefers the
+ * zone the time was picked in (captured at schedule time), so the displayed
+ * "starts at" matches what the user chose even if their profile timezone is
+ * unset or has since changed. Falls back to the recipient's profile zone, then
+ * UTC.
+ */
+export function resolveScheduledTimezone(
+  scheduledTimezone: string | undefined | null,
+  userTimezone: string | undefined | null
+): string {
+  return scheduledTimezone || userTimezone || "UTC";
 }
 
 function formatDate(timestamp: number, timezone: string = "UTC"): string {
@@ -401,7 +415,10 @@ export const processPreReminders = internalAction({
         ? await ctx.runQuery(internal.activityReminders.getLeadById, { leadId: activity.leadId })
         : null;
 
-      const timezone = user.timezone || "UTC";
+      const timezone = resolveScheduledTimezone(
+        activity.scheduledTimezone,
+        user.timezone
+      );
       const userName = user.fullName || user.name || "there";
       const timeStr = formatTime(activity.scheduledAt!, timezone);
       const leadName = lead?.fullName || null;
@@ -492,7 +509,10 @@ export const processOverdueReminders = internalAction({
 
       if (!user || !user.email || !user.isActive) continue;
 
-      const timezone = user.timezone || "UTC";
+      const timezone = resolveScheduledTimezone(
+        activity.scheduledTimezone,
+        user.timezone
+      );
       const userName = user.fullName || user.name || "there";
       const timeStr = formatTime(activity.scheduledAt!, timezone);
       const leadName = lead?.fullName || null;
@@ -642,7 +662,10 @@ export const processDailyDigests = internalAction({
           const lead = a.leadId ? leads[a.leadId as string] : null;
           const leadName = lead?.fullName || (a.leadId ? "Lead" : null);
           const timeStr = a.scheduledAt
-            ? formatTime(a.scheduledAt, timezone)
+            ? formatTime(
+                a.scheduledAt,
+                resolveScheduledTimezone(a.scheduledTimezone, timezone)
+              )
             : "Anytime";
           const rowTypeLabel = activityTypeLabel(a.type);
           const subline = leadName
@@ -703,7 +726,10 @@ export const processDailyDigests = internalAction({
           .map((a) => {
             const lead = a.leadId ? leads[a.leadId as string] : null;
             const timeStr = a.scheduledAt
-              ? formatTime(a.scheduledAt, timezone)
+              ? formatTime(
+                  a.scheduledAt,
+                  resolveScheduledTimezone(a.scheduledTimezone, timezone)
+                )
               : "No time";
             const leadCtx = lead ? `Lead: ${lead.fullName}` : "Standalone task";
             return `${timeStr} - ${activityTypeLabel(a.type)}: ${a.title} (${leadCtx})`;

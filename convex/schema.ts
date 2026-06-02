@@ -334,6 +334,11 @@ export default defineSchema({
     title: v.string(),
     description: v.string(),
     scheduledAt: v.optional(v.number()),
+    // IANA timezone the scheduledAt was picked in (e.g. "Africa/Harare").
+    // scheduledAt is an absolute UTC instant, so reminders format it back into
+    // this zone to show the exact local "starts at" time the user chose —
+    // independent of the recipient's (possibly unset) profile timezone.
+    scheduledTimezone: v.optional(v.string()),
     completedAt: v.optional(v.number()),
     // Task status: todo or completed
     status: v.union(v.literal("todo"), v.literal("completed")),

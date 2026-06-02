@@ -23,6 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { FlipCalendar } from "@/components/ui/flip-calendar";
 import { activityToasts } from "@/lib/toast";
+import { detectBrowserTimezone } from "@/lib/timezones";
 
 function AnimatedCounter({ value }: { value: number }) {
   const ref = useRef<HTMLSpanElement>(null);
@@ -173,6 +174,7 @@ export default function TasksPage() {
         title: newTaskTitle.trim(),
         description: newTaskDescription.trim(),
         scheduledAt: newTaskScheduledAt ? newTaskScheduledAt.getTime() : undefined,
+        scheduledTimezone: newTaskScheduledAt ? detectBrowserTimezone() : undefined,
       });
       activityToasts.created(newTaskTitle.trim());
       setShowCreateModal(false);
