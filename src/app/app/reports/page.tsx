@@ -15,6 +15,7 @@ import { ErrorBoundary } from "@/components/common/error-boundary";
 import {
   getPeriodRange,
   shiftPeriod,
+  isNavigablePeriod,
   PERIOD_OPTIONS,
   type ReportPeriod,
 } from "@/lib/reporting-periods";
@@ -40,8 +41,12 @@ const PropertyPerformanceSection = dynamic(
   () => import("@/components/reports/property-performance").then((m) => m.PropertyPerformanceSection),
   { ssr: false, loading: PageLoader }
 );
-const RevenueLeaderboardsSection = dynamic(
-  () => import("@/components/reports/revenue-leaderboards").then((m) => m.RevenueLeaderboardsSection),
+const RevenueSummarySection = dynamic(
+  () => import("@/components/reports/revenue-summary").then((m) => m.RevenueSummarySection),
+  { ssr: false, loading: PageLoader }
+);
+const LeaderboardSection = dynamic(
+  () => import("@/components/reports/leaderboard").then((m) => m.LeaderboardSection),
   { ssr: false, loading: PageLoader }
 );
 
@@ -50,6 +55,7 @@ const TABS = [
   { key: "sources", label: "Lead Sources" },
   { key: "properties", label: "Properties" },
   { key: "revenue", label: "Revenue" },
+  { key: "leaderboard", label: "Leaderboard" },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -58,7 +64,7 @@ export default function ReportsPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
 
-  const [period, setPeriod] = useState<ReportPeriod>("month");
+  const [period, setPeriod] = useState<ReportPeriod>("all");
   const [refDate, setRefDate] = useState<Date>(() => new Date());
   const [tab, setTab] = useState<TabKey>("agents");
   const [agentId, setAgentId] = useState<string>("");
@@ -76,7 +82,12 @@ export default function ReportsPage() {
     [agents]
   );
 
-  const sectionProps = { start: range.start, end: range.end, ownerUserId };
+  const sectionProps = {
+    start: range.start,
+    end: range.end,
+    ownerUserId,
+    periodLabel: range.label,
+  };
 
   return (
     <ErrorBoundary sectionName="Reports">
@@ -109,27 +120,29 @@ export default function ReportsPage() {
                   options={PERIOD_OPTIONS}
                   className="w-[130px]"
                 />
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="secondary"
-                    className="h-10 w-10 p-0"
-                    aria-label="Previous period"
-                    onClick={() => setRefDate((d) => shiftPeriod(period, d, -1))}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <span className="min-w-[150px] text-center text-sm font-medium">
-                    {range.label}
-                  </span>
-                  <Button
-                    variant="secondary"
-                    className="h-10 w-10 p-0"
-                    aria-label="Next period"
-                    onClick={() => setRefDate((d) => shiftPeriod(period, d, 1))}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
+                {isNavigablePeriod(period) ? (
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="secondary"
+                      className="h-10 w-10 p-0"
+                      aria-label="Previous period"
+                      onClick={() => setRefDate((d) => shiftPeriod(period, d, -1))}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="min-w-[150px] text-center text-sm font-medium">
+                      {range.label}
+                    </span>
+                    <Button
+                      variant="secondary"
+                      className="h-10 w-10 p-0"
+                      aria-label="Next period"
+                      onClick={() => setRefDate((d) => shiftPeriod(period, d, 1))}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : null}
               </div>
             </div>
           </CardHeader>
@@ -162,7 +175,8 @@ export default function ReportsPage() {
           {tab === "agents" && <AgentPerformanceSection {...sectionProps} />}
           {tab === "sources" && <LeadSourceSection {...sectionProps} />}
           {tab === "properties" && <PropertyPerformanceSection {...sectionProps} />}
-          {tab === "revenue" && <RevenueLeaderboardsSection {...sectionProps} />}
+          {tab === "revenue" && <RevenueSummarySection {...sectionProps} />}
+          {tab === "leaderboard" && <LeaderboardSection {...sectionProps} />}
         </div>
       </div>
     </ErrorBoundary>

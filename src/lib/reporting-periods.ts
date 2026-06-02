@@ -15,7 +15,7 @@ import {
   getQuarter,
 } from "date-fns";
 
-export type ReportPeriod = "week" | "month" | "quarter" | "year";
+export type ReportPeriod = "all" | "week" | "month" | "quarter" | "year";
 
 export interface PeriodRange {
   /** Inclusive start, epoch ms. */
@@ -27,11 +27,20 @@ export interface PeriodRange {
 }
 
 export const PERIOD_OPTIONS: { value: ReportPeriod; label: string }[] = [
+  { value: "all", label: "All time" },
   { value: "week", label: "Weekly" },
   { value: "month", label: "Monthly" },
   { value: "quarter", label: "Quarterly" },
   { value: "year", label: "Yearly" },
 ];
+
+/** Largest safe timestamp; used as the upper bound for the "all time" window. */
+const MAX_TS = 8640000000000000;
+
+/** True when the period has no meaningful previous/next navigation. */
+export function isNavigablePeriod(period: ReportPeriod): boolean {
+  return period !== "all";
+}
 
 // Week starts on Monday for business reporting.
 const WEEK_OPTS = { weekStartsOn: 1 as const };
@@ -47,6 +56,8 @@ export function getPeriodRange(
   refDate: Date = new Date()
 ): PeriodRange {
   switch (period) {
+    case "all":
+      return { start: 0, end: MAX_TS, label: "All time" };
     case "week": {
       const start = startOfWeek(refDate, WEEK_OPTS);
       const end = endOfWeek(refDate, WEEK_OPTS);
@@ -81,6 +92,8 @@ export function getPeriodRange(
 /** Shift a reference date by `delta` whole periods (negative = earlier). */
 export function shiftPeriod(period: ReportPeriod, refDate: Date, delta: number): Date {
   switch (period) {
+    case "all":
+      return refDate;
     case "week":
       return addWeeks(refDate, delta);
     case "month":
