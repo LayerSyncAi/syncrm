@@ -222,6 +222,7 @@ const sheetPanelVariants = {
 
 export default function PropertiesPage() {
   const currentUser = useQuery(api.users.getMeRequired);
+  const orgUsers = useQuery(api.users.listForAssignment);
   const pagination = usePagination(25);
 
   // Filter state with debouncing
@@ -233,6 +234,7 @@ export default function PropertiesPage() {
   const [locationFilter, setLocationFilter] = React.useState("");
   const [debouncedLocation, setDebouncedLocation] = React.useState("");
   const [priceMin, setPriceMin] = React.useState("");
+  const [addedByFilter, setAddedByFilter] = React.useState<Id<"users"> | "">("");
 
   // Debounce search
   React.useEffect(() => {
@@ -255,7 +257,7 @@ export default function PropertiesPage() {
   // Reset page on filter changes
   React.useEffect(() => {
     pagination.resetPage();
-  }, [listingTypeFilter, statusFilter, typeFilter, priceMin]);
+  }, [listingTypeFilter, statusFilter, typeFilter, priceMin, addedByFilter]);
 
   // Sort by date added (server-side, so it orders the full set not just the page)
   const [addedSort, setAddedSort] = React.useState<"" | "created_desc" | "created_asc">("");
@@ -276,6 +278,7 @@ export default function PropertiesPage() {
           type: typeFilter || undefined,
           location: debouncedLocation || undefined,
           priceMin: priceMin ? parseFloat(parseCurrencyInput(priceMin)) : undefined,
+          createdByUserId: addedByFilter || undefined,
           sortBy: addedSort || undefined,
           page: pagination.page > 0 ? pagination.page : undefined,
           pageSize: pagination.pageSize !== 50 ? pagination.pageSize : undefined,
@@ -630,7 +633,7 @@ export default function PropertiesPage() {
           </svg>
         </button>
         <div
-          className={`gap-3 md:grid md:grid-cols-3 xl:grid-cols-6 ${
+          className={`gap-3 md:grid md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7 ${
             filtersOpen ? "grid grid-cols-1" : "hidden"
           }`}
         >
@@ -700,6 +703,17 @@ export default function PropertiesPage() {
               onChange={(e) => setSearchInput(e.target.value)}
             />
           </div>
+          <div className="space-y-2">
+            <Label>Added by</Label>
+            <StaggeredDropDown
+              value={addedByFilter}
+              onChange={(val) => setAddedByFilter(val as Id<"users"> | "")}
+              options={[
+                { value: "", label: "Anyone" },
+                ...(orgUsers?.map((u) => ({ value: u._id, label: u.name })) ?? []),
+              ]}
+            />
+          </div>
         </div>
         <div className="mt-3 text-sm text-text-muted">
           {properties
@@ -761,18 +775,22 @@ export default function PropertiesPage() {
                 >
                   <TableCell className="max-w-[320px]">
                     <div className="flex items-center gap-2">
-                      <span className="truncate font-medium" title={property.title}>{property.title}</span>
+                      <div className="min-w-0">
+                        <div className="truncate font-medium" title={property.title}>{property.title}</div>
+                        <p className="truncate text-xs text-text-muted" title={property.location}>
+                          {property.location}
+                          {property.area ? ` · ${property.area} m²` : ""}
+                        </p>
+                      </div>
                       {property.pbRefCode && (
-                        <PropertyBookBadge
-                          refCode={property.pbRefCode}
-                          sourceUrl={property.pbSourceUrl}
-                        />
+                        <span className="shrink-0">
+                          <PropertyBookBadge
+                            refCode={property.pbRefCode}
+                            sourceUrl={property.pbSourceUrl}
+                          />
+                        </span>
                       )}
                     </div>
-                    <p className="truncate text-xs text-text-muted" title={property.location}>
-                      {property.location}
-                      {property.area ? ` · ${property.area} m²` : ""}
-                    </p>
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-sm">
                     {formatType(property.type)} · {formatListingType(property.listingType)}
