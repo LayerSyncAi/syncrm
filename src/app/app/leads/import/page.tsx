@@ -251,7 +251,7 @@ export default function LeadImportPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-text">Lead Import</h1>
+        <h1 className="text-h1 text-text">Lead Import</h1>
         <p className="mt-1 text-sm text-text-muted">
           Import leads from a CSV file
         </p>

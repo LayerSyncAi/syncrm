@@ -18,8 +18,11 @@ import { useRequireAuth } from "@/hooks/useAuth";
 import { leadToasts } from "@/lib/toast";
 import { Modal } from "@/components/ui/modal";
 import { Tooltip } from "@/components/ui/tooltip";
-import { Eye, Trash2, ArrowUpDown, ArrowUp, ArrowDown, LayoutList, Columns3 } from "lucide-react";
+import { Eye, Trash2, ArrowUpDown, ArrowUp, ArrowDown, LayoutList, Columns3, Plus, Waypoints } from "lucide-react";
 import { ErrorBoundary } from "@/components/common/error-boundary";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ListSkeleton } from "@/components/ui/list-skeleton";
 import { KanbanBoard } from "@/components/leads/kanban-board";
 
 const listVariants = {
@@ -75,16 +78,15 @@ const LeadTableRow = React.memo(function LeadTableRow({
         <Link href={`/app/leads/${lead._id}`} className="font-medium hover:text-primary">
           {lead.fullName}
         </Link>
-        <p className="text-xs text-text-muted">{lead.phone}</p>
+        <p className="truncate text-xs text-text-muted">
+          {lead.phone}
+          {lead.ownerName ? ` · ${lead.ownerName}` : ""}
+        </p>
       </TableCell>
       <TableCell>
-        <span
-          className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-            lead.interestType === "buy" ? "bg-primary/10 text-primary" : "bg-info/10 text-info"
-          }`}
-        >
+        <Badge variant={lead.interestType === "buy" ? "default" : "info"}>
           {lead.interestType === "buy" ? "Buy" : "Rent"}
-        </span>
+        </Badge>
       </TableCell>
       <TableCell>
         <ScoreBadge score={lead.score} />
@@ -101,7 +103,6 @@ const LeadTableRow = React.memo(function LeadTableRow({
           />
         </div>
       </TableCell>
-      <TableCell>{lead.ownerName}</TableCell>
       <TableCell>
         {lead.propertyTitle ? (
           <span className="text-sm text-text">{lead.propertyTitle}</span>
@@ -114,7 +115,7 @@ const LeadTableRow = React.memo(function LeadTableRow({
           <Tooltip content="View">
             <Button
               variant="secondary"
-              className="action-btn h-9 w-9 p-0 md:opacity-0 md:translate-x-3 md:scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
+              className="action-btn h-9 w-9 p-0 md:opacity-60 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150"
               style={{ transitionDelay: "0ms" }}
               onClick={(e) => { e.stopPropagation(); onRowClick(lead); }}
             >
@@ -124,7 +125,7 @@ const LeadTableRow = React.memo(function LeadTableRow({
           <Tooltip content="Delete">
             <Button
               variant="secondary"
-              className="action-btn h-9 w-9 p-0 text-danger hover:text-danger hover:bg-danger/10 md:opacity-0 md:translate-x-3 md:scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
+              className="action-btn h-9 w-9 p-0 text-danger hover:text-danger hover:bg-danger/10 md:opacity-60 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150"
               style={{ transitionDelay: "40ms" }}
               onClick={(e) => { e.stopPropagation(); onDelete(lead); }}
             >
@@ -137,41 +138,94 @@ const LeadTableRow = React.memo(function LeadTableRow({
   );
 });
 
+// Mobile equivalent of LeadTableRow: data tables stack as cards below md.
+const LeadCard = React.memo(function LeadCard({
+  lead,
+  stages,
+  onStageChange,
+  onDelete,
+  onRowClick,
+}: {
+  lead: LeadRowData;
+  stages: { _id: string; name: string }[] | undefined;
+  onStageChange: (leadId: Id<"leads">, stageId: Id<"pipelineStages">) => void;
+  onDelete: (lead: LeadRowData) => void;
+  onRowClick: (lead: LeadRowData) => void;
+}) {
+  return (
+    <motion.div
+      variants={rowVariants}
+      className="rounded-[12px] border border-border-strong bg-card-bg p-4 space-y-3"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <Link href={`/app/leads/${lead._id}`} className="block truncate font-medium hover:text-primary">
+            {lead.fullName}
+          </Link>
+          <p className="text-xs text-text-muted">{lead.phone}</p>
+        </div>
+        <ScoreBadge score={lead.score} />
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant={lead.interestType === "buy" ? "default" : "info"}>
+          {lead.interestType === "buy" ? "Buy" : "Rent"}
+        </Badge>
+        {lead.propertyTitle && (
+          <span className="truncate text-xs text-text-muted">{lead.propertyTitle}</span>
+        )}
+      </div>
+      <div onClick={(e) => e.stopPropagation()}>
+        <StaggeredDropDown
+          value={lead.stageId}
+          onChange={(val) => onStageChange(lead._id, val as Id<"pipelineStages">)}
+          aria-label={`Update stage for ${lead.fullName}`}
+          portal
+          disabled={!!(lead.closedAt && lead.closeReason)}
+          options={stages?.map((stage) => ({ value: stage._id, label: stage.name })) ?? []}
+        />
+      </div>
+      <div className="flex items-center justify-between gap-2 pt-1">
+        <span className="text-xs text-text-dim">Owner: {lead.ownerName}</span>
+        <div className="flex gap-1.5">
+          <Button variant="secondary" className="h-9 w-9 p-0" aria-label="View lead" onClick={() => onRowClick(lead)}>
+            <Eye className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="secondary"
+            className="h-9 w-9 p-0 text-danger hover:bg-danger/10 hover:text-danger"
+            aria-label="Delete lead"
+            onClick={() => onDelete(lead)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </motion.div>
+  );
+});
+
 function ScoreBadge({ score }: { score: number | undefined }) {
   if (score === undefined || score === null) {
-    return (
-      <span className="inline-flex items-center rounded-full bg-border px-2 py-0.5 text-xs text-text-dim">
-        --
-      </span>
-    );
+    return <Badge variant="neutral" className="px-2 py-0.5">--</Badge>;
   }
-
-  const color =
-    score >= 70
-      ? "bg-success/15 text-success"
-      : score >= 40
-        ? "bg-warning/15 text-warning"
-        : "bg-danger/15 text-danger";
-
+  const variant = score >= 70 ? "success" : score >= 40 ? "warning" : "danger";
+  const dot = score >= 70 ? "bg-success" : score >= 40 ? "bg-warning" : "bg-danger";
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${color}`}>
-      <span
-        className={`inline-block h-1.5 w-1.5 rounded-full ${
-          score >= 70 ? "bg-success" : score >= 40 ? "bg-warning" : "bg-danger"
-        }`}
-      />
+    <Badge variant={variant} className="gap-1 px-2 py-0.5 font-semibold">
+      <span className={`inline-block h-1.5 w-1.5 rounded-full ${dot}`} />
       {score}
-    </span>
+    </Badge>
   );
 }
 
 export default function LeadsPage() {
   const router = useRouter();
   const { user, isLoading: authLoading, isAdmin } = useRequireAuth();
-  const pagination = usePagination(50);
+  const pagination = usePagination(25);
 
   // View mode state
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   // Filter state
   const [stageFilter, setStageFilter] = useState<string>("");
@@ -401,13 +455,13 @@ export default function LeadsPage() {
         transition={{ type: "spring", stiffness: 300, damping: 24 }}
         className="flex flex-wrap items-center justify-between gap-4"
       >
-        <div>
-          <h2 className="text-lg font-semibold">Leads</h2>
+        <div className="space-y-1">
+          <h1 className="text-h1">Leads</h1>
           <p className="text-sm text-text-muted">
             Manage your leads and track their progress through the pipeline.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* View toggle */}
           <div className="flex rounded-[10px] border border-border-strong bg-card-bg p-0.5">
             <button
@@ -436,25 +490,11 @@ export default function LeadsPage() {
           <Button variant="secondary" onClick={() => setBulkMatchingOpen(true)}>
             Bulk Match
           </Button>
-          <Link
-            href="/app/leads/new"
-            className="group flex h-10 items-center gap-2 rounded-full bg-border pl-3 pr-4 transition-all duration-300 ease-in-out hover:bg-primary hover:pl-2 hover:text-white active:bg-primary-600"
-          >
-            <span className="flex items-center justify-center overflow-hidden rounded-full bg-primary p-1 text-white transition-all duration-300 group-hover:bg-white">
-              <svg
-                viewBox="0 0 16 16"
-                fill="none"
-                className="h-0 w-0 transition-all duration-300 group-hover:h-4 group-hover:w-4 group-hover:text-primary"
-              >
-                <path
-                  d="M8 3v10M3 8h10"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </span>
-            <span className="text-sm font-medium">New Lead</span>
+          <Link href="/app/leads/new">
+            <Button className="h-10 gap-2">
+              <Plus className="h-4 w-4" />
+              New Lead
+            </Button>
           </Link>
         </div>
       </motion.div>
@@ -466,7 +506,18 @@ export default function LeadsPage() {
         transition={{ type: "spring", stiffness: 300, damping: 24, delay: 0.06 }}
         className="rounded-[12px] border border-border-strong bg-card-bg p-4"
       >
-        <div className={`grid gap-3 ${viewMode === "kanban" ? "md:grid-cols-2 xl:grid-cols-4" : "md:grid-cols-3 xl:grid-cols-6"}`}>
+        <button
+          type="button"
+          onClick={() => setFiltersOpen((o) => !o)}
+          aria-expanded={filtersOpen}
+          className="mb-3 flex w-full cursor-pointer items-center justify-between text-eyebrow text-text-muted md:hidden"
+        >
+          Filters
+          <svg viewBox="0 0 16 16" fill="none" className={`h-4 w-4 transition-transform duration-150 ${filtersOpen ? "rotate-180" : ""}`}>
+            <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        <div className={`gap-3 md:grid ${viewMode === "kanban" ? "md:grid-cols-2 xl:grid-cols-4" : "md:grid-cols-3 xl:grid-cols-6"} ${filtersOpen ? "grid grid-cols-1" : "hidden"}`}>
           {viewMode === "list" && (
             <div className="space-y-2">
               <Label>Stage</Label>
@@ -546,9 +597,7 @@ export default function LeadsPage() {
       {viewMode === "kanban" ? (
         /* ── Kanban Board View ── */
         kanbanData === undefined ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-          </div>
+          <ListSkeleton />
         ) : (
           <ErrorBoundary sectionName="Kanban Board">
             <motion.div
@@ -567,23 +616,23 @@ export default function LeadsPage() {
       ) : (
         /* ── List View ── */
         leads === undefined ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-          </div>
+          <ListSkeleton />
         ) : leads.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ type: "spring", stiffness: 300, damping: 24 }}
-            className="text-center py-12"
-          >
-            <p className="text-text-muted">No leads found.</p>
-            <Link href="/app/leads/new">
-              <Button className="mt-4">Create your first lead</Button>
-            </Link>
-          </motion.div>
+          <EmptyState
+            icon={Waypoints}
+            title="No leads to show"
+            description="Capture a new opportunity, or adjust your filters if you expected results here."
+            action={
+              <Link href="/app/leads/new">
+                <Button className="gap-2">
+                  <Plus className="h-4 w-4" /> New lead
+                </Button>
+              </Link>
+            }
+          />
         ) : (
           <ErrorBoundary sectionName="Lead Table">
+            <div className="hidden md:block">
             <Table>
               <thead>
                 <tr>
@@ -601,7 +650,6 @@ export default function LeadsPage() {
                     </button>
                   </TableHead>
                   <TableHead>Stage</TableHead>
-                  <TableHead>Owner</TableHead>
                   <TableHead>Property</TableHead>
                   <TableHead>Actions</TableHead>
                 </tr>
@@ -624,6 +672,27 @@ export default function LeadsPage() {
                 ))}
               </motion.tbody>
             </Table>
+            </div>
+
+            {/* Mobile: stacked cards instead of a horizontally scrolling table */}
+            <motion.div
+              variants={listVariants}
+              initial="hidden"
+              animate="show"
+              className="space-y-3 md:hidden"
+            >
+              {leads.map((lead: LeadRowData) => (
+                <LeadCard
+                  key={lead._id}
+                  lead={lead}
+                  stages={stages}
+                  onStageChange={handleStageChange}
+                  onDelete={(l) => { setDeleteTarget(l); setDeleteConfirmText(""); }}
+                  onRowClick={(l) => router.push(`/app/leads/${l._id}`)}
+                />
+              ))}
+            </motion.div>
+
             <PaginationControls
               page={pagination.page}
               pageSize={pagination.pageSize}
@@ -631,6 +700,8 @@ export default function LeadsPage() {
               hasMore={hasMore}
               onNextPage={pagination.nextPage}
               onPrevPage={pagination.prevPage}
+              onGoToPage={pagination.goToPage}
+              onPageSizeChange={pagination.setPageSize}
             />
           </ErrorBoundary>
         )

@@ -195,7 +195,7 @@ export default function MergeLeadsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-text">Merge Leads</h1>
+        <h1 className="text-h1 text-text">Merge Leads</h1>
         <p className="mt-1 text-sm text-text-muted">
           Select leads to merge, pick a primary, and resolve field conflicts
         </p>

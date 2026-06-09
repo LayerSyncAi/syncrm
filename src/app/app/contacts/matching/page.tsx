@@ -10,6 +10,7 @@ import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { formatMoney } from "@/lib/currency";
 
 const listVariants = {
   hidden: {},
@@ -21,18 +22,9 @@ const rowVariants = {
   show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
 } as const;
 
-const formatPrice = (price: number, currency: string) => {
-  try {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(price);
-  } catch {
-    return `${currency} ${price.toLocaleString()}`;
-  }
-};
+// Symbol + separators, safe for the app's non-ISO codes (ZiG/ZWL).
+const formatPrice = (price: number, currency: string) =>
+  formatMoney(price, currency, { decimals: 0 });
 
 export default function ContactMatchingPage() {
   const currentUser = useQuery(api.users.getMeRequired);
@@ -59,8 +51,8 @@ export default function ContactMatchingPage() {
     <div className="space-y-6">
       <Breadcrumb items={[{ label: "Contacts", href: "/app/contacts" }, { label: "Property Matching" }]} />
 
-      <div>
-        <h2 className="text-lg font-semibold">Property Matching</h2>
+      <div className="space-y-1">
+        <h1 className="text-h1">Property Matching</h1>
         <p className="text-sm text-text-muted">
           Select a contact to find properties that match their stored preferences.
         </p>
@@ -105,7 +97,7 @@ export default function ContactMatchingPage() {
       </div>
 
       {selectedContactId && matches !== undefined && (
-        <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
+        <div>
           {matches.length === 0 ? (
             <div className="rounded-[12px] border border-border-strong bg-card-bg p-8 text-center text-text-muted">
               No matching properties found. Try updating the contact&apos;s preferences or adding more properties.
@@ -113,6 +105,7 @@ export default function ContactMatchingPage() {
           ) : (
             <>
               <p className="mb-3 text-sm text-text-muted">{matches.length} matching {matches.length === 1 ? "property" : "properties"} found</p>
+              <div className="hidden md:block overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
               <Table>
                 <thead>
                   <tr>
@@ -136,7 +129,7 @@ export default function ContactMatchingPage() {
                       <TableCell className="font-medium">{property.title}</TableCell>
                       <TableCell><Badge variant="secondary">{property.type}</Badge></TableCell>
                       <TableCell><Badge variant="secondary">{property.listingType}</Badge></TableCell>
-                      <TableCell>{formatPrice(property.price, property.currency)}</TableCell>
+                      <TableCell className="tabular-nums">{formatPrice(property.price, property.currency)}</TableCell>
                       <TableCell>{property.location}</TableCell>
                       <TableCell>{property.bedrooms ?? "-"}</TableCell>
                       <TableCell>{property.bathrooms ?? "-"}</TableCell>
@@ -145,6 +138,28 @@ export default function ContactMatchingPage() {
                   ))}
                 </motion.tbody>
               </Table>
+              </div>
+
+              {/* Mobile: stacked cards instead of a horizontally scrolling table */}
+              <motion.div variants={listVariants} initial="hidden" animate="show" className="space-y-3 md:hidden">
+                {matches.map((property: any) => (
+                  <div key={property._id} className="rounded-[12px] border border-border-strong bg-card-bg p-4 space-y-2">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="min-w-0 truncate font-medium">{property.title}</p>
+                      <Badge variant={property.status === "available" ? "success" : "secondary"}>{property.status}</Badge>
+                    </div>
+                    <p className="text-lg font-semibold tabular-nums">{formatPrice(property.price, property.currency)}</p>
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-text-muted">
+                      <Badge variant="secondary">{property.type}</Badge>
+                      <Badge variant="secondary">{property.listingType}</Badge>
+                      <span>{property.location}</span>
+                    </div>
+                    <p className="text-xs text-text-muted">
+                      {property.bedrooms ?? "-"} bd &middot; {property.bathrooms ?? "-"} ba
+                    </p>
+                  </div>
+                ))}
+              </motion.div>
             </>
           )}
         </div>

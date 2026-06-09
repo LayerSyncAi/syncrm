@@ -80,23 +80,19 @@ export const LeadHeroCard = React.memo(function LeadHeroCard({
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="space-y-2">
             <div className="flex items-center gap-3">
-              <h2 className="text-lg font-semibold">{lead.fullName}</h2>
+              <h2 className="text-h1">{lead.fullName}</h2>
               <Badge
-                className={
+                variant={
                   lead.closedAt
                     ? stage?.terminalOutcome === "won"
-                      ? "bg-success/10 text-success"
-                      : "bg-danger/10 text-danger"
-                    : "bg-info/10 text-info"
+                      ? "success"
+                      : "danger"
+                    : "info"
                 }
               >
                 {lead.closedAt ? (stage?.terminalOutcome === "won" ? "Won" : "Lost") : "Open"}
               </Badge>
-              <Badge
-                className={
-                  lead.interestType === "buy" ? "bg-primary/10 text-primary" : "bg-warning/10 text-warning"
-                }
-              >
+              <Badge variant={lead.interestType === "buy" ? "default" : "info"}>
                 {lead.interestType === "buy" ? "Buying" : "Renting"}
               </Badge>
             </div>

@@ -14,6 +14,7 @@ import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 import { Textarea } from "@/components/ui/textarea";
 import { Modal } from "@/components/ui/modal";
 import { CurrencyInput } from "@/components/ui/currency-input";
+import { formatMoney } from "@/lib/currency";
 import { useRequireAuth } from "@/hooks/useAuth";
 import { DuplicateWarning } from "@/components/leads/duplicate-warning";
 import { leadToasts, contactToasts, locationToasts } from "@/lib/toast";
@@ -58,18 +59,9 @@ const createEmptyFieldState = (value: string = ""): FieldState => ({
   error: undefined,
 });
 
-const formatPrice = (price: number, currency: string) => {
-  try {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(price);
-  } catch {
-    return `${currency} ${price.toLocaleString()}`;
-  }
-};
+// Symbol + separators, safe for the app's non-ISO codes (ZiG/ZWL).
+const formatPrice = (price: number, currency: string) =>
+  formatMoney(price, currency, { decimals: 0 });
 
 export default function NewLeadPage() {
   const router = useRouter();
@@ -478,7 +470,7 @@ export default function NewLeadPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold">Create Lead</h2>
+        <h1 className="text-h1">Create Lead</h1>
         <p className="text-sm text-text-muted">
           Quick capture for new opportunities. Attach properties now or later.
         </p>

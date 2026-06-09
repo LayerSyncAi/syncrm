@@ -22,6 +22,7 @@ import { ActivityTimeline } from "@/components/leads/activity-timeline";
 import { PropertyViewModal } from "@/components/leads/property-view-modal";
 import { leadToasts, activityToasts, propertyToasts } from "@/lib/toast";
 import { leadSourceLabel } from "@/lib/lead-sources";
+import { formatMoney } from "@/lib/currency";
 
 const PropertySuggestions = lazy(() =>
   import("./property-suggestions").then((m) => ({ default: m.PropertySuggestions }))
@@ -479,7 +480,7 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
         {activeTab === "Matched Properties" && (
           <motion.div key="matched" variants={tabContentVariants} initial="initial" animate="animate" exit="exit" className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-text-muted">Matches</h3>
+              <h3 className="text-h3">Matches</h3>
               <Button onClick={() => setDrawerOpen(true)}>Attach Property</Button>
             </div>
             <Card className="p-5">
@@ -527,7 +528,7 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
         {activeTab === "Notes" && (
           <motion.div key="notes" variants={tabContentVariants} initial="initial" animate="animate" exit="exit">
             <Card className="p-5 space-y-3">
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-text-muted">Lead notes</h3>
+              <h3 className="text-h3">Lead notes</h3>
               <Textarea className="min-h-[180px]" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Add notes about this lead..." />
               <div className="flex justify-end">
                 <Button onClick={handleSaveNotes} disabled={isSavingNotes}>{isSavingNotes ? "Saving..." : "Save notes"}</Button>
@@ -631,13 +632,13 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
           {lead.budgetMin !== undefined && (
             <div className="space-y-2">
               <Label>Budget Min</Label>
-              <Input value={`${lead.budgetCurrency || "USD"} ${lead.budgetMin.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} readOnly />
+              <Input value={formatMoney(lead.budgetMin, lead.budgetCurrency || "USD")} readOnly />
             </div>
           )}
           {lead.budgetMax !== undefined && (
             <div className="space-y-2">
               <Label>Budget Max</Label>
-              <Input value={`${lead.budgetCurrency || "USD"} ${lead.budgetMax.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} readOnly />
+              <Input value={formatMoney(lead.budgetMax, lead.budgetCurrency || "USD")} readOnly />
             </div>
           )}
           <div className="space-y-2 md:col-span-2">

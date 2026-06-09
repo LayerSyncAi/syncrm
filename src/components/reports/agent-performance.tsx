@@ -86,11 +86,11 @@ export function AgentPerformanceSection({
 
       <Card>
         <CardHeader>
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
+          <h3 className="text-h3">
             Agent performance
           </h3>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
+        <CardContent className="hidden md:block overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -121,6 +121,32 @@ export function AgentPerformanceSection({
               ))}
             </TableBody>
           </Table>
+        </CardContent>
+
+        {/* Mobile: stacked cards instead of a horizontally scrolling table */}
+        <CardContent className="space-y-3 md:hidden">
+          {data.rows.map((r) => (
+            <div key={r.userId} className="rounded-[12px] border border-border-strong bg-card-bg p-4">
+              <p className="font-medium">{r.name}</p>
+              <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                {[
+                  ["Assigned", r.leadsAssigned],
+                  ["Contacted", r.leadsContacted],
+                  ["Viewings", r.viewingsBooked],
+                  ["Offers", r.offersReceived],
+                  ["Closed", r.dealsClosed],
+                  ["Conv.", `${r.conversionRate}%`],
+                  ["Sales value", formatCurrencyMap(r.salesValue)],
+                  ["Commission", formatCurrencyMap(r.commission)],
+                ].map(([k, v]) => (
+                  <div key={k as string} className="flex justify-between gap-2">
+                    <dt className="text-text-muted">{k}</dt>
+                    <dd className="text-right tabular-nums">{v}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          ))}
         </CardContent>
       </Card>
       <p className="text-xs text-text-dim">

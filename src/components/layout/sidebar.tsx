@@ -173,6 +173,16 @@ export const Sidebar = memo(function Sidebar({ isAdmin, collapsed, onToggle, org
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
+  // Close the mobile drawer on Escape.
+  useEffect(() => {
+    if (!mobileOpen || !onMobileClose) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onMobileClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [mobileOpen, onMobileClose]);
+
   return (
     <>
       {/* Mobile backdrop overlay */}

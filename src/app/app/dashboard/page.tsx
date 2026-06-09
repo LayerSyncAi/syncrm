@@ -8,6 +8,16 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { ErrorBoundary } from "@/components/common/error-boundary";
+import { Tooltip } from "@/components/ui/tooltip";
+import { Info } from "lucide-react";
+
+// Plain-language explanation for each KPI, surfaced on hover/focus.
+const kpiHelp: Record<string, string> = {
+  "Total leads": "Every lead in your pipeline",
+  "Open leads": "Leads not yet won or lost",
+  Won: "Leads closed as won",
+  Lost: "Leads closed as lost",
+};
 
 // --- #13: Animated counter that rolls up from 0 ---
 
@@ -35,7 +45,7 @@ function AnimatedCounter({ value }: { value: number }) {
   }, [mv]);
 
   // Show actual value as fallback text in case animation doesn't fire
-  return <span ref={ref}>{value}</span>;
+  return <span ref={ref} className="tabular-nums">{value}</span>;
 }
 
 // --- Skeleton loaders (unchanged) ---
@@ -127,7 +137,7 @@ export default function DashboardPage() {
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="space-y-2">
               <div className="flex items-center gap-3">
-                <h2 className="text-lg font-semibold">Pipeline Overview</h2>
+                <h2 className="text-h2">Pipeline Overview</h2>
                 <Badge className="bg-primary/10 text-primary">All Leads</Badge>
               </div>
               <p className="text-sm text-text-muted">
@@ -181,15 +191,22 @@ export default function DashboardPage() {
             <motion.div
               key={stat.label}
               variants={cardVariants}
-              whileHover={{ scale: 1.02, boxShadow: "0 8px 25px rgba(0,0,0,0.1)" }}
+              whileHover={{ scale: 1.02, boxShadow: "0 10px 24px rgba(31,42,68,0.10)" }}
               transition={{ type: "spring", stiffness: 400, damping: 25 }}
             >
-              <Card className="p-4">
-                <p className="text-xs uppercase tracking-wide text-text-dim">
-                  {stat.label}
-                </p>
+              <Card className="p-5">
+                <div className="flex items-center gap-1.5">
+                  <p className="text-eyebrow text-text-muted">
+                    {stat.label}
+                  </p>
+                  {kpiHelp[stat.label] && (
+                    <Tooltip content={kpiHelp[stat.label]} side="bottom">
+                      <Info className="h-3 w-3 cursor-help text-text-dim" aria-label={kpiHelp[stat.label]} />
+                    </Tooltip>
+                  )}
+                </div>
                 {/* #13: Counter number roll-up */}
-                <p className="mt-3 text-2xl font-semibold">
+                <p className="mt-2 text-display tabular-nums">
                   <AnimatedCounter value={stat.value} />
                 </p>
               </Card>
@@ -210,7 +227,7 @@ export default function DashboardPage() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
+                  <h3 className="text-h3">
                     Lead Score Distribution
                   </h3>
                   {!isScoreLoading && (
@@ -291,7 +308,7 @@ export default function DashboardPage() {
         >
           <Card>
             <CardHeader>
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
+              <h3 className="text-h3">
                 Avg Score by Stage
               </h3>
             </CardHeader>
@@ -372,7 +389,7 @@ export default function DashboardPage() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
+                  <h3 className="text-h3">
                     Top Unworked Leads
                   </h3>
                   <p className="mt-1 text-xs text-text-dim">
@@ -443,7 +460,7 @@ export default function DashboardPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
+            <h3 className="text-h3">
               Leads by Stage
             </h3>
             {/* #17: Live pulse indicator */}

@@ -366,7 +366,7 @@ export const CopilotPanel = () => {
         type="button"
         variant="primary"
         size="lg"
-        className="fixed bottom-6 right-6 z-40 h-12 w-12 rounded-full p-0 shadow-lg md:bottom-8 md:right-8"
+        className="fixed bottom-20 right-4 z-40 h-12 w-12 rounded-full p-0 shadow-lg md:bottom-8 md:right-8"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-label={open ? "Close assistant" : "Open assistant"}

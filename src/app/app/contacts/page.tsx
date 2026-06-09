@@ -19,7 +19,7 @@ import { ConfirmDeleteDialog } from "@/components/common/confirm-delete-dialog";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { contactToasts, locationToasts } from "@/lib/toast";
 import { Tooltip } from "@/components/ui/tooltip";
-import { Eye, Settings, Trash2 } from "lucide-react";
+import { Eye, Settings, Trash2, Plus, Phone, Mail } from "lucide-react";
 
 type PropertyType = "house" | "apartment" | "land" | "commercial" | "other";
 type InterestType = "rent" | "buy";
@@ -119,7 +119,7 @@ const ContactTableRow = React.memo(function ContactTableRow({
           <Tooltip content="View">
             <Button
               variant="secondary"
-              className="action-btn h-9 w-9 p-0 md:opacity-0 md:translate-x-3 md:scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out"
+              className="action-btn h-9 w-9 p-0 md:opacity-60 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150"
               style={{ transitionDelay: "0ms" }}
               onClick={(e) => { e.stopPropagation(); onEdit(contact); }}
             >
@@ -129,7 +129,7 @@ const ContactTableRow = React.memo(function ContactTableRow({
           {contact.phone && (
             <Tooltip content="Call">
               <a href={`tel:${contact.phone}`} onClick={(e) => e.stopPropagation()}>
-                <Button variant="secondary" className="action-btn h-9 w-9 p-0 md:opacity-0 md:translate-x-3 md:scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out" style={{ transitionDelay: "50ms" }}>
+                <Button variant="secondary" className="action-btn h-9 w-9 p-0 md:opacity-60 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150" style={{ transitionDelay: "50ms" }}>
                   <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" /></svg>
                 </Button>
               </a>
@@ -138,20 +138,20 @@ const ContactTableRow = React.memo(function ContactTableRow({
           {contact.email && (
             <Tooltip content="Email">
               <a href={`mailto:${contact.email}`} onClick={(e) => e.stopPropagation()}>
-                <Button variant="secondary" className="action-btn h-9 w-9 p-0 md:opacity-0 md:translate-x-3 md:scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out" style={{ transitionDelay: "100ms" }}>
+                <Button variant="secondary" className="action-btn h-9 w-9 p-0 md:opacity-60 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150" style={{ transitionDelay: "100ms" }}>
                   <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" /><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" /></svg>
                 </Button>
               </a>
             </Tooltip>
           )}
           <Tooltip content="Edit">
-            <Button variant="secondary" className="action-btn h-9 w-9 p-0 md:opacity-0 md:translate-x-3 md:scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out" style={{ transitionDelay: "150ms" }} onClick={(e) => { e.stopPropagation(); onEdit(contact); }}>
+            <Button variant="secondary" className="action-btn h-9 w-9 p-0 md:opacity-60 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150" style={{ transitionDelay: "150ms" }} onClick={(e) => { e.stopPropagation(); onEdit(contact); }}>
               <Settings className="h-4 w-4" />
             </Button>
           </Tooltip>
           {(isAdmin || contact.ownerUserIds.includes(currentUserId)) && (
             <Tooltip content="Delete">
-              <Button variant="secondary" className="action-btn-danger h-9 w-9 p-0 text-red-500 md:opacity-0 md:translate-x-3 md:scale-90 group-hover:opacity-100 group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out" style={{ transitionDelay: "200ms" }} onClick={(e) => { e.stopPropagation(); onDelete(contact); }}>
+              <Button variant="secondary" className="action-btn-danger h-9 w-9 p-0 text-red-500 md:opacity-60 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150" style={{ transitionDelay: "200ms" }} onClick={(e) => { e.stopPropagation(); onDelete(contact); }}>
                 <Trash2 className="h-4 w-4" />
               </Button>
             </Tooltip>
@@ -162,12 +162,79 @@ const ContactTableRow = React.memo(function ContactTableRow({
   );
 });
 
+// Mobile equivalent of ContactTableRow: data tables stack as cards below md.
+const ContactCard = React.memo(function ContactCard({
+  contact,
+  isAdmin,
+  currentUserId,
+  onEdit,
+  onDelete,
+}: {
+  contact: ContactWithOwners;
+  isAdmin: boolean;
+  currentUserId: Id<"users">;
+  onEdit: (contact: ContactWithOwners) => void;
+  onDelete: (contact: ContactWithOwners) => void;
+}) {
+  return (
+    <motion.div
+      variants={rowVariants}
+      initial="hidden"
+      animate="show"
+      className="rounded-[12px] border border-border-strong bg-card-bg p-4 space-y-3"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <button onClick={() => onEdit(contact)} className="block truncate text-left font-medium hover:text-primary">
+            {contact.name}
+          </button>
+          {contact.company && <p className="truncate text-xs text-text-muted">{contact.company}</p>}
+        </div>
+        <div className="flex flex-wrap justify-end gap-1">
+          {contact.ownerNames.slice(0, 2).map((ownerName: string, i: number) => (
+            <Badge key={i} variant="secondary" className="text-xs">{ownerName}</Badge>
+          ))}
+          {contact.ownerNames.length > 2 && (
+            <Badge variant="secondary" className="text-xs">+{contact.ownerNames.length - 2}</Badge>
+          )}
+        </div>
+      </div>
+      {(contact.phone || contact.email) && (
+        <div className="space-y-1 text-sm text-text-muted">
+          {contact.phone && <p className="truncate">{contact.phone}</p>}
+          {contact.email && <p className="truncate">{contact.email}</p>}
+        </div>
+      )}
+      <div className="flex items-center justify-end gap-1.5 pt-1">
+        {contact.phone && (
+          <a href={`tel:${contact.phone}`} aria-label="Call contact">
+            <Button variant="secondary" className="h-9 w-9 p-0"><Phone className="h-4 w-4" /></Button>
+          </a>
+        )}
+        {contact.email && (
+          <a href={`mailto:${contact.email}`} aria-label="Email contact">
+            <Button variant="secondary" className="h-9 w-9 p-0"><Mail className="h-4 w-4" /></Button>
+          </a>
+        )}
+        <Button variant="secondary" className="h-9 w-9 p-0" aria-label="Edit contact" onClick={() => onEdit(contact)}>
+          <Settings className="h-4 w-4" />
+        </Button>
+        {(isAdmin || contact.ownerUserIds.includes(currentUserId)) && (
+          <Button variant="secondary" className="h-9 w-9 p-0 text-danger hover:bg-danger/10 hover:text-danger" aria-label="Delete contact" onClick={() => onDelete(contact)}>
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
+    </motion.div>
+  );
+});
+
 export default function ContactsPage() {
   const currentUser = useQuery(api.users.getMeRequired);
   const users = useQuery(api.users.listForAssignment);
   const locations = useQuery(api.locations.list);
   const createLocation = useMutation(api.locations.create);
-  const pagination = usePagination(50);
+  const pagination = usePagination(25);
 
   // Search/filter state with debouncing
   const [searchInput, setSearchInput] = React.useState("");
@@ -470,8 +537,8 @@ export default function ContactsPage() {
     return (
       <div className="space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-semibold">Contacts</h2>
+          <div className="space-y-1">
+            <h1 className="text-h1">Contacts</h1>
             <p className="text-sm text-text-muted">Loading...</p>
           </div>
         </div>
@@ -482,32 +549,16 @@ export default function ContactsPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-semibold">Contacts</h2>
+        <div className="space-y-1">
+          <h1 className="text-h1">Contacts</h1>
           <p className="text-sm text-text-muted">
             Contacts are the people you engage, separate from property-specific leads.
           </p>
         </div>
-        <button
-          onClick={openCreateModal}
-          className="group flex h-10 items-center gap-2 rounded-full bg-border pl-3 pr-4 transition-all duration-300 ease-in-out hover:bg-primary hover:pl-2 hover:text-white active:bg-primary-600"
-        >
-          <span className="flex items-center justify-center overflow-hidden rounded-full bg-primary p-1 text-white transition-all duration-300 group-hover:bg-white">
-            <svg
-              viewBox="0 0 16 16"
-              fill="none"
-              className="h-0 w-0 transition-all duration-300 group-hover:h-4 group-hover:w-4 group-hover:text-primary"
-            >
-              <path
-                d="M8 3v10M3 8h10"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
-          </span>
-          <span className="text-sm font-medium">New Contact</span>
-        </button>
+        <Button onClick={openCreateModal} className="h-10 gap-2">
+          <Plus className="h-4 w-4" />
+          New Contact
+        </Button>
       </div>
 
       <div className="rounded-[12px] border border-border-strong bg-card-bg p-4">
@@ -541,7 +592,7 @@ export default function ContactsPage() {
         </div>
       </div>
 
-      <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
+      <div className="hidden md:block overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
       <Table>
         <thead>
           <tr>
@@ -593,6 +644,22 @@ export default function ContactsPage() {
       </Table>
       </div>
 
+      {/* Mobile: stacked cards instead of a horizontally scrolling table */}
+      {contacts && contacts.length > 0 && (
+        <motion.div variants={listVariants} initial="hidden" animate="show" className="space-y-3 md:hidden">
+          {contacts.map((contact: ContactWithOwners) => (
+            <ContactCard
+              key={contact._id}
+              contact={contact}
+              isAdmin={isAdmin}
+              currentUserId={currentUser._id}
+              onEdit={setSelectedContact}
+              onDelete={setDeleteTarget}
+            />
+          ))}
+        </motion.div>
+      )}
+
       <PaginationControls
         page={pagination.page}
         pageSize={pagination.pageSize}
@@ -600,6 +667,8 @@ export default function ContactsPage() {
         hasMore={hasMore}
         onNextPage={pagination.nextPage}
         onPrevPage={pagination.prevPage}
+        onGoToPage={pagination.goToPage}
+        onPageSizeChange={pagination.setPageSize}
       />
 
       {/* Create/Edit Modal */}
@@ -738,7 +807,7 @@ export default function ContactsPage() {
                             className={`rounded-full px-3 py-1 text-sm transition-colors ${
                               isSelected
                                 ? "bg-primary text-white"
-                                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                : "bg-surface-2 text-text-muted hover:bg-border"
                             }`}
                           >
                             {user.name}
@@ -862,7 +931,7 @@ export default function ContactsPage() {
                         className={`rounded-full px-3 py-1 text-sm transition-colors ${
                           selected
                             ? "bg-primary text-white"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            : "bg-surface-2 text-text-muted hover:bg-border"
                         }`}
                       >
                         {opt.label}

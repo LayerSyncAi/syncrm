@@ -5,6 +5,8 @@ import dynamic from "next/dynamic";
 import { useRouter, usePathname } from "next/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
+import { BottomTabBar } from "@/components/layout/bottom-tab-bar";
+import { CommandPalette } from "@/components/layout/command-palette";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -183,12 +185,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         }}
       >
         <Topbar userName={userName} userEmail={user.email || undefined} orgName={org?.name} userTimezone={user.timezone || undefined} onMobileMenuOpen={() => setMobileOpen(true)} />
-        <div className="px-3 py-4 sm:px-6 sm:py-6">
+        <div className="px-3 py-4 pb-24 sm:px-6 sm:py-6 md:pb-6">
           <ErrorBoundary sectionName="Page Content">
             {children}
           </ErrorBoundary>
         </div>
       </div>
+      <BottomTabBar />
+      <CommandPalette />
       <CopilotPanel />
     </div>
     </StaticDataProvider>

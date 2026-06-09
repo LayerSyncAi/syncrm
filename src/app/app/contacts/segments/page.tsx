@@ -28,7 +28,7 @@ const rowVariants = {
 export default function ContactSegmentsPage() {
   const currentUser = useQuery(api.users.getMeRequired);
   const locations = useQuery(api.locations.list);
-  const pagination = usePagination(50);
+  const pagination = usePagination(25);
 
   // Filter state
   const [interestType, setInterestType] = React.useState<"rent" | "buy" | "">("");
@@ -83,8 +83,8 @@ export default function ContactSegmentsPage() {
     <div className="space-y-6">
       <Breadcrumb items={[{ label: "Contacts", href: "/app/contacts" }, { label: "Segmentation" }]} />
 
-      <div>
-        <h2 className="text-lg font-semibold">Contact Segmentation</h2>
+      <div className="space-y-1">
+        <h1 className="text-h1">Contact Segmentation</h1>
         <p className="text-sm text-text-muted">
           Target contacts by their stored preferences and historical lead interests for campaigning and property matching.
         </p>
@@ -189,7 +189,7 @@ export default function ContactSegmentsPage() {
         {totalCount} contact{totalCount !== 1 ? "s" : ""} match your criteria
       </p>
 
-      <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
+      <div className="hidden md:block overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
         <Table>
           <thead>
             <tr>
@@ -267,6 +267,33 @@ export default function ContactSegmentsPage() {
         </Table>
       </div>
 
+      {/* Mobile: stacked cards instead of a horizontally scrolling table */}
+      {contacts.length > 0 && (
+        <motion.div variants={listVariants} initial="hidden" animate="show" className="space-y-3 md:hidden">
+          {contacts.map((contact: any) => (
+            <div key={contact._id} className="rounded-[12px] border border-border-strong bg-card-bg p-4 space-y-2">
+              <div className="flex items-start justify-between gap-3">
+                <p className="min-w-0 truncate font-medium">{contact.name}</p>
+                {contact.interestType && <Badge variant="secondary">{contact.interestType}</Badge>}
+              </div>
+              {(contact.phone || contact.email) && (
+                <div className="space-y-0.5 text-sm text-text-muted">
+                  {contact.phone && <p className="truncate">{contact.phone}</p>}
+                  {contact.email && <p className="truncate">{contact.email}</p>}
+                </div>
+              )}
+              {contact.preferredAreas?.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {contact.preferredAreas.slice(0, 4).map((a: string) => (
+                    <Badge key={a} variant="secondary" className="text-xs">{a}</Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </motion.div>
+      )}
+
       <PaginationControls
         page={pagination.page}
         pageSize={pagination.pageSize}
@@ -274,6 +301,8 @@ export default function ContactSegmentsPage() {
         hasMore={hasMore}
         onNextPage={pagination.nextPage}
         onPrevPage={pagination.prevPage}
+        onGoToPage={pagination.goToPage}
+        onPageSizeChange={pagination.setPageSize}
       />
     </div>
   );

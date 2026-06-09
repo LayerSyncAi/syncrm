@@ -9,6 +9,7 @@ import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { leadToasts } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { getCurrencySymbol } from "@/lib/currency";
 import {
   GripVertical,
   User,
@@ -74,15 +75,16 @@ const TouchDragContext = React.createContext<TouchDragState>({
 // ─── Helpers ─────────────────────────────────────────────────────────
 
 function formatBudget(min?: number, max?: number, currency?: string) {
-  const cur = currency || "USD";
+  // Compact budget chip: currency symbol + abbreviated magnitude (K/M).
+  const sym = getCurrencySymbol(currency || "USD");
   const fmt = (n: number) => {
-    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-    if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
-    return n.toLocaleString();
+    if (n >= 1_000_000) return `${sym}${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `${sym}${(n / 1_000).toFixed(0)}K`;
+    return `${sym}${n.toLocaleString()}`;
   };
-  if (min && max) return `${cur} ${fmt(min)} – ${fmt(max)}`;
-  if (min) return `${cur} ${fmt(min)}+`;
-  if (max) return `Up to ${cur} ${fmt(max)}`;
+  if (min && max) return `${fmt(min)} – ${fmt(max)}`;
+  if (min) return `${fmt(min)}+`;
+  if (max) return `Up to ${fmt(max)}`;
   return null;
 }
 

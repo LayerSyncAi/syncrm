@@ -384,10 +384,10 @@ export default function StagesPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-semibold">Pipeline Stages</h2>
+        <div className="space-y-1">
+          <h1 className="text-h1">Pipeline Stages</h1>
           <p className="text-sm text-text-muted">
-            Configure ordering, descriptions, actions, and terminal outcomes.
+            Configure ordering, descriptions, actions, and which stages close a deal as won or lost.
           </p>
         </div>
         <button
@@ -548,7 +548,7 @@ export default function StagesPage() {
 
             {formData.isTerminal && (
               <div className="space-y-2 pt-2">
-                <Label>Terminal Outcome</Label>
+                <Label>Final outcome (won / lost)</Label>
                 <StaggeredDropDown
                   value={formData.terminalOutcome || "won"}
                   onChange={(val) =>

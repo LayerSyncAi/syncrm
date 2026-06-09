@@ -8,6 +8,7 @@ import { Id } from "../../../convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
+import { formatMoney } from "@/lib/currency";
 
 // #40-43: Comparison table animation variants
 const tableContainerVariants = {
@@ -79,11 +80,7 @@ function PriceComparisonRow({
         Price
       </td>
       {values.map((value, index) => {
-        const formatted = new Intl.NumberFormat("en-US", {
-          style: "currency",
-          currency: currencies[index] || "USD",
-          maximumFractionDigits: 0,
-        }).format(value);
+        const formatted = formatMoney(value, currencies[index] || "USD", { decimals: 0 });
 
         const isLowest = value === minPrice && values.length > 1;
         const isHighest = value === maxPrice && values.length > 1;
@@ -336,11 +333,7 @@ export function PropertyComparison({
                       <span className="text-text-muted">{property.title.slice(0, 20)}...</span>:{" "}
                       <span className="font-medium">
                         {pricePerSqm
-                          ? new Intl.NumberFormat("en-US", {
-                              style: "currency",
-                              currency: property.currency || "USD",
-                              maximumFractionDigits: 0,
-                            }).format(pricePerSqm)
+                          ? formatMoney(pricePerSqm, property.currency || "USD", { decimals: 0 })
                           : "-"}
                       </span>
                     </div>

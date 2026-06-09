@@ -14,20 +14,20 @@ export function PropertyBookBadge({ refCode, sourceUrl, className }: PropertyBoo
   const badge = (
     <Badge variant="secondary" className={className}>
       <Globe className="mr-1 h-3 w-3" />
-      PropertyBook
+      External
     </Badge>
   );
 
   if (!sourceUrl) {
     return (
-      <Tooltip content={`Imported from PropertyBook (${refCode})`}>
+      <Tooltip content={`Imported from an external source (${refCode})`}>
         {badge}
       </Tooltip>
     );
   }
 
   return (
-    <Tooltip content={`View original on PropertyBook (${refCode})`}>
+    <Tooltip content={`View original source (${refCode})`}>
       <Link
         href={sourceUrl}
         target="_blank"

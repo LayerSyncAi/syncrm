@@ -9,9 +9,9 @@ export interface ButtonProps
 
 const variantStyles: Record<NonNullable<ButtonProps["variant"]>, string> = {
   primary:
-    "bg-primary-600 text-white hover:bg-primary shadow-[0_0_0_4px_rgba(59,130,246,0.18)]",
+    "bg-primary-600 text-white hover:bg-primary",
   secondary:
-    "border border-border-strong text-text hover:border-primary/60",
+    "border border-border-strong text-text hover:border-primary/60 hover:bg-surface-2",
   ghost: "text-text-muted hover:text-text hover:bg-row-hover",
   destructive: "bg-danger text-white hover:bg-danger/90",
 };
@@ -27,7 +27,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     <button
       ref={ref}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-[10px] font-medium transition-all duration-150 active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100",
+        "inline-flex cursor-pointer items-center justify-center gap-2 rounded-[10px] font-medium transition-all duration-150 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--content-bg)] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100",
         variantStyles[variant],
         sizeStyles[size],
         className

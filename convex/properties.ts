@@ -27,6 +27,10 @@ export const list = query({
     priceMin: v.optional(v.number()),
     priceMax: v.optional(v.number()),
     q: v.optional(v.string()),
+    createdByUserId: v.optional(v.id("users")),
+    sortBy: v.optional(
+      v.union(v.literal("created_asc"), v.literal("created_desc"))
+    ),
     page: v.optional(v.number()),
     pageSize: v.optional(v.number()),
   },
@@ -62,6 +66,9 @@ export const list = query({
       if (args.q && !property.title.toLowerCase().includes(args.q.toLowerCase())) {
         return false;
       }
+      if (args.createdByUserId && property.createdByUserId !== args.createdByUserId) {
+        return false;
+      }
       return true;
     });
 
@@ -79,6 +86,14 @@ export const list = query({
         createdByName: creator?.fullName || creator?.name || creator?.email || "System",
       };
     });
+
+    // Optional sort by date added (only when requested, so other callers'
+    // default ordering is unchanged). Applied to the full set before paging.
+    if (args.sortBy === "created_asc") {
+      enriched.sort((a, b) => a.createdAt - b.createdAt);
+    } else if (args.sortBy === "created_desc") {
+      enriched.sort((a, b) => b.createdAt - a.createdAt);
+    }
 
     // Server-side pagination
     const page = args.page ?? 0;

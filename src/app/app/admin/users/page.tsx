@@ -291,21 +291,16 @@ export default function UsersPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-semibold">Users</h2>
+        <div className="space-y-1">
+          <h1 className="text-h1">Users</h1>
           <p className="text-sm text-text-muted">
             Manage user accounts, roles, and access.
           </p>
         </div>
-        <button
-          onClick={openCreateDrawer}
-          className="group flex h-10 items-center gap-2 rounded-full bg-border pl-3 pr-4 transition-all duration-300 ease-in-out hover:bg-primary hover:pl-2 hover:text-white active:bg-primary-600"
-        >
-          <span className="flex items-center justify-center overflow-hidden rounded-full bg-primary p-1 text-white transition-all duration-300 group-hover:bg-white">
-            <UserPlus className="h-0 w-0 transition-all duration-300 group-hover:h-4 group-hover:w-4 group-hover:text-primary" />
-          </span>
-          <span className="text-sm font-medium">Create user</span>
-        </button>
+        <Button onClick={openCreateDrawer} className="h-10 gap-2">
+          <UserPlus className="h-4 w-4" />
+          Create user
+        </Button>
       </div>
 
       {/* Table */}
@@ -322,7 +317,7 @@ export default function UsersPage() {
           </Button>
         </div>
       ) : (
-        <div className="rounded-lg border border-border overflow-hidden">
+        <div className="hidden md:block rounded-lg border border-border overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>
@@ -377,7 +372,7 @@ export default function UsersPage() {
                             exit={{ scale: 0.8, opacity: 0 }}
                             transition={{ type: "spring", stiffness: 400, damping: 25 }}
                           >
-                            <Badge variant={u.isActive ? "default" : "secondary"}>
+                            <Badge variant={u.isActive ? "success" : "secondary"}>
                               {u.isActive ? "Active" : "Inactive"}
                             </Badge>
                           </motion.div>
@@ -402,6 +397,40 @@ export default function UsersPage() {
             </motion.tbody>
           </Table>
         </div>
+      )}
+
+      {/* Mobile: stacked cards instead of a horizontally scrolling table */}
+      {users !== undefined && sortedUsers.length > 0 && (
+        <motion.div variants={listVariants} initial="hidden" animate="show" className="space-y-3 md:hidden">
+          {sortedUsers.map((u) => {
+            const isCurrentUser = u._id === user._id;
+            return (
+              <div key={u._id} className="rounded-[12px] border border-border-strong bg-card-bg p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-600/20 text-xs font-medium text-primary-600">
+                      {getInitials(u.fullName, u.name, u.email)}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">
+                        {u.fullName || u.name || "Unknown"}
+                        {isCurrentUser && <span className="ml-2 text-xs text-text-muted">(you)</span>}
+                      </p>
+                      <p className="truncate text-xs text-text-muted capitalize">{u.role}{u.email ? ` · ${u.email}` : ""}</p>
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="sm" aria-label="Edit user" onClick={() => openEditModal(u)}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <Badge variant={u.isActive ? "success" : "secondary"}>{u.isActive ? "Active" : "Inactive"}</Badge>
+                  {u.resetPasswordOnNextLogin && <Badge variant="warning">Password reset pending</Badge>}
+                </div>
+              </div>
+            );
+          })}
+        </motion.div>
       )}
 
       {/* ── Edit User Modal ─────────────────────────────── */}

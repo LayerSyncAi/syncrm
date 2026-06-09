@@ -433,7 +433,7 @@ export default function PropertyBookImportPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold text-text">
-            Import from PropertyBook
+            Discover New Properties
           </h1>
           <p className="mt-1 text-sm text-text-muted">
             Pull listings from propertybook.co.zw into your CRM without

@@ -227,7 +227,7 @@ export default function LeadScoringPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-text">Lead Scoring</h1>
+          <h1 className="text-h1 text-text">Lead Scoring</h1>
           <p className="mt-1 text-sm text-text-muted">
             Configure scoring criteria and weights
           </p>

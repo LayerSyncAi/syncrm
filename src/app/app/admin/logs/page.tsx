@@ -153,8 +153,8 @@ export default function LogsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h2 className="text-lg font-semibold">Logs</h2>
+      <div className="space-y-1">
+        <h1 className="text-h1">Logs</h1>
         <p className="text-sm text-text-muted">
           Audit trail of user activity and a timestamped log of every email
           triggered from the system.

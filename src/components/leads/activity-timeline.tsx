@@ -78,14 +78,14 @@ const TimelineItem = React.memo(function TimelineItem({
       <div className="flex items-center justify-between text-sm">
         <span className="font-medium">{activity.title}</span>
         <div className="flex items-center gap-2">
-          <Badge className="bg-info/10 text-info capitalize">{activity.type}</Badge>
+          <Badge variant="info" className="capitalize">{activity.type}</Badge>
           {celebrating ? (
             <div className="flex items-center gap-1.5">
               <CelebrationCheck />
               <span className="text-xs font-medium text-success">Done!</span>
             </div>
           ) : (
-            <Badge className={activity.status === "completed" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}>
+            <Badge variant={activity.status === "completed" ? "success" : "warning"}>
               {activity.status === "completed" ? "Completed" : "To Do"}
             </Badge>
           )}
@@ -242,7 +242,7 @@ export const ActivityTimeline = React.memo(function ActivityTimeline({
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 24 }}>
           <Card className="p-5 space-y-4">
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-text-muted">Log activity</h3>
+            <h3 className="text-h3">Log activity</h3>
             <div className="grid gap-3">
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="space-y-2">
@@ -284,7 +284,7 @@ export const ActivityTimeline = React.memo(function ActivityTimeline({
           </Card>
         </motion.div>
         <Card className="p-5 space-y-4">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-text-muted">Timeline</h3>
+          <h3 className="text-h3">Timeline</h3>
           {activities === undefined ? (
             <div className="flex items-center justify-center py-6">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />

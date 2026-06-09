@@ -133,8 +133,8 @@ export default function AdminRolesPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">User Roles</h2>
+        <div className="space-y-1">
+          <h1 className="text-h1">User Roles</h1>
           <p className="text-sm text-text-muted">
             Manage user roles and permissions
           </p>
