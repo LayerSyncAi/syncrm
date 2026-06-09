@@ -101,7 +101,7 @@ export default function CommissionsPage() {
   const { user, isLoading: authLoading } = useAuth();
 
   // Pagination
-  const commissionsPagination = usePagination(50);
+  const commissionsPagination = usePagination(25);
 
   // Queries
   const configs = useQuery(api.commissions.listConfigs);
@@ -615,6 +615,8 @@ export default function CommissionsPage() {
               hasMore={commissionsHasMore}
               onNextPage={commissionsPagination.nextPage}
               onPrevPage={commissionsPagination.prevPage}
+              onGoToPage={commissionsPagination.goToPage}
+              onPageSizeChange={commissionsPagination.setPageSize}
             />
           </motion.div>
         )}

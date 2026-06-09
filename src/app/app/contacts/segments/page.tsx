@@ -28,7 +28,7 @@ const rowVariants = {
 export default function ContactSegmentsPage() {
   const currentUser = useQuery(api.users.getMeRequired);
   const locations = useQuery(api.locations.list);
-  const pagination = usePagination(50);
+  const pagination = usePagination(25);
 
   // Filter state
   const [interestType, setInterestType] = React.useState<"rent" | "buy" | "">("");
@@ -301,6 +301,8 @@ export default function ContactSegmentsPage() {
         hasMore={hasMore}
         onNextPage={pagination.nextPage}
         onPrevPage={pagination.prevPage}
+        onGoToPage={pagination.goToPage}
+        onPageSizeChange={pagination.setPageSize}
       />
     </div>
   );

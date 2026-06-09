@@ -222,7 +222,7 @@ const sheetPanelVariants = {
 
 export default function PropertiesPage() {
   const currentUser = useQuery(api.users.getMeRequired);
-  const pagination = usePagination(50);
+  const pagination = usePagination(25);
 
   // Filter state with debouncing
   const [searchInput, setSearchInput] = React.useState("");
@@ -1001,6 +1001,8 @@ export default function PropertiesPage() {
         hasMore={propertiesHasMore}
         onNextPage={pagination.nextPage}
         onPrevPage={pagination.prevPage}
+        onGoToPage={pagination.goToPage}
+        onPageSizeChange={pagination.setPageSize}
       />
 
       {/* View/Edit Modal */}

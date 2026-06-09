@@ -234,7 +234,7 @@ export default function ContactsPage() {
   const users = useQuery(api.users.listForAssignment);
   const locations = useQuery(api.locations.list);
   const createLocation = useMutation(api.locations.create);
-  const pagination = usePagination(50);
+  const pagination = usePagination(25);
 
   // Search/filter state with debouncing
   const [searchInput, setSearchInput] = React.useState("");
@@ -667,6 +667,8 @@ export default function ContactsPage() {
         hasMore={hasMore}
         onNextPage={pagination.nextPage}
         onPrevPage={pagination.prevPage}
+        onGoToPage={pagination.goToPage}
+        onPageSizeChange={pagination.setPageSize}
       />
 
       {/* Create/Edit Modal */}

@@ -139,7 +139,7 @@ interface TaskActivity {
 
 export default function TasksPage() {
   const { user, isLoading: authLoading } = useRequireAuth();
-  const pagination = usePagination(50);
+  const pagination = usePagination(25);
   const [statusFilter, setStatusFilter] = useState<TaskStatus>("all");
   const [typeFilter, setTypeFilter] = useState<ActivityType>("all");
   const [selectedTask, setSelectedTask] = useState<TaskActivity | null>(null);
@@ -574,6 +574,8 @@ export default function TasksPage() {
         hasMore={hasMore}
         onNextPage={pagination.nextPage}
         onPrevPage={pagination.prevPage}
+        onGoToPage={pagination.goToPage}
+        onPageSizeChange={pagination.setPageSize}
       />
 
       <AnimatePresence>

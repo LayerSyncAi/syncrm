@@ -219,7 +219,7 @@ function ScoreBadge({ score }: { score: number | undefined }) {
 export default function LeadsPage() {
   const router = useRouter();
   const { user, isLoading: authLoading, isAdmin } = useRequireAuth();
-  const pagination = usePagination(50);
+  const pagination = usePagination(25);
 
   // View mode state
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
@@ -699,6 +699,8 @@ export default function LeadsPage() {
               hasMore={hasMore}
               onNextPage={pagination.nextPage}
               onPrevPage={pagination.prevPage}
+              onGoToPage={pagination.goToPage}
+              onPageSizeChange={pagination.setPageSize}
             />
           </ErrorBoundary>
         )

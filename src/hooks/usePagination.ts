@@ -10,8 +10,9 @@ export interface PaginatedResult<T> {
   hasMore: boolean;
 }
 
-export function usePagination(pageSize: number = 50) {
+export function usePagination(initialPageSize: number = 25) {
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSizeState] = useState(initialPageSize);
 
   const nextPage = useCallback(() => {
     setPage((p) => p + 1);
@@ -29,8 +30,15 @@ export function usePagination(pageSize: number = 50) {
     setPage(0);
   }, []);
 
+  // Changing the page size resets to the first page so the user isn't left
+  // on a page index that no longer exists.
+  const setPageSize = useCallback((size: number) => {
+    setPageSizeState(size);
+    setPage(0);
+  }, []);
+
   return useMemo(
-    () => ({ page, pageSize, nextPage, prevPage, goToPage, resetPage }),
-    [page, pageSize, nextPage, prevPage, goToPage, resetPage]
+    () => ({ page, pageSize, nextPage, prevPage, goToPage, resetPage, setPageSize }),
+    [page, pageSize, nextPage, prevPage, goToPage, resetPage, setPageSize]
   );
 }
