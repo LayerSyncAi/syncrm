@@ -18,7 +18,7 @@ import { Table, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { PaginationControls } from "@/components/ui/pagination";
 import { usePagination } from "@/hooks/usePagination";
 import { CurrencyInput } from "@/components/ui/currency-input";
-import { parseCurrencyInput } from "@/lib/currency";
+import { parseCurrencyInput, formatMoney } from "@/lib/currency";
 import { ConfirmDeleteDialog } from "@/components/common/confirm-delete-dialog";
 import { ImageUpload, ImageItem, serializeImages, deserializeImages } from "@/components/ui/image-upload";
 import { LocationTypeahead } from "@/components/ui/location-typeahead";
@@ -27,7 +27,8 @@ import { DocumentManager } from "@/components/documents/document-manager";
 import { PropertyShare } from "@/components/properties/property-share";
 import { PropertyBookBadge } from "@/components/properties/property-book-badge";
 import { Tooltip } from "@/components/ui/tooltip";
-import { UserPlus, Eye, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { UserPlus, Eye, Trash2, Plus } from "lucide-react";
 
 const propertyTabs = ["Details", "Sharing", "Documentation", "Gallery"] as const;
 type PropertyTab = (typeof propertyTabs)[number];
@@ -94,14 +95,11 @@ const createEmptyFieldState = (value: string = ""): FieldState => ({
   error: undefined,
 });
 
-const formatPrice = (price: number, currency: string) => {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(price);
-};
+// Always renders currency symbol + thousands separators (whole units for
+// property prices). Safe for the app's non-ISO codes (ZiG/ZWL) unlike
+// Intl style:"currency", which throws on them.
+const formatPrice = (price: number, currency: string) =>
+  formatMoney(price, currency, { decimals: 0 });
 
 const formatStatus = (status: PropertyStatus): string => {
   const statusMap: Record<PropertyStatus, string> = {
@@ -112,6 +110,17 @@ const formatStatus = (status: PropertyStatus): string => {
     off_market: "Off Market",
   };
   return statusMap[status] || status;
+};
+
+const statusVariant: Record<
+  PropertyStatus,
+  "success" | "warning" | "info" | "neutralStrong" | "neutral"
+> = {
+  available: "success",
+  under_offer: "warning",
+  let: "info",
+  sold: "neutralStrong",
+  off_market: "neutral",
 };
 
 const formatType = (type: PropertyType): string => {
@@ -266,6 +275,7 @@ export default function PropertiesPage() {
 
   // UI state
   const [viewMode, setViewMode] = React.useState<"list" | "cards">("list");
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
   const [selectedProperty, setSelectedProperty] = React.useState<Property | null>(null);
 
   // Deal info for selected property (sold/under contract banner)
@@ -547,14 +557,14 @@ export default function PropertiesPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-semibold">Properties</h2>
+        <div className="space-y-1">
+          <h1 className="text-h1">Properties</h1>
           <p className="text-sm text-text-muted">
             Browse and match inventory across the pipeline.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-1 rounded-[12px] border border-border-strong bg-card-bg p-1">
+          <div className="hidden md:flex items-center gap-1 rounded-[12px] border border-border-strong bg-card-bg p-1">
             <Button
               variant={viewMode === "list" ? "primary" : "ghost"}
               className="h-8 px-3"
@@ -577,31 +587,36 @@ export default function PropertiesPage() {
               </Button>
             </Link>
           )}
-          <Link
-            href="/app/properties/new"
-            className="group flex h-10 items-center gap-2 rounded-full bg-border pl-3 pr-4 transition-all duration-300 ease-in-out hover:bg-primary hover:pl-2 hover:text-white active:bg-primary-600"
-          >
-            <span className="flex items-center justify-center overflow-hidden rounded-full bg-primary p-1 text-white transition-all duration-300 group-hover:bg-white">
-              <svg
-                viewBox="0 0 16 16"
-                fill="none"
-                className="h-0 w-0 transition-all duration-300 group-hover:h-4 group-hover:w-4 group-hover:text-primary"
-              >
-                <path
-                  d="M8 3v10M3 8h10"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </span>
-            <span className="text-sm font-medium">New Property</span>
+          <Link href="/app/properties/new">
+            <Button className="h-10 gap-2">
+              <Plus className="h-4 w-4" />
+              New Property
+            </Button>
           </Link>
         </div>
       </div>
 
       <div className="rounded-[12px] border border-border-strong bg-card-bg p-4">
-        <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+        <button
+          type="button"
+          onClick={() => setFiltersOpen((o) => !o)}
+          aria-expanded={filtersOpen}
+          className="mb-3 flex w-full cursor-pointer items-center justify-between text-eyebrow text-text-muted md:hidden"
+        >
+          Filters
+          <svg
+            viewBox="0 0 16 16"
+            fill="none"
+            className={`h-4 w-4 transition-transform duration-150 ${filtersOpen ? "rotate-180" : ""}`}
+          >
+            <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        <div
+          className={`gap-3 md:grid md:grid-cols-3 xl:grid-cols-6 ${
+            filtersOpen ? "grid grid-cols-1" : "hidden"
+          }`}
+        >
           <div className="space-y-2">
             <Label>Listing</Label>
             <StaggeredDropDown
@@ -676,8 +691,8 @@ export default function PropertiesPage() {
         </div>
       </div>
 
-      {viewMode === "list" ? (
-        <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
+      {viewMode === "list" && (
+        <div className="hidden md:block overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
         <Table>
           <thead>
             <tr>
@@ -732,10 +747,12 @@ export default function PropertiesPage() {
                   </TableCell>
                   <TableCell>{formatType(property.type)}</TableCell>
                   <TableCell>{formatListingType(property.listingType)}</TableCell>
-                  <TableCell>{formatPrice(property.price, property.currency)}</TableCell>
+                  <TableCell className="tabular-nums">{formatPrice(property.price, property.currency)}</TableCell>
                   <TableCell>{property.location}</TableCell>
-                  <TableCell className="text-right">{property.area}</TableCell>
-                  <TableCell>{formatStatus(property.status)}</TableCell>
+                  <TableCell className="text-right tabular-nums">{property.area}</TableCell>
+                  <TableCell>
+                    <Badge variant={statusVariant[property.status]}>{formatStatus(property.status)}</Badge>
+                  </TableCell>
                   <TableCell className="text-sm text-text-muted">{property.createdByName || "System"}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1.5">
@@ -783,7 +800,12 @@ export default function PropertiesPage() {
           )}
         </Table>
         </div>
-      ) : !properties ? (
+      )}
+
+      {/* Cards: always in Cards mode; on mobile, List mode also falls back to
+          cards so data tables never scroll horizontally below md. */}
+      <div className={viewMode === "list" ? "md:hidden" : ""}>
+      {!properties ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <div className="col-span-full text-center text-text-muted py-8">
             Loading properties...
@@ -860,9 +882,9 @@ export default function PropertiesPage() {
                         </div>
                       )}
                     </div>
-                    <span className="rounded-full border border-border-strong px-2 py-1 text-xs text-text-muted">
+                    <Badge variant={statusVariant[property.status]}>
                       {formatStatus(property.status)}
-                    </span>
+                    </Badge>
                   </div>
                   {/* #39 – Price Tag Pop + Shine */}
                   <motion.div
@@ -936,6 +958,7 @@ export default function PropertiesPage() {
             })}
           </motion.div>
       )}
+      </div>
 
       <PaginationControls
         page={pagination.page}
@@ -1022,8 +1045,8 @@ export default function PropertiesPage() {
                 <p className="mt-1 opacity-80">
                   {propertyDealInfo.status === "sold" ? "Sold" : propertyDealInfo.status === "under_offer" ? "Under contract with" : "Let to"}: {propertyDealInfo.contactName}
                   {propertyDealInfo.dealValue && propertyDealInfo.dealCurrency && (
-                    <span className="ml-2">
-                      ({new Intl.NumberFormat("en-US", { style: "currency", currency: propertyDealInfo.dealCurrency, minimumFractionDigits: 0 }).format(propertyDealInfo.dealValue)})
+                    <span className="ml-2 tabular-nums">
+                      ({formatMoney(propertyDealInfo.dealValue, propertyDealInfo.dealCurrency, { decimals: 0 })})
                     </span>
                   )}
                 </p>
