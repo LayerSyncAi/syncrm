@@ -78,7 +78,10 @@ const LeadTableRow = React.memo(function LeadTableRow({
         <Link href={`/app/leads/${lead._id}`} className="font-medium hover:text-primary">
           {lead.fullName}
         </Link>
-        <p className="text-xs text-text-muted">{lead.phone}</p>
+        <p className="truncate text-xs text-text-muted">
+          {lead.phone}
+          {lead.ownerName ? ` · ${lead.ownerName}` : ""}
+        </p>
       </TableCell>
       <TableCell>
         <Badge variant={lead.interestType === "buy" ? "default" : "info"}>
@@ -100,7 +103,6 @@ const LeadTableRow = React.memo(function LeadTableRow({
           />
         </div>
       </TableCell>
-      <TableCell>{lead.ownerName}</TableCell>
       <TableCell>
         {lead.propertyTitle ? (
           <span className="text-sm text-text">{lead.propertyTitle}</span>
@@ -648,7 +650,6 @@ export default function LeadsPage() {
                     </button>
                   </TableHead>
                   <TableHead>Stage</TableHead>
-                  <TableHead>Owner</TableHead>
                   <TableHead>Property</TableHead>
                   <TableHead>Actions</TableHead>
                 </tr>

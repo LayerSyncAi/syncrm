@@ -713,14 +713,10 @@ export default function PropertiesPage() {
         <Table>
           <thead>
             <tr>
-              <TableHead>Title</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Listing</TableHead>
-              <TableHead>Price</TableHead>
-              <TableHead>Location</TableHead>
-              <TableHead className="text-right">Area (m²)</TableHead>
+              <TableHead>Property</TableHead>
+              <TableHead>Type · Listing</TableHead>
+              <TableHead className="text-right">Price</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Added by</TableHead>
               <TableHead>
                 <button
                   onClick={toggleAddedSort}
@@ -739,7 +735,7 @@ export default function PropertiesPage() {
           {!properties ? (
             <tbody>
               <TableRow>
-                <TableCell colSpan={10} className="text-center text-text-muted">
+                <TableCell colSpan={6} className="text-center text-text-muted">
                   Loading properties...
                 </TableCell>
               </TableRow>
@@ -747,7 +743,7 @@ export default function PropertiesPage() {
           ) : propertiesList.length === 0 ? (
             <tbody>
               <TableRow>
-                <TableCell colSpan={10} className="text-center text-text-muted">
+                <TableCell colSpan={6} className="text-center text-text-muted">
                   {debouncedSearch || listingTypeFilter || statusFilter || typeFilter || debouncedLocation || priceMin
                     ? "No properties match your filters"
                     : "No properties yet. Create one to get started."}
@@ -763,9 +759,9 @@ export default function PropertiesPage() {
                   className="group h-11 cursor-pointer border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)]"
                   onClick={() => setSelectedProperty(property)}
                 >
-                  <TableCell className="font-medium">
+                  <TableCell className="max-w-[320px]">
                     <div className="flex items-center gap-2">
-                      <span>{property.title}</span>
+                      <span className="truncate font-medium" title={property.title}>{property.title}</span>
                       {property.pbRefCode && (
                         <PropertyBookBadge
                           refCode={property.pbRefCode}
@@ -773,17 +769,24 @@ export default function PropertiesPage() {
                         />
                       )}
                     </div>
+                    <p className="truncate text-xs text-text-muted" title={property.location}>
+                      {property.location}
+                      {property.area ? ` · ${property.area} m²` : ""}
+                    </p>
                   </TableCell>
-                  <TableCell>{formatType(property.type)}</TableCell>
-                  <TableCell>{formatListingType(property.listingType)}</TableCell>
-                  <TableCell className="tabular-nums">{formatPrice(property.price, property.currency)}</TableCell>
-                  <TableCell>{property.location}</TableCell>
-                  <TableCell className="text-right tabular-nums">{property.area}</TableCell>
+                  <TableCell className="whitespace-nowrap text-sm">
+                    {formatType(property.type)} · {formatListingType(property.listingType)}
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap text-right font-medium tabular-nums">{formatPrice(property.price, property.currency)}</TableCell>
                   <TableCell>
                     <Badge variant={statusVariant[property.status]}>{formatStatus(property.status)}</Badge>
                   </TableCell>
-                  <TableCell className="text-sm text-text-muted">{property.createdByName || "System"}</TableCell>
-                  <TableCell className="whitespace-nowrap text-sm text-text-muted tabular-nums">{formatDateAdded(property.createdAt)}</TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    <div className="text-sm tabular-nums">{formatDateAdded(property.createdAt)}</div>
+                    <div className="truncate text-xs text-text-muted" title={property.createdByName || "System"}>
+                      by {property.createdByName || "System"}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1.5">
                       <Tooltip content="Add Lead">

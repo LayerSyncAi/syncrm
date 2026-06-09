@@ -478,11 +478,8 @@ export default function CommissionsPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Lead</TableHead>
-                      <TableHead>Property</TableHead>
-                      <TableHead>Deal Value</TableHead>
-                      <TableHead>Contact Owner</TableHead>
-                      <TableHead>Property Owner</TableHead>
-                      <TableHead>Company</TableHead>
+                      <TableHead className="text-right">Deal value</TableHead>
+                      <TableHead>Split</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -498,38 +495,29 @@ export default function CommissionsPage() {
                           variants={rowVariants}
                           className="group h-11 border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)]"
                         >
-                          <TableCell className="font-medium">{commission.leadName}</TableCell>
-                          <TableCell>
-                            {commission.propertyTitle ? (
-                              <span className="text-sm">{commission.propertyTitle}</span>
-                            ) : (
-                              <span className="text-text-muted">—</span>
+                          <TableCell className="max-w-[240px]">
+                            <div className="truncate font-medium" title={commission.leadName}>{commission.leadName}</div>
+                            {commission.propertyTitle && (
+                              <div className="truncate text-xs text-text-muted" title={commission.propertyTitle}>{commission.propertyTitle}</div>
                             )}
                           </TableCell>
-                          <TableCell className="tabular-nums">{fmt(commission.dealValue)}</TableCell>
-                          <TableCell>
-                            <div>
-                              <div className="text-sm">{commission.contactOwnerName || commission.leadAgentName}</div>
-                              <div className="text-xs text-text-muted">
-                                {commission.leadAgentPercent}% = {fmt(commission.leadAgentAmount)}
+                          <TableCell className="whitespace-nowrap text-right font-medium tabular-nums">{fmt(commission.dealValue)}</TableCell>
+                          <TableCell className="min-w-[210px]">
+                            <div className="space-y-0.5 text-xs">
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="truncate text-text-muted">{commission.contactOwnerName || commission.leadAgentName}</span>
+                                <span className="whitespace-nowrap tabular-nums">{commission.leadAgentPercent}% · {fmt(commission.leadAgentAmount)}</span>
                               </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {commission.propertyAgentName !== "—" ? (
-                              <div>
-                                <div className="text-sm">{commission.propertyOwnerName || commission.propertyAgentName}</div>
-                                <div className="text-xs text-text-muted">
-                                  {commission.propertyAgentPercent}% = {fmt(commission.propertyAgentAmount)}
+                              {commission.propertyAgentName !== "—" && (
+                                <div className="flex items-center justify-between gap-3">
+                                  <span className="truncate text-text-muted">{commission.propertyOwnerName || commission.propertyAgentName}</span>
+                                  <span className="whitespace-nowrap tabular-nums">{commission.propertyAgentPercent}% · {fmt(commission.propertyAgentAmount)}</span>
                                 </div>
+                              )}
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="text-text-muted">Company</span>
+                                <span className="whitespace-nowrap tabular-nums">{commission.companyPercent}% · {fmt(commission.companyAmount)}</span>
                               </div>
-                            ) : (
-                              <span className="text-text-muted">—</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <div className="text-xs text-text-muted">
-                              {commission.companyPercent}% = {fmt(commission.companyAmount)}
                             </div>
                           </TableCell>
                           <TableCell>
