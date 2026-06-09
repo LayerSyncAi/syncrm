@@ -6,6 +6,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { BottomTabBar } from "@/components/layout/bottom-tab-bar";
+import { CommandPalette } from "@/components/layout/command-palette";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -191,6 +192,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </div>
       </div>
       <BottomTabBar />
+      <CommandPalette />
       <CopilotPanel />
     </div>
     </StaticDataProvider>
