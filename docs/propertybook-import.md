@@ -92,11 +92,18 @@ Browser (page.tsx)
    │   importBatch(batch)
    ├──────────────►  Convex action (propertyBook.ts)
    │                    ├─► reserveImportSlot   (admin + rate limit)
-   │                    ├─► for each listing:
-   │                    │     for each image URL: downloadImage → Convex Storage
+   │                    ├─► for each listing: images = []   (image download
+   │                    │     currently disabled — see note below)
    │                    └─► persistImported     (insert/dedupe by pbRefCode)
-   │ ◄──────────────  { created, skipped, failed, errors, imageFailures }
+   │ ◄──────────────  { created, skipped, failed, errors }
 ```
+
+> **Note:** Image downloading is temporarily disabled (gated by
+> `IMAGE_IMPORT_ENABLED` in `convex/propertyBook.ts`). Imported images were
+> rendering as blank placeholders, so listings are imported with an empty
+> `images` array for now. The scraper still extracts image URLs for the preview,
+> and `downloadImage` / `downloadImagesConcurrent` remain in place; set the flag
+> back to `true` to restore downloading once URL resolution is fixed.
 
 The cron path (daily 02:30 UTC):
 

@@ -84,7 +84,6 @@ type BatchResult = {
   skipped: number;
   failed: number;
   errors: Array<{ row: number; message: string }>;
-  imageFailures: Array<{ row: number; url: string; message: string }>;
 };
 
 const PER_LISTING_DELAY_MS = 1000;
@@ -334,7 +333,6 @@ export default function PropertyBookImportPage() {
       skipped: 0,
       failed: 0,
       errors: [],
-      imageFailures: [],
     };
     setProgress({ current: 0, total: batchCount });
 
@@ -354,15 +352,6 @@ export default function PropertyBookImportPage() {
             row: e.row + i * batchSize,
             message: e.message,
           }))
-        );
-        aggregated.imageFailures.push(
-          ...result.imageFailures.map(
-            (e: { row: number; url: string; message: string }) => ({
-              row: e.row + i * batchSize,
-              url: e.url,
-              message: e.message,
-            })
-          )
         );
         setProgress({ current: i + 1, total: batchCount });
       }
@@ -841,8 +830,7 @@ export default function PropertyBookImportPage() {
                   Importing batch {progress.current} of {progress.total}…
                 </p>
                 <p className="mt-1 text-xs text-text-muted">
-                  Downloading images and saving properties. Please keep this
-                  tab open.
+                  Saving properties. Please keep this tab open.
                 </p>
                 <div className="mt-4 h-2 w-full max-w-md overflow-hidden rounded-full bg-gray-100">
                   <div
@@ -877,7 +865,7 @@ export default function PropertyBookImportPage() {
                   <h2 className="text-base font-semibold">Import complete</h2>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div className="grid grid-cols-3 gap-3">
                     <ResultTile
                       label="Created"
                       value={finalResult.created}
@@ -893,11 +881,6 @@ export default function PropertyBookImportPage() {
                       value={finalResult.failed}
                       tone="danger"
                     />
-                    <ResultTile
-                      label="Image failures"
-                      value={finalResult.imageFailures.length}
-                      tone="warning"
-                    />
                   </div>
 
                   {finalResult.errors.length > 0 && (
@@ -907,20 +890,6 @@ export default function PropertyBookImportPage() {
                       </summary>
                       <ul className="mt-2 max-h-60 space-y-1 overflow-auto text-xs text-red-700">
                         {finalResult.errors.map((err, i) => (
-                          <li key={i}>
-                            Row {err.row + 1}: {err.message}
-                          </li>
-                        ))}
-                      </ul>
-                    </details>
-                  )}
-                  {finalResult.imageFailures.length > 0 && (
-                    <details className="mt-2">
-                      <summary className="cursor-pointer text-xs font-medium text-text-muted">
-                        Image failures ({finalResult.imageFailures.length})
-                      </summary>
-                      <ul className="mt-2 max-h-60 space-y-1 overflow-auto text-xs text-amber-700">
-                        {finalResult.imageFailures.map((err, i) => (
                           <li key={i}>
                             Row {err.row + 1}: {err.message}
                           </li>

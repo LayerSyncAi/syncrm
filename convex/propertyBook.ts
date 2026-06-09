@@ -16,6 +16,9 @@ const MAX_BATCH_SIZE = 25;
 const MAX_IMAGES_PER_LISTING = 10;
 const IMAGE_DOWNLOAD_DELAY_MS = 200;
 const IMAGE_DOWNLOAD_CONCURRENCY = 3;
+// Image downloading is temporarily disabled: imported images were rendering as
+// blank placeholders. Flip back to true once image URL resolution is fixed.
+const IMAGE_IMPORT_ENABLED: boolean = false;
 const PB_AGENCY_CACHE_KEY = "agencies:directory";
 const PB_AGENCY_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 
@@ -219,7 +222,6 @@ export const importBatch = action({
     skipped: number;
     failed: number;
     errors: Array<{ row: number; message: string }>;
-    imageFailures: Array<{ row: number; url: string; message: string }>;
   }> => {
     assertNotDisabled();
     if (args.listings.length === 0) {
@@ -229,7 +231,6 @@ export const importBatch = action({
         skipped: 0,
         failed: 0,
         errors: [],
-        imageFailures: [],
       };
     }
     if (args.listings.length > MAX_BATCH_SIZE) {
@@ -240,7 +241,6 @@ export const importBatch = action({
 
     await ctx.runMutation(internal.propertyBook.reserveImportSlot, {});
 
-    const imageFailures: Array<{ row: number; url: string; message: string }> = [];
     const resolved: Array<{
       row: number;
       listing: (typeof args.listings)[number];
@@ -249,16 +249,19 @@ export const importBatch = action({
 
     for (let i = 0; i < args.listings.length; i++) {
       const listing = args.listings[i];
-      const urls = listing.imageUrls.slice(0, MAX_IMAGES_PER_LISTING);
-      const { images, failures } = await downloadImagesConcurrent(
-        ctx,
-        urls,
-        i,
-        IMAGE_DOWNLOAD_CONCURRENCY,
-        IMAGE_DOWNLOAD_DELAY_MS
-      );
-      imageFailures.push(...failures);
-      resolved.push({ row: i, listing, images });
+      if (IMAGE_IMPORT_ENABLED) {
+        const urls = listing.imageUrls.slice(0, MAX_IMAGES_PER_LISTING);
+        const { images } = await downloadImagesConcurrent(
+          ctx,
+          urls,
+          i,
+          IMAGE_DOWNLOAD_CONCURRENCY,
+          IMAGE_DOWNLOAD_DELAY_MS
+        );
+        resolved.push({ row: i, listing, images });
+      } else {
+        resolved.push({ row: i, listing, images: [] });
+      }
     }
 
     const persisted = await ctx.runMutation(
@@ -284,7 +287,7 @@ export const importBatch = action({
       }
     );
 
-    return { ...persisted, imageFailures };
+    return persisted;
   },
 });
 
@@ -338,7 +341,7 @@ export const persistImported = internalMutation({
 
     for (const entry of entries) {
       try {
-        if (entry.images.length === 0) {
+        if (IMAGE_IMPORT_ENABLED && entry.images.length === 0) {
           result.errors.push({ row: entry.row, message: "no_images" });
           result.skipped++;
           continue;
@@ -621,5 +624,4 @@ export type ImportBatchResult = {
   skipped: number;
   failed: number;
   errors: Array<{ row: number; message: string }>;
-  imageFailures: Array<{ row: number; url: string; message: string }>;
 };
