@@ -40,6 +40,8 @@ import {
   Eye,
 } from "lucide-react";
 import { commissionToasts } from "@/lib/toast";
+import { Badge } from "@/components/ui/badge";
+import { formatMoney } from "@/lib/currency";
 
 type Scenario = "shared_deal" | "own_property_own_lead" | "company_property";
 type CommissionStatus = "pending" | "approved" | "paid";
@@ -290,8 +292,8 @@ export default function CommissionsPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-semibold">Commissions</h2>
+        <div className="space-y-1">
+          <h1 className="text-h1">Commissions</h1>
           <p className="text-sm text-text-muted">
             Configure commission split scenarios and track deal commissions.
           </p>
@@ -342,15 +344,10 @@ export default function CommissionsPage() {
             className="space-y-4"
           >
             <div className="flex justify-end">
-              <button
-                onClick={openCreateDrawer}
-                className="group flex h-10 items-center gap-2 rounded-full bg-border pl-3 pr-4 transition-all duration-300 ease-in-out hover:bg-primary hover:pl-2 hover:text-white active:bg-primary-600"
-              >
-                <span className="flex items-center justify-center overflow-hidden rounded-full bg-primary p-1 text-white transition-all duration-300 group-hover:bg-white">
-                  <Plus className="h-0 w-0 transition-all duration-300 group-hover:h-4 group-hover:w-4 group-hover:text-primary" />
-                </span>
-                <span className="text-sm font-medium">Add scenario</span>
-              </button>
+              <Button onClick={openCreateDrawer} className="h-10 gap-2">
+                <Plus className="h-4 w-4" />
+                Add scenario
+              </Button>
             </div>
 
             {configs === undefined ? (
@@ -476,7 +473,7 @@ export default function CommissionsPage() {
                 </p>
               </div>
             ) : (
-              <div className="rounded-lg border border-border overflow-hidden">
+              <div className="hidden md:block rounded-lg border border-border overflow-hidden">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -493,11 +490,7 @@ export default function CommissionsPage() {
                   <motion.tbody variants={listVariants} initial="hidden" animate="show">
                     {dealCommissions.map((commission: any) => {
                       const fmt = (amount: number) =>
-                        new Intl.NumberFormat("en-US", {
-                          style: "currency",
-                          currency: commission.dealCurrency,
-                          minimumFractionDigits: 0,
-                        }).format(amount);
+                        formatMoney(amount, commission.dealCurrency, { decimals: 0 });
 
                       return (
                         <motion.tr
@@ -513,7 +506,7 @@ export default function CommissionsPage() {
                               <span className="text-text-muted">—</span>
                             )}
                           </TableCell>
-                          <TableCell>{fmt(commission.dealValue)}</TableCell>
+                          <TableCell className="tabular-nums">{fmt(commission.dealValue)}</TableCell>
                           <TableCell>
                             <div>
                               <div className="text-sm">{commission.contactOwnerName || commission.leadAgentName}</div>
@@ -541,19 +534,13 @@ export default function CommissionsPage() {
                           </TableCell>
                           <TableCell>
                             {commission.status === "pending" && (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-                                <Clock className="h-3 w-3" /> Pending
-                              </span>
+                              <Badge variant="warning" className="gap-1"><Clock className="h-3 w-3" /> Pending</Badge>
                             )}
                             {commission.status === "approved" && (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
-                                <CheckCircle className="h-3 w-3" /> Approved
-                              </span>
+                              <Badge variant="info" className="gap-1"><CheckCircle className="h-3 w-3" /> Approved</Badge>
                             )}
                             {commission.status === "paid" && (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                                <CheckCircle className="h-3 w-3" /> Paid
-                              </span>
+                              <Badge variant="success" className="gap-1"><CheckCircle className="h-3 w-3" /> Paid</Badge>
                             )}
                           </TableCell>
                           <TableCell>
@@ -575,6 +562,50 @@ export default function CommissionsPage() {
                   </motion.tbody>
                 </Table>
               </div>
+            )}
+
+            {/* Mobile: stacked cards instead of a horizontally scrolling table */}
+            {dealCommissions && dealCommissions.length > 0 && (
+              <motion.div variants={listVariants} initial="hidden" animate="show" className="space-y-3 md:hidden">
+                {dealCommissions.map((commission: any) => {
+                  const fmt = (amount: number) => formatMoney(amount, commission.dealCurrency, { decimals: 0 });
+                  return (
+                    <div key={commission._id} className="rounded-[12px] border border-border-strong bg-card-bg p-4 space-y-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">{commission.leadName}</p>
+                          {commission.propertyTitle && <p className="truncate text-xs text-text-muted">{commission.propertyTitle}</p>}
+                        </div>
+                        {commission.status === "pending" && <Badge variant="warning" className="gap-1"><Clock className="h-3 w-3" /> Pending</Badge>}
+                        {commission.status === "approved" && <Badge variant="info" className="gap-1"><CheckCircle className="h-3 w-3" /> Approved</Badge>}
+                        {commission.status === "paid" && <Badge variant="success" className="gap-1"><CheckCircle className="h-3 w-3" /> Paid</Badge>}
+                      </div>
+                      <p className="text-lg font-semibold tabular-nums">{fmt(commission.dealValue)}</p>
+                      <div className="space-y-1 text-xs text-text-muted">
+                        <div className="flex justify-between gap-2">
+                          <span>{commission.contactOwnerName || commission.leadAgentName}</span>
+                          <span className="tabular-nums">{commission.leadAgentPercent}% &middot; {fmt(commission.leadAgentAmount)}</span>
+                        </div>
+                        {commission.propertyAgentName !== "—" && (
+                          <div className="flex justify-between gap-2">
+                            <span>{commission.propertyOwnerName || commission.propertyAgentName}</span>
+                            <span className="tabular-nums">{commission.propertyAgentPercent}% &middot; {fmt(commission.propertyAgentAmount)}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between gap-2">
+                          <span>Company</span>
+                          <span className="tabular-nums">{commission.companyPercent}% &middot; {fmt(commission.companyAmount)}</span>
+                        </div>
+                      </div>
+                      <div className="flex justify-end">
+                        <Button variant="secondary" className="h-9 gap-2 px-3 text-xs" onClick={() => setDetailCommissionId(commission._id)}>
+                          <Eye className="h-4 w-4" /> Details
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </motion.div>
             )}
 
             <PaginationControls
@@ -759,11 +790,7 @@ export default function CommissionsPage() {
         if (!detailCommission) return null;
 
         const fmt = (amount: number) =>
-          new Intl.NumberFormat("en-US", {
-            style: "currency",
-            currency: detailCommission.dealCurrency,
-            minimumFractionDigits: 0,
-          }).format(amount);
+          formatMoney(amount, detailCommission.dealCurrency, { decimals: 0 });
 
         const scenarioLabel = detailCommission.configScenario
           ? scenarioLabels[detailCommission.configScenario as Scenario]
