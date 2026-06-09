@@ -2,23 +2,48 @@
 
 :root {
   color-scheme: light;
-  --bg: #f1f5ff;
-  --content-bg: #f5f7ff;
+
+  /* Surface ladder — cool neutral; gold is the only brand hue.
+     card (lightest) > surface-2 > content > bg (deepest) */
+  --bg: #e8ecf4;
+  --content-bg: #f1f4f9;
   --card-bg: #ffffff;
-  --surface-2: #eef2ff;
+  --surface-2: #f3f5fa;
+  --surface-raised: #ffffff;
+
   --text: #1f2a44;
   --text-muted: #5b647f;
   --text-dim: #7a869c;
+
   --border: rgba(63, 82, 138, 0.14);
   --border-strong: rgba(63, 82, 138, 0.22);
+
   --primary: #eca400;
   --primary-600: #d89500;
   --primary-glow: rgba(236, 164, 0, 0.22);
-  --row-hover: rgba(42, 89, 37, 0.08);
+
+  /* Single accent: row hover is a gold tint, not green */
+  --row-hover: rgba(236, 164, 0, 0.07);
+
   --success: #16a34a;
   --warning: #ca8a04;
   --danger: #dc2626;
   --info: #0284c7;
+
+  /* Semantic status pairs — soft tint background + AA-contrast foreground */
+  --status-success-bg: #e7f6ec;
+  --status-success-fg: #15803d;
+  --status-warning-bg: #fbf0dc;
+  --status-warning-fg: #a45a07;
+  --status-danger-bg: #fce9e9;
+  --status-danger-fg: #b91c1c;
+  --status-info-bg: #e6f1fb;
+  --status-info-fg: #0a6bb5;
+  --status-neutral-bg: #eef1f6;
+  --status-neutral-fg: #475569;
+  --status-neutral-strong-bg: #e1e6ef;
+  --status-neutral-strong-fg: #334155;
+
   --sidebar-width: 272px;
   --sidebar-width-collapsed: 72px;
   --topbar-height: 56px;
@@ -29,6 +54,7 @@
   --color-content-bg: var(--content-bg);
   --color-card-bg: var(--card-bg);
   --color-surface-2: var(--surface-2);
+  --color-surface-raised: var(--surface-raised);
   --color-text: var(--text);
   --color-text-muted: var(--text-muted);
   --color-text-dim: var(--text-dim);
@@ -48,8 +74,47 @@ body {
   background: var(--content-bg);
   color: var(--text);
   font-family: var(--font-inter), system-ui, sans-serif;
-  font-size: 14px;
-  line-height: 1.25rem;
+  font-size: 15px;
+  line-height: 1.45rem;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Type scale — hierarchy through scale + weight (≥1.25 ratio).
+   Applied as deliberate classes so headings stop reading as body. */
+.text-display {
+  font-size: 1.875rem;
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+.text-h1 {
+  font-size: clamp(1.25rem, 4.5vw, 1.5rem);
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+.text-h2 {
+  font-size: 1.1875rem;
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+.text-h3 {
+  font-size: 1rem;
+  line-height: 1.4;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.text-eyebrow {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 * {
@@ -89,27 +154,6 @@ a {
 @keyframes shimmer {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(100%); }
-}
-
-@keyframes price-shine {
-  0% { background-position: -200% center; }
-  100% { background-position: 200% center; }
-}
-
-.price-shine {
-  background: linear-gradient(
-    90deg,
-    var(--text) 0%,
-    var(--text) 35%,
-    var(--primary) 50%,
-    var(--text) 65%,
-    var(--text) 100%
-  );
-  background-size: 200% auto;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: price-shine 3s ease-in-out 0.6s 1;
 }
 
 /* Task overdue urgency animations */

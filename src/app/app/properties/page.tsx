@@ -871,7 +871,7 @@ export default function PropertiesPage() {
                     transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.15 }}
                     className="text-sm font-medium"
                   >
-                    <span className="price-shine">{formatPrice(property.price, property.currency)}</span>
+                    <span className="tabular-nums">{formatPrice(property.price, property.currency)}</span>
                   </motion.div>
                 </CardHeader>
                 <CardContent className="flex flex-1 flex-col gap-3">

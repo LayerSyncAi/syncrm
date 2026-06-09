@@ -48,6 +48,36 @@ export function formatCurrency(
   return `${symbol}${formatted}`;
 }
 
+/**
+ * Unified money formatter. Always renders currency symbol + thousands
+ * separators, never a raw float. `decimals` defaults to 2 (transactional);
+ * pass 0 for whole-unit displays like property prices.
+ *
+ * Numeric handling matches formatCurrency exactly: string inputs are cleaned
+ * with the same /[^\d.-]/g strip, then parseFloat, then guarded with isNaN.
+ */
+export function formatMoney(
+  value: number | string | undefined | null,
+  currencyCode: string = "USD",
+  options?: { decimals?: number }
+): string {
+  if (value === undefined || value === "" || value === null) return "";
+
+  const numValue =
+    typeof value === "string" ? parseFloat(value.replace(/[^\d.-]/g, "")) : value;
+
+  if (isNaN(numValue)) return "";
+
+  const decimals = options?.decimals ?? 2;
+  const symbol = getCurrencySymbol(currencyCode);
+  const formatted = numValue.toLocaleString("en-US", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+
+  return `${symbol}${formatted}`;
+}
+
 export function parseCurrencyInput(value: string): string {
   // Remove all non-numeric characters except decimal point and minus
   return value.replace(/[^\d.-]/g, "");
