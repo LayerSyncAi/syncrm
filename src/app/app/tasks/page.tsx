@@ -9,12 +9,13 @@ import { Id } from "../../../../convex/_generated/dataModel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 import { Table, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { PaginationControls } from "@/components/ui/pagination";
 import { usePagination } from "@/hooks/usePagination";
 import { Tooltip } from "@/components/ui/tooltip";
-import { Eye, ExternalLink, Trash2, Plus, Clock } from "lucide-react";
+import { Eye, ExternalLink, Trash2, Plus, Clock, ClipboardList } from "lucide-react";
 import { useRequireAuth } from "@/hooks/useAuth";
 import { DueDateRing } from "@/components/ui/due-date-ring";
 import { Modal } from "@/components/ui/modal";
@@ -360,9 +361,16 @@ export default function TasksPage() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
       ) : tasks.length === 0 ? (
-        <Card className="p-8 text-center">
-          <p className="text-text-muted">No tasks found matching your filters.</p>
-        </Card>
+        <EmptyState
+          icon={ClipboardList}
+          title="No tasks to show"
+          description="Adjust the status or activity-type filters above, or create a task to track a call, viewing, or follow-up."
+          action={
+            <Button onClick={() => setShowCreateModal(true)} className="gap-2">
+              <Plus className="h-4 w-4" /> New task
+            </Button>
+          }
+        />
       ) : (
         <>
         <div className="hidden md:block">

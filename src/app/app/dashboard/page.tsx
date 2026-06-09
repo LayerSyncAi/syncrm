@@ -8,6 +8,16 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { ErrorBoundary } from "@/components/common/error-boundary";
+import { Tooltip } from "@/components/ui/tooltip";
+import { Info } from "lucide-react";
+
+// Plain-language explanation for each KPI, surfaced on hover/focus.
+const kpiHelp: Record<string, string> = {
+  "Total leads": "Every lead in your pipeline",
+  "Open leads": "Leads not yet won or lost",
+  Won: "Leads closed as won",
+  Lost: "Leads closed as lost",
+};
 
 // --- #13: Animated counter that rolls up from 0 ---
 
@@ -185,9 +195,16 @@ export default function DashboardPage() {
               transition={{ type: "spring", stiffness: 400, damping: 25 }}
             >
               <Card className="p-5">
-                <p className="text-eyebrow text-text-muted">
-                  {stat.label}
-                </p>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-eyebrow text-text-muted">
+                    {stat.label}
+                  </p>
+                  {kpiHelp[stat.label] && (
+                    <Tooltip content={kpiHelp[stat.label]} side="bottom">
+                      <Info className="h-3 w-3 cursor-help text-text-dim" aria-label={kpiHelp[stat.label]} />
+                    </Tooltip>
+                  )}
+                </div>
                 {/* #13: Counter number roll-up */}
                 <p className="mt-2 text-display tabular-nums">
                   <AnimatedCounter value={stat.value} />

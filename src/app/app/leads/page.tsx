@@ -18,9 +18,10 @@ import { useRequireAuth } from "@/hooks/useAuth";
 import { leadToasts } from "@/lib/toast";
 import { Modal } from "@/components/ui/modal";
 import { Tooltip } from "@/components/ui/tooltip";
-import { Eye, Trash2, ArrowUpDown, ArrowUp, ArrowDown, LayoutList, Columns3, Plus } from "lucide-react";
+import { Eye, Trash2, ArrowUpDown, ArrowUp, ArrowDown, LayoutList, Columns3, Plus, Waypoints } from "lucide-react";
 import { ErrorBoundary } from "@/components/common/error-boundary";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
 import { KanbanBoard } from "@/components/leads/kanban-board";
 
 const listVariants = {
@@ -618,17 +619,18 @@ export default function LeadsPage() {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
           </div>
         ) : leads.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ type: "spring", stiffness: 300, damping: 24 }}
-            className="text-center py-12"
-          >
-            <p className="text-text-muted">No leads found.</p>
-            <Link href="/app/leads/new">
-              <Button className="mt-4">Create your first lead</Button>
-            </Link>
-          </motion.div>
+          <EmptyState
+            icon={Waypoints}
+            title="No leads to show"
+            description="Capture a new opportunity, or adjust your filters if you expected results here."
+            action={
+              <Link href="/app/leads/new">
+                <Button className="gap-2">
+                  <Plus className="h-4 w-4" /> New lead
+                </Button>
+              </Link>
+            }
+          />
         ) : (
           <ErrorBoundary sectionName="Lead Table">
             <div className="hidden md:block">
