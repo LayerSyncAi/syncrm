@@ -44,3 +44,7 @@ next-env.d.ts
 # PWA - intermediate build artifacts
 /public/sw.js.map
 /.sw-out
+
+# Python bytecode caches (from .claude skill scripts)
+__pycache__/
+*.pyc
