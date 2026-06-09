@@ -131,10 +131,10 @@ export function KpiCard({
   return (
     <Card className="p-4">
       <div className="flex items-start justify-between gap-2">
-        <p className="text-xs uppercase tracking-wide text-text-dim">{label}</p>
+        <p className="text-eyebrow text-text-muted">{label}</p>
         {icon ? <span className="text-text-muted">{icon}</span> : null}
       </div>
-      <p className="mt-2 text-xl font-semibold">{value}</p>
+      <p className="mt-2 text-2xl font-semibold tabular-nums">{value}</p>
       {hint ? <p className="mt-1 text-xs text-text-dim">{hint}</p> : null}
     </Card>
   );
@@ -170,7 +170,7 @@ export function BarsCard({
   return (
     <Card>
       <CardHeader>
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
+        <h3 className="text-h3">
           {title}
         </h3>
       </CardHeader>
@@ -223,7 +223,7 @@ export function PieCard({
   return (
     <Card>
       <CardHeader>
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
+        <h3 className="text-h3">
           {title}
         </h3>
       </CardHeader>

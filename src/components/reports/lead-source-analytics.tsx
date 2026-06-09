@@ -88,11 +88,11 @@ export function LeadSourceSection({
 
       <Card>
         <CardHeader>
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
+          <h3 className="text-h3">
             Lead source breakdown
           </h3>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
+        <CardContent className="hidden md:block overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -117,6 +117,29 @@ export function LeadSourceSection({
               ))}
             </TableBody>
           </Table>
+        </CardContent>
+
+        {/* Mobile: stacked cards instead of a horizontally scrolling table */}
+        <CardContent className="space-y-3 md:hidden">
+          {data.bySource.map((s) => (
+            <div key={s.source} className="rounded-[12px] border border-border-strong bg-card-bg p-4">
+              <p className="font-medium">{leadSourceLabel(s.source)}</p>
+              <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                {[
+                  ["Leads", s.leads],
+                  ["Won", s.won],
+                  ["Conv.", `${s.conversionRate}%`],
+                  ["Sales value", formatCurrencyMap(s.salesValue)],
+                  ["Marketing spend", formatCurrencyMap(s.spend)],
+                ].map(([k, v]) => (
+                  <div key={k as string} className="flex justify-between gap-2">
+                    <dt className="text-text-muted">{k}</dt>
+                    <dd className="text-right tabular-nums">{v}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          ))}
         </CardContent>
       </Card>
       <p className="text-xs text-text-dim">

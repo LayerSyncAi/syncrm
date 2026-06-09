@@ -11,6 +11,7 @@ import {
   SectionToolbar,
 } from "./report-ui";
 import type { ExportPayload } from "@/lib/report-export";
+import { formatMoney } from "@/lib/currency";
 
 interface Row {
   userId: string;
@@ -31,7 +32,7 @@ function Leaderboard({
   return (
     <Card>
       <CardHeader>
-        <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-text-muted">
+        <h3 className="flex items-center gap-2 text-h3">
           <Trophy className="h-4 w-4 text-primary" />
           {title}
         </h3>
@@ -87,7 +88,10 @@ export function LeaderboardSection({
   }
 
   const num = (v: number) => String(v);
-  const money = (v: number) => Math.round(v).toLocaleString("en-US");
+  // Revenue is summed across currencies for ranking; render in the default
+  // currency (symbol + separators) with the mixed-currency asterisk + footnote
+  // conveying the caveat.
+  const money = (v: number) => formatMoney(v, "USD", { decimals: 0 });
   const pct = (v: number) => `${v}%`;
 
   const buildExport = (): ExportPayload => ({

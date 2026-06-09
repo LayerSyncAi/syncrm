@@ -110,11 +110,11 @@ export function RevenueSummarySection({
 
       <Card>
         <CardHeader>
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
+          <h3 className="text-h3">
             Pipeline by stage
           </h3>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
+        <CardContent className="hidden md:block overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -139,6 +139,28 @@ export function RevenueSummarySection({
               ))}
             </TableBody>
           </Table>
+        </CardContent>
+
+        {/* Mobile: stacked cards instead of a horizontally scrolling table */}
+        <CardContent className="space-y-3 md:hidden">
+          {data.pipelineByStage.map((s) => (
+            <div key={s.stageId} className="rounded-[12px] border border-border-strong bg-card-bg p-4">
+              <p className="font-medium">{s.name}</p>
+              <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                {[
+                  ["Open", s.openCount],
+                  ["Win %", s.winProbability !== null ? `${s.winProbability}%` : "—"],
+                  ["Estimated", formatCurrencyMap(s.estimatedValue)],
+                  ["Weighted", formatCurrencyMap(s.weightedValue)],
+                ].map(([k, v]) => (
+                  <div key={k as string} className="flex justify-between gap-2">
+                    <dt className="text-text-muted">{k}</dt>
+                    <dd className="text-right tabular-nums">{v}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          ))}
         </CardContent>
       </Card>
 

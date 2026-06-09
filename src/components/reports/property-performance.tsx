@@ -113,11 +113,11 @@ export function PropertyPerformanceSection({
           <PieCard title="Listings by status" data={statusData} nameKey="name" valueKey="count" />
           <Card>
             <CardHeader>
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-text-muted">
+              <h3 className="text-h3">
                 Property engagement
               </h3>
             </CardHeader>
-            <CardContent className="overflow-x-auto">
+            <CardContent className="hidden md:block overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -144,6 +144,29 @@ export function PropertyPerformanceSection({
                   ))}
                 </TableBody>
               </Table>
+            </CardContent>
+
+            {/* Mobile: stacked cards instead of a horizontally scrolling table */}
+            <CardContent className="space-y-3 md:hidden">
+              {data.rows.slice(0, 30).map((r) => (
+                <div key={r.propertyId} className="rounded-[12px] border border-border-strong bg-card-bg p-4">
+                  <p className="truncate font-medium" title={r.title}>{r.title}</p>
+                  <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                    {[
+                      ["Inquiries", r.inquiries],
+                      ["Viewings", r.viewings],
+                      ["Offers", r.offers],
+                      ["Days on market", r.daysOnMarket],
+                      ["Spend", formatCurrencyMap(r.spend)],
+                    ].map(([k, v]) => (
+                      <div key={k as string} className="flex justify-between gap-2">
+                        <dt className="text-text-muted">{k}</dt>
+                        <dd className="text-right tabular-nums">{v}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+              ))}
             </CardContent>
           </Card>
         </div>

@@ -96,7 +96,7 @@ export default function ReportsPage() {
           <CardHeader>
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <h2 className="text-lg font-semibold">Reports &amp; Analytics</h2>
+                <h1 className="text-h1">Reports &amp; Analytics</h1>
                 <p className="text-sm text-text-muted">
                   Performance across agents, properties, lead sources and revenue.
                 </p>
