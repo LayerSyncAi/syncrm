@@ -25,6 +25,7 @@ import {
   Shield,
   UserCircle,
 } from "lucide-react";
+import { brand } from "@/config/brand";
 
 const tourSteps: Step[] = [
   {
@@ -34,7 +35,7 @@ const tourSteps: Step[] = [
     content: "",
     data: {
       icon: "welcome",
-      title: "Welcome to SynCRM!",
+      title: `Welcome to ${brand.name}!`,
       description:
         "Let us show you around. This quick tour will walk you through the main features so you can hit the ground running.",
     },
@@ -185,12 +186,12 @@ function CustomTooltip({
       className="relative z-[10001] w-[340px] max-w-[calc(100vw-32px)] rounded-2xl border border-border-strong bg-card-bg shadow-[0_20px_60px_rgba(0,0,0,0.3)] overflow-hidden"
     >
       {/* Top accent gradient */}
-      <div className="h-1 w-full bg-gradient-to-r from-[#2a5925] via-[#eca400] to-[#2a5925]" />
+      <div className="h-1 w-full bg-gradient-to-r from-sidebar-bg via-primary to-sidebar-bg" />
 
       <div className="p-5">
         {/* Icon and title */}
         <div className="flex items-start gap-3 mb-3">
-          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[#2a5925]/10 text-[#2a5925]">
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-sidebar-bg/10 text-sidebar-bg">
             {data?.icon ? iconMap[data.icon] : null}
           </div>
           <div className="flex-1 min-w-0">
@@ -211,7 +212,7 @@ function CustomTooltip({
             <div
               key={i}
               className={`h-1 flex-1 rounded-full transition-colors duration-300 ${
-                i <= index ? "bg-[#2a5925]" : "bg-border"
+                i <= index ? "bg-sidebar-bg" : "bg-border"
               }`}
             />
           ))}
@@ -240,7 +241,7 @@ function CustomTooltip({
 
             <button
               {...primaryProps}
-              className="flex items-center gap-1 rounded-lg bg-[#2a5925] px-4 py-2 text-xs font-semibold text-white transition-all hover:bg-[#1e3f1a] shadow-sm"
+              className="flex items-center gap-1 rounded-lg bg-sidebar-bg px-4 py-2 text-xs font-semibold text-white transition-all hover:bg-sidebar-bg-hover shadow-sm"
             >
               {isWelcome
                 ? "Start Tour"
@@ -359,7 +360,7 @@ export function OnboardingTour({ isAdmin, onComplete }: OnboardingTourProps) {
               className="relative w-[400px] max-w-[calc(100vw-32px)] rounded-2xl border border-border-strong bg-card-bg shadow-[0_20px_60px_rgba(0,0,0,0.3)] overflow-hidden"
             >
               {/* Top accent */}
-              <div className="h-1.5 w-full bg-gradient-to-r from-[#2a5925] via-[#eca400] to-[#2a5925]" />
+              <div className="h-1.5 w-full bg-gradient-to-r from-sidebar-bg via-primary to-sidebar-bg" />
 
               <button
                 onClick={handleCompletionDismiss}
@@ -379,9 +380,9 @@ export function OnboardingTour({ isAdmin, onComplete }: OnboardingTourProps) {
                     damping: 15,
                     delay: 0.2,
                   }}
-                  className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#2a5925]/10"
+                  className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-sidebar-bg/10"
                 >
-                  <PartyPopper className="h-8 w-8 text-[#2a5925]" />
+                  <PartyPopper className="h-8 w-8 text-sidebar-bg" />
                 </motion.div>
 
                 <motion.h2
@@ -411,7 +412,7 @@ export function OnboardingTour({ isAdmin, onComplete }: OnboardingTourProps) {
                 >
                   <button
                     onClick={handleCompletionDismiss}
-                    className="rounded-xl bg-[#2a5925] px-8 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#1e3f1a] hover:shadow-md"
+                    className="rounded-xl bg-sidebar-bg px-8 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-sidebar-bg-hover hover:shadow-md"
                   >
                     Get Started
                   </button>
@@ -424,7 +425,7 @@ export function OnboardingTour({ isAdmin, onComplete }: OnboardingTourProps) {
                       key={i}
                       className="absolute h-2 w-2 rounded-full"
                       style={{
-                        background: ["#2a5925", "#eca400", "#3b82f6", "#ef4444", "#8b5cf6", "#ec4899"][i % 6],
+                        background: [brand.colors.sidebar, brand.colors.primary, "#3b82f6", "#ef4444", "#8b5cf6", "#ec4899"][i % 6],
                         left: `${10 + (i * 7.5)}%`,
                         top: `${15 + ((i * 13) % 60)}%`,
                       }}

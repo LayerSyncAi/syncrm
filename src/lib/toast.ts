@@ -1,4 +1,5 @@
 import { animatedToast } from "@/components/ui/animated-toaster";
+import { brand } from "@/config/brand";
 
 // ─────────────────────────────────────────────────────────
 // Centralized toast notification config for SynCRM
@@ -27,7 +28,7 @@ export const authToasts = {
 
   signupSuccess: () =>
     animatedToast.success("Account created", {
-      description: "Welcome to SynCRM! Setting up your workspace...",
+      description: `Welcome to ${brand.name}! Setting up your workspace...`,
     }),
 
   passwordResetRequested: (email: string) =>

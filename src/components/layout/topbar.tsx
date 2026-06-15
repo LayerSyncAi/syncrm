@@ -9,6 +9,7 @@ import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { cn } from "@/lib/utils";
 import { TIMEZONES, detectBrowserTimezone } from "@/lib/timezones";
+import { brand } from "@/config/brand";
 
 interface TopbarProps {
   userName: string;
@@ -43,7 +44,7 @@ export function Topbar({ userName, userEmail, orgName, userTimezone, onMobileMen
 
   const title = useMemo(() => {
     const match = Object.keys(titleMap).find((key) => pathname.startsWith(key));
-    return match ? titleMap[match] : "SynCRM";
+    return match ? titleMap[match] : brand.name;
   }, [pathname]);
 
   // Recommendation #4: Progressive scroll shadow + backdrop blur

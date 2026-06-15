@@ -9,6 +9,7 @@ const Hyperspeed = dynamic(() => import("@/components/ui/hyperspeed"), {
   ssr: false,
 });
 import { useAuth } from "@/hooks/useAuth";
+import { brand } from "@/config/brand";
 import { motion, useInView, useScroll, useTransform } from "framer-motion";
 import {
   ArrowRight,
@@ -159,7 +160,7 @@ function HeroCopy() {
             NEW
           </span>
           <span className="ml-1.5 mr-1 inline-block text-text-muted">
-            The CRM built for real estate teams
+            {brand.tagline}
           </span>
           <ArrowUpRight className="mr-2 inline-block h-3.5 w-3.5 text-text-muted" />
         </Link>
@@ -180,7 +181,7 @@ function HeroCopy() {
       </h1>
 
       <p className="mx-auto my-4 max-w-3xl text-center text-base leading-relaxed text-text-muted md:my-6 md:text-xl md:leading-relaxed">
-        SynCRM helps real estate teams track leads, match properties, and close
+        {brand.name} helps real estate teams track leads, match properties, and close
         deals faster — with beautiful dashboards, smart scoring, and real-time
         collaboration.
       </p>
@@ -207,7 +208,7 @@ function HeroMockupScreen() {
           <span className="size-2 rounded-full bg-green-400" />
         </div>
         <span className="rounded bg-[#2d3a56] px-2 py-0.5 text-xs text-zinc-100">
-          app.syncrm.com
+          {brand.appDomain}
         </span>
         <ChevronDown className="h-3.5 w-3.5 text-white/60" />
       </div>
@@ -607,7 +608,7 @@ export default function LandingPage() {
                 custom={0}
                 className="text-xs font-semibold uppercase tracking-[0.2em] text-primary-600"
               >
-                Why SynCRM
+                Why {brand.name}
               </motion.span>
               <motion.h2
                 variants={fadeUp}
@@ -730,7 +731,7 @@ export default function LandingPage() {
             transition={{ delay: 0.1, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-white/80"
           >
-            Join real estate teams who use SynCRM to stay organized, collaborate
+            Join real estate teams who use {brand.name} to stay organized, collaborate
             better, and close deals faster. Set up your workspace in minutes.
           </motion.p>
           <motion.div
@@ -763,7 +764,7 @@ export default function LandingPage() {
             </span>
           </div>
           <p className="text-xs text-text-dim">
-            &copy; {new Date().getFullYear()} SynCRM. Built for real estate teams.
+            &copy; {new Date().getFullYear()} {brand.legalName}. Built for real estate teams.
           </p>
           <Link
             href="/login"

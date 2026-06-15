@@ -6,29 +6,38 @@
   /* Surface ladder — cool neutral; gold is the only brand hue.
      card (lightest) > surface-2 > content > bg (deepest) */
   --bg: #e8ecf4;
-  --content-bg: #f1f4f9;
+  --content-bg: var(--brand-background, #f1f4f9);
   --card-bg: #ffffff;
   --surface-2: #f3f5fa;
   --surface-raised: #ffffff;
 
-  --text: #1f2a44;
+  --text: var(--brand-foreground, #1f2a44);
   --text-muted: #5b647f;
   --text-dim: #677087;
 
   --border: rgba(63, 82, 138, 0.14);
   --border-strong: rgba(63, 82, 138, 0.22);
 
-  --primary: #eca400;
-  --primary-600: #d89500;
-  --primary-glow: rgba(236, 164, 0, 0.22);
+  /* Brand accent — sourced from --brand-* (set by brand.ts via layout.tsx),
+     falling back to the SynCRM gold. Glow + row-hover derive from it so a
+     rebrand only needs the one primary colour. */
+  --primary: var(--brand-primary, #eca400);
+  --primary-600: var(--brand-primary-600, #d89500);
+  --primary-foreground: var(--brand-primary-foreground, #ffffff);
+  --primary-glow: color-mix(in srgb, var(--primary) 22%, transparent);
 
-  /* Single accent: row hover is a gold tint, not green */
-  --row-hover: rgba(236, 164, 0, 0.07);
+  /* Single accent: row hover is a primary tint */
+  --row-hover: color-mix(in srgb, var(--primary) 7%, transparent);
 
-  --success: #16a34a;
-  --warning: #ca8a04;
-  --danger: #dc2626;
-  --info: #0284c7;
+  /* Brand sidebar surface (green by default) */
+  --sidebar-bg: var(--brand-sidebar, #2a5925);
+  --sidebar-bg-hover: var(--brand-sidebar-hover, #1e3f1a);
+  --sidebar-fg: var(--brand-sidebar-foreground, #fcfcfc);
+
+  --success: var(--brand-success, #16a34a);
+  --warning: var(--brand-warning, #ca8a04);
+  --danger: var(--brand-danger, #dc2626);
+  --info: var(--brand-info, #0284c7);
 
   /* Semantic status pairs — soft tint background + AA-contrast foreground */
   --status-success-bg: #e7f6ec;
@@ -62,7 +71,11 @@
   --color-border-strong: var(--border-strong);
   --color-primary: var(--primary);
   --color-primary-600: var(--primary-600);
+  --color-primary-foreground: var(--primary-foreground);
   --color-row-hover: var(--row-hover);
+  --color-sidebar-bg: var(--sidebar-bg);
+  --color-sidebar-bg-hover: var(--sidebar-bg-hover);
+  --color-sidebar-fg: var(--sidebar-fg);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-danger: var(--danger);

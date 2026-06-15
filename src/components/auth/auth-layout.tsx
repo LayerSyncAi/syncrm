@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { motion, Variants } from "framer-motion";
+import { brand } from "@/config/brand";
 import {
   Star,
   BarChart3,
@@ -72,7 +73,7 @@ function DashboardMockup() {
         <div className="grid grid-cols-3 gap-2 mb-4">
           <div className="rounded-lg bg-white/[0.06] p-2.5">
             <div className="flex items-center gap-1 mb-1">
-              <Users className="h-3 w-3 text-[#eca400]" />
+              <Users className="h-3 w-3 text-primary" />
               <span className="text-[9px] text-slate-400">Leads</span>
             </div>
             <p className="text-base font-bold text-white">247</p>
@@ -83,7 +84,7 @@ function DashboardMockup() {
           </div>
           <div className="rounded-lg bg-white/[0.06] p-2.5">
             <div className="flex items-center gap-1 mb-1">
-              <Building2 className="h-3 w-3 text-[#eca400]" />
+              <Building2 className="h-3 w-3 text-primary" />
               <span className="text-[9px] text-slate-400">Properties</span>
             </div>
             <p className="text-base font-bold text-white">89</p>
@@ -94,7 +95,7 @@ function DashboardMockup() {
           </div>
           <div className="rounded-lg bg-white/[0.06] p-2.5">
             <div className="flex items-center gap-1 mb-1">
-              <BarChart3 className="h-3 w-3 text-[#eca400]" />
+              <BarChart3 className="h-3 w-3 text-primary" />
               <span className="text-[9px] text-slate-400">Deals</span>
             </div>
             <p className="text-base font-bold text-white">$1.2M</p>
@@ -108,9 +109,9 @@ function DashboardMockup() {
         {/* Pipeline bars */}
         <div className="space-y-2">
           {[
-            { label: "New Lead", width: "85%", delay: 1.0, color: "from-[#eca400] to-[#d89500]" },
-            { label: "Contacted", width: "62%", delay: 1.1, color: "from-[#eca400]/80 to-[#d89500]/80" },
-            { label: "Viewing", width: "44%", delay: 1.2, color: "from-[#eca400]/60 to-[#d89500]/60" },
+            { label: "New Lead", width: "85%", delay: 1.0, color: "from-primary to-primary-600" },
+            { label: "Contacted", width: "62%", delay: 1.1, color: "from-primary/80 to-primary-600/80" },
+            { label: "Viewing", width: "44%", delay: 1.2, color: "from-primary/60 to-primary-600/60" },
             { label: "Closed", width: "28%", delay: 1.3, color: "from-emerald-500/80 to-emerald-400/80" },
           ].map((bar) => (
             <div key={bar.label} className="flex items-center gap-2">
@@ -146,9 +147,9 @@ function SupplementalContent() {
       <div className="absolute inset-0 bg-gradient-to-br from-[#1f2a44] via-[#263554] to-[#1a2236]" />
 
       {/* Golden glow orbs */}
-      <div className="absolute -top-16 -right-16 w-72 h-72 rounded-full bg-[#eca400]/20 blur-[60px]" />
-      <div className="absolute bottom-1/4 -left-8 w-56 h-56 rounded-full bg-[#eca400]/15 blur-[50px]" />
-      <div className="absolute bottom-10 right-10 w-36 h-36 rounded-full bg-[#d89500]/10 blur-[40px]" />
+      <div className="absolute -top-16 -right-16 w-72 h-72 rounded-full bg-primary/20 blur-[60px]" />
+      <div className="absolute bottom-1/4 -left-8 w-56 h-56 rounded-full bg-primary/15 blur-[50px]" />
+      <div className="absolute bottom-10 right-10 w-36 h-36 rounded-full bg-primary-600/10 blur-[40px]" />
 
       {/* Subtle grid pattern */}
       <div
@@ -170,7 +171,7 @@ function SupplementalContent() {
           <h2 className="text-2xl font-bold leading-tight text-white lg:text-3xl">
             Close more deals,
             <br />
-            <span className="text-[#eca400]">faster than ever.</span>
+            <span className="text-primary">faster than ever.</span>
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-slate-400 max-w-sm">
             The real estate CRM that helps you track leads, manage your
@@ -204,7 +205,7 @@ function SupplementalContent() {
               {Array.from({ length: 5 }).map((_, i) => (
                 <Star
                   key={i}
-                  className="h-4 w-4 fill-[#eca400] text-[#eca400]"
+                  className="h-4 w-4 fill-primary text-primary"
                 />
               ))}
             </div>
@@ -235,7 +236,7 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
           href="/"
           className="sticky top-0 z-20 px-8 pt-8 pb-2 bg-content-bg text-xs uppercase tracking-[0.2em] font-semibold text-text-dim hover:text-text transition-colors md:px-14 lg:px-20"
         >
-          SynCRM
+          {brand.name}
         </Link>
         <div className="flex flex-1 items-center justify-center px-8 pb-10 md:px-14 lg:px-20">
           <div className="w-full max-w-lg">

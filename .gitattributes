@@ -1,0 +1,8 @@
+# White-label client assets: keep the fork's own logo files when merging
+# upstream changes, instead of taking upstream's defaults.
+#
+# Each fork must enable the "ours" merge driver once:
+#   git config merge.ours.driver true
+#
+# See docs/BRANDING.md.
+public/brand/**   merge=ours

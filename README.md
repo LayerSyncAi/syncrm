@@ -1,5 +1,19 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## White-label / Branding
+
+All client-specific branding (name, tagline, colours, logos, metadata) is
+centralised in **`src/config/brand.ts`**, driven by `NEXT_PUBLIC_BRAND_*`
+environment variables that fall back to the SynCRM defaults (so an unconfigured
+deploy is identical). To rebrand a client:
+
+1. Set the `NEXT_PUBLIC_BRAND_*` vars in `.env.local` and your host's env vars.
+2. Drop the client's logo files into `public/brand/` (same filenames).
+3. Redeploy (colours/names are inlined at build time).
+
+See **[docs/BRANDING.md](docs/BRANDING.md)** for the full guide and the complete
+list of environment variables.
+
 ## Environment variables
 
 Copy `.env.example` to `.env.local` and set at least:

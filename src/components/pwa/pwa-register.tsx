@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { brand } from "@/config/brand";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -70,7 +71,7 @@ export function PWARegister() {
   return (
     <div
       role="region"
-      aria-label="Install SynCRM app"
+      aria-label={`Install ${brand.name} app`}
       style={{
         position: "fixed",
         bottom: "1rem",
@@ -93,7 +94,7 @@ export function PWARegister() {
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/icons/icon-72x72.png"
-        alt="SynCRM"
+        alt={brand.name}
         width={40}
         height={40}
         style={{ borderRadius: "10px", flexShrink: 0 }}
@@ -101,7 +102,7 @@ export function PWARegister() {
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ margin: 0, fontWeight: 600, fontSize: "0.875rem", color: "var(--text, #1f2a44)" }}>
-          Install SynCRM
+          Install {brand.name}
         </p>
         <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted, #5b647f)", lineHeight: 1.4 }}>
           Add to your home screen for quick access

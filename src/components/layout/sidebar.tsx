@@ -26,6 +26,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { brand } from "@/config/brand";
 
 const navItems = [
   { label: "Dashboard", href: "/app/dashboard", icon: LayoutDashboard },
@@ -82,7 +83,7 @@ function NavItem({
   pillId: string;
 }) {
   const Icon = item.icon;
-  const textColor = active ? "text-[#eca400]" : "text-[#fcfcfc]";
+  const textColor = active ? "text-primary" : "text-sidebar-fg";
   const [hovered, setHovered] = useState(false);
 
   return (
@@ -148,10 +149,10 @@ function NavItem({
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -4 }}
             transition={{ type: "spring", stiffness: 500, damping: 30 }}
-            className="absolute left-full ml-3 z-50 whitespace-nowrap rounded-lg bg-[#1e3f1a] px-3 py-2 text-xs font-medium text-white shadow-lg"
+            className="absolute left-full ml-3 z-50 whitespace-nowrap rounded-lg bg-sidebar-bg-hover px-3 py-2 text-xs font-medium text-white shadow-lg"
           >
             {item.label}
-            <div className="absolute top-1/2 left-0 -translate-x-full -translate-y-1/2 border-4 border-transparent border-r-[#1e3f1a]" />
+            <div className="absolute top-1/2 left-0 -translate-x-full -translate-y-1/2 border-4 border-transparent border-r-sidebar-bg-hover" />
           </motion.div>
         )}
       </AnimatePresence>
@@ -202,7 +203,7 @@ export const Sidebar = memo(function Sidebar({ isAdmin, collapsed, onToggle, org
 
       <aside
         className={cn(
-          "fixed left-0 top-0 z-50 flex h-screen flex-col bg-[#2a5925] px-3 py-4 text-[#fcfcfc] transition-[width,transform] duration-200",
+          "fixed left-0 top-0 z-50 flex h-screen flex-col bg-sidebar-bg px-3 py-4 text-sidebar-fg transition-[width,transform] duration-200",
           // Desktop: standard sidebar behavior
           "max-md:w-[var(--sidebar-width)]",
           collapsed ? "md:w-[var(--sidebar-width-collapsed)]" : "md:w-[var(--sidebar-width)]",
@@ -215,7 +216,7 @@ export const Sidebar = memo(function Sidebar({ isAdmin, collapsed, onToggle, org
           type="button"
           onClick={onMobileClose}
           aria-label="Close sidebar"
-          className="absolute right-3 top-4 flex h-9 w-9 items-center justify-center rounded-full text-[#fcfcfc] transition hover:bg-white/10 md:hidden"
+          className="absolute right-3 top-4 flex h-9 w-9 items-center justify-center rounded-full text-sidebar-fg transition hover:bg-white/10 md:hidden"
         >
           <X className="h-5 w-5" />
         </button>
@@ -225,7 +226,7 @@ export const Sidebar = memo(function Sidebar({ isAdmin, collapsed, onToggle, org
           type="button"
           onClick={onToggle}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className="absolute -right-4 top-1/2 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-[#2a5925] text-[#fcfcfc] shadow-sm transition hover:bg-white/10 md:flex"
+          className="absolute -right-4 top-1/2 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-sidebar-bg text-sidebar-fg shadow-sm transition hover:bg-white/10 md:flex"
         >
         {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
       </button>
@@ -236,7 +237,9 @@ export const Sidebar = memo(function Sidebar({ isAdmin, collapsed, onToggle, org
             collapsed ? "w-full text-center" : "w-auto"
           )}
         >
-          {collapsed ? (orgName ? orgName[0].toUpperCase() : "S") : (orgName || "SynCRM")}
+          {collapsed
+            ? (orgName ? orgName[0].toUpperCase() : brand.name[0].toUpperCase())
+            : (orgName || brand.name)}
         </div>
       </div>
       <nav className="flex-1 space-y-1" data-tour="sidebar-nav">

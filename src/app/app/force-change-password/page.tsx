@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { KeyRound, Loader2 } from "lucide-react";
 import { authToasts } from "@/lib/toast";
+import { brand } from "@/config/brand";
 
 export default function ForceChangePasswordPage() {
   const router = useRouter();
@@ -70,7 +71,7 @@ export default function ForceChangePasswordPage() {
             </div>
             <div className="text-center space-y-1">
               <p className="text-xs uppercase tracking-[0.2em] text-text-dim">
-                SynCRM
+                {brand.name}
               </p>
               <h1 className="text-xl font-semibold">Change your password</h1>
               <p className="text-sm text-text-muted">

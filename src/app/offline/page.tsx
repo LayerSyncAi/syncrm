@@ -1,3 +1,5 @@
+import { brand } from "@/config/brand";
+
 export default function OfflinePage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-6 px-4 text-center"
@@ -26,7 +28,7 @@ export default function OfflinePage() {
 
         <h1 className="text-2xl font-semibold">You are offline</h1>
         <p style={{ color: "var(--text-muted, #5b647f)" }}>
-          SynCRM needs a connection to load your pipeline and leads. Please check
+          {brand.name} needs a connection to load your pipeline and leads. Please check
           your internet connection and try again.
         </p>
 

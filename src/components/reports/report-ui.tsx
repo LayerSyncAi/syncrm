@@ -22,20 +22,21 @@ import {
   exportReportPdf,
   type ExportPayload,
 } from "@/lib/report-export";
+import { brand } from "@/config/brand";
 
-// Theme colours pulled from the app's CSS tokens (see globals.css).
+// Theme colours sourced from the brand config (see src/config/brand.ts).
 export const COLOR = {
-  primary: "#eca400",
-  success: "#16a34a",
-  warning: "#ca8a04",
-  danger: "#dc2626",
-  info: "#0284c7",
+  primary: brand.colors.primary,
+  success: brand.colors.success,
+  warning: brand.colors.warning,
+  danger: brand.colors.danger,
+  info: brand.colors.info,
   muted: "#5b647f",
 };
 
 // Categorical palette for sources / stages / agents.
 export const PALETTE = [
-  "#eca400",
+  brand.colors.primary,
   "#0284c7",
   "#16a34a",
   "#dc2626",
