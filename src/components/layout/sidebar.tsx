@@ -242,6 +242,11 @@ export const Sidebar = memo(function Sidebar({ isAdmin, collapsed, onToggle, org
             : (orgName || brand.name)}
         </div>
       </div>
+      {/* Scrollable region: when the expandable panels grow taller than the
+          viewport, this area scrolls instead of overflowing off-screen. Scroll
+          is only enabled when expanded — overflow-y:auto forces overflow-x to
+          clip, which would cut off the collapsed-mode hover tooltips. */}
+      <div className={cn("flex min-h-0 flex-1 flex-col", !collapsed && "sidebar-scroll overflow-y-auto")}>
       <nav className="flex-1 space-y-1" data-tour="sidebar-nav">
         {navItems.map((item) => (
           <NavItem
@@ -418,6 +423,7 @@ export const Sidebar = memo(function Sidebar({ isAdmin, collapsed, onToggle, org
           )}
         </div>
       ) : null}
+      </div>
       </aside>
     </>
   );
