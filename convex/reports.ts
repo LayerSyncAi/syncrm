@@ -9,15 +9,19 @@ import {
   inWindow,
   daysOnMarket,
   addToCurrencyMap,
+  computeTaskMetrics,
   type CurrencyMap,
 } from "./reportingLib";
 
 // Shared args: a client-computed [start, end] window (timezone handled on the
-// client) plus an optional admin-only agent filter.
+// client) plus an optional admin-only agent filter. `now` is the client's
+// current instant, used for now-relative task metrics (overdue); falls back to
+// the server clock when omitted.
 const windowArgs = {
   start: v.number(),
   end: v.number(),
   ownerUserId: v.optional(v.id("users")),
+  now: v.optional(v.number()),
 };
 
 const CONTACT_TYPES = new Set(["call", "whatsapp", "email", "meeting"]);
@@ -72,6 +76,11 @@ export const agentPerformance = query({
       salesValue: CurrencyMap;
       commission: CurrencyMap;
       conversionRate: number;
+      tasksCreated: number;
+      tasksCompleted: number;
+      tasksPending: number;
+      tasksOverdue: number;
+      taskCompletionRate: number;
       _won: number;
       _lostClosed: number;
       _contactedLeads: Set<string>;
@@ -90,6 +99,11 @@ export const agentPerformance = query({
         salesValue: {},
         commission: {},
         conversionRate: 0,
+        tasksCreated: 0,
+        tasksCompleted: 0,
+        tasksPending: 0,
+        tasksOverdue: 0,
+        taskCompletionRate: 0,
         _won: 0,
         _lostClosed: 0,
         _contactedLeads: new Set(),
@@ -146,6 +160,26 @@ export const agentPerformance = query({
       }
     }
 
+    // Tasks (activities): per-agent created/completed/pending/overdue metrics.
+    // Created & completed are window-bounded; pending & overdue are a current
+    // backlog snapshot relative to `now`.
+    const now = args.now ?? Date.now();
+    const tasksByAgent = new Map<string, Doc<"activities">[]>();
+    for (const act of activities) {
+      if (!rows.has(act.assignedToUserId)) continue;
+      const arr = tasksByAgent.get(act.assignedToUserId) ?? [];
+      arr.push(act);
+      tasksByAgent.set(act.assignedToUserId, arr);
+    }
+    for (const [id, row] of rows) {
+      const m = computeTaskMetrics(tasksByAgent.get(id) ?? [], args.start, args.end, now);
+      row.tasksCreated = m.created;
+      row.tasksCompleted = m.completed;
+      row.tasksPending = m.pending;
+      row.tasksOverdue = m.overdue;
+      row.taskCompletionRate = m.completionRate;
+    }
+
     const result = [...rows.values()].map((r) => {
       r.leadsContacted = r._contactedLeads.size;
       r.conversionRate = conversionRate(r._won, r._won + r._lostClosed);
@@ -159,6 +193,46 @@ export const agentPerformance = query({
     // Sort by deals closed, then leads assigned (most active first).
     result.sort((a, b) => b.dealsClosed - a.dealsClosed || b.leadsAssigned - a.leadsAssigned);
     return { rows: result, isAdmin };
+  },
+});
+
+// ── Task summary ─────────────────────────────────────────────────────
+// Org-level task overview (totals) plus a per-agent breakdown. Respects role
+// scoping: admins see the whole org (optionally one agent); agents see only
+// their own tasks. Powers the Tasks report tab and its exports.
+export const taskSummary = query({
+  args: windowArgs,
+  handler: async (ctx, args) => {
+    const { user, isAdmin, focusUserId } = await resolveScope(ctx, args);
+
+    const [activities, users] = await Promise.all([
+      ctx.db.query("activities").withIndex("by_org", (q) => q.eq("orgId", user.orgId)).collect(),
+      ctx.db.query("users").withIndex("by_org", (q) => q.eq("orgId", user.orgId)).collect(),
+    ]);
+
+    const now = args.now ?? Date.now();
+    const scoped = activities.filter((a) =>
+      focusUserId ? a.assignedToUserId === focusUserId : true
+    );
+    const agents = users.filter((u) => (focusUserId ? u._id === focusUserId : true));
+
+    const totals = computeTaskMetrics(scoped, args.start, args.end, now);
+
+    const byAgent = agents
+      .map((a) => {
+        const m = computeTaskMetrics(
+          scoped.filter((x) => x.assignedToUserId === a._id),
+          args.start,
+          args.end,
+          now
+        );
+        return { userId: a._id, name: userLabel(a), ...m };
+      })
+      .filter((r) => r.created || r.completed || r.pending || r.overdue);
+
+    byAgent.sort((a, b) => b.created - a.created || b.completed - a.completed);
+
+    return { totals, byAgent, isAdmin };
   },
 });
 

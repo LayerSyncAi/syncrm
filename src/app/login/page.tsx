@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, FormEvent, useEffect } from "react";
+import { useState, FormEvent, useEffect, useRef } from "react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useMutation } from "convex/react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -13,6 +13,7 @@ import { api } from "../../../convex/_generated/api";
 import { authToasts } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { AuthLayout, RequiredLabel } from "@/components/auth/auth-layout";
+import { LEGAL_VERSIONS } from "@/lib/legal";
 
 type AuthMode = "signIn" | "signUp";
 type SubmitState = "idle" | "submitting" | "success";
@@ -23,6 +24,7 @@ export default function LoginPage() {
   const { isLoading: authLoading, isSessionAuthenticated } = useAuth();
   const setupOrganization = useMutation(api.organizations.setupOrganization);
   const recordLogin = useMutation(api.logs.recordLogin);
+  const recordLegalAcceptance = useMutation(api.legal.recordAcceptance);
 
   const [mode, setMode] = useState<AuthMode>("signIn");
   const [email, setEmail] = useState("");
@@ -30,11 +32,14 @@ export default function LoginPage() {
   const [name, setName] = useState("");
   const [orgName, setOrgName] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitState, setSubmitState] = useState<SubmitState>("idle");
   const [shake, setShake] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  // One-shot guard so a forward redirect can never re-fire in a tight loop.
+  const hasRedirected = useRef(false);
 
   useEffect(() => {
     if (process.env.NODE_ENV === "development") {
@@ -44,6 +49,22 @@ export default function LoginPage() {
       });
     }
   }, [authLoading, isSessionAuthenticated]);
+
+  // If the client already holds a valid session when landing on /login (e.g. a
+  // PWA cold-launch where the client token rehydrated), move forward to the app
+  // once. Gated on submitState === "idle" so it never races the sign-up flow,
+  // which must finish setupOrganization before navigating.
+  useEffect(() => {
+    if (
+      !authLoading &&
+      isSessionAuthenticated &&
+      submitState === "idle" &&
+      !hasRedirected.current
+    ) {
+      hasRedirected.current = true;
+      router.replace("/app/dashboard");
+    }
+  }, [authLoading, isSessionAuthenticated, submitState, router]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -72,6 +93,11 @@ export default function LoginPage() {
           setSubmitState("idle");
           return;
         }
+        if (!acceptedTerms) {
+          setError("Please accept the Privacy Policy and Terms & Conditions");
+          setSubmitState("idle");
+          return;
+        }
       }
 
       const formData = new FormData();
@@ -90,6 +116,17 @@ export default function LoginPage() {
 
       if (mode === "signUp") {
         await setupOrganization({ orgName: orgName.trim() });
+        // Record acceptance of the legal documents shown at sign-up.
+        try {
+          await recordLegalAcceptance({
+            acceptances: [
+              { documentType: "privacy", version: LEGAL_VERSIONS.privacy },
+              { documentType: "terms", version: LEGAL_VERSIONS.terms },
+            ],
+          });
+        } catch (legalErr) {
+          console.error("[LoginPage] Failed to record legal acceptance:", legalErr);
+        }
       }
 
       // Record login event in audit trail (best-effort — never block sign-in).
@@ -105,6 +142,7 @@ export default function LoginPage() {
       }
 
       setSubmitState("success");
+      hasRedirected.current = true;
       await new Promise((resolve) => setTimeout(resolve, 600));
       router.replace("/app/dashboard");
     } catch (err) {
@@ -303,6 +341,48 @@ export default function LoginPage() {
                       </button>
                     </div>
                   </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+              {mode === "signUp" && (
+                <motion.div
+                  key="signup-terms"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="overflow-hidden"
+                >
+                  <label className="flex items-start gap-2.5 text-sm text-text-muted">
+                    <input
+                      type="checkbox"
+                      checked={acceptedTerms}
+                      onChange={(e) => setAcceptedTerms(e.target.checked)}
+                      disabled={isDisabled}
+                      className="mt-0.5 h-4 w-4 shrink-0 rounded border-border-strong text-primary-600 focus:ring-primary-600"
+                    />
+                    <span>
+                      I have read and agree to the{" "}
+                      <Link
+                        href="/privacy"
+                        target="_blank"
+                        className="font-medium text-primary-600 underline hover:text-primary"
+                      >
+                        Privacy Policy
+                      </Link>{" "}
+                      and{" "}
+                      <Link
+                        href="/terms"
+                        target="_blank"
+                        className="font-medium text-primary-600 underline hover:text-primary"
+                      >
+                        Terms &amp; Conditions
+                      </Link>
+                      .
+                    </span>
+                  </label>
                 </motion.div>
               )}
             </AnimatePresence>

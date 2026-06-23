@@ -11,16 +11,18 @@
  * by the origin guard at the top of the fetch handler.
  */
 
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const STATIC_CACHE  = `syncrm-static-${CACHE_VERSION}`;
 const IMAGE_CACHE   = `syncrm-images-${CACHE_VERSION}`;
 const PAGES_CACHE   = `syncrm-pages-${CACHE_VERSION}`;
 
 // Pages to cache on install so the offline shell is available immediately.
-// Include both '/' (landing/auth redirect) and '/app' (authenticated shell).
+// Only cache public, auth-independent pages. We deliberately do NOT precache
+// '/app' (or any /app/* route): those are auth-gated and resolve to a redirect
+// when unauthenticated, which would poison the cache with a login page served
+// under an app-route key — a known cause of PWA redirect loops.
 const PRECACHE_URLS = [
   '/',
-  '/app',
   '/manifest.json',
   '/offline',
 ];
@@ -123,7 +125,9 @@ async function cacheFirst(request, cacheName) {
 async function networkFirst(request, cacheName) {
   try {
     const response = await fetch(request);
-    if (response.ok) {
+    // Never cache redirected responses: storing a redirect under the original
+    // request key serves the wrong page on later cache hits.
+    if (response.ok && !response.redirected) {
       const cache = await caches.open(cacheName);
       cache.put(request, response.clone());
     }
@@ -138,15 +142,19 @@ async function networkFirst(request, cacheName) {
 /**
  * Network-first for HTML pages with a multi-tier offline fallback:
  *  1. Exact URL from cache
- *  2. Cached /app (authenticated shell)
- *  3. Cached / (landing page)
- *  4. Cached /offline (explicit offline page)
- *  5. Inline HTML last resort
+ *  2. Cached / (landing page)
+ *  3. Cached /offline (explicit offline page)
+ *  4. Inline HTML last resort
+ *
+ * We never fall back to a cached '/app' shell: it is auth-gated and may hold a
+ * redirect/login response, which would mask the real route and loop the PWA.
  */
 async function networkFirstHtml(request) {
   try {
     const response = await fetch(request);
-    if (response.ok) {
+    // Skip caching redirects (e.g. an auth bounce to /login) to avoid storing
+    // the wrong page under an app-route key.
+    if (response.ok && !response.redirected) {
       const cache = await caches.open(PAGES_CACHE);
       cache.put(request, response.clone());
     }
@@ -155,7 +163,6 @@ async function networkFirstHtml(request) {
     const pagesCache = await caches.open(PAGES_CACHE);
     const cached =
       (await pagesCache.match(request)) ||
-      (await pagesCache.match('/app')) ||
       (await pagesCache.match('/')) ||
       (await pagesCache.match('/offline'));
     return (

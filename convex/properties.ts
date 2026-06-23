@@ -274,6 +274,7 @@ export const update = mutation({
     ),
     description: v.optional(v.string()),
     images: v.optional(v.array(v.string())),
+    listedOnMarketAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserWithOrg(ctx);

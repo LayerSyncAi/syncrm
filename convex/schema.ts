@@ -33,6 +33,16 @@ export default defineSchema({
   })
     .index("by_email", ["email"])
     .index("by_org", ["orgId"]),
+  // Auditable record of a user accepting a versioned legal document at sign-up.
+  legalAcceptances: defineTable({
+    userId: v.id("users"),
+    documentType: v.union(v.literal("privacy"), v.literal("terms")),
+    version: v.string(),
+    acceptedAt: v.number(),
+    orgId: v.optional(v.id("organizations")),
+  })
+    .index("by_user", ["userId"])
+    .index("by_org", ["orgId"]),
   passwordResetTokens: defineTable({
     userId: v.id("users"),
     tokenHash: v.string(),
@@ -190,6 +200,9 @@ export default defineSchema({
     ),
     description: v.string(),
     images: v.array(v.string()),
+    // Marketing: absolute instant (unix ms, UTC) the property was first listed
+    // on the market. Drives the property Marketing tab and days-on-market.
+    listedOnMarketAt: v.optional(v.number()),
     isDraft: v.optional(v.boolean()),
     createdByUserId: v.optional(v.id("users")),
     orgId: v.optional(v.id("organizations")),

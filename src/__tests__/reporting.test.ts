@@ -7,6 +7,8 @@ import {
   inWindow,
   daysOnMarket,
   addToCurrencyMap,
+  computeTaskMetrics,
+  type TaskLike,
 } from "../../convex/reportingLib";
 
 describe("getPeriodRange", () => {
@@ -124,5 +126,56 @@ describe("addToCurrencyMap", () => {
     addToCurrencyMap(m, "", 25);
     addToCurrencyMap(m, "ZWL", 10);
     expect(m).toEqual({ USD: 175, ZWL: 10 });
+  });
+});
+
+describe("computeTaskMetrics", () => {
+  const day = 24 * 60 * 60 * 1000;
+  const start = 100 * day;
+  const end = 110 * day;
+  const now = 108 * day;
+
+  it("counts created and completed only within the window", () => {
+    const tasks: TaskLike[] = [
+      { status: "completed", createdAt: 101 * day, completedAt: 105 * day }, // created+completed in window
+      { status: "completed", createdAt: 90 * day, completedAt: 95 * day }, // both before window
+      { status: "completed", createdAt: 102 * day, completedAt: 120 * day }, // created in, completed out
+    ];
+    const m = computeTaskMetrics(tasks, start, end, now);
+    expect(m.created).toBe(2); // the two created within [start, end]
+    expect(m.completed).toBe(1); // only the one completed within the window
+  });
+
+  it("classifies open todos into pending vs overdue relative to now", () => {
+    const tasks: TaskLike[] = [
+      { status: "todo", createdAt: 101 * day, scheduledAt: 105 * day }, // before now → overdue
+      { status: "todo", createdAt: 101 * day, scheduledAt: 109 * day }, // after now → pending
+      { status: "todo", createdAt: 101 * day }, // no schedule → pending
+    ];
+    const m = computeTaskMetrics(tasks, start, end, now);
+    expect(m.overdue).toBe(1);
+    expect(m.pending).toBe(2);
+  });
+
+  it("computes completion rate over completed + open backlog", () => {
+    const tasks: TaskLike[] = [
+      { status: "completed", createdAt: 101 * day, completedAt: 104 * day },
+      { status: "completed", createdAt: 101 * day, completedAt: 106 * day },
+      { status: "todo", createdAt: 101 * day, scheduledAt: 109 * day }, // pending
+      { status: "todo", createdAt: 101 * day, scheduledAt: 105 * day }, // overdue
+    ];
+    const m = computeTaskMetrics(tasks, start, end, now);
+    // 2 completed of (2 completed + 1 pending + 1 overdue) = 50%
+    expect(m.completionRate).toBe(50);
+  });
+
+  it("returns all-zero metrics for an empty task list", () => {
+    expect(computeTaskMetrics([], start, end, now)).toEqual({
+      created: 0,
+      completed: 0,
+      pending: 0,
+      overdue: 0,
+      completionRate: 0,
+    });
   });
 });

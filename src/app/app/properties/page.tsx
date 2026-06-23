@@ -25,11 +25,12 @@ import { LocationTypeahead } from "@/components/ui/location-typeahead";
 import { propertyToasts } from "@/lib/toast";
 import { DocumentManager } from "@/components/documents/document-manager";
 import { PropertyShare } from "@/components/properties/property-share";
+import { PropertyMarketingTab } from "@/components/properties/property-marketing-tab";
 import { PropertyBookBadge } from "@/components/properties/property-book-badge";
 import { Tooltip } from "@/components/ui/tooltip";
 import { UserPlus, Eye, Trash2 } from "lucide-react";
 
-const propertyTabs = ["Details", "Sharing", "Documentation", "Gallery"] as const;
+const propertyTabs = ["Details", "Marketing", "Sharing", "Documentation", "Gallery"] as const;
 type PropertyTab = (typeof propertyTabs)[number];
 
 const listVariants = {
@@ -74,6 +75,7 @@ type Property = {
   status: PropertyStatus;
   description: string;
   images: string[];
+  listedOnMarketAt?: number;
   createdByUserId?: Id<"users">;
   createdByName?: string;
   pbRefCode?: string;
@@ -1256,6 +1258,22 @@ export default function PropertiesPage() {
                     readOnly={!canEditProperty}
                   />
                 </div>
+              </motion.div>
+            )}
+
+            {propertyTab === "Marketing" && selectedProperty && (
+              <motion.div
+                key="marketing"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } }}
+                exit={{ opacity: 0, y: -8, transition: { duration: 0.15 } }}
+              >
+                <PropertyMarketingTab
+                  propertyId={selectedProperty._id}
+                  listedOnMarketAt={selectedProperty.listedOnMarketAt}
+                  canEdit={canEditProperty}
+                  isAdmin={isAdmin}
+                />
               </motion.div>
             )}
 

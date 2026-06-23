@@ -2,7 +2,7 @@
   "name": "SynCRM",
   "short_name": "SynCRM",
   "description": "Real Estate Pipeline CRM - manage leads, properties and your sales pipeline.",
-  "start_url": "/app",
+  "start_url": "/",
   "display": "standalone",
   "orientation": "natural",
   "background_color": "#f1f5ff",

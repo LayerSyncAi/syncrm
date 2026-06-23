@@ -24,6 +24,7 @@ import type * as leadImport from "../leadImport.js";
 import type * as leadMerge from "../leadMerge.js";
 import type * as leadScoring from "../leadScoring.js";
 import type * as leads from "../leads.js";
+import type * as legal from "../legal.js";
 import type * as locations from "../locations.js";
 import type * as logs from "../logs.js";
 import type * as marketing from "../marketing.js";
@@ -66,6 +67,7 @@ declare const fullApi: ApiFromModules<{
   leadMerge: typeof leadMerge;
   leadScoring: typeof leadScoring;
   leads: typeof leads;
+  legal: typeof legal;
   locations: typeof locations;
   logs: typeof logs;
   marketing: typeof marketing;
