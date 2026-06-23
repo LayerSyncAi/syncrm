@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { Trash2, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
+import { addToCurrencyMap } from "../../../convex/reportingLib";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -32,7 +33,7 @@ export function PropertyMarketingTab({
 }: {
   propertyId: Id<"properties">;
   listedOnMarketAt: number | undefined;
-  /** Admin or property creator — may set the listing date. */
+  /** True when the user (admin or property creator) may set the listing date. */
   canEdit: boolean;
   /** Marketing spend create/delete is admin-only (enforced server-side too). */
   isAdmin: boolean;
@@ -59,7 +60,8 @@ export function PropertyMarketingTab({
     try {
       await updateProperty({
         propertyId,
-        listedOnMarketAt: listedDate ? dateToTs(listedDate) : undefined,
+        // null clears the field; a number sets it.
+        listedOnMarketAt: listedDate ? dateToTs(listedDate) : null,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save listing date");
@@ -94,17 +96,17 @@ export function PropertyMarketingTab({
     }
   };
 
-  const total = (expenses ?? []).reduce<Record<string, number>>((acc, e) => {
-    const c = e.currency || "USD";
-    acc[c] = (acc[c] ?? 0) + e.amount;
-    return acc;
-  }, {});
-  const totalText =
-    Object.keys(total).length === 0
-      ? formatCurrency(0, "USD")
-      : Object.entries(total)
-          .map(([c, v]) => formatCurrency(v, c))
-          .join(" + ");
+  // Per-currency total, reusing the shared currency-accumulation helper so the
+  // formatting matches the reports' formatCurrencyMap (blank currency -> USD,
+  // zero entries dropped). Memoized so it recomputes only when expenses change,
+  // not on every keystroke in the form inputs.
+  const totalText = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const e of expenses ?? []) addToCurrencyMap(map, e.currency, e.amount);
+    const entries = Object.entries(map).filter(([, v]) => v !== 0);
+    if (entries.length === 0) return formatCurrency(0, "USD");
+    return entries.map(([c, v]) => formatCurrency(v, c)).join(" + ");
+  }, [expenses]);
 
   return (
     <div className="space-y-6">

@@ -20,7 +20,7 @@ const PAGES_CACHE   = `syncrm-pages-${CACHE_VERSION}`;
 // Only cache public, auth-independent pages. We deliberately do NOT precache
 // '/app' (or any /app/* route): those are auth-gated and resolve to a redirect
 // when unauthenticated, which would poison the cache with a login page served
-// under an app-route key — a known cause of PWA redirect loops.
+// under an app-route key, a known cause of PWA redirect loops.
 const PRECACHE_URLS = [
   '/',
   '/manifest.json',

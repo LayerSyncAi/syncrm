@@ -274,7 +274,8 @@ export const update = mutation({
     ),
     description: v.optional(v.string()),
     images: v.optional(v.array(v.string())),
-    listedOnMarketAt: v.optional(v.number()),
+    // number sets the date; null clears it; omit to leave unchanged.
+    listedOnMarketAt: v.optional(v.union(v.number(), v.null())),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserWithOrg(ctx);
@@ -293,9 +294,17 @@ export const update = mutation({
     const updates: Record<string, unknown> = { updatedAt: Date.now() };
     for (const [key, value] of Object.entries(args)) {
       if (key === "propertyId") continue;
+      // listedOnMarketAt is handled explicitly below so it can be cleared.
+      if (key === "listedOnMarketAt") continue;
       if (value !== undefined) {
         updates[key] = value;
       }
+    }
+    // Explicit clear: null removes the field; a number sets it; undefined leaves
+    // it unchanged (the generic loop above can't express "clear to undefined").
+    if (args.listedOnMarketAt !== undefined) {
+      updates.listedOnMarketAt =
+        args.listedOnMarketAt === null ? undefined : args.listedOnMarketAt;
     }
     await ctx.db.patch(args.propertyId, updates);
   },

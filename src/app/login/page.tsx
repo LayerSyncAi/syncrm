@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, FormEvent, useEffect, useRef } from "react";
+import { useState, FormEvent, useEffect } from "react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useMutation } from "convex/react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -18,13 +18,21 @@ import { LEGAL_VERSIONS } from "@/lib/legal";
 type AuthMode = "signIn" | "signUp";
 type SubmitState = "idle" | "submitting" | "success";
 
+// Module-level guard for the "already authenticated, move forward" redirect.
+// A per-component ref would reset on remount, and a middleware bounce back to
+// /login remounts this page, so a ref-based guard could loop forever when the
+// client token is valid but the server auth cookie is absent (the PWA desync
+// case). A module-level flag survives client-side remounts (it only resets on a
+// full page reload), so the forward redirect is attempted at most once: if it
+// bounces back we show the login form instead of looping.
+let didAttemptForward = false;
+
 export default function LoginPage() {
   const router = useRouter();
   const { signIn } = useAuthActions();
   const { isLoading: authLoading, isSessionAuthenticated } = useAuth();
   const setupOrganization = useMutation(api.organizations.setupOrganization);
   const recordLogin = useMutation(api.logs.recordLogin);
-  const recordLegalAcceptance = useMutation(api.legal.recordAcceptance);
 
   const [mode, setMode] = useState<AuthMode>("signIn");
   const [email, setEmail] = useState("");
@@ -38,8 +46,6 @@ export default function LoginPage() {
   const [shake, setShake] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  // One-shot guard so a forward redirect can never re-fire in a tight loop.
-  const hasRedirected = useRef(false);
 
   useEffect(() => {
     if (process.env.NODE_ENV === "development") {
@@ -53,15 +59,17 @@ export default function LoginPage() {
   // If the client already holds a valid session when landing on /login (e.g. a
   // PWA cold-launch where the client token rehydrated), move forward to the app
   // once. Gated on submitState === "idle" so it never races the sign-up flow,
-  // which must finish setupOrganization before navigating.
+  // which must finish setupOrganization before navigating. The module-level
+  // didAttemptForward flag ensures this fires at most once per page load, so a
+  // middleware bounce back to /login cannot loop.
   useEffect(() => {
     if (
       !authLoading &&
       isSessionAuthenticated &&
       submitState === "idle" &&
-      !hasRedirected.current
+      !didAttemptForward
     ) {
-      hasRedirected.current = true;
+      didAttemptForward = true;
       router.replace("/app/dashboard");
     }
   }, [authLoading, isSessionAuthenticated, submitState, router]);
@@ -115,18 +123,17 @@ export default function LoginPage() {
       await signIn("password", formData);
 
       if (mode === "signUp") {
-        await setupOrganization({ orgName: orgName.trim() });
-        // Record acceptance of the legal documents shown at sign-up.
-        try {
-          await recordLegalAcceptance({
-            acceptances: [
-              { documentType: "privacy", version: LEGAL_VERSIONS.privacy },
-              { documentType: "terms", version: LEGAL_VERSIONS.terms },
-            ],
-          });
-        } catch (legalErr) {
-          console.error("[LoginPage] Failed to record legal acceptance:", legalErr);
-        }
+        // Create the org and record acceptance of the legal documents shown at
+        // sign-up atomically: setupOrganization persists both in one mutation
+        // and rejects if acceptance is missing, so the audit record can't be
+        // silently lost and acceptance is enforced server-side.
+        await setupOrganization({
+          orgName: orgName.trim(),
+          acceptedLegal: [
+            { documentType: "privacy", version: LEGAL_VERSIONS.privacy },
+            { documentType: "terms", version: LEGAL_VERSIONS.terms },
+          ],
+        });
       }
 
       // Record login event in audit trail (best-effort — never block sign-in).
@@ -142,7 +149,7 @@ export default function LoginPage() {
       }
 
       setSubmitState("success");
-      hasRedirected.current = true;
+      didAttemptForward = true;
       await new Promise((resolve) => setTimeout(resolve, 600));
       router.replace("/app/dashboard");
     } catch (err) {

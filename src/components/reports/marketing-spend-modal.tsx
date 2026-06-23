@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
 import { CurrencyInput } from "@/components/ui/currency-input";
-import { LEAD_SOURCE_OPTIONS } from "@/lib/lead-sources";
+import { MARKETING_CHANNEL_OPTIONS, marketingChannelLabel } from "@/lib/marketing-channels";
 import { formatCurrency } from "@/lib/currency";
 import { format } from "date-fns";
 
@@ -106,7 +106,7 @@ export function MarketingSpendModal({
             <StaggeredDropDown
               value={channel}
               onChange={setChannel}
-              options={LEAD_SOURCE_OPTIONS}
+              options={MARKETING_CHANNEL_OPTIONS}
               portal
             />
           </div>
@@ -164,7 +164,7 @@ export function MarketingSpendModal({
                 >
                   <div className="min-w-0">
                     <span className="font-medium">{formatCurrency(e.amount, e.currency)}</span>{" "}
-                    <span className="text-text-muted">· {e.channel}</span>
+                    <span className="text-text-muted">· {marketingChannelLabel(e.channel)}</span>
                     {e.propertyTitle ? (
                       <span className="text-text-dim"> · {e.propertyTitle}</span>
                     ) : null}

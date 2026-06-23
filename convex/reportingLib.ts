@@ -71,9 +71,9 @@ export interface TaskMetrics {
   created: number;
   /** Tasks completed (completedAt) within the window. */
   completed: number;
-  /** Open todos not past their scheduled time — current backlog snapshot. */
+  /** Open todos not past their scheduled time: current backlog snapshot. */
   pending: number;
-  /** Open todos whose scheduledAt is before `now` — current backlog snapshot. */
+  /** Open todos whose scheduledAt is before `now`: current backlog snapshot. */
   overdue: number;
   /** completed ÷ (completed + pending + overdue), as a percentage. */
   completionRate: number;

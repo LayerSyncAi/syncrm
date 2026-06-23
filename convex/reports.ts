@@ -14,14 +14,11 @@ import {
 } from "./reportingLib";
 
 // Shared args: a client-computed [start, end] window (timezone handled on the
-// client) plus an optional admin-only agent filter. `now` is the client's
-// current instant, used for now-relative task metrics (overdue); falls back to
-// the server clock when omitted.
+// client) plus an optional admin-only agent filter.
 const windowArgs = {
   start: v.number(),
   end: v.number(),
   ownerUserId: v.optional(v.id("users")),
-  now: v.optional(v.number()),
 };
 
 const CONTACT_TYPES = new Set(["call", "whatsapp", "email", "meeting"]);
@@ -162,8 +159,9 @@ export const agentPerformance = query({
 
     // Tasks (activities): per-agent created/completed/pending/overdue metrics.
     // Created & completed are window-bounded; pending & overdue are a current
-    // backlog snapshot relative to `now`.
-    const now = args.now ?? Date.now();
+    // backlog snapshot relative to now (overdue is an absolute scheduledAt < now
+    // comparison, so the server clock is authoritative and timezone-independent).
+    const now = Date.now();
     const tasksByAgent = new Map<string, Doc<"activities">[]>();
     for (const act of activities) {
       if (!rows.has(act.assignedToUserId)) continue;
@@ -210,7 +208,7 @@ export const taskSummary = query({
       ctx.db.query("users").withIndex("by_org", (q) => q.eq("orgId", user.orgId)).collect(),
     ]);
 
-    const now = args.now ?? Date.now();
+    const now = Date.now();
     const scoped = activities.filter((a) =>
       focusUserId ? a.assignedToUserId === focusUserId : true
     );
@@ -218,10 +216,19 @@ export const taskSummary = query({
 
     const totals = computeTaskMetrics(scoped, args.start, args.end, now);
 
+    // Bucket activities by assignee in a single pass, then score each agent from
+    // its bucket, O(N + A) instead of an O(A·N) filter-per-agent.
+    const byAssignee = new Map<string, Doc<"activities">[]>();
+    for (const act of scoped) {
+      const arr = byAssignee.get(act.assignedToUserId) ?? [];
+      arr.push(act);
+      byAssignee.set(act.assignedToUserId, arr);
+    }
+
     const byAgent = agents
       .map((a) => {
         const m = computeTaskMetrics(
-          scoped.filter((x) => x.assignedToUserId === a._id),
+          byAssignee.get(a._id) ?? [],
           args.start,
           args.end,
           now
@@ -358,6 +365,9 @@ export const propertyPerformance = query({
     const rows = properties.map((p) => {
       statusCounts[p.status] = (statusCounts[p.status] ?? 0) + 1;
       const endTs = SOLD.has(p.status) ? p.updatedAt : args.end;
+      // Prefer the marketing "date listed on market" when set; fall back to the
+      // record creation time for properties that predate the field.
+      const marketStart = p.listedOnMarketAt ?? p.createdAt;
       const id = p._id as string;
       return {
         propertyId: p._id,
@@ -369,7 +379,7 @@ export const propertyPerformance = query({
         inquiries: inquiries.get(id) ?? 0,
         viewings: viewings.get(id) ?? 0,
         offers: offers.get(id) ?? 0,
-        daysOnMarket: daysOnMarket(p.createdAt, endTs),
+        daysOnMarket: daysOnMarket(marketStart, endTs),
         spend: spend.get(id) ?? {},
       };
     });

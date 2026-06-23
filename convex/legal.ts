@@ -1,36 +1,12 @@
-import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
+import { query } from "./_generated/server";
 import { getCurrentUser } from "./helpers";
 
-const documentType = v.union(v.literal("privacy"), v.literal("terms"));
+// Legal acceptances are written atomically during sign-up by
+// organizations.setupOrganization. This module exposes a read for surfacing a
+// user's acceptance history (e.g. an admin/settings view or a re-acceptance
+// prompt when LEGAL_VERSIONS changes).
 
-/**
- * Record the current user's acceptance of one or more versioned legal
- * documents. Called immediately after sign-up. Stores user, document type,
- * version, and timestamp for an auditable acceptance trail.
- */
-export const recordAcceptance = mutation({
-  args: {
-    acceptances: v.array(
-      v.object({ documentType, version: v.string() })
-    ),
-  },
-  handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    const acceptedAt = Date.now();
-    for (const a of args.acceptances) {
-      await ctx.db.insert("legalAcceptances", {
-        userId: user._id,
-        documentType: a.documentType,
-        version: a.version,
-        acceptedAt,
-        orgId: user.orgId,
-      });
-    }
-  },
-});
-
-/** The current user's most recent acceptance per document type. */
+/** The current user's acceptance records, newest first. */
 export const myAcceptances = query({
   args: {},
   handler: async (ctx) => {

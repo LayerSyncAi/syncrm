@@ -41,7 +41,7 @@ export default function TermsPage() {
             to process.
           </li>
           <li>
-            Do not attempt to disrupt, reverse engineer, or gain unauthorised
+            Do not attempt to disrupt, reverse engineer or gain unauthorised
             access to the Service or other organisations&rsquo; data.
           </li>
           <li>
@@ -110,7 +110,7 @@ export default function TermsPage() {
         <p>
           To the maximum extent permitted by law, the Service is provided without
           warranties of any kind, and SynCRM is not liable for indirect or
-          consequential losses, loss of profits, or loss of data arising from use
+          consequential losses, loss of profits or loss of data arising from use
           of the Service. Nothing in these Terms limits liability that cannot be
           limited by law.
         </p>
