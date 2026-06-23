@@ -12,10 +12,18 @@ function generateSlug(name: string): string {
     .slice(0, 50);
 }
 
-// Called after signup to create an org and assign it to the new user
+// Called after signup to create an org and assign it to the new user. Legal
+// acceptance is recorded in the same mutation so it is atomic with org creation
+// and enforced server-side (sign-up cannot create an org without it).
 export const setupOrganization = mutation({
   args: {
     orgName: v.string(),
+    acceptedLegal: v.array(
+      v.object({
+        documentType: v.union(v.literal("privacy"), v.literal("terms")),
+        version: v.string(),
+      })
+    ),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
@@ -26,6 +34,12 @@ export const setupOrganization = mutation({
       if (existingOrg) {
         return { orgId: existingOrg._id, orgName: existingOrg.name };
       }
+    }
+
+    // Require acceptance of both legal documents before creating the org.
+    const acceptedTypes = new Set(args.acceptedLegal.map((a) => a.documentType));
+    if (!acceptedTypes.has("privacy") || !acceptedTypes.has("terms")) {
+      throw new Error("Privacy Policy and Terms & Conditions must be accepted");
     }
 
     const trimmedName = args.orgName.trim();
@@ -61,6 +75,17 @@ export const setupOrganization = mutation({
       showOnboardingInterface: true,
       updatedAt: timestamp,
     });
+
+    // Record legal acceptance atomically with org creation.
+    for (const a of args.acceptedLegal) {
+      await ctx.db.insert("legalAcceptances", {
+        userId: user._id,
+        documentType: a.documentType,
+        version: a.version,
+        acceptedAt: timestamp,
+        orgId,
+      });
+    }
 
     return { orgId, orgName: trimmedName };
   },

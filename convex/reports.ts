@@ -9,6 +9,7 @@ import {
   inWindow,
   daysOnMarket,
   addToCurrencyMap,
+  computeTaskMetrics,
   type CurrencyMap,
 } from "./reportingLib";
 
@@ -72,6 +73,11 @@ export const agentPerformance = query({
       salesValue: CurrencyMap;
       commission: CurrencyMap;
       conversionRate: number;
+      tasksCreated: number;
+      tasksCompleted: number;
+      tasksPending: number;
+      tasksOverdue: number;
+      taskCompletionRate: number;
       _won: number;
       _lostClosed: number;
       _contactedLeads: Set<string>;
@@ -90,6 +96,11 @@ export const agentPerformance = query({
         salesValue: {},
         commission: {},
         conversionRate: 0,
+        tasksCreated: 0,
+        tasksCompleted: 0,
+        tasksPending: 0,
+        tasksOverdue: 0,
+        taskCompletionRate: 0,
         _won: 0,
         _lostClosed: 0,
         _contactedLeads: new Set(),
@@ -146,6 +157,27 @@ export const agentPerformance = query({
       }
     }
 
+    // Tasks (activities): per-agent created/completed/pending/overdue metrics.
+    // Created & completed are window-bounded; pending & overdue are a current
+    // backlog snapshot relative to now (overdue is an absolute scheduledAt < now
+    // comparison, so the server clock is authoritative and timezone-independent).
+    const now = Date.now();
+    const tasksByAgent = new Map<string, Doc<"activities">[]>();
+    for (const act of activities) {
+      if (!rows.has(act.assignedToUserId)) continue;
+      const arr = tasksByAgent.get(act.assignedToUserId) ?? [];
+      arr.push(act);
+      tasksByAgent.set(act.assignedToUserId, arr);
+    }
+    for (const [id, row] of rows) {
+      const m = computeTaskMetrics(tasksByAgent.get(id) ?? [], args.start, args.end, now);
+      row.tasksCreated = m.created;
+      row.tasksCompleted = m.completed;
+      row.tasksPending = m.pending;
+      row.tasksOverdue = m.overdue;
+      row.taskCompletionRate = m.completionRate;
+    }
+
     const result = [...rows.values()].map((r) => {
       r.leadsContacted = r._contactedLeads.size;
       r.conversionRate = conversionRate(r._won, r._won + r._lostClosed);
@@ -159,6 +191,55 @@ export const agentPerformance = query({
     // Sort by deals closed, then leads assigned (most active first).
     result.sort((a, b) => b.dealsClosed - a.dealsClosed || b.leadsAssigned - a.leadsAssigned);
     return { rows: result, isAdmin };
+  },
+});
+
+// ── Task summary ─────────────────────────────────────────────────────
+// Org-level task overview (totals) plus a per-agent breakdown. Respects role
+// scoping: admins see the whole org (optionally one agent); agents see only
+// their own tasks. Powers the Tasks report tab and its exports.
+export const taskSummary = query({
+  args: windowArgs,
+  handler: async (ctx, args) => {
+    const { user, isAdmin, focusUserId } = await resolveScope(ctx, args);
+
+    const [activities, users] = await Promise.all([
+      ctx.db.query("activities").withIndex("by_org", (q) => q.eq("orgId", user.orgId)).collect(),
+      ctx.db.query("users").withIndex("by_org", (q) => q.eq("orgId", user.orgId)).collect(),
+    ]);
+
+    const now = Date.now();
+    const scoped = activities.filter((a) =>
+      focusUserId ? a.assignedToUserId === focusUserId : true
+    );
+    const agents = users.filter((u) => (focusUserId ? u._id === focusUserId : true));
+
+    const totals = computeTaskMetrics(scoped, args.start, args.end, now);
+
+    // Bucket activities by assignee in a single pass, then score each agent from
+    // its bucket, O(N + A) instead of an O(A·N) filter-per-agent.
+    const byAssignee = new Map<string, Doc<"activities">[]>();
+    for (const act of scoped) {
+      const arr = byAssignee.get(act.assignedToUserId) ?? [];
+      arr.push(act);
+      byAssignee.set(act.assignedToUserId, arr);
+    }
+
+    const byAgent = agents
+      .map((a) => {
+        const m = computeTaskMetrics(
+          byAssignee.get(a._id) ?? [],
+          args.start,
+          args.end,
+          now
+        );
+        return { userId: a._id, name: userLabel(a), ...m };
+      })
+      .filter((r) => r.created || r.completed || r.pending || r.overdue);
+
+    byAgent.sort((a, b) => b.created - a.created || b.completed - a.completed);
+
+    return { totals, byAgent, isAdmin };
   },
 });
 
@@ -284,6 +365,9 @@ export const propertyPerformance = query({
     const rows = properties.map((p) => {
       statusCounts[p.status] = (statusCounts[p.status] ?? 0) + 1;
       const endTs = SOLD.has(p.status) ? p.updatedAt : args.end;
+      // Prefer the marketing "date listed on market" when set; fall back to the
+      // record creation time for properties that predate the field.
+      const marketStart = p.listedOnMarketAt ?? p.createdAt;
       const id = p._id as string;
       return {
         propertyId: p._id,
@@ -295,7 +379,7 @@ export const propertyPerformance = query({
         inquiries: inquiries.get(id) ?? 0,
         viewings: viewings.get(id) ?? 0,
         offers: offers.get(id) ?? 0,
-        daysOnMarket: daysOnMarket(p.createdAt, endTs),
+        daysOnMarket: daysOnMarket(marketStart, endTs),
         spend: spend.get(id) ?? {},
       };
     });

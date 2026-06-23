@@ -541,6 +541,32 @@ export function createCopilotTools(token: string): ToolSet {
       },
     }),
 
+    getMarketingForProperty: tool({
+      description:
+        "List marketing spend logged against a specific property (Convex property id): amount, currency, channel, date and note per entry. Use for 'how much have we spent marketing this property' or 'what channels were used'. Sum amounts per currency when reporting a total.",
+      inputSchema: zodSchema(
+        z
+          .object({
+            propertyId: z.string().describe("Convex properties table id"),
+          })
+          .strict()
+      ),
+      execute: async (input) => {
+        try {
+          const result = await fetchQuery(
+            api.marketing.listExpenses,
+            { propertyId: input.propertyId as Id<"properties"> },
+            opts
+          );
+          return truncateForModel(sanitizeItems(result as unknown[]));
+        } catch (e) {
+          return {
+            error: e instanceof Error ? e.message : "Failed to load marketing spend",
+          };
+        }
+      },
+    }),
+
     listPipelineStages: tool({
       description:
         "List pipeline stages in order for the organization. Use before moveLeadStage to pick a valid stageId.",

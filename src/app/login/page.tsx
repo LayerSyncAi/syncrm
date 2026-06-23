@@ -13,9 +13,19 @@ import { api } from "../../../convex/_generated/api";
 import { authToasts } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { AuthLayout, RequiredLabel } from "@/components/auth/auth-layout";
+import { LEGAL_VERSIONS } from "@/lib/legal";
 
 type AuthMode = "signIn" | "signUp";
 type SubmitState = "idle" | "submitting" | "success";
+
+// Module-level guard for the "already authenticated, move forward" redirect.
+// A per-component ref would reset on remount, and a middleware bounce back to
+// /login remounts this page, so a ref-based guard could loop forever when the
+// client token is valid but the server auth cookie is absent (the PWA desync
+// case). A module-level flag survives client-side remounts (it only resets on a
+// full page reload), so the forward redirect is attempted at most once: if it
+// bounces back we show the login form instead of looping.
+let didAttemptForward = false;
 
 export default function LoginPage() {
   const router = useRouter();
@@ -30,6 +40,7 @@ export default function LoginPage() {
   const [name, setName] = useState("");
   const [orgName, setOrgName] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitState, setSubmitState] = useState<SubmitState>("idle");
   const [shake, setShake] = useState(false);
@@ -44,6 +55,24 @@ export default function LoginPage() {
       });
     }
   }, [authLoading, isSessionAuthenticated]);
+
+  // If the client already holds a valid session when landing on /login (e.g. a
+  // PWA cold-launch where the client token rehydrated), move forward to the app
+  // once. Gated on submitState === "idle" so it never races the sign-up flow,
+  // which must finish setupOrganization before navigating. The module-level
+  // didAttemptForward flag ensures this fires at most once per page load, so a
+  // middleware bounce back to /login cannot loop.
+  useEffect(() => {
+    if (
+      !authLoading &&
+      isSessionAuthenticated &&
+      submitState === "idle" &&
+      !didAttemptForward
+    ) {
+      didAttemptForward = true;
+      router.replace("/app/dashboard");
+    }
+  }, [authLoading, isSessionAuthenticated, submitState, router]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -72,6 +101,11 @@ export default function LoginPage() {
           setSubmitState("idle");
           return;
         }
+        if (!acceptedTerms) {
+          setError("Please accept the Privacy Policy and Terms & Conditions");
+          setSubmitState("idle");
+          return;
+        }
       }
 
       const formData = new FormData();
@@ -89,7 +123,17 @@ export default function LoginPage() {
       await signIn("password", formData);
 
       if (mode === "signUp") {
-        await setupOrganization({ orgName: orgName.trim() });
+        // Create the org and record acceptance of the legal documents shown at
+        // sign-up atomically: setupOrganization persists both in one mutation
+        // and rejects if acceptance is missing, so the audit record can't be
+        // silently lost and acceptance is enforced server-side.
+        await setupOrganization({
+          orgName: orgName.trim(),
+          acceptedLegal: [
+            { documentType: "privacy", version: LEGAL_VERSIONS.privacy },
+            { documentType: "terms", version: LEGAL_VERSIONS.terms },
+          ],
+        });
       }
 
       // Record login event in audit trail (best-effort — never block sign-in).
@@ -105,6 +149,7 @@ export default function LoginPage() {
       }
 
       setSubmitState("success");
+      didAttemptForward = true;
       await new Promise((resolve) => setTimeout(resolve, 600));
       router.replace("/app/dashboard");
     } catch (err) {
@@ -303,6 +348,48 @@ export default function LoginPage() {
                       </button>
                     </div>
                   </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+              {mode === "signUp" && (
+                <motion.div
+                  key="signup-terms"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="overflow-hidden"
+                >
+                  <label className="flex items-start gap-2.5 text-sm text-text-muted">
+                    <input
+                      type="checkbox"
+                      checked={acceptedTerms}
+                      onChange={(e) => setAcceptedTerms(e.target.checked)}
+                      disabled={isDisabled}
+                      className="mt-0.5 h-4 w-4 shrink-0 rounded border-border-strong text-primary-600 focus:ring-primary-600"
+                    />
+                    <span>
+                      I have read and agree to the{" "}
+                      <Link
+                        href="/privacy"
+                        target="_blank"
+                        className="font-medium text-primary-600 underline hover:text-primary"
+                      >
+                        Privacy Policy
+                      </Link>{" "}
+                      and{" "}
+                      <Link
+                        href="/terms"
+                        target="_blank"
+                        className="font-medium text-primary-600 underline hover:text-primary"
+                      >
+                        Terms &amp; Conditions
+                      </Link>
+                      .
+                    </span>
+                  </label>
                 </motion.div>
               )}
             </AnimatePresence>

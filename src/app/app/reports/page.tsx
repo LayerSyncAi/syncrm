@@ -49,9 +49,14 @@ const LeaderboardSection = dynamic(
   () => import("@/components/reports/leaderboard").then((m) => m.LeaderboardSection),
   { ssr: false, loading: PageLoader }
 );
+const TaskSummarySection = dynamic(
+  () => import("@/components/reports/task-summary").then((m) => m.TaskSummarySection),
+  { ssr: false, loading: PageLoader }
+);
 
 const TABS = [
   { key: "agents", label: "Agents" },
+  { key: "tasks", label: "Tasks" },
   { key: "sources", label: "Lead Sources" },
   { key: "properties", label: "Properties" },
   { key: "revenue", label: "Revenue" },
@@ -173,6 +178,7 @@ export default function ReportsPage() {
 
         <div>
           {tab === "agents" && <AgentPerformanceSection {...sectionProps} />}
+          {tab === "tasks" && <TaskSummarySection {...sectionProps} />}
           {tab === "sources" && <LeadSourceSection {...sectionProps} />}
           {tab === "properties" && <PropertyPerformanceSection {...sectionProps} />}
           {tab === "revenue" && <RevenueSummarySection {...sectionProps} />}
