@@ -361,10 +361,15 @@ export const propertyPerformance = query({
     }
 
     const SOLD = new Set(["sold", "let"]);
+    // Days-on-market runs to the sold/let date if closed, otherwise to "now".
+    // It must never use the reporting window's end directly: the "All time"
+    // window ends at a far-future sentinel (MAX_TS), which would make an active
+    // listing read as ~100 million days on market. Clamp to now.
+    const now = Date.now();
     const statusCounts: Record<string, number> = {};
     const rows = properties.map((p) => {
       statusCounts[p.status] = (statusCounts[p.status] ?? 0) + 1;
-      const endTs = SOLD.has(p.status) ? p.updatedAt : args.end;
+      const endTs = SOLD.has(p.status) ? p.updatedAt : Math.min(args.end, now);
       // Prefer the marketing "date listed on market" when set; fall back to the
       // record creation time for properties that predate the field.
       const marketStart = p.listedOnMarketAt ?? p.createdAt;
