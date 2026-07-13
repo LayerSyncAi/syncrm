@@ -6,6 +6,7 @@ import { useQuery, useMutation } from "convex/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
+import { areaMatchesLocation, canonicalizeArea } from "../../../../../convex/lib/locations";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -173,13 +174,21 @@ export default function NewLeadPage() {
   const createContact = useMutation(api.contacts.create);
   const createLocation = useMutation(api.locations.create);
   const seedLocations = useMutation(api.locations.seedDefaultsIfEmpty);
+  const syncLocations = useMutation(api.locations.syncDefaults);
 
-  // Seed locations on first load
+  // Seed locations on first load; top up existing orgs that were seeded from
+  // the older, smaller dataset so previously-missing suburbs become available.
   useEffect(() => {
-    if (user && locations !== undefined && locations.length === 0) {
-      seedLocations();
+    if (user && locations !== undefined) {
+      if (locations.length === 0) {
+        seedLocations();
+      } else {
+        syncLocations();
+      }
     }
-  }, [user, locations, seedLocations]);
+    // Run once per mount when locations first resolve.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, locations !== undefined]);
 
   // Set default stage when stages load
   useEffect(() => {
@@ -221,11 +230,12 @@ export default function NewLeadPage() {
       if (min !== undefined && !isNaN(min) && p.price < min) return false;
       if (max !== undefined && !isNaN(max) && p.price > max) return false;
 
-      // Preferred area check (if any areas specified, property must match one)
+      // Preferred area check (if any areas specified, property must match one).
+      // Uses the shared normalized/alias-aware matcher so the preview matches
+      // exactly how lead qualification & AI suggestions will score it.
       if (preferredAreas.length > 0) {
-        const locationLower = p.location.toLowerCase();
         const matchesArea = preferredAreas.some((area) =>
-          locationLower.includes(area.toLowerCase())
+          areaMatchesLocation(area, p.location)
         );
         if (!matchesArea) return false;
       }
@@ -288,9 +298,14 @@ export default function NewLeadPage() {
   };
 
   const handleAddArea = (area: string) => {
-    const trimmed = area.trim();
-    if (trimmed && !preferredAreas.includes(trimmed)) {
-      setPreferredAreas([...preferredAreas, trimmed]);
+    // Canonicalize so a hand-typed variant ("Mt Pleasant") is recorded under
+    // the same name a suggestion would use, keeping it matchable.
+    const canonical = canonicalizeArea(area);
+    if (
+      canonical &&
+      !preferredAreas.some((a) => a.toLowerCase() === canonical.toLowerCase())
+    ) {
+      setPreferredAreas([...preferredAreas, canonical]);
     }
   };
 
@@ -301,16 +316,22 @@ export default function NewLeadPage() {
   const handleAddNewLocation = async () => {
     if (!newLocation.trim()) return;
     setIsAddingLocation(true);
+    // Always record the area on the lead first — a missing suggestion must
+    // never block the user from capturing the client's actual preference.
+    handleAddArea(newLocation);
     try {
-      await createLocation({ name: newLocation.trim() });
-      handleAddArea(newLocation.trim());
-      locationToasts.created(newLocation.trim());
-      setNewLocation("");
+      // Best-effort: also persist it to the org's reusable suggestion list.
+      await createLocation({ name: newLocation });
+      locationToasts.created(canonicalizeArea(newLocation));
     } catch (err: unknown) {
+      // Duplicates (or other persist failures) are non-fatal: the area is
+      // already attached to the lead above, so just skip the suggestion save.
       const errorMessage = err instanceof Error ? err.message : "Failed to add location";
-      setFormError(errorMessage);
-      locationToasts.createFailed(errorMessage);
+      if (!/already exists/i.test(errorMessage)) {
+        locationToasts.createFailed(errorMessage);
+      }
     } finally {
+      setNewLocation("");
       setIsAddingLocation(false);
     }
   };

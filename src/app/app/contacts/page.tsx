@@ -6,6 +6,7 @@ import { useQuery, useMutation } from "convex/react";
 import { motion } from "framer-motion";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
+import { canonicalizeArea } from "../../../../convex/lib/locations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -241,7 +242,22 @@ export default function ContactsPage() {
   const users = useQuery(api.users.listForAssignment);
   const locations = useQuery(api.locations.list);
   const createLocation = useMutation(api.locations.create);
+  const seedLocations = useMutation(api.locations.seedDefaultsIfEmpty);
+  const syncLocations = useMutation(api.locations.syncDefaults);
   const pagination = usePagination(25);
+
+  // Ensure the org's suggestion list exists and is topped up with the latest
+  // curated areas (covers orgs seeded from the older, smaller dataset).
+  React.useEffect(() => {
+    if (currentUser && locations !== undefined) {
+      if (locations.length === 0) {
+        seedLocations();
+      } else {
+        syncLocations();
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser, locations !== undefined]);
 
   // Search/filter state with debouncing
   const [searchInput, setSearchInput] = React.useState("");
@@ -523,9 +539,14 @@ export default function ContactsPage() {
   };
 
   const handleAddArea = (area: string) => {
-    const trimmed = area.trim();
-    if (trimmed && !preferredAreas.includes(trimmed)) {
-      setPreferredAreas([...preferredAreas, trimmed]);
+    // Canonicalize so a hand-typed variant ("Mt Pleasant") is recorded under
+    // the same name a suggestion would use, keeping it matchable.
+    const canonical = canonicalizeArea(area);
+    if (
+      canonical &&
+      !preferredAreas.some((a) => a.toLowerCase() === canonical.toLowerCase())
+    ) {
+      setPreferredAreas([...preferredAreas, canonical]);
     }
   };
 
@@ -536,16 +557,20 @@ export default function ContactsPage() {
   const handleAddNewLocation = async () => {
     if (!newLocation.trim()) return;
     setIsAddingLocation(true);
+    // Always record the area first — a missing suggestion must never block the
+    // user from capturing the client's actual preference.
+    handleAddArea(newLocation);
     try {
-      await createLocation({ name: newLocation.trim() });
-      handleAddArea(newLocation.trim());
-      locationToasts.created(newLocation.trim());
-      setNewLocation("");
+      // Best-effort: also persist it to the org's reusable suggestion list.
+      await createLocation({ name: newLocation });
+      locationToasts.created(canonicalizeArea(newLocation));
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Failed to add location";
-      setFormError(errorMessage);
-      locationToasts.createFailed(errorMessage);
+      if (!/already exists/i.test(errorMessage)) {
+        locationToasts.createFailed(errorMessage);
+      }
     } finally {
+      setNewLocation("");
       setIsAddingLocation(false);
     }
   };

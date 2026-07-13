@@ -2,6 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getCurrentUserWithOrg, assertOrgAccess } from "./helpers";
 import { Id, Doc } from "./_generated/dataModel";
+import { areaMatchesLocation } from "./lib/locations";
 
 async function canAccessLead(ctx: any, leadId: any, userId: any, isAdmin: boolean, userOrgId: Id<"organizations">) {
   const lead = await ctx.db.get(leadId);
@@ -90,9 +91,10 @@ function calculateMatchScore(
 
   if (lead.preferredAreas.length > 0) {
     const propertyLocation = property.location.toLowerCase();
+    // Normalized + alias-aware matching so manual variants (e.g. "Mt Pleasant")
+    // match a property at "Mount Pleasant" exactly like a suggested area would.
     const matchedAreas = lead.preferredAreas.filter((area) =>
-      propertyLocation.includes(area.toLowerCase()) ||
-      area.toLowerCase().includes(propertyLocation)
+      areaMatchesLocation(area, property.location)
     );
 
     if (matchedAreas.length > 0) {
