@@ -207,6 +207,183 @@ export const getById = query({
   },
 });
 
+/**
+ * Consolidated contact profile: pulls together everything about a contact so a
+ * user opening it sees the full history in one place (lead history, preferences,
+ * property enquiries, notes/activity timeline, follow-ups, and the agents who
+ * have worked the contact). Activities and property matches live on leads, so
+ * we fan out contact -> leads -> activities/matches.
+ *
+ * Everything a contact-owner (or admin) can see here is intentionally scoped to
+ * the CONTACT, not to individual lead ownership, so the record survives an agent
+ * leaving and preserves business continuity.
+ */
+export const getProfile = query({
+  args: { contactId: v.id("contacts") },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserWithOrg(ctx);
+    const contact = await canAccessContact(
+      ctx,
+      args.contactId,
+      user._id,
+      user.role === "admin",
+      user.orgId
+    );
+    if (!contact) return null;
+
+    const leads = (
+      await ctx.db
+        .query("leads")
+        .withIndex("by_contact", (q) => q.eq("contactId", args.contactId))
+        .collect()
+    ).filter((l) => !l.orgId || l.orgId === user.orgId);
+
+    // Cache user lookups (owners / assignees) to avoid repeated gets.
+    const userNameCache = new Map<string, string>();
+    const nameOf = async (id: Id<"users"> | undefined | null) => {
+      if (!id) return "Unknown";
+      const key = id as string;
+      if (userNameCache.has(key)) return userNameCache.get(key)!;
+      const u = await ctx.db.get(id);
+      const name = u ? u.fullName || u.name || u.email || "Unknown" : "Unknown";
+      userNameCache.set(key, name);
+      return name;
+    };
+
+    const leadHistory = await Promise.all(
+      leads.map(async (lead) => {
+        const stage = await ctx.db.get(lead.stageId);
+        return {
+          _id: lead._id,
+          fullName: lead.fullName,
+          source: lead.source,
+          interestType: lead.interestType,
+          stageName: stage?.name || "Unknown",
+          isArchived: !!lead.isArchived,
+          isClosed: !!lead.closedAt,
+          closedAt: lead.closedAt ?? null,
+          closeReason: lead.closeReason ?? null,
+          dealValue: lead.dealValue ?? null,
+          dealCurrency: lead.dealCurrency ?? null,
+          score: lead.score ?? lead.computedScore ?? null,
+          notes: lead.notes ?? "",
+          ownerUserId: lead.ownerUserId,
+          ownerName: await nameOf(lead.ownerUserId),
+          createdAt: lead.createdAt,
+        };
+      })
+    );
+    leadHistory.sort((a, b) => b.createdAt - a.createdAt);
+
+    // Activities + enquiries across all the contact's leads.
+    const leadNameById = new Map(leads.map((l) => [l._id as string, l.fullName]));
+    const activities: Array<{
+      _id: Id<"activities">;
+      leadId: Id<"leads"> | null;
+      leadName: string;
+      type: string;
+      title: string;
+      description: string;
+      status: string;
+      scheduledAt: number | null;
+      completedAt: number | null;
+      completionNotes: string | null;
+      assignedToName: string;
+      createdAt: number;
+    }> = [];
+    const enquiries: Array<{
+      _id: Id<"leadPropertyMatches">;
+      leadId: Id<"leads">;
+      matchType: string;
+      createdAt: number;
+      property: {
+        _id: Id<"properties">;
+        title: string;
+        location: string;
+        listingType: string;
+        price: number;
+        currency: string;
+      } | null;
+    }> = [];
+
+    for (const lead of leads) {
+      const [acts, matches] = await Promise.all([
+        ctx.db
+          .query("activities")
+          .withIndex("by_lead", (q) => q.eq("leadId", lead._id))
+          .collect(),
+        ctx.db
+          .query("leadPropertyMatches")
+          .withIndex("by_lead", (q) => q.eq("leadId", lead._id))
+          .collect(),
+      ]);
+      for (const a of acts) {
+        activities.push({
+          _id: a._id,
+          leadId: a.leadId ?? null,
+          leadName: leadNameById.get((a.leadId ?? "") as string) ?? lead.fullName,
+          type: a.type,
+          title: a.title,
+          description: a.description,
+          status: a.status,
+          scheduledAt: a.scheduledAt ?? null,
+          completedAt: a.completedAt ?? null,
+          completionNotes: a.completionNotes ?? null,
+          assignedToName: await nameOf(a.assignedToUserId),
+          createdAt: a.createdAt,
+        });
+      }
+      for (const m of matches) {
+        const property = await ctx.db.get(m.propertyId);
+        enquiries.push({
+          _id: m._id,
+          leadId: m.leadId,
+          matchType: m.matchType,
+          createdAt: m.createdAt,
+          property: property
+            ? {
+                _id: property._id,
+                title: property.title,
+                location: property.location,
+                listingType: property.listingType,
+                price: property.price,
+                currency: property.currency,
+              }
+            : null,
+        });
+      }
+    }
+    activities.sort((a, b) => b.createdAt - a.createdAt);
+    enquiries.sort((a, b) => b.createdAt - a.createdAt);
+
+    // Agents who have worked this contact: current owners + every past/present
+    // lead owner. Preserves "historical agent ownership" without a new table.
+    const agentIds = new Set<string>();
+    for (const id of contact.ownerUserIds) agentIds.add(id as string);
+    for (const l of leads) agentIds.add(l.ownerUserId as string);
+    const currentOwnerSet = new Set(
+      (contact.ownerUserIds as Id<"users">[]).map((id) => id as string)
+    );
+    const agentHistory = await Promise.all(
+      [...agentIds].map(async (id) => ({
+        _id: id as Id<"users">,
+        name: await nameOf(id as Id<"users">),
+        isCurrentOwner: currentOwnerSet.has(id),
+        leadCount: leads.filter((l) => (l.ownerUserId as string) === id).length,
+      }))
+    );
+
+    return {
+      contact,
+      leadHistory,
+      activities,
+      enquiries,
+      agentHistory,
+      todoCount: activities.filter((a) => a.status === "todo").length,
+    };
+  },
+});
+
 export const update = mutation({
   args: {
     contactId: v.id("contacts"),

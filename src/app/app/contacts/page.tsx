@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { motion } from "framer-motion";
 import { api } from "../../../../convex/_generated/api";
@@ -82,12 +83,14 @@ const ContactTableRow = React.memo(function ContactTableRow({
   isAdmin,
   currentUserId,
   onEdit,
+  onView,
   onDelete,
 }: {
   contact: ContactWithOwners;
   isAdmin: boolean;
   currentUserId: Id<"users">;
   onEdit: (contact: ContactWithOwners) => void;
+  onView: (contact: ContactWithOwners) => void;
   onDelete: (contact: ContactWithOwners) => void;
 }) {
   return (
@@ -96,7 +99,7 @@ const ContactTableRow = React.memo(function ContactTableRow({
       initial="hidden"
       animate="show"
       className="group h-11 cursor-pointer border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)]"
-      onClick={() => onEdit(contact)}
+      onClick={() => onView(contact)}
     >
       <TableCell>
         <p className="font-medium">{contact.name}</p>
@@ -121,7 +124,7 @@ const ContactTableRow = React.memo(function ContactTableRow({
               variant="secondary"
               className="action-btn h-9 w-9 p-0 md:opacity-60 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-150"
               style={{ transitionDelay: "0ms" }}
-              onClick={(e) => { e.stopPropagation(); onEdit(contact); }}
+              onClick={(e) => { e.stopPropagation(); onView(contact); }}
             >
               <Eye className="h-4 w-4" />
             </Button>
@@ -168,12 +171,14 @@ const ContactCard = React.memo(function ContactCard({
   isAdmin,
   currentUserId,
   onEdit,
+  onView,
   onDelete,
 }: {
   contact: ContactWithOwners;
   isAdmin: boolean;
   currentUserId: Id<"users">;
   onEdit: (contact: ContactWithOwners) => void;
+  onView: (contact: ContactWithOwners) => void;
   onDelete: (contact: ContactWithOwners) => void;
 }) {
   return (
@@ -185,7 +190,7 @@ const ContactCard = React.memo(function ContactCard({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <button onClick={() => onEdit(contact)} className="block truncate text-left font-medium hover:text-primary">
+          <button onClick={() => onView(contact)} className="block truncate text-left font-medium hover:text-primary">
             {contact.name}
           </button>
           {contact.company && <p className="truncate text-xs text-text-muted">{contact.company}</p>}
@@ -230,6 +235,8 @@ const ContactCard = React.memo(function ContactCard({
 });
 
 export default function ContactsPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const currentUser = useQuery(api.users.getMeRequired);
   const users = useQuery(api.users.listForAssignment);
   const locations = useQuery(api.locations.list);
@@ -305,6 +312,26 @@ export default function ContactsPage() {
   const [modalTab, setModalTab] = React.useState<"details" | "preferences">("details");
 
   const isAdmin = currentUser?.role === "admin";
+
+  // Row click opens the consolidated contact profile.
+  const handleViewContact = React.useCallback(
+    (contact: ContactWithOwners) => {
+      router.push(`/app/contacts/${contact._id}`);
+    },
+    [router]
+  );
+
+  // Deep link: /app/contacts?edit=<id> opens the edit modal (used by the
+  // "Edit" button on the contact profile page).
+  const editParam = searchParams.get("edit");
+  React.useEffect(() => {
+    if (!editParam || !contacts) return;
+    const match = contacts.find((c) => c._id === editParam);
+    if (match) {
+      setSelectedContact(match);
+      router.replace("/app/contacts");
+    }
+  }, [editParam, contacts, router]);
 
   // Validation functions
   const validateName = (value: string): string | undefined => {
@@ -636,6 +663,7 @@ export default function ContactsPage() {
                 isAdmin={isAdmin}
                 currentUserId={currentUser._id}
                 onEdit={setSelectedContact}
+                onView={handleViewContact}
                 onDelete={setDeleteTarget}
               />
             ))}
@@ -654,6 +682,7 @@ export default function ContactsPage() {
               isAdmin={isAdmin}
               currentUserId={currentUser._id}
               onEdit={setSelectedContact}
+              onView={handleViewContact}
               onDelete={setDeleteTarget}
             />
           ))}
