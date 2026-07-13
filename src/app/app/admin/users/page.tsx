@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
+import { getTempPassword } from "../../../../../convex/lib/authReconcile";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RightDrawer } from "@/components/common/right-drawer";
@@ -525,7 +526,7 @@ export default function UsersPage() {
                   <p className="text-sm font-medium">Reset password</p>
                   <p className="text-xs text-text-muted">
                     {editingUser.resetPasswordOnNextLogin
-                      ? <>Password reset is already pending. The temporary password is <span className="font-mono font-semibold text-text">12345678</span>. The user will be required to change it on next login.</>
+                      ? <>Password reset is already pending. The temporary password is <span className="font-mono font-semibold text-text">{getTempPassword()}</span>. The user will be required to change it on next login.</>
                       : "Set a temporary password. User must change it on next login."}
                   </p>
                 </div>

@@ -5,9 +5,14 @@ import { getCurrentUser, requireAdmin, getCurrentUserOptional, getCurrentUserWit
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Scrypt } from "lucia";
 import { recordAudit } from "./logs";
+import { rebuildPasswordAccount, getTempPassword } from "./lib/authReconcile";
 
-/** Default temporary password for admin-created users */
-const DEFAULT_TEMP_PASSWORD = "12345678";
+/**
+ * Temporary password for admin-created / reset users. Configurable per
+ * deployment via AUTH_TEMP_PASSWORD (see getTempPassword); always paired with a
+ * forced reset on next login. No client-specific literal.
+ */
+const DEFAULT_TEMP_PASSWORD = getTempPassword();
 
 export const getMe = query({
   handler: async (ctx) => {
@@ -114,12 +119,14 @@ export const adminCreateUserInternal = internalMutation({
       updatedAt: timestamp,
     });
 
-    // Create an auth account so the user can sign in with the temp password
-    await ctx.db.insert("authAccounts", {
-      userId,
-      provider: "password",
-      providerAccountId: args.email,
-      secret: args.passwordHash,
+    // Create an auth account so the user can sign in with the temp password.
+    // Uses the shared rebuild helper so that re-adding someone who was deleted
+    // straight from the `users` table first purges any orphaned password
+    // account for this email instead of creating a login-breaking duplicate.
+    await rebuildPasswordAccount(ctx, {
+      email: args.email,
+      liveUserId: userId,
+      passwordHash: args.passwordHash,
     });
 
     console.log(
@@ -417,29 +424,27 @@ export const adminResetUserPasswordInternal = internalMutation({
     if (!targetUser || targetUser.orgId !== args.orgId) {
       throw new Error("User not found");
     }
-
-    // Find the auth account for this user
-    const account = await ctx.db
-      .query("authAccounts")
-      .filter((q) => q.eq(q.field("userId"), args.targetUserId))
-      .first();
+    if (!targetUser.email) {
+      throw new Error(
+        "User has no email on record, so a password account cannot be rebuilt."
+      );
+    }
 
     const now = Date.now();
 
-    if (account) {
-      // Update existing auth account password
-      await ctx.db.patch(account._id, {
-        secret: args.passwordHash,
-      });
-    } else {
-      // Create auth account if it doesn't exist (e.g., user was created before this feature)
-      await ctx.db.insert("authAccounts", {
-        userId: args.targetUserId,
-        provider: "password",
-        providerAccountId: targetUser.email!,
-        secret: args.passwordHash,
-      });
-    }
+    // Rebuild a single clean password account for this email. Beyond setting the
+    // new temp password, this purges any orphaned / duplicate `authAccounts`
+    // (and their sessions) left behind when a user was deleted straight from the
+    // `users` table and later re-added — duplicates that otherwise make every
+    // login fail with "wrong username or password", even after a naive reset.
+    const { deletedAccounts, deletedSessions } = await rebuildPasswordAccount(
+      ctx,
+      {
+        email: targetUser.email,
+        liveUserId: args.targetUserId,
+        passwordHash: args.passwordHash,
+      }
+    );
 
     // Set the forced reset flag
     await ctx.db.patch(args.targetUserId, {
@@ -448,16 +453,21 @@ export const adminResetUserPasswordInternal = internalMutation({
     });
 
     console.log(
-      `[Admin] Password reset by admin ${args.adminId} for user ${args.targetUserId}, resetPasswordOnNextLogin=true`
+      `[Admin] Password reset by admin ${args.adminId} for user ${args.targetUserId}, ` +
+        `resetPasswordOnNextLogin=true (removed ${deletedAccounts} stale account(s), ${deletedSessions} session(s))`
     );
 
     const admin = await ctx.db.get(args.adminId);
+    const cleanupNote =
+      deletedAccounts > 1 || deletedSessions > 0
+        ? ` (removed ${deletedAccounts} stale account(s), ${deletedSessions} session(s))`
+        : "";
     await recordAudit(ctx, {
       actorUserId: args.adminId,
       actorLabel: admin?.fullName || admin?.name || admin?.email,
       action: "user.password_reset_by_admin",
       category: "user",
-      description: `Reset password for ${targetUser.email || "user"} (temp password issued)`,
+      description: `Reset password for ${targetUser.email || "user"} (temp password issued)${cleanupNote}`,
       targetType: "user",
       targetId: args.targetUserId,
       targetLabel: targetUser.email,
