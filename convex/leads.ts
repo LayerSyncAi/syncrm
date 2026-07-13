@@ -5,6 +5,7 @@ import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { checkRateLimit } from "./rateLimit";
 import { computeAndStoreScore } from "./leadScoring";
+import { COMMISSION_RATE, computeCommissionSplit } from "./commissionLib";
 
 const leadArgs = {
   contactId: v.id("contacts"),
@@ -574,10 +575,16 @@ export const moveStage = mutation({
             });
           }
 
-          // Create commission record
+          // Create commission record. Splits are shares of the commission
+          // pool (COMMISSION_RATE of the sale value), not of the sale value.
           const propPercent = sharedConfig?.propertyAgentPercent ?? 40;
           const leadPercent = sharedConfig?.leadAgentPercent ?? 40;
           const compPercent = sharedConfig?.companyPercent ?? 20;
+          const split = computeCommissionSplit(args.dealValue, {
+            propertyAgentPercent: propPercent,
+            leadAgentPercent: leadPercent,
+            companyPercent: compPercent,
+          });
 
           await ctx.db.insert("dealCommissions", {
             leadId: args.leadId,
@@ -586,14 +593,16 @@ export const moveStage = mutation({
             commissionConfigId: sharedConfig?._id,
             dealValue: args.dealValue,
             dealCurrency,
+            commissionRate: COMMISSION_RATE,
+            commissionAmount: split.commissionAmount,
             propertyAgentUserId: share.sharedByUserId,
             propertyAgentPercent: propPercent,
-            propertyAgentAmount: (args.dealValue * propPercent) / 100,
+            propertyAgentAmount: split.propertyAgentAmount,
             leadAgentUserId: share.sharedWithUserId,
             leadAgentPercent: leadPercent,
-            leadAgentAmount: (args.dealValue * leadPercent) / 100,
+            leadAgentAmount: split.leadAgentAmount,
             companyPercent: compPercent,
-            companyAmount: (args.dealValue * compPercent) / 100,
+            companyAmount: split.companyAmount,
             status: "pending",
             orgId: user.orgId,
             createdAt: now,
@@ -643,6 +652,11 @@ export const moveStage = mutation({
         const propPercent = config?.propertyAgentPercent ?? defaults.prop;
         const leadPercent = config?.leadAgentPercent ?? defaults.lead;
         const compPercent = config?.companyPercent ?? defaults.company;
+        const split = computeCommissionSplit(args.dealValue, {
+          propertyAgentPercent: propPercent,
+          leadAgentPercent: leadPercent,
+          companyPercent: compPercent,
+        });
 
         await ctx.db.insert("dealCommissions", {
           leadId: args.leadId,
@@ -650,14 +664,16 @@ export const moveStage = mutation({
           commissionConfigId: config?._id,
           dealValue: args.dealValue,
           dealCurrency,
+          commissionRate: COMMISSION_RATE,
+          commissionAmount: split.commissionAmount,
           propertyAgentUserId: scenario === "own_property_own_lead" ? undefined : propertyAgentId,
           propertyAgentPercent: propPercent,
-          propertyAgentAmount: (args.dealValue * propPercent) / 100,
+          propertyAgentAmount: split.propertyAgentAmount,
           leadAgentUserId: lead.ownerUserId,
           leadAgentPercent: leadPercent,
-          leadAgentAmount: (args.dealValue * leadPercent) / 100,
+          leadAgentAmount: split.leadAgentAmount,
           companyPercent: compPercent,
-          companyAmount: (args.dealValue * compPercent) / 100,
+          companyAmount: split.companyAmount,
           status: "pending",
           orgId: user.orgId,
           createdAt: now,
@@ -868,6 +884,11 @@ export const updateCloseDetails = mutation({
             const propPercent = sharedConfig?.propertyAgentPercent ?? 40;
             const leadPercent = sharedConfig?.leadAgentPercent ?? 40;
             const compPercent = sharedConfig?.companyPercent ?? 20;
+            const split = computeCommissionSplit(args.dealValue, {
+              propertyAgentPercent: propPercent,
+              leadAgentPercent: leadPercent,
+              companyPercent: compPercent,
+            });
 
             await ctx.db.insert("dealCommissions", {
               leadId: args.leadId,
@@ -876,14 +897,16 @@ export const updateCloseDetails = mutation({
               commissionConfigId: sharedConfig?._id,
               dealValue: args.dealValue,
               dealCurrency,
+              commissionRate: COMMISSION_RATE,
+              commissionAmount: split.commissionAmount,
               propertyAgentUserId: share.sharedByUserId,
               propertyAgentPercent: propPercent,
-              propertyAgentAmount: (args.dealValue * propPercent) / 100,
+              propertyAgentAmount: split.propertyAgentAmount,
               leadAgentUserId: share.sharedWithUserId,
               leadAgentPercent: leadPercent,
-              leadAgentAmount: (args.dealValue * leadPercent) / 100,
+              leadAgentAmount: split.leadAgentAmount,
               companyPercent: compPercent,
-              companyAmount: (args.dealValue * compPercent) / 100,
+              companyAmount: split.companyAmount,
               status: "pending",
               orgId: user.orgId,
               createdAt: now,
@@ -930,6 +953,11 @@ export const updateCloseDetails = mutation({
           const propPercent = config?.propertyAgentPercent ?? defaults.prop;
           const leadPercent = config?.leadAgentPercent ?? defaults.lead;
           const compPercent = config?.companyPercent ?? defaults.company;
+          const split = computeCommissionSplit(args.dealValue, {
+            propertyAgentPercent: propPercent,
+            leadAgentPercent: leadPercent,
+            companyPercent: compPercent,
+          });
 
           await ctx.db.insert("dealCommissions", {
             leadId: args.leadId,
@@ -937,14 +965,16 @@ export const updateCloseDetails = mutation({
             commissionConfigId: config?._id,
             dealValue: args.dealValue,
             dealCurrency,
+            commissionRate: COMMISSION_RATE,
+            commissionAmount: split.commissionAmount,
             propertyAgentUserId: scenario === "own_property_own_lead" ? undefined : propertyAgentId,
             propertyAgentPercent: propPercent,
-            propertyAgentAmount: (args.dealValue * propPercent) / 100,
+            propertyAgentAmount: split.propertyAgentAmount,
             leadAgentUserId: lead.ownerUserId,
             leadAgentPercent: leadPercent,
-            leadAgentAmount: (args.dealValue * leadPercent) / 100,
+            leadAgentAmount: split.leadAgentAmount,
             companyPercent: compPercent,
-            companyAmount: (args.dealValue * compPercent) / 100,
+            companyAmount: split.companyAmount,
             status: "pending",
             orgId: user.orgId,
             createdAt: now,

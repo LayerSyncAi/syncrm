@@ -42,6 +42,18 @@ import {
 import { commissionToasts } from "@/lib/toast";
 import { Badge } from "@/components/ui/badge";
 import { formatMoney } from "@/lib/currency";
+import { COMMISSION_RATE, COMMISSION_RATE_PERCENT } from "../../../../../convex/commissionLib";
+
+// Commission pool for a record, falling back for records created before the
+// commissionAmount field existed (legacy rows stored splits of the sale value).
+const commissionAmountOf = (c: {
+  commissionAmount?: number;
+  commissionRate?: number;
+  dealValue: number;
+}): number =>
+  typeof c.commissionAmount === "number"
+    ? c.commissionAmount
+    : c.dealValue * (c.commissionRate ?? COMMISSION_RATE);
 
 type Scenario = "shared_deal" | "own_property_own_lead" | "company_property";
 type CommissionStatus = "pending" | "approved" | "paid";
@@ -479,6 +491,7 @@ export default function CommissionsPage() {
                     <TableRow>
                       <TableHead>Lead</TableHead>
                       <TableHead className="text-right">Deal value</TableHead>
+                      <TableHead className="text-right">Commission ({COMMISSION_RATE_PERCENT}%)</TableHead>
                       <TableHead>Split</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
@@ -502,6 +515,7 @@ export default function CommissionsPage() {
                             )}
                           </TableCell>
                           <TableCell className="whitespace-nowrap text-right font-medium tabular-nums">{fmt(commission.dealValue)}</TableCell>
+                          <TableCell className="whitespace-nowrap text-right font-medium tabular-nums text-primary">{fmt(commissionAmountOf(commission))}</TableCell>
                           <TableCell className="min-w-[210px]">
                             <div className="space-y-0.5 text-xs">
                               <div className="flex items-center justify-between gap-3">
@@ -568,7 +582,12 @@ export default function CommissionsPage() {
                         {commission.status === "approved" && <Badge variant="info" className="gap-1"><CheckCircle className="h-3 w-3" /> Approved</Badge>}
                         {commission.status === "paid" && <Badge variant="success" className="gap-1"><CheckCircle className="h-3 w-3" /> Paid</Badge>}
                       </div>
-                      <p className="text-lg font-semibold tabular-nums">{fmt(commission.dealValue)}</p>
+                      <div>
+                        <p className="text-lg font-semibold tabular-nums">{fmt(commission.dealValue)}</p>
+                        <p className="text-xs font-medium tabular-nums text-primary">
+                          Commission ({COMMISSION_RATE_PERCENT}%): {fmt(commissionAmountOf(commission))}
+                        </p>
+                      </div>
                       <div className="space-y-1 text-xs text-text-muted">
                         <div className="flex justify-between gap-2">
                           <span>{commission.contactOwnerName || commission.leadAgentName}</span>
@@ -672,7 +691,9 @@ export default function CommissionsPage() {
 
           <div className="space-y-3 rounded-lg border border-border p-4">
             <h4 className="text-sm font-medium">Commission Split</h4>
-            <p className="text-xs text-text-muted">Percentages must sum to 100%</p>
+            <p className="text-xs text-text-muted">
+              Percentages must sum to 100% of the commission ({COMMISSION_RATE_PERCENT}% of the sale value).
+            </p>
 
             <div className="space-y-2">
               <div className="flex items-center gap-3">
@@ -820,6 +841,10 @@ export default function CommissionsPage() {
                   <span className="text-sm font-semibold">{fmt(detailCommission.dealValue)}</span>
                 </div>
                 <div className="flex items-center justify-between">
+                  <span className="text-xs text-text-muted">Commission ({COMMISSION_RATE_PERCENT}%)</span>
+                  <span className="text-sm font-semibold text-primary">{fmt(commissionAmountOf(detailCommission))}</span>
+                </div>
+                <div className="flex items-center justify-between">
                   <span className="text-xs text-text-muted">Created</span>
                   <span className="text-sm">{new Date(detailCommission.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
                 </div>
@@ -837,7 +862,7 @@ export default function CommissionsPage() {
                   </div>
                 </div>
                 <p className="text-xs text-text-muted italic">
-                  Rates locked at time of deal closure. These may differ from current scenario defaults.
+                  Splits are shares of the {COMMISSION_RATE_PERCENT}% commission, not the sale value. Rates locked at time of deal closure and may differ from current scenario defaults.
                 </p>
 
                 <div className="space-y-2">
