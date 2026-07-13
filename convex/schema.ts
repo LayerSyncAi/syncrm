@@ -543,6 +543,25 @@ export default defineSchema({
     .index("by_normalized_phone", ["normalizedPhone"])
     .index("by_name", ["name"])
     .index("by_org", ["orgId"]),
+  // Web Push (PWA) subscriptions. One row per browser/device endpoint a user
+  // has granted notification permission on. A user can have many (phone,
+  // laptop, etc.). Pruned automatically when the push service returns 404/410
+  // (subscription expired/unsubscribed).
+  pushSubscriptions: defineTable({
+    userId: v.id("users"),
+    // The unique push service endpoint URL — the natural key for a subscription.
+    endpoint: v.string(),
+    // Encryption keys from the browser's PushSubscription (base64url).
+    p256dh: v.string(),
+    auth: v.string(),
+    // Best-effort device label for the settings UI / debugging.
+    userAgent: v.optional(v.string()),
+    orgId: v.optional(v.id("organizations")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_endpoint", ["endpoint"]),
   // Marketing spend records, used by the reporting module for property ROI and
   // per-channel return-on-ad-spend. Spend can be attributed to a specific property
   // (propertyId set) or to a channel generally (propertyId unset).

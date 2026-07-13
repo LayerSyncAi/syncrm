@@ -39,6 +39,8 @@ import type * as propertyBook_parser from "../propertyBook/parser.js";
 import type * as propertyBook_refresh from "../propertyBook/refresh.js";
 import type * as propertyBook_scraper from "../propertyBook/scraper.js";
 import type * as propertyShares from "../propertyShares.js";
+import type * as push from "../push.js";
+import type * as pushSender from "../pushSender.js";
 import type * as rateLimit from "../rateLimit.js";
 import type * as reportingLib from "../reportingLib.js";
 import type * as reports from "../reports.js";
@@ -84,6 +86,8 @@ declare const fullApi: ApiFromModules<{
   "propertyBook/refresh": typeof propertyBook_refresh;
   "propertyBook/scraper": typeof propertyBook_scraper;
   propertyShares: typeof propertyShares;
+  push: typeof push;
+  pushSender: typeof pushSender;
   rateLimit: typeof rateLimit;
   reportingLib: typeof reportingLib;
   reports: typeof reports;

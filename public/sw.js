@@ -54,6 +54,61 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// ─── Push notifications ──────────────────────────────────────────────────────
+
+/**
+ * Display a notification when the push service delivers one. The payload is the
+ * JSON produced by convex/pushSender.ts: { title, body, url, tag }.
+ * Wrapped in try/catch so a malformed payload still surfaces a generic notice
+ * rather than silently failing (some browsers drop pushes that show nothing).
+ */
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { title: 'SynCRM', body: event.data ? event.data.text() : '' };
+  }
+
+  const title = data.title || 'SynCRM';
+  const options = {
+    body: data.body || '',
+    icon: '/icons/icon-192x192.png',
+    badge: '/icons/icon-96x96.png',
+    // Collapse repeat notifications of the same kind (e.g. one activity).
+    tag: data.tag || undefined,
+    // Deep-link target read back in the notificationclick handler.
+    data: { url: data.url || '/app' },
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+/**
+ * Focus an existing app window (or open a new one) at the notification's URL.
+ */
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = (event.notification.data && event.notification.data.url) || '/app';
+
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: 'window', includeUncontrolled: true })
+      .then((clientList) => {
+        // Prefer focusing an already-open tab; navigate it to the target.
+        for (const client of clientList) {
+          if ('focus' in client) {
+            client.navigate(targetUrl).catch(() => {});
+            return client.focus();
+          }
+        }
+        if (self.clients.openWindow) {
+          return self.clients.openWindow(targetUrl);
+        }
+      })
+  );
+});
+
 // ─── Fetch ──────────────────────────────────────────────────────────────────
 
 self.addEventListener('fetch', (event) => {

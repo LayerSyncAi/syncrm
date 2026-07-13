@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getCurrentUserWithOrg, assertOrgAccess } from "./helpers";
+import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 
 /**
@@ -59,7 +60,7 @@ export const shareProperty = mutation({
     }
 
     const timestamp = Date.now();
-    return ctx.db.insert("propertyShares", {
+    const shareId = await ctx.db.insert("propertyShares", {
       propertyId: args.propertyId,
       leadId: args.leadId,
       sharedByUserId: user._id,
@@ -70,6 +71,18 @@ export const shareProperty = mutation({
       createdAt: timestamp,
       updatedAt: timestamp,
     });
+
+    // Notify the receiving agent (always a different user — enforced above).
+    const sharerName = user.fullName || user.name || "A colleague";
+    await ctx.scheduler.runAfter(0, internal.pushSender.sendToUser, {
+      userId: args.sharedWithUserId,
+      title: "Property shared with you",
+      body: `${sharerName} shared "${property.title}" for lead ${lead.fullName}.`,
+      url: "/app/properties",
+      tag: `share-${shareId}`,
+    });
+
+    return shareId;
   },
 });
 

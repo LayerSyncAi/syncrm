@@ -479,6 +479,16 @@ export const processPreReminders = internalAction({
         relatedId: activity._id,
         orgId: user.orgId,
       });
+
+      // Fire a web push alongside the email (no-op if push isn't configured or
+      // the user has no subscribed devices).
+      await ctx.scheduler.runAfter(0, internal.pushSender.sendToUser, {
+        userId: user._id,
+        title: `${typeLabel} starting soon`,
+        body: `"${activity.title}" starts at ${timeStr}${leadName ? ` · ${leadName}` : ""}`,
+        url: "/app/tasks",
+        tag: `activity-${activity._id}`,
+      });
     }
   },
 });
@@ -577,6 +587,14 @@ export const processOverdueReminders = internalAction({
         activityId: activity._id,
         reminderType: "overdue_reminder",
         userId: user._id,
+      });
+
+      await ctx.scheduler.runAfter(0, internal.pushSender.sendToUser, {
+        userId: user._id,
+        title: `${typeLabel} overdue`,
+        body: `"${activity.title}" was due at ${timeStr} and is still open.`,
+        url: "/app/tasks",
+        tag: `activity-${activity._id}`,
       });
     }
   },
@@ -746,6 +764,14 @@ export const processDailyDigests = internalAction({
         reminderType: "daily_digest",
         userId: user._id,
         digestDate: dateStr,
+      });
+
+      await ctx.scheduler.runAfter(0, internal.pushSender.sendToUser, {
+        userId: user._id,
+        title: "Your daily agenda",
+        body: `${todoCount} task${todoCount !== 1 ? "s" : ""} scheduled for ${dateLabel}.`,
+        url: "/app/tasks",
+        tag: `digest-${dateStr}`,
       });
     }
   },

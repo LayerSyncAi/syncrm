@@ -3,11 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ChevronDown, Globe, LogOut, Menu, Search } from "lucide-react";
+import { Bell, BellOff, ChevronDown, Globe, LogOut, Menu, Search } from "lucide-react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { cn } from "@/lib/utils";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { TIMEZONES, detectBrowserTimezone } from "@/lib/timezones";
 import { brand } from "@/config/brand";
 
@@ -37,6 +38,7 @@ export function Topbar({ userName, userEmail, orgName, userTimezone, onMobileMen
   const router = useRouter();
   const { signOut } = useAuthActions();
   const updateTimezone = useMutation(api.users.updateMyTimezone);
+  const push = usePushNotifications();
   const [open, setOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showTimezone, setShowTimezone] = useState(false);
@@ -193,6 +195,34 @@ export function Topbar({ userName, userEmail, orgName, userTimezone, onMobileMen
                     </button>
                   ))}
                 </div>
+              )}
+              {push.supported && (
+                <button
+                  onClick={() =>
+                    push.isSubscribed ? push.unsubscribe() : push.subscribe()
+                  }
+                  disabled={push.busy || push.status === "denied"}
+                  className={cn(
+                    "flex w-full items-center gap-2 rounded-[10px] px-3 py-2 text-sm text-text-muted hover:bg-row-hover",
+                    (push.busy || push.status === "denied") &&
+                      "opacity-50 cursor-not-allowed"
+                  )}
+                >
+                  {push.isSubscribed ? (
+                    <Bell className="h-4 w-4 text-primary-600" />
+                  ) : (
+                    <BellOff className="h-4 w-4" />
+                  )}
+                  <span className="truncate">
+                    {push.status === "denied"
+                      ? "Notifications blocked"
+                      : push.busy
+                        ? "Working…"
+                        : push.isSubscribed
+                          ? "Notifications on"
+                          : "Enable notifications"}
+                  </span>
+                </button>
               )}
               <button
                 onClick={handleLogout}

@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getCurrentUserWithOrg, assertOrgAccess } from "./helpers";
+import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { checkRateLimit } from "./rateLimit";
 import { computeAndStoreScore } from "./leadScoring";
@@ -68,7 +69,7 @@ export const create = mutation({
       ? args.ownerUserId
       : user._id;
 
-    return ctx.db.insert("leads", {
+    const leadId = await ctx.db.insert("leads", {
       contactId: args.contactId,
       fullName: contact.name,
       phone: contact.phone || undefined,
@@ -87,6 +88,20 @@ export const create = mutation({
       createdAt: timestamp,
       updatedAt: timestamp,
     });
+
+    // Notify the owner when a lead is assigned to someone other than the
+    // creator (e.g. an admin assigning to an agent). No self-notifications.
+    if (ownerId !== user._id) {
+      await ctx.scheduler.runAfter(0, internal.pushSender.sendToUser, {
+        userId: ownerId,
+        title: "New lead assigned",
+        body: `${contact.name} was assigned to you.`,
+        url: `/app/leads/${leadId}`,
+        tag: `lead-${leadId}`,
+      });
+    }
+
+    return leadId;
   },
 });
 
@@ -1051,6 +1066,20 @@ export const createWithProperties = mutation({
       for (const lid of leadIds) {
         await computeAndStoreScore(ctx, lid, user.orgId);
       }
+      // One consolidated push when assigning to another agent.
+      if (ownerId !== user._id && leadIds.length > 0) {
+        await ctx.scheduler.runAfter(0, internal.pushSender.sendToUser, {
+          userId: ownerId,
+          title:
+            leadIds.length === 1 ? "New lead assigned" : "New leads assigned",
+          body:
+            leadIds.length === 1
+              ? `${contact.name} was assigned to you.`
+              : `${leadIds.length} leads for ${contact.name} were assigned to you.`,
+          url: `/app/leads/${leadIds[0]}`,
+          tag: `lead-${leadIds[0]}`,
+        });
+      }
       return leadIds[0];
     } else {
       // No properties — create a single lead
@@ -1074,6 +1103,15 @@ export const createWithProperties = mutation({
         updatedAt: timestamp,
       });
       await computeAndStoreScore(ctx, leadId, user.orgId);
+      if (ownerId !== user._id) {
+        await ctx.scheduler.runAfter(0, internal.pushSender.sendToUser, {
+          userId: ownerId,
+          title: "New lead assigned",
+          body: `${contact.name} was assigned to you.`,
+          url: `/app/leads/${leadId}`,
+          tag: `lead-${leadId}`,
+        });
+      }
       return leadId;
     }
   },
