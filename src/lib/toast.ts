@@ -524,3 +524,13 @@ export const propertyBookToasts = {
       description: detail || "Something went wrong. Please try again.",
     }),
 };
+
+export const viewingToasts = {
+  viewModeChanged: (mode: "admin" | "agent") =>
+    animatedToast.info(mode === "admin" ? "Admin Mode" : "Agent Mode", {
+      description:
+        mode === "admin"
+          ? "Showing full organisation visibility."
+          : "Showing only your own work.",
+    }),
+};

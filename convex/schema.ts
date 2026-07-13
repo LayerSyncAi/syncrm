@@ -28,6 +28,9 @@ export default defineSchema({
     resetPasswordOnNextLogin: v.optional(v.boolean()),
     passwordUpdatedAt: v.optional(v.number()),
     showOnboardingInterface: v.optional(v.boolean()),
+    // View-mode preference: a real admin can toggle into "Agent Mode" to see
+    // only their own work. Visibility-only — never changes role or permissions.
+    agentMode: v.optional(v.boolean()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

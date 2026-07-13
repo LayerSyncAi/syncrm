@@ -59,6 +59,19 @@ export async function requireAdmin(ctx: QueryCtx | MutationCtx) {
 }
 
 /**
+ * Effective-admin for DATA VISIBILITY: a real admin who has toggled into Agent
+ * Mode is treated as a normal agent, so they see only their own work. This never
+ * affects hard permission gates — requireAdmin and access checks stay on the
+ * real role; Agent Mode is a focus/visibility preference, not a privilege drop.
+ */
+export function isEffectiveAdmin(user: {
+  role: "admin" | "agent";
+  agentMode?: boolean;
+}): boolean {
+  return user.role === "admin" && !user.agentMode;
+}
+
+/**
  * Verify that a record belongs to the same org as the current user.
  * Throws if the record's orgId doesn't match the user's orgId.
  */

@@ -323,6 +323,23 @@ export const updateMyTimezone = mutation({
   },
 });
 
+/**
+ * Toggle the caller's view mode. Only admins have a meaningful choice: setting
+ * agentMode=true makes them see only their own work (Agent Mode) and hides
+ * admin-only UI. It never changes their real role or hard permissions.
+ */
+export const setMyViewMode = mutation({
+  args: { agentMode: v.boolean() },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserWithOrg(ctx);
+    await ctx.db.patch(user._id, {
+      agentMode: args.agentMode,
+      updatedAt: Date.now(),
+    });
+    return { agentMode: args.agentMode };
+  },
+});
+
 export const adminUpdateUserTimezone = mutation({
   args: {
     userId: v.id("users"),

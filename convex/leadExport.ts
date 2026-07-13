@@ -1,6 +1,6 @@
 import { query } from "./_generated/server";
 import { v } from "convex/values";
-import { getCurrentUserWithOrg } from "./helpers";
+import { getCurrentUserWithOrg, isEffectiveAdmin } from "./helpers";
 
 export const getLeadsForExport = query({
   args: {
@@ -12,7 +12,7 @@ export const getLeadsForExport = query({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserWithOrg(ctx);
-    const isAdmin = user.role === "admin";
+    const isAdmin = isEffectiveAdmin(user);
 
     // Always scope by org
     let results = await ctx.db

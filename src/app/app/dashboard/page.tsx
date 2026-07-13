@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDashboardData } from "@/hooks/useDashboardData";
+import { useRequireAuth } from "@/hooks/useAuth";
 import { ErrorBoundary } from "@/components/common/error-boundary";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Info } from "lucide-react";
@@ -124,6 +125,7 @@ export default function DashboardPage() {
     totalActive,
     overallAvg,
   } = useDashboardData();
+  const { isAdmin } = useRequireAuth();
 
   // Track mount state: only animate on initial mount, not on real-time data updates
   const hasMounted = useRef(false);
@@ -138,7 +140,7 @@ export default function DashboardPage() {
             <div className="space-y-2">
               <div className="flex items-center gap-3">
                 <h2 className="text-h2">Pipeline Overview</h2>
-                <Badge className="bg-primary/10 text-primary">All Leads</Badge>
+                <Badge className="bg-primary/10 text-primary">{isAdmin ? "All Leads" : "My Leads"}</Badge>
               </div>
               <p className="text-sm text-text-muted">
                 Monitor your pipeline performance and conversion velocity.

@@ -1,6 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { getCurrentUserWithOrg, requireAdmin, assertOrgAccess } from "./helpers";
+import { getCurrentUserWithOrg, requireAdmin, assertOrgAccess, isEffectiveAdmin } from "./helpers";
 import { Id } from "./_generated/dataModel";
 
 const scenarioValidator = v.union(
@@ -196,7 +196,7 @@ export const listDealCommissions = query({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserWithOrg(ctx);
-    const isAdmin = user.role === "admin";
+    const isAdmin = isEffectiveAdmin(user);
 
     let commissions = await ctx.db
       .query("dealCommissions")

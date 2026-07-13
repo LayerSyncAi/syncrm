@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
@@ -67,12 +67,23 @@ type TabKey = (typeof TABS)[number]["key"];
 
 export default function ReportsPage() {
   const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  // Effective admin: a real admin in Agent Mode is treated as an agent, hiding
+  // the org-wide agent picker and leaderboard.
+  const isAdmin = user?.role === "admin" && !user?.agentMode;
+  const visibleTabs = isAdmin ? TABS : TABS.filter((t) => t.key !== "leaderboard");
 
   const [period, setPeriod] = useState<ReportPeriod>("all");
   const [refDate, setRefDate] = useState<Date>(() => new Date());
   const [tab, setTab] = useState<TabKey>("agents");
   const [agentId, setAgentId] = useState<string>("");
+
+  // If the active tab becomes hidden (e.g. leaderboard when switching to Agent
+  // Mode), fall back to the first available tab.
+  useEffect(() => {
+    if (!visibleTabs.some((t) => t.key === tab)) {
+      setTab("agents");
+    }
+  }, [visibleTabs, tab]);
 
   const agents = useQuery(api.users.listActiveUsers, isAdmin ? {} : "skip");
 
@@ -155,7 +166,7 @@ export default function ReportsPage() {
 
         {/* Tab bar */}
         <div className="flex flex-wrap gap-1 rounded-[12px] border border-border-strong bg-card-bg p-1">
-          {TABS.map((t) => (
+          {visibleTabs.map((t) => (
             <button
               key={t.key}
               type="button"

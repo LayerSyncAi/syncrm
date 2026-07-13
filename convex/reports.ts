@@ -1,6 +1,6 @@
 import { query, QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
-import { getCurrentUserWithOrg } from "./helpers";
+import { getCurrentUserWithOrg, isEffectiveAdmin } from "./helpers";
 import { Doc, Id } from "./_generated/dataModel";
 import {
   estimateLeadValue,
@@ -31,7 +31,7 @@ function userLabel(u: Doc<"users"> | undefined): string {
 // agent); agents see only their own data regardless of the passed filter.
 async function resolveScope(ctx: QueryCtx, args: { ownerUserId?: Id<"users"> }) {
   const user = await getCurrentUserWithOrg(ctx);
-  const isAdmin = user.role === "admin";
+  const isAdmin = isEffectiveAdmin(user);
   const focusUserId: Id<"users"> | null = isAdmin
     ? args.ownerUserId ?? null
     : user._id;

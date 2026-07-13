@@ -1,6 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { getCurrentUserWithOrg, assertOrgAccess } from "./helpers";
+import { getCurrentUserWithOrg, assertOrgAccess, isEffectiveAdmin } from "./helpers";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 
@@ -105,7 +105,7 @@ export const list = query({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserWithOrg(ctx);
-    const isAdmin = user.role === "admin";
+    const isAdmin = isEffectiveAdmin(user);
 
     let shares = await ctx.db
       .query("propertyShares")

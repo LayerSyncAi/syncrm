@@ -154,7 +154,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   }
 
   const userName = user.fullName || user.name || user.email || "User";
-  const isAdmin = user.role === "admin";
+  const isRealAdmin = user.role === "admin";
+  const agentMode = !!user.agentMode;
+  // Effective admin drives the admin-only UI (e.g. the Admin sidebar section):
+  // a real admin in Agent Mode is treated like a normal agent.
+  const isAdmin = isRealAdmin && !agentMode;
 
   // Onboarding tour: show for users who haven't completed it yet
   // Default to true for users who don't have the field set (existing users)
@@ -184,7 +188,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             : "var(--sidebar-width)",
         }}
       >
-        <Topbar userName={userName} userEmail={user.email || undefined} orgName={org?.name} userTimezone={user.timezone || undefined} onMobileMenuOpen={() => setMobileOpen(true)} />
+        <Topbar userName={userName} userEmail={user.email || undefined} orgName={org?.name} userTimezone={user.timezone || undefined} isRealAdmin={isRealAdmin} agentMode={agentMode} onMobileMenuOpen={() => setMobileOpen(true)} />
         <div className="px-3 py-4 pb-24 sm:px-6 sm:py-6 md:pb-6">
           <ErrorBoundary sectionName="Page Content">
             {children}

@@ -198,12 +198,20 @@ export function useAuth() {
 export function useRequireAuth() {
   const { user, isLoading, isAuthenticated, signIn, signOut } = useAuth();
 
+  const isRealAdmin = user?.role === "admin";
+  const agentMode = !!user?.agentMode;
+
   return {
     user,
     isLoading,
     isAuthenticated,
     signIn,
     signOut,
-    isAdmin: user?.role === "admin",
+    // Effective admin: a real admin who has toggled into Agent Mode is treated
+    // as a normal agent for what they see. Use this for UI gating.
+    isAdmin: isRealAdmin && !agentMode,
+    // The unfiltered role, so the toggle control itself stays visible.
+    isRealAdmin,
+    agentMode,
   };
 }

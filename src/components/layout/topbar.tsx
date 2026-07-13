@@ -3,13 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Bell, BellOff, ChevronDown, Globe, LogOut, Menu, Search } from "lucide-react";
+import { Bell, BellOff, ChevronDown, Globe, LogOut, Menu, Search, ShieldCheck, UserRound } from "lucide-react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { cn } from "@/lib/utils";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { TIMEZONES, detectBrowserTimezone } from "@/lib/timezones";
+import { viewingToasts } from "@/lib/toast";
 import { brand } from "@/config/brand";
 
 interface TopbarProps {
@@ -17,6 +18,8 @@ interface TopbarProps {
   userEmail?: string;
   orgName?: string;
   userTimezone?: string;
+  isRealAdmin?: boolean;
+  agentMode?: boolean;
   onMobileMenuOpen?: () => void;
 }
 
@@ -33,16 +36,31 @@ const titleMap: Record<string, string> = {
   "/app/admin/stages": "Stages",
 };
 
-export function Topbar({ userName, userEmail, orgName, userTimezone, onMobileMenuOpen }: TopbarProps) {
+export function Topbar({ userName, userEmail, orgName, userTimezone, isRealAdmin, agentMode, onMobileMenuOpen }: TopbarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { signOut } = useAuthActions();
   const updateTimezone = useMutation(api.users.updateMyTimezone);
+  const setViewMode = useMutation(api.users.setMyViewMode);
   const push = usePushNotifications();
   const [open, setOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showTimezone, setShowTimezone] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [switchingMode, setSwitchingMode] = useState(false);
+
+  const handleSetMode = async (toAgentMode: boolean) => {
+    if (switchingMode || toAgentMode === !!agentMode) return;
+    setSwitchingMode(true);
+    try {
+      await setViewMode({ agentMode: toAgentMode });
+      viewingToasts.viewModeChanged(toAgentMode ? "agent" : "admin");
+    } catch (error) {
+      console.error("View mode update error:", error);
+    } finally {
+      setSwitchingMode(false);
+    }
+  };
 
   const title = useMemo(() => {
     const match = Object.keys(titleMap).find((key) => pathname.startsWith(key));
@@ -112,12 +130,42 @@ export function Topbar({ userName, userEmail, orgName, userTimezone, onMobileMen
           Live
         </span>
       </div>
-      {orgName && (
-        <div className="hidden flex-1 items-center justify-center sm:flex">
-          <span className="text-sm font-medium text-text-muted">{orgName}</span>
-        </div>
-      )}
       <div className="flex min-w-0 flex-1 items-center justify-end gap-3">
+        {/* Admin/Agent view toggle — only for users who are really admins. */}
+        {isRealAdmin && (
+          <div
+            className="hidden items-center rounded-[10px] border border-border-strong p-0.5 sm:inline-flex"
+            role="group"
+            aria-label="View mode"
+          >
+            <button
+              type="button"
+              disabled={switchingMode}
+              onClick={() => handleSetMode(false)}
+              className={cn(
+                "flex items-center gap-1.5 rounded-[8px] px-2.5 py-1 text-xs font-medium transition-colors",
+                !agentMode ? "bg-primary-600 text-white" : "text-text-muted hover:text-text"
+              )}
+              title="Admin Mode — full organisation visibility"
+            >
+              <ShieldCheck className="h-3.5 w-3.5" />
+              <span className="hidden md:inline">Admin</span>
+            </button>
+            <button
+              type="button"
+              disabled={switchingMode}
+              onClick={() => handleSetMode(true)}
+              className={cn(
+                "flex items-center gap-1.5 rounded-[8px] px-2.5 py-1 text-xs font-medium transition-colors",
+                agentMode ? "bg-primary-600 text-white" : "text-text-muted hover:text-text"
+              )}
+              title="Agent Mode — only your own work"
+            >
+              <UserRound className="h-3.5 w-3.5" />
+              <span className="hidden md:inline">Agent</span>
+            </button>
+          </div>
+        )}
         <button
           type="button"
           onClick={() => window.dispatchEvent(new CustomEvent("open-command-palette"))}
@@ -163,6 +211,16 @@ export function Topbar({ userName, userEmail, orgName, userTimezone, onMobileMen
                   <p className="text-xs text-text-dim truncate mt-0.5">{orgName}</p>
                 )}
               </div>
+              {isRealAdmin && (
+                <button
+                  onClick={() => handleSetMode(!agentMode)}
+                  disabled={switchingMode}
+                  className="mb-1 flex w-full items-center gap-2 rounded-[10px] px-3 py-2 text-sm text-text-muted hover:bg-row-hover sm:hidden"
+                >
+                  {agentMode ? <ShieldCheck className="h-4 w-4" /> : <UserRound className="h-4 w-4" />}
+                  <span>{agentMode ? "Switch to Admin Mode" : "Switch to Agent Mode"}</span>
+                </button>
+              )}
               <button
                 onClick={() => setShowTimezone((v) => !v)}
                 className="flex w-full items-center gap-2 rounded-[10px] px-3 py-2 text-sm text-text-muted hover:bg-row-hover"

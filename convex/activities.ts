@@ -1,6 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { getCurrentUserWithOrg, assertOrgAccess } from "./helpers";
+import { getCurrentUserWithOrg, assertOrgAccess, isEffectiveAdmin } from "./helpers";
 import { Id } from "./_generated/dataModel";
 
 async function canAccessLead(ctx: any, leadId: any, userId: any, isAdmin: boolean, userOrgId: Id<"organizations">) {
@@ -161,7 +161,7 @@ export const listTodosScheduledBetween = query({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserWithOrg(ctx);
-    const isAdmin = user.role === "admin";
+    const isAdmin = isEffectiveAdmin(user);
 
     let activities = await ctx.db
       .query("activities")
@@ -237,7 +237,7 @@ export const listAllTasks = query({
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserWithOrg(ctx);
-    const isAdmin = user.role === "admin";
+    const isAdmin = isEffectiveAdmin(user);
     const statusFilter = args.status && args.status !== "all" ? args.status : null;
     const typeFilter = args.type && args.type !== "all" ? args.type : null;
 

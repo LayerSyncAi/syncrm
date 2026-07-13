@@ -1,6 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { getCurrentUserWithOrg, assertOrgAccess } from "./helpers";
+import { getCurrentUserWithOrg, assertOrgAccess, isEffectiveAdmin } from "./helpers";
 import { Id } from "./_generated/dataModel";
 
 function normalizePhone(phone: string) {
@@ -109,14 +109,15 @@ export const list = query({
       .collect();
     const userMap = new Map(users.map((u) => [u._id, u]));
 
+    const isAdmin = isEffectiveAdmin(user);
     const filtered = contacts.filter((contact) => {
-      if (user.role !== "admin") {
+      if (!isAdmin) {
         if (!contact.ownerUserIds.includes(user._id)) {
           return false;
         }
       }
 
-      if (user.role === "admin" && args.ownerUserId) {
+      if (isAdmin && args.ownerUserId) {
         if (!contact.ownerUserIds.includes(args.ownerUserId)) {
           return false;
         }
