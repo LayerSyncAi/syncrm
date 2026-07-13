@@ -2,6 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getCurrentUserWithOrg } from "./helpers";
 import { checkRateLimit } from "./rateLimit";
+import { canonicalizeAreas } from "./lib/locations";
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
@@ -269,7 +270,7 @@ export const bulkImport = mutation({
               budgetMin: row.budgetMin ?? duplicateLead.budgetMin,
               budgetMax: row.budgetMax ?? duplicateLead.budgetMax,
               preferredAreas: row.preferredAreas
-                ? row.preferredAreas.split(",").map((a) => a.trim()).filter(Boolean)
+                ? canonicalizeAreas(row.preferredAreas.split(","))
                 : duplicateLead.preferredAreas,
               notes: row.notes?.trim() || duplicateLead.notes,
               updatedAt: timestamp,
@@ -303,7 +304,7 @@ export const bulkImport = mutation({
           budgetMin: row.budgetMin,
           budgetMax: row.budgetMax,
           preferredAreas: row.preferredAreas
-            ? row.preferredAreas.split(",").map((a) => a.trim()).filter(Boolean)
+            ? canonicalizeAreas(row.preferredAreas.split(","))
             : [],
           notes: row.notes?.trim() || "",
           stageId: defaultStage._id,

@@ -2,6 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getCurrentUserWithOrg, assertOrgAccess, isEffectiveAdmin } from "./helpers";
 import { Id } from "./_generated/dataModel";
+import { areaMatchesLocation, canonicalizeAreas } from "./lib/locations";
 
 function normalizePhone(phone: string) {
   return phone.replace(/\D/g, "");
@@ -71,7 +72,9 @@ export const create = mutation({
       email: args.email,
       company: args.company,
       notes: args.notes,
-      preferredAreas: args.preferredAreas,
+      preferredAreas: args.preferredAreas
+        ? canonicalizeAreas(args.preferredAreas)
+        : undefined,
       interestType: args.interestType,
       budgetCurrency: args.budgetCurrency,
       budgetMin: args.budgetMin,
@@ -419,7 +422,7 @@ export const update = mutation({
     if (args.email !== undefined) updates.email = args.email;
     if (args.company !== undefined) updates.company = args.company;
     if (args.notes !== undefined) updates.notes = args.notes;
-    if (args.preferredAreas !== undefined) updates.preferredAreas = args.preferredAreas;
+    if (args.preferredAreas !== undefined) updates.preferredAreas = canonicalizeAreas(args.preferredAreas);
     if (args.interestType !== undefined) updates.interestType = args.interestType;
     if (args.budgetCurrency !== undefined) updates.budgetCurrency = args.budgetCurrency;
     if (args.budgetMin !== undefined) updates.budgetMin = args.budgetMin;
@@ -601,11 +604,10 @@ export const matchProperties = query({
         if (contact.budgetMin && p.price < contact.budgetMin) return false;
         if (contact.budgetMax && p.price > contact.budgetMax) return false;
 
-        // Area/location filter (case-insensitive substring)
+        // Area/location filter (normalized + alias-aware matching)
         if (contact.preferredAreas?.length) {
-          const locLower = p.location.toLowerCase();
           const areaMatch = contact.preferredAreas.some((a: string) =>
-            locLower.includes(a.toLowerCase())
+            areaMatchesLocation(a, p.location)
           );
           if (!areaMatch) return false;
         }
@@ -712,14 +714,14 @@ export const segmentedList = query({
         if (!c.preferredPropertyTypes?.includes(args.propertyType as any)) return false;
       }
 
-      // Area
+      // Area (normalized + alias-aware so "Mt Pleasant" matches "Mount Pleasant")
       if (args.area) {
-        const areaLower = args.area.toLowerCase();
+        const area = args.area;
         const contactAreaMatch = c.preferredAreas?.some((a) =>
-          a.toLowerCase().includes(areaLower)
+          areaMatchesLocation(area, a)
         ) ?? false;
         const histAreaMatch = historicalPrefs
-          ? [...historicalPrefs.areas].some((a) => a.includes(areaLower))
+          ? [...historicalPrefs.areas].some((a) => areaMatchesLocation(area, a))
           : false;
         if (!contactAreaMatch && !histAreaMatch) return false;
       }
