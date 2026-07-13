@@ -81,11 +81,21 @@ export function DocumentManager({ leadId, propertyId, folders, disabled = false 
   const generateUploadUrl = useMutation(api.storage.generateUploadUrl);
   const uploadDocument = useMutation(api.documents.upload);
   const removeDocument = useMutation(api.documents.remove);
+  const logAdminAccess = useMutation(api.documents.logAdminPropertyDocumentAccess);
 
   const documents = useQuery(
     leadId ? api.documents.listByLead : api.documents.listByProperty,
     leadId ? { leadId } : propertyId ? { propertyId } : "skip"
   ) as DocumentWithUrl[] | undefined;
+
+  // Auditability: record when an admin opens a property's private documents via
+  // their admin bypass. The backend decides whether to log (no-op otherwise).
+  React.useEffect(() => {
+    if (!propertyId) return;
+    logAdminAccess({ propertyId }).catch(() => {
+      /* best-effort audit hook */
+    });
+  }, [propertyId, logAdminAccess]);
 
   const folderDocs = React.useMemo(
     () => documents?.filter((d) => d.folder === activeFolder) ?? [],

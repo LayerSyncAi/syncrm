@@ -3,18 +3,20 @@
 import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useAction, useMutation } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   AlertTriangle,
   ArrowLeft,
   Check,
   CheckCircle,
+  ChevronDown,
   ChevronRight,
   Search,
   XCircle,
 } from "lucide-react";
 import { api } from "../../../../../../convex/_generated/api";
+import { Id } from "../../../../../../convex/_generated/dataModel";
 import { useRequireAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -172,6 +174,88 @@ export default function PropertyBookImportPage() {
     null
   );
   const [ackChecked, setAckChecked] = React.useState(false);
+
+  // Import ownership assignment (admin chooses; defaults to the company).
+  const agentsRaw = useQuery(api.users.listForAssignment);
+  const agents = React.useMemo(() => agentsRaw ?? [], [agentsRaw]);
+
+  // Batch-level DEFAULT ownership. Applied to any row the user hasn't set
+  // individually (see ownershipByRef). Empty agents list => company.
+  const [ownershipMode, setOwnershipMode] = React.useState<"company" | "agents">(
+    "company"
+  );
+  const [importOwnerIds, setImportOwnerIds] = React.useState<Id<"users">[]>([]);
+  const toggleImportOwner = (id: Id<"users">) => {
+    setImportOwnerIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  // Per-row ownership OVERRIDES, keyed by pbRefCode. A ref present here was set
+  // explicitly by the user and takes precedence over the batch default; absent
+  // refs follow the default. Empty array = company (explicit).
+  const [ownershipByRef, setOwnershipByRef] = React.useState<
+    Record<string, Id<"users">[]>
+  >({});
+  // Which row's ownership picker is open, with the anchor coords for a
+  // fixed-positioned panel (the table wrapper clips overflow, so we can't use
+  // an absolutely-positioned dropdown inside it).
+  const [openOwner, setOpenOwner] = React.useState<{
+    ref: string;
+    top: number;
+    left: number;
+  } | null>(null);
+  const openOwnerPicker = (
+    e: React.MouseEvent<HTMLButtonElement>,
+    refCode: string
+  ) => {
+    if (openOwner?.ref === refCode) {
+      setOpenOwner(null);
+      return;
+    }
+    const r = e.currentTarget.getBoundingClientRect();
+    const width = 224; // w-56
+    const left = Math.max(8, Math.min(r.right - width, window.innerWidth - width - 8));
+    setOpenOwner({ ref: refCode, top: r.bottom + 4, left });
+  };
+
+  const agentNameById = React.useMemo(() => {
+    const m = new Map<string, string>();
+    for (const a of agents) m.set(a._id, a.name);
+    return m;
+  }, [agents]);
+
+  const defaultOwnerIds = React.useMemo<Id<"users">[]>(
+    () => (ownershipMode === "agents" ? importOwnerIds : []),
+    [ownershipMode, importOwnerIds]
+  );
+
+  // Effective owners for a listing: its own override if set, else the default.
+  const effectiveOwners = React.useCallback(
+    (refCode: string): Id<"users">[] =>
+      refCode in ownershipByRef ? ownershipByRef[refCode] : defaultOwnerIds,
+    [ownershipByRef, defaultOwnerIds]
+  );
+
+  const setRowOwners = (refCode: string, ids: Id<"users">[]) =>
+    setOwnershipByRef((prev) => ({ ...prev, [refCode]: ids }));
+
+  const toggleRowOwner = (refCode: string, id: Id<"users">) => {
+    const current = effectiveOwners(refCode);
+    const next = current.includes(id)
+      ? current.filter((x) => x !== id)
+      : [...current, id];
+    setRowOwners(refCode, next);
+  };
+
+  const ownerLabel = React.useCallback(
+    (ids: Id<"users">[]): string => {
+      if (ids.length === 0) return "Company";
+      if (ids.length === 1) return agentNameById.get(ids[0]) ?? "1 agent";
+      return `${ids.length} agents`;
+    },
+    [agentNameById]
+  );
 
   const loadAgencies = React.useCallback(
     async (query: string, options?: { force?: boolean }) => {
@@ -342,7 +426,17 @@ export default function PropertyBookImportPage() {
           i * batchSize,
           (i + 1) * batchSize
         );
-        const result = (await importBatch({ listings: slice })) as BatchResult;
+        const result = (await importBatch({
+          listings: slice,
+          // Batch default (covers any row left untouched in this slice).
+          ownerUserIds: defaultOwnerIds.length > 0 ? defaultOwnerIds : undefined,
+          // Per-listing ownership so one batch can mix owners. Each property's
+          // effective owners travel with it, surviving multi-call batches.
+          ownershipAssignments: slice.map((l) => ({
+            pbRefCode: l.pbRefCode,
+            ownerUserIds: effectiveOwners(l.pbRefCode),
+          })),
+        })) as BatchResult;
         aggregated.created += result.created;
         aggregated.updated += result.updated;
         aggregated.skipped += result.skipped;
@@ -711,6 +805,7 @@ export default function PropertyBookImportPage() {
                         <TableHead>Type</TableHead>
                         <TableHead>Price</TableHead>
                         <TableHead>Images</TableHead>
+                        <TableHead>Owner</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -778,11 +873,111 @@ export default function PropertyBookImportPage() {
                             <TableCell className="text-xs text-text-muted">
                               {l.imageUrls.length}
                             </TableCell>
+                            <TableCell onClick={(e) => e.stopPropagation()}>
+                              <button
+                                type="button"
+                                onClick={(e) => openOwnerPicker(e, l.pbRefCode)}
+                                className={`inline-flex max-w-[170px] items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition ${
+                                  l.pbRefCode in ownershipByRef
+                                    ? "border-primary-600/60 bg-primary-600/10 text-primary-600"
+                                    : "border-border-strong bg-white text-text-muted hover:border-primary-600/60"
+                                }`}
+                                title="Set ownership for this listing"
+                              >
+                                <span className="truncate">
+                                  {ownerLabel(effectiveOwners(l.pbRefCode))}
+                                </span>
+                                <ChevronDown className="h-3 w-3 shrink-0" />
+                              </button>
+                            </TableCell>
                           </TableRow>
                         );
                       })}
                     </TableBody>
                   </Table>
+                </div>
+
+                {/* Default ownership for the batch (per-row overrides win) */}
+                <div className="space-y-3 rounded-[10px] border border-border-strong bg-gray-50 px-4 py-3">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="text-xs font-medium text-text-muted">
+                      Default ownership:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setOwnershipMode("company")}
+                      className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+                        ownershipMode === "company"
+                          ? "border-primary-600 bg-primary-600 text-white"
+                          : "border-border-strong bg-white text-text-muted hover:border-primary-600/60"
+                      }`}
+                    >
+                      Company
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setOwnershipMode("agents")}
+                      className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+                        ownershipMode === "agents"
+                          ? "border-primary-600 bg-primary-600 text-white"
+                          : "border-border-strong bg-white text-text-muted hover:border-primary-600/60"
+                      }`}
+                    >
+                      Specific agent(s)
+                    </button>
+                    {Object.keys(ownershipByRef).length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setOwnershipByRef({})}
+                        className="rounded-full border border-border-strong bg-white px-3 py-1 text-xs font-medium text-text-muted transition hover:border-primary-600/60"
+                      >
+                        Reset {Object.keys(ownershipByRef).length} row override
+                        {Object.keys(ownershipByRef).length === 1 ? "" : "s"}
+                      </button>
+                    )}
+                    <span className="ml-auto text-[11px] text-text-muted">
+                      Applies to rows you haven&apos;t set in the Owner column.
+                      Owners can see imported documents &amp; mandates.
+                    </span>
+                  </div>
+                  {ownershipMode === "agents" && (
+                    <div className="flex flex-wrap gap-2">
+                      {agents.length === 0 ? (
+                        <span className="text-[11px] text-text-muted">
+                          No agents available.
+                        </span>
+                      ) : (
+                        agents.map((a) => {
+                          const checked = importOwnerIds.includes(
+                            a._id as Id<"users">
+                          );
+                          return (
+                            <button
+                              key={a._id}
+                              type="button"
+                              onClick={() =>
+                                toggleImportOwner(a._id as Id<"users">)
+                              }
+                              className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+                                checked
+                                  ? "border-primary-600 bg-primary-600 text-white"
+                                  : "border-border-strong bg-white text-text-muted hover:border-primary-600/60"
+                              }`}
+                            >
+                              {checked ? "✓ " : ""}
+                              {a.name}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
+                  {ownershipMode === "agents" && importOwnerIds.length === 0 && (
+                    <p className="text-[11px] text-amber-600">
+                      Select at least one agent, or the batch will default to
+                      company ownership.
+                    </p>
+                  )}
                 </div>
 
                 <label className="flex items-start gap-2 text-xs text-text-muted">
@@ -813,6 +1008,76 @@ export default function PropertyBookImportPage() {
               </CardContent>
             </Card>
           </motion.div>
+        )}
+
+        {/* Fixed-position per-row ownership picker (renders above the table,
+            which clips overflow). */}
+        {openOwner && (
+          <>
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => setOpenOwner(null)}
+            />
+            <div
+              className="fixed z-50 w-56 rounded-lg border border-border-strong bg-white p-2 shadow-lg"
+              style={{ top: openOwner.top, left: openOwner.left }}
+            >
+              <button
+                type="button"
+                onClick={() => setRowOwners(openOwner.ref, [])}
+                className={`mb-1 flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs font-medium transition ${
+                  effectiveOwners(openOwner.ref).length === 0
+                    ? "bg-primary-600/10 text-primary-600"
+                    : "text-text-muted hover:bg-gray-100"
+                }`}
+              >
+                Company
+                {effectiveOwners(openOwner.ref).length === 0 && (
+                  <Check className="h-3.5 w-3.5" />
+                )}
+              </button>
+              <div className="my-1 border-t border-border-strong" />
+              <div className="max-h-48 space-y-0.5 overflow-y-auto">
+                {agents.length === 0 ? (
+                  <p className="px-2 py-1 text-[11px] text-text-muted">
+                    No agents available.
+                  </p>
+                ) : (
+                  agents.map((a) => {
+                    const checked = effectiveOwners(openOwner.ref).includes(
+                      a._id as Id<"users">
+                    );
+                    return (
+                      <button
+                        key={a._id}
+                        type="button"
+                        onClick={() =>
+                          toggleRowOwner(openOwner.ref, a._id as Id<"users">)
+                        }
+                        className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs font-medium transition ${
+                          checked
+                            ? "bg-primary-600/10 text-primary-600"
+                            : "text-text-muted hover:bg-gray-100"
+                        }`}
+                      >
+                        <span className="truncate">{a.name}</span>
+                        {checked && <Check className="h-3.5 w-3.5 shrink-0" />}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+              <div className="mt-1 flex justify-end border-t border-border-strong pt-1">
+                <button
+                  type="button"
+                  onClick={() => setOpenOwner(null)}
+                  className="rounded-md px-2 py-1 text-xs font-medium text-primary-600 hover:bg-primary-600/10"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          </>
         )}
 
         {step === "importing" && (

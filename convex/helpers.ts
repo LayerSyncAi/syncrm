@@ -1,7 +1,11 @@
 import { ConvexError } from "convex/values";
 import { QueryCtx, MutationCtx } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { Id } from "./_generated/dataModel";
+import { Doc, Id } from "./_generated/dataModel";
+import {
+  canAccessPropertyPrivatePure,
+  canManagePropertyPure,
+} from "./propertyAccessLib";
 
 /**
  * Get the current user from the authenticated session using Convex Auth's getAuthUserId.
@@ -85,4 +89,70 @@ export function assertOrgAccess(
   if (record.orgId !== userOrgId) {
     throw new ConvexError("Access denied: record belongs to a different organization");
   }
+}
+
+// =====================
+// Property-level access control
+// =====================
+
+type AuthedUser = Doc<"users">;
+
+/**
+ * Returns true if `user` may see a property's PRIVATE data (documents, mandate
+ * info, collaborator list). The property record itself stays discoverable in
+ * the shared listing — this gate is only for sensitive attributes.
+ *
+ * Access is granted to:
+ *  - admins (org-scoped) — they bypass agent-level restrictions,
+ *  - the owning agent(s) (ownerUserIds),
+ *  - explicitly authorised collaborators (propertyCollaborators),
+ *  - legacy fallback: the creator, only while a property predates the
+ *    ownership migration (no ownershipType / empty ownerUserIds).
+ */
+export async function canAccessPropertyPrivate(
+  ctx: QueryCtx | MutationCtx,
+  property: Doc<"properties"> | null,
+  user: AuthedUser
+): Promise<boolean> {
+  if (!property) return false;
+
+  // Fast path: admins / owners / un-migrated creator don't need a DB lookup.
+  if (canAccessPropertyPrivatePure(property, user, false)) return true;
+
+  // Otherwise the only remaining route is an explicit collaborator grant.
+  const collab = await ctx.db
+    .query("propertyCollaborators")
+    .withIndex("by_property_agent", (q) =>
+      q.eq("propertyId", property._id).eq("agentId", user._id)
+    )
+    .first();
+  return canAccessPropertyPrivatePure(property, user, !!collab);
+}
+
+/**
+ * Throws a ConvexError when the user cannot access the property's private data.
+ * Use in mutations / queries that must hard-fail (uploads, deletes, etc.).
+ */
+export async function assertCanAccessPropertyPrivate(
+  ctx: QueryCtx | MutationCtx,
+  property: Doc<"properties"> | null,
+  user: AuthedUser
+): Promise<void> {
+  const allowed = await canAccessPropertyPrivate(ctx, property, user);
+  if (!allowed) {
+    throw new ConvexError(
+      "Access denied: you are not authorised to view this property's documents or mandate information"
+    );
+  }
+}
+
+/**
+ * Whether `user` may manage a property: edit details, reassign ownership, and
+ * add/remove collaborators. Admins and owners qualify; collaborators do not.
+ */
+export function canManageProperty(
+  property: Doc<"properties"> | null,
+  user: AuthedUser
+): boolean {
+  return canManagePropertyPure(property, user);
 }

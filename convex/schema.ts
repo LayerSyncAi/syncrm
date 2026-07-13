@@ -207,6 +207,20 @@ export default defineSchema({
     // on the market. Drives the property Marketing tab and days-on-market.
     listedOnMarketAt: v.optional(v.number()),
     isDraft: v.optional(v.boolean()),
+    // Ownership model. Drives document/mandate privacy:
+    //  - "agent":    owned by a single agent (ownerUserIds has exactly one id)
+    //  - "multiple": co-owned by several agents (ownerUserIds has >1 id)
+    //  - "company":  no individual agent owner (ownerUserIds is empty); only
+    //                admins and explicit collaborators can see private data.
+    // Optional so pre-existing rows validate; a migration backfills them.
+    ownershipType: v.optional(
+      v.union(
+        v.literal("agent"),
+        v.literal("multiple"),
+        v.literal("company")
+      )
+    ),
+    ownerUserIds: v.optional(v.array(v.id("users"))),
     createdByUserId: v.optional(v.id("users")),
     orgId: v.optional(v.id("organizations")),
     pbRefCode: v.optional(v.string()),
@@ -221,6 +235,23 @@ export default defineSchema({
     .index("by_org", ["orgId"])
     .index("by_creator", ["createdByUserId"])
     .index("by_pb_ref", ["orgId", "pbRefCode"]),
+  // Explicitly authorised collaborators on a property. A row grants the agent
+  // access to the property's private data (documents, mandate info) without
+  // making them an owner. Granted by an owner or an admin.
+  // NOTE: this is intentionally per-property. If per-document permissions are
+  // ever needed, add an optional `folder`/`documentId` column here rather than
+  // a new table — the access helpers already funnel through one check.
+  propertyCollaborators: defineTable({
+    propertyId: v.id("properties"),
+    agentId: v.id("users"),
+    grantedByUserId: v.id("users"),
+    grantedAt: v.number(),
+    orgId: v.optional(v.id("organizations")),
+  })
+    .index("by_property", ["propertyId"])
+    .index("by_agent", ["agentId"])
+    .index("by_property_agent", ["propertyId", "agentId"])
+    .index("by_org", ["orgId"]),
   // Propertybook.co.zw agencies that an org "follows" for scheduled daily refresh
   trackedAgencies: defineTable({
     slug: v.string(),

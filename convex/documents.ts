@@ -1,6 +1,13 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { getCurrentUserWithOrg, assertOrgAccess } from "./helpers";
+import {
+  getCurrentUserWithOrg,
+  assertOrgAccess,
+  canAccessPropertyPrivate,
+  assertCanAccessPropertyPrivate,
+  canManageProperty,
+} from "./helpers";
+import { recordAudit } from "./logs";
 
 const folderValidator = v.union(
   v.literal("mandates_to_sell"),
@@ -43,6 +50,9 @@ export const upload = mutation({
       const property = await ctx.db.get(args.propertyId);
       if (!property) throw new Error("Property not found");
       assertOrgAccess(property, user.orgId);
+      // Only owners, authorised collaborators and admins may attach documents
+      // to a property — uploading is a privileged action, not just viewing.
+      await assertCanAccessPropertyPrivate(ctx, property, user);
     }
 
     return ctx.db.insert("documents", {
@@ -96,6 +106,18 @@ export const listByProperty = query({
   args: { propertyId: v.id("properties") },
   handler: async (ctx, args) => {
     const user = await getCurrentUserWithOrg(ctx);
+
+    const property = await ctx.db.get(args.propertyId);
+    if (!property) return [];
+    if (property.orgId && property.orgId !== user.orgId) return [];
+
+    // Access control: only owners, authorised collaborators and admins may see
+    // a property's documents (or even that any exist). Everyone else gets an
+    // empty list — no metadata, no count, no indication of private documents.
+    if (!(await canAccessPropertyPrivate(ctx, property, user))) {
+      return [];
+    }
+
     const docs = await ctx.db
       .query("documents")
       .withIndex("by_property", (q) => q.eq("propertyId", args.propertyId))
@@ -117,6 +139,63 @@ export const listByProperty = query({
 });
 
 /**
+ * Record that an admin viewed a property's private documents via their admin
+ * bypass (i.e. they are neither an owner nor a collaborator). Called from the
+ * UI when the documents tab opens. No-op for owners/collaborators and for
+ * non-admins. Queries can't write, so this audit hook is a thin mutation.
+ */
+export const logAdminPropertyDocumentAccess = mutation({
+  args: { propertyId: v.id("properties") },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserWithOrg(ctx);
+    if (user.role !== "admin") return;
+
+    const property = await ctx.db.get(args.propertyId);
+    if (!property) return;
+    if (property.orgId && property.orgId !== user.orgId) return;
+
+    // Only log the privileged bypass: an admin who is NOT an owner.
+    const owners = property.ownerUserIds ?? [];
+    if (owners.some((id) => id === user._id)) return;
+    const collab = await ctx.db
+      .query("propertyCollaborators")
+      .withIndex("by_property_agent", (q) =>
+        q.eq("propertyId", args.propertyId).eq("agentId", user._id)
+      )
+      .first();
+    if (collab) return;
+
+    // Avoid log spam: skip if this admin already has a recent access record
+    // for this property (within the last hour).
+    const HOUR = 60 * 60 * 1000;
+    const recent = await ctx.db
+      .query("auditLogs")
+      .withIndex("by_actor", (q) => q.eq("actorUserId", user._id))
+      .order("desc")
+      .take(25);
+    const alreadyLogged = recent.some(
+      (r) =>
+        r.action === "property.documents_admin_access" &&
+        r.targetId === args.propertyId &&
+        Date.now() - r.createdAt < HOUR
+    );
+    if (alreadyLogged) return;
+
+    await recordAudit(ctx, {
+      actorUserId: user._id,
+      actorLabel: user.fullName || user.name || user.email,
+      action: "property.documents_admin_access",
+      category: "property",
+      description: `Admin viewed private documents for "${property.title}"`,
+      targetType: "property",
+      targetId: args.propertyId,
+      targetLabel: property.title,
+      orgId: user.orgId,
+    });
+  },
+});
+
+/**
  * Delete a document and its stored file.
  */
 export const remove = mutation({
@@ -126,6 +205,18 @@ export const remove = mutation({
     const doc = await ctx.db.get(args.documentId);
     if (!doc) throw new Error("Document not found");
     assertOrgAccess(doc, user.orgId);
+
+    // For property documents, enforce property-level access: the uploader, an
+    // owner/manager, or an admin may delete. Collaborators may delete what
+    // they uploaded.
+    if (doc.propertyId) {
+      const property = await ctx.db.get(doc.propertyId);
+      await assertCanAccessPropertyPrivate(ctx, property, user);
+      const isUploader = doc.uploadedByUserId === user._id;
+      if (!isUploader && !canManageProperty(property, user)) {
+        throw new Error("You are not authorised to delete this document");
+      }
+    }
 
     // Delete the stored file
     await ctx.storage.delete(doc.storageId);

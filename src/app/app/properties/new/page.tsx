@@ -43,6 +43,8 @@ const createEmptyFieldState = (value: string = ""): FieldState => ({
 export default function NewPropertyPage() {
   const router = useRouter();
   const currentUser = useQuery(api.users.getMeRequired);
+  const isAdmin = currentUser?.role === "admin";
+  const agents = useQuery(api.users.listForAssignment) ?? [];
   const createProperty = useMutation(api.properties.create);
   const createDraft = useMutation(api.properties.createDraft);
   const deleteDraft = useMutation(api.properties.deleteDraft);
@@ -64,6 +66,17 @@ export default function NewPropertyPage() {
   const [zoning, setZoning] = React.useState("");
   const [usageType, setUsageType] = React.useState("");
   const [status, setStatus] = React.useState<PropertyStatus>("available");
+
+  // Admin-only ownership assignment. Agents always own what they create, so
+  // this UI is hidden for them and ownership is auto-assigned server-side.
+  const [ownershipMode, setOwnershipMode] = React.useState<"company" | "agents">(
+    "company"
+  );
+  const [ownerIds, setOwnerIds] = React.useState<Id<"users">[]>([]);
+  const toggleOwner = (id: Id<"users">) =>
+    setOwnerIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
 
   const isCommercial = type === "commercial";
   const isLand = type === "land";
@@ -228,6 +241,13 @@ export default function NewPropertyPage() {
         status,
         description: description.trim(),
         images: serializeImages(images),
+        // Only admins may assign ownership; agents are auto-assigned as owner.
+        ownerUserIds:
+          isAdmin && ownershipMode === "agents" && ownerIds.length > 0
+            ? ownerIds
+            : isAdmin
+              ? [] // admin "company" choice
+              : undefined,
       });
       setSavedPropertyId(propertyId);
       propertyToasts.created(title.value.trim());
@@ -529,6 +549,69 @@ export default function NewPropertyPage() {
                   placeholder="Enter property description..."
                 />
               </div>
+
+              {/* Ownership (admins only). Agents auto-own what they create. */}
+              {isAdmin && (
+                <div className="space-y-3 rounded-lg border border-border-strong bg-surface-2/30 p-4">
+                  <Label>Ownership</Label>
+                  <p className="text-xs text-text-muted">
+                    Choose who owns this property. Owners (and authorised
+                    collaborators) can see its documents and mandate info.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setOwnershipMode("company")}
+                      className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+                        ownershipMode === "company"
+                          ? "border-primary bg-primary text-white"
+                          : "border-border-strong bg-card-bg text-text-muted hover:border-primary/60"
+                      }`}
+                    >
+                      Company
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setOwnershipMode("agents")}
+                      className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+                        ownershipMode === "agents"
+                          ? "border-primary bg-primary text-white"
+                          : "border-border-strong bg-card-bg text-text-muted hover:border-primary/60"
+                      }`}
+                    >
+                      Specific agent(s)
+                    </button>
+                  </div>
+                  {ownershipMode === "agents" && (
+                    <div className="flex flex-wrap gap-2">
+                      {agents.length === 0 ? (
+                        <span className="text-xs text-text-muted">
+                          No agents available.
+                        </span>
+                      ) : (
+                        agents.map((a) => {
+                          const checked = ownerIds.includes(a._id as Id<"users">);
+                          return (
+                            <button
+                              key={a._id}
+                              type="button"
+                              onClick={() => toggleOwner(a._id as Id<"users">)}
+                              className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+                                checked
+                                  ? "border-primary bg-primary text-white"
+                                  : "border-border-strong bg-card-bg text-text-muted hover:border-primary/60"
+                              }`}
+                            >
+                              {checked ? "✓ " : ""}
+                              {a.name}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </motion.div>
           )}
 

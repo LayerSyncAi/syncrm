@@ -1,6 +1,46 @@
-import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
-import { getCurrentUserWithOrg, assertOrgAccess } from "./helpers";
+import { mutation, query, MutationCtx } from "./_generated/server";
+import { ConvexError, v } from "convex/values";
+import {
+  getCurrentUserWithOrg,
+  assertOrgAccess,
+  canAccessPropertyPrivate,
+  canManageProperty,
+} from "./helpers";
+import { recordAudit } from "./logs";
+import { Id } from "./_generated/dataModel";
+import { normalizeOwnership as normalizeOwnershipPure } from "./propertyAccessLib";
+
+/**
+ * Id-typed wrapper around the pure ownership normaliser (single source of
+ * truth in propertyAccessLib). See that file for the shaping rules.
+ */
+function normalizeOwnership(ownerUserIds?: Array<Id<"users">>): {
+  ownershipType: "agent" | "multiple" | "company";
+  ownerUserIds: Array<Id<"users">>;
+} {
+  const result = normalizeOwnershipPure(ownerUserIds);
+  return {
+    ownershipType: result.ownershipType,
+    ownerUserIds: result.ownerUserIds as Array<Id<"users">>,
+  };
+}
+
+/**
+ * Validate that every owner id is an active user in the caller's org.
+ * Throws ConvexError otherwise.
+ */
+async function assertValidOwners(
+  ctx: MutationCtx,
+  ownerUserIds: Array<Id<"users">>,
+  orgId: Id<"organizations">
+): Promise<void> {
+  for (const id of ownerUserIds) {
+    const owner = await ctx.db.get(id);
+    if (!owner || !owner.isActive || owner.orgId !== orgId) {
+      throw new ConvexError("Invalid owner: user not found in your organization");
+    }
+  }
+}
 
 export const list = query({
   args: {
@@ -27,7 +67,7 @@ export const list = query({
     priceMin: v.optional(v.number()),
     priceMax: v.optional(v.number()),
     q: v.optional(v.string()),
-    createdByUserId: v.optional(v.id("users")),
+    ownerUserId: v.optional(v.id("users")),
     sortBy: v.optional(
       v.union(v.literal("created_asc"), v.literal("created_desc"))
     ),
@@ -51,9 +91,9 @@ export const list = query({
       // Exclude drafts from the list
       if (property.isDraft) return false;
       if (restrictToOwn) {
-        // Ownership-based narrowing (ownerUserIds) arrives with the property
-        // ownership model; for now an Agent-Mode admin sees what they created.
-        const owns = property.createdByUserId === user._id;
+        const owns =
+          (property.ownerUserIds ?? []).includes(user._id) ||
+          property.createdByUserId === user._id;
         if (!owns) return false;
       }
       if (args.location && !property.location.toLowerCase().includes(args.location.toLowerCase())) {
@@ -77,7 +117,7 @@ export const list = query({
       if (args.q && !property.title.toLowerCase().includes(args.q.toLowerCase())) {
         return false;
       }
-      if (args.createdByUserId && property.createdByUserId !== args.createdByUserId) {
+      if (args.ownerUserId && !(property.ownerUserIds ?? []).includes(args.ownerUserId)) {
         return false;
       }
       return true;
@@ -92,9 +132,16 @@ export const list = query({
 
     const enriched = filtered.map((property) => {
       const creator = property.createdByUserId ? userMap.get(property.createdByUserId) : null;
+      const ownerNames = (property.ownerUserIds ?? [])
+        .map((id) => {
+          const u = userMap.get(id);
+          return u?.fullName || u?.name || u?.email || null;
+        })
+        .filter((n): n is string => !!n);
       return {
         ...property,
         createdByName: creator?.fullName || creator?.name || creator?.email || "System",
+        ownerNames,
       };
     });
 
@@ -178,6 +225,9 @@ export const createDraft = mutation({
       description: "",
       images: [],
       isDraft: true,
+      // Drafts are owned by their creator; an admin can reassign on save.
+      ownershipType: "agent",
+      ownerUserIds: [user._id],
       createdByUserId: user._id,
       orgId: user.orgId,
       createdAt: timestamp,
@@ -225,6 +275,10 @@ export const create = mutation({
     ),
     description: v.string(),
     images: v.array(v.string()),
+    // Admin-only ownership assignment. Agents always own what they create, so
+    // this is ignored for them. An empty array means "the company" (no agent
+    // owner). Omitted by agents and by the admin "company" choice.
+    ownerUserIds: v.optional(v.array(v.id("users"))),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserWithOrg(ctx);
@@ -232,7 +286,21 @@ export const create = mutation({
       throw new Error("At least 2 property images are required");
     }
     const timestamp = Date.now();
-    const { draftId, ...propertyData } = args;
+    const { draftId, ownerUserIds, ...propertyData } = args;
+
+    // Resolve ownership.
+    //  - Agents always become the sole owner of what they create (no manual
+    //    step, regardless of any ownerUserIds passed).
+    //  - Admins choose: company (empty/omitted), a single agent, or multiple.
+    let ownership;
+    if (user.role === "admin") {
+      if (ownerUserIds && ownerUserIds.length > 0) {
+        await assertValidOwners(ctx, ownerUserIds, user.orgId);
+      }
+      ownership = normalizeOwnership(ownerUserIds);
+    } else {
+      ownership = normalizeOwnership([user._id]);
+    }
 
     // If we have a draft, upgrade it to a full property
     if (draftId) {
@@ -240,6 +308,8 @@ export const create = mutation({
       if (draft && draft.isDraft && draft.createdByUserId === user._id) {
         await ctx.db.patch(draftId, {
           ...propertyData,
+          ownershipType: ownership.ownershipType,
+          ownerUserIds: ownership.ownerUserIds,
           isDraft: undefined,
           updatedAt: timestamp,
         });
@@ -249,6 +319,8 @@ export const create = mutation({
 
     return ctx.db.insert("properties", {
       ...propertyData,
+      ownershipType: ownership.ownershipType,
+      ownerUserIds: ownership.ownerUserIds,
       createdByUserId: user._id,
       orgId: user.orgId,
       createdAt: timestamp,
@@ -309,9 +381,9 @@ export const update = mutation({
     if (!property) throw new Error("Property not found");
     assertOrgAccess(property, user.orgId);
 
-    // Allow admins or the property creator to update
-    if (user.role !== "admin" && property.createdByUserId !== user._id) {
-      throw new Error("You can only edit properties you created");
+    // Allow admins or the property owner(s) to update
+    if (!canManageProperty(property, user)) {
+      throw new Error("You can only edit properties you own");
     }
 
     if (args.images !== undefined && args.images.length < 2) {
@@ -360,9 +432,18 @@ export const remove = mutation({
     if (!property) throw new Error("Property not found");
     assertOrgAccess(property, user.orgId);
 
-    // Allow admins or the property creator to delete
-    if (user.role !== "admin" && property.createdByUserId !== user._id) {
-      throw new Error("You can only delete properties you created");
+    // Allow admins or the property owner(s) to delete
+    if (!canManageProperty(property, user)) {
+      throw new Error("You can only delete properties you own");
+    }
+
+    // Clean up collaborator grants so no orphan rows linger.
+    const collaborators = await ctx.db
+      .query("propertyCollaborators")
+      .withIndex("by_property", (q) => q.eq("propertyId", args.propertyId))
+      .collect();
+    for (const c of collaborators) {
+      await ctx.db.delete(c._id);
     }
 
     await ctx.db.delete(args.propertyId);
@@ -427,9 +508,23 @@ export const getById = query({
     if (!property) return null;
     if (property.orgId && property.orgId !== user.orgId) return null;
     const creator = property.createdByUserId ? await ctx.db.get(property.createdByUserId) : null;
+
+    // Resolve owner display names for the (shared) listing detail.
+    const owners = property.ownerUserIds ?? [];
+    const ownerDocs = await Promise.all(owners.map((id) => ctx.db.get(id)));
+    const ownerNames = ownerDocs
+      .filter((u): u is NonNullable<typeof u> => !!u)
+      .map((u) => u.fullName || u.name || u.email || "Unknown");
+
+    const canAccessPrivate = await canAccessPropertyPrivate(ctx, property, user);
+
     return {
       ...property,
       createdByName: creator?.fullName || creator?.name || creator?.email || "System",
+      ownerNames,
+      // UI gating flags (enforcement still happens server-side on each endpoint).
+      canAccessPrivate,
+      canManage: canManageProperty(property, user),
     };
   },
 });
@@ -451,6 +546,14 @@ export const getPropertyDealInfo = query({
       property.status !== "let"
     ) {
       return null;
+    }
+
+    // The deal counterparty (contact name, deal value, lead link) is private
+    // mandate information. Non-owners/non-collaborators only see the status,
+    // which is already part of the shared listing.
+    const canAccessPrivate = await canAccessPropertyPrivate(ctx, property, user);
+    if (!canAccessPrivate) {
+      return { status: property.status };
     }
 
     // Check deal commissions first (for sold/let properties)
@@ -500,5 +603,221 @@ export const getPropertyDealInfo = query({
     }
 
     return { status: property.status };
+  },
+});
+
+// =====================
+// Ownership reassignment
+// =====================
+
+/**
+ * Reassign a property's ownership. Admins and current owners may do this.
+ * Pass an empty `ownerUserIds` to transfer ownership to the company.
+ */
+export const reassignOwnership = mutation({
+  args: {
+    propertyId: v.id("properties"),
+    ownerUserIds: v.array(v.id("users")),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserWithOrg(ctx);
+    const property = await ctx.db.get(args.propertyId);
+    if (!property) throw new ConvexError("Property not found");
+    assertOrgAccess(property, user.orgId);
+
+    if (!canManageProperty(property, user)) {
+      throw new ConvexError("You are not authorised to reassign this property");
+    }
+
+    if (args.ownerUserIds.length > 0) {
+      await assertValidOwners(ctx, args.ownerUserIds, user.orgId);
+    }
+    const ownership = normalizeOwnership(args.ownerUserIds);
+
+    await ctx.db.patch(args.propertyId, {
+      ownershipType: ownership.ownershipType,
+      ownerUserIds: ownership.ownerUserIds,
+      updatedAt: Date.now(),
+    });
+
+    await recordAudit(ctx, {
+      actorUserId: user._id,
+      actorLabel: user.fullName || user.name || user.email,
+      action: "property.ownership_reassign",
+      category: "property",
+      description: `Reassigned ownership of "${property.title}" to ${
+        ownership.ownershipType === "company"
+          ? "the company"
+          : `${ownership.ownerUserIds.length} agent(s)`
+      }`,
+      targetType: "property",
+      targetId: args.propertyId,
+      targetLabel: property.title,
+      metadata: {
+        ownershipType: ownership.ownershipType,
+        ownerUserIds: ownership.ownerUserIds,
+      },
+      orgId: user.orgId,
+    });
+  },
+});
+
+// =====================
+// Collaborators
+// =====================
+
+/**
+ * List the explicit collaborators on a property. Only users with private
+ * access (owners, collaborators, admins) may view the collaborator list.
+ */
+export const listCollaborators = query({
+  args: { propertyId: v.id("properties") },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserWithOrg(ctx);
+    const property = await ctx.db.get(args.propertyId);
+    if (!property) return [];
+    if (property.orgId && property.orgId !== user.orgId) return [];
+
+    // Gate: don't reveal who has access unless the caller already has access.
+    if (!(await canAccessPropertyPrivate(ctx, property, user))) {
+      return [];
+    }
+
+    const rows = await ctx.db
+      .query("propertyCollaborators")
+      .withIndex("by_property", (q) => q.eq("propertyId", args.propertyId))
+      .collect();
+
+    const enriched = await Promise.all(
+      rows.map(async (row) => {
+        const agent = await ctx.db.get(row.agentId);
+        const grantedBy = await ctx.db.get(row.grantedByUserId);
+        return {
+          _id: row._id,
+          agentId: row.agentId,
+          agentName:
+            agent?.fullName || agent?.name || agent?.email || "Unknown",
+          grantedByName:
+            grantedBy?.fullName ||
+            grantedBy?.name ||
+            grantedBy?.email ||
+            "Unknown",
+          grantedAt: row.grantedAt,
+        };
+      })
+    );
+    return enriched.sort((a, b) => a.grantedAt - b.grantedAt);
+  },
+});
+
+/**
+ * Grant an agent collaborator access to a property. Owners and admins may do
+ * this. The change takes effect immediately (document access is checked live).
+ */
+export const addCollaborator = mutation({
+  args: {
+    propertyId: v.id("properties"),
+    agentId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserWithOrg(ctx);
+    const property = await ctx.db.get(args.propertyId);
+    if (!property) throw new ConvexError("Property not found");
+    assertOrgAccess(property, user.orgId);
+
+    if (!canManageProperty(property, user)) {
+      throw new ConvexError("You are not authorised to manage collaborators");
+    }
+
+    const agent = await ctx.db.get(args.agentId);
+    if (!agent || !agent.isActive || agent.orgId !== user.orgId) {
+      throw new ConvexError("Agent not found in your organization");
+    }
+
+    // No-op if the agent is already an owner.
+    if ((property.ownerUserIds ?? []).some((id) => id === args.agentId)) {
+      throw new ConvexError("That agent already owns this property");
+    }
+
+    // Idempotent: don't create duplicate grants.
+    const existing = await ctx.db
+      .query("propertyCollaborators")
+      .withIndex("by_property_agent", (q) =>
+        q.eq("propertyId", args.propertyId).eq("agentId", args.agentId)
+      )
+      .first();
+    if (existing) return existing._id;
+
+    const id = await ctx.db.insert("propertyCollaborators", {
+      propertyId: args.propertyId,
+      agentId: args.agentId,
+      grantedByUserId: user._id,
+      grantedAt: Date.now(),
+      orgId: user.orgId,
+    });
+
+    await recordAudit(ctx, {
+      actorUserId: user._id,
+      actorLabel: user.fullName || user.name || user.email,
+      action: "property.collaborator_add",
+      category: "property",
+      description: `Granted ${
+        agent.fullName || agent.name || agent.email || "an agent"
+      } access to "${property.title}"`,
+      targetType: "property",
+      targetId: args.propertyId,
+      targetLabel: property.title,
+      metadata: { agentId: args.agentId },
+      orgId: user.orgId,
+    });
+
+    return id;
+  },
+});
+
+/**
+ * Revoke an agent's collaborator access. Owners and admins may do this. Access
+ * is removed immediately.
+ */
+export const removeCollaborator = mutation({
+  args: {
+    propertyId: v.id("properties"),
+    agentId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserWithOrg(ctx);
+    const property = await ctx.db.get(args.propertyId);
+    if (!property) throw new ConvexError("Property not found");
+    assertOrgAccess(property, user.orgId);
+
+    if (!canManageProperty(property, user)) {
+      throw new ConvexError("You are not authorised to manage collaborators");
+    }
+
+    const existing = await ctx.db
+      .query("propertyCollaborators")
+      .withIndex("by_property_agent", (q) =>
+        q.eq("propertyId", args.propertyId).eq("agentId", args.agentId)
+      )
+      .first();
+    if (!existing) return;
+
+    await ctx.db.delete(existing._id);
+
+    const agent = await ctx.db.get(args.agentId);
+    await recordAudit(ctx, {
+      actorUserId: user._id,
+      actorLabel: user.fullName || user.name || user.email,
+      action: "property.collaborator_remove",
+      category: "property",
+      description: `Revoked ${
+        agent?.fullName || agent?.name || agent?.email || "an agent"
+      }'s access to "${property.title}"`,
+      targetType: "property",
+      targetId: args.propertyId,
+      targetLabel: property.title,
+      metadata: { agentId: args.agentId },
+      orgId: user.orgId,
+    });
   },
 });

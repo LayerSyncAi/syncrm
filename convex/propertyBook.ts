@@ -8,8 +8,10 @@ import {
   query,
 } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { Id } from "./_generated/dataModel";
 import { ConvexError } from "convex/values";
 import { getCurrentUserWithOrg, requireAdmin } from "./helpers";
+import { resolveListingOwnership } from "./propertyAccessLib";
 import { checkRateLimit } from "./rateLimit";
 
 const MAX_BATCH_SIZE = 25;
@@ -209,9 +211,22 @@ export const fetchOneListing = action({
   },
 });
 
+// Per-listing ownership assignment, keyed by the PropertyBook ref code.
+// ownerUserIds: empty array => company-owned; one or more ids => those agents.
+const ownershipAssignmentValidator = v.object({
+  pbRefCode: v.string(),
+  ownerUserIds: v.array(v.id("users")),
+});
+
 export const importBatch = action({
   args: {
     listings: v.array(parsedListingValidator),
+    // Batch-level default ownership: applied to any listing without its own
+    // assignment below. Empty/omitted => the company (the import default).
+    ownerUserIds: v.optional(v.array(v.id("users"))),
+    // Per-listing overrides. Each property is created with its own owner(s),
+    // so one batch can mix company-owned and agent-owned listings.
+    ownershipAssignments: v.optional(v.array(ownershipAssignmentValidator)),
   },
   handler: async (
     ctx,
@@ -267,6 +282,8 @@ export const importBatch = action({
     const persisted = await ctx.runMutation(
       internal.propertyBook.persistImported,
       {
+        ownerUserIds: args.ownerUserIds,
+        ownershipAssignments: args.ownershipAssignments,
         entries: resolved.map((r) => ({
           row: r.row,
           pbRefCode: r.listing.pbRefCode,
@@ -308,6 +325,8 @@ export const assertAdminAccess = internalQuery({
 
 export const persistImported = internalMutation({
   args: {
+    ownerUserIds: v.optional(v.array(v.id("users"))),
+    ownershipAssignments: v.optional(v.array(ownershipAssignmentValidator)),
     entries: v.array(
       v.object({
         row: v.number(),
@@ -328,9 +347,44 @@ export const persistImported = internalMutation({
       })
     ),
   },
-  handler: async (ctx, { entries }) => {
+  handler: async (ctx, { entries, ownerUserIds, ownershipAssignments }) => {
     const user = await requireAdmin(ctx);
     const now = Date.now();
+
+    // Per-listing ownership map (ref -> owner ids). Falls back to the batch
+    // default (`ownerUserIds`), then to company-owned when neither is set.
+    const assignmentByRef = new Map<string, Array<Id<"users">>>();
+    for (const a of ownershipAssignments ?? []) {
+      assignmentByRef.set(a.pbRefCode, a.ownerUserIds);
+    }
+    const batchDefault = ownerUserIds ?? [];
+
+    // Validate every owner id referenced anywhere in this batch exactly once.
+    const allOwnerIds = new Set<Id<"users">>([
+      ...batchDefault,
+      ...Array.from(assignmentByRef.values()).flat(),
+    ]);
+    for (const id of allOwnerIds) {
+      const owner = await ctx.db.get(id);
+      if (!owner || !owner.isActive || owner.orgId !== user.orgId) {
+        throw new ConvexError(
+          "Invalid owner: user not found in your organization"
+        );
+      }
+    }
+
+    // Resolve a single listing's ownership shape from its ref code.
+    const ownershipFor = (pbRefCode: string) => {
+      const r = resolveListingOwnership(
+        assignmentByRef.get(pbRefCode),
+        batchDefault
+      );
+      return {
+        ownershipType: r.ownershipType,
+        ownerUserIds: r.ownerUserIds as Array<Id<"users">>,
+      };
+    };
+
     const result = {
       created: 0,
       updated: 0,
@@ -358,6 +412,8 @@ export const persistImported = internalMutation({
           continue;
         }
 
+        const ownership = ownershipFor(entry.pbRefCode);
+
         await ctx.db.insert("properties", {
           title: entry.title,
           type: entry.propertyType,
@@ -372,6 +428,8 @@ export const persistImported = internalMutation({
           description: entry.description,
           images: entry.images,
           isDraft: false,
+          ownershipType: ownership.ownershipType,
+          ownerUserIds: ownership.ownerUserIds,
           createdByUserId: user._id,
           orgId: user.orgId,
           pbRefCode: entry.pbRefCode,
