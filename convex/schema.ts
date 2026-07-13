@@ -335,6 +335,12 @@ export default defineSchema({
     commissionConfigId: v.optional(v.id("commissionConfigs")),
     dealValue: v.number(),
     dealCurrency: v.string(),
+    // Gross commission earned on the deal: dealValue * commissionRate.
+    // The split percentages below are shares of this commission pool (they sum
+    // to 100% of the commission, not of the sale value). Optional for records
+    // created before this field existed.
+    commissionRate: v.optional(v.number()),
+    commissionAmount: v.optional(v.number()),
     // Agent A (property holder)
     propertyAgentUserId: v.optional(v.id("users")),
     propertyAgentPercent: v.number(),
