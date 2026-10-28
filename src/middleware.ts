@@ -5,7 +5,7 @@ import {
 } from "@convex-dev/auth/nextjs/server";
 
 // Routes that require authentication
-const isProtectedRoute = createRouteMatcher(["/app(.*)"]);
+const isProtectedRoute = createRouteMatcher(["/app(.*)", "/portal(.*)"]);
 
 // Routes that are only for unauthenticated users
 const isPublicAuthRoute = createRouteMatcher([
@@ -34,9 +34,9 @@ export default convexAuthNextjsMiddleware(async (request, { convexAuth }) => {
   // Redirect authenticated users from auth pages to dashboard
   if (isPublicAuthRoute(request) && isAuthenticated) {
     if (process.env.NODE_ENV === "development") {
-      console.log("[Middleware] Redirecting to /app/dashboard - already authenticated");
+      console.log("[Middleware] Redirecting to /app/hub - already authenticated");
     }
-    return nextjsMiddlewareRedirect(request, "/app/dashboard");
+    return nextjsMiddlewareRedirect(request, "/app/hub");
   }
 });
 

@@ -27,6 +27,7 @@ import { internal } from "./_generated/api";
 import { Doc, Id, TableNames } from "./_generated/dataModel";
 import { requirePlatformAdmin } from "./helpers";
 import { recordAudit } from "./logs";
+import { orgModules } from "./lib/modules";
 import { rebuildPasswordAccount, getTempPassword } from "./lib/authReconcile";
 import { RATE_LIMITS } from "./rateLimit";
 import {
@@ -84,6 +85,7 @@ export const listOrganizations = query({
         slug: org.slug,
         createdAt: org.createdAt,
         deletingAt: org.deletingAt,
+        enabledModules: orgModules(org),
         counts: { users, leads, contacts, properties },
         countCap: COUNT_CAP,
         lastActivityAt: lastAudit?.createdAt ?? null,
@@ -450,6 +452,24 @@ function storageRefsFor(table: PurgeTable, row: OrgRow): string[] {
     }
     case "brochures":
       return (row as Doc<"brochures">).photos.filter(isStorageRef);
+    case "stayDocuments":
+      return [(row as Doc<"stayDocuments">).storageId];
+    case "stayMaintenance":
+      return (row as Doc<"stayMaintenance">).photos;
+    case "stayInspections":
+      return (row as Doc<"stayInspections">).rooms.flatMap((r) => r.photos);
+    case "worthDocuments":
+      return [(row as Doc<"worthDocuments">).storageId];
+    case "worthInspections":
+      return (row as Doc<"worthInspections">).photos.map((p) => p.storageId);
+    case "worthReports": {
+      const id = (row as Doc<"worthReports">).pdfStorageId;
+      return id ? [id] : [];
+    }
+    case "worthValuerProfiles": {
+      const id = (row as Doc<"worthValuerProfiles">).signatureStorageId;
+      return id ? [id] : [];
+    }
     default:
       return [];
   }
@@ -555,10 +575,16 @@ export const purgeOrganizationBatch = internalMutation({
     let deleted = 0;
 
     // Lock everyone out and detach any platform viewer before data disappears.
-    const users = await ctx.db
+    const staff = await ctx.db
       .query("users")
       .withIndex("by_org", (q) => q.eq("orgId", args.orgId))
       .take(500);
+    // Landlord/tenant portal accounts have no orgId; they hang off portalOrgId.
+    const portalUsers = await ctx.db
+      .query("users")
+      .withIndex("by_portal_org", (q) => q.eq("portalOrgId", args.orgId))
+      .take(500);
+    const users = [...staff, ...portalUsers];
     for (const u of users) {
       if (u.isActive) await ctx.db.patch(u._id, { isActive: false, updatedAt: now });
     }

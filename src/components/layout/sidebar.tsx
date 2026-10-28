@@ -3,47 +3,35 @@
 import { memo, useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useQuery } from "convex/react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
 import {
-  BarChart3,
-  Building2,
-  ClipboardList,
   ChevronLeft,
+  ChevronDown,
   ChevronRight,
   DollarSign,
   Download,
-  FileSignature,
-  KeyRound,
-  LayoutDashboard,
-  Megaphone,
-  Palette,
+  LayoutGrid,
   ScrollText,
   Search,
   Server,
+  Settings,
   Shield,
   SlidersHorizontal,
   Star,
   Upload,
   UserCog,
-  Users,
   Waypoints,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { brand } from "@/config/brand";
+import { api } from "../../../convex/_generated/api";
+import { MODULES, moduleForPath, type ModuleKey } from "@/config/modules";
 
-const navItems = [
-  { label: "Dashboard", href: "/app/dashboard", icon: LayoutDashboard },
-  { label: "Leads", href: "/app/leads", icon: Waypoints },
-  { label: "Contacts", href: "/app/contacts", icon: Users },
-  { label: "Owners", href: "/app/owners", icon: KeyRound },
-  { label: "Properties", href: "/app/properties", icon: Building2 },
-  { label: "SyncMedia", href: "/app/syncmedia", icon: Megaphone },
-  { label: "Viewings", href: "/app/viewings", icon: FileSignature },
-  { label: "Tasks", href: "/app/tasks", icon: ClipboardList },
-  { label: "Reports", href: "/app/reports", icon: BarChart3 },
-];
+// CRM main nav comes from the module registry (SyncMedia is its own module).
+const navItems = MODULES.crm.nav;
 
 const contactToolItems = [
   { label: "Property Matching", href: "/app/contacts/matching", icon: Search },
@@ -56,14 +44,19 @@ const importExportItems = [
 ];
 
 const adminItems = [
-  { label: "Users", href: "/app/admin/users", icon: UserCog },
-  { label: "Roles", href: "/app/admin/roles", icon: Shield },
-  { label: "Branding", href: "/app/admin/branding", icon: Palette },
   { label: "Stages", href: "/app/admin/stages", icon: Waypoints },
   { label: "Lead Scoring", href: "/app/admin/lead-scoring", icon: Star },
   { label: "Commissions", href: "/app/admin/commissions", icon: DollarSign },
+];
+
+const hubAdminItems = [
+  { label: "Users", href: "/app/admin/users", icon: UserCog },
+  { label: "Roles", href: "/app/admin/roles", icon: Shield },
+  { label: "Agency settings", href: "/app/settings", icon: Settings },
   { label: "Logs", href: "/app/admin/logs", icon: ScrollText },
 ];
+
+const hubItem = { label: "Hub", href: "/app/hub", icon: LayoutGrid };
 
 const platformItem = { label: "Platform", href: "/app/platform", icon: Server };
 
@@ -173,8 +166,105 @@ function NavItem({
   );
 }
 
+/** Module home routes match exactly; everything else matches by prefix. */
+function isActivePath(pathname: string, href: string, exact?: boolean) {
+  return exact ? pathname === href : pathname === href || pathname.startsWith(href + "/");
+}
+
+// --- Module switcher: current module on top, menu lists Hub + the user's modules ---
+
+function ModuleSwitcher({
+  current,
+  myModules,
+  orgName,
+  collapsed,
+}: {
+  current: ModuleKey | "hub";
+  myModules: ModuleKey[];
+  orgName?: string;
+  collapsed?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const def = current === "hub" ? null : MODULES[current];
+  const Icon = def ? def.icon : LayoutGrid;
+  const name = def ? def.name : "Sync Estate";
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  return (
+    <div className="relative mb-6 px-2">
+      <button
+        type="button"
+        onClick={() => setOpen((p) => !p)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label="Switch module"
+        className={cn(
+          "flex w-full items-center gap-3 rounded-[12px] border border-white/20 bg-white/10 px-3 py-2.5 text-left transition-colors hover:bg-white/15",
+          collapsed && "justify-center px-0"
+        )}
+      >
+        <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", def ? def.accent : "bg-white/20 text-white")}>
+          <Icon className="h-4 w-4" aria-hidden="true" />
+        </div>
+        {!collapsed && (
+          <>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold">{name}</p>
+              {orgName && <p className="truncate text-[11px] text-white/60">{orgName}</p>}
+            </div>
+            <ChevronDown className="h-4 w-4 shrink-0 text-white/60" aria-hidden="true" />
+          </>
+        )}
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden="true" />
+          <div
+            role="menu"
+            className="absolute left-2 top-full z-50 mt-2 w-56 rounded-[12px] border border-white/20 bg-sidebar-bg p-1.5 shadow-lg"
+          >
+            {[
+              { key: "hub" as const, label: "Hub", href: "/app/hub", icon: LayoutGrid },
+              ...myModules.map((k) => ({ key: k, label: MODULES[k].name, href: MODULES[k].homeHref, icon: MODULES[k].icon })),
+            ].map((m) => {
+              const MIcon = m.icon;
+              return (
+                <Link
+                  key={m.key}
+                  href={m.href}
+                  role="menuitem"
+                  onClick={() => setOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 rounded-[10px] px-3 py-2 text-sm transition-colors hover:bg-white/10",
+                    m.key === current && "bg-white/10 font-medium"
+                  )}
+                >
+                  <MIcon className="h-4 w-4" aria-hidden="true" />
+                  {m.label}
+                </Link>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export const Sidebar = memo(function Sidebar({ isAdmin, isPlatformAdmin, collapsed, onToggle, orgName, mobileOpen, onMobileClose }: SidebarProps) {
   const pathname = usePathname();
+  const current = moduleForPath(pathname);
+  // Null for platform staff with no organisation open.
+  const hub = useQuery(api.hub.getContext);
+  const myModules = hub?.myModules ?? [];
   const [ioExpanded, setIoExpanded] = useState(false);
   const [contactToolsExpanded, setContactToolsExpanded] = useState(false);
   const [adminExpanded, setAdminExpanded] = useState(false);
@@ -243,34 +333,62 @@ export const Sidebar = memo(function Sidebar({ isAdmin, isPlatformAdmin, collaps
         >
         {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
       </button>
-      <div className="mb-6 flex items-center justify-between px-2">
-        <div
-          className={cn(
-            "rounded-[12px] border border-white/20 bg-white/10 px-3 py-3 text-sm font-semibold transition-all duration-200",
-            collapsed ? "w-full text-center" : "w-auto"
-          )}
-        >
-          {collapsed
-            ? (orgName ? orgName[0].toUpperCase() : brand.name[0].toUpperCase())
-            : (orgName || brand.name)}
+      {hub ? (
+        <ModuleSwitcher current={current} myModules={myModules} orgName={hub.orgName} collapsed={collapsed} />
+      ) : (
+        <div className="mb-6 flex items-center justify-between px-2">
+          <div
+            className={cn(
+              "rounded-[12px] border border-white/20 bg-white/10 px-3 py-3 text-sm font-semibold transition-all duration-200",
+              collapsed ? "w-full text-center" : "w-auto"
+            )}
+          >
+            {collapsed
+              ? (orgName ? orgName[0].toUpperCase() : brand.name[0].toUpperCase())
+              : (orgName || brand.name)}
+          </div>
         </div>
-      </div>
+      )}
       {/* Scrollable region: when the expandable panels grow taller than the
           viewport, this area scrolls instead of overflowing off-screen. Scroll
           is only enabled when expanded — overflow-y:auto forces overflow-x to
           clip, which would cut off the collapsed-mode hover tooltips. */}
       <div className={cn("flex min-h-0 flex-1 flex-col", !collapsed && "sidebar-scroll overflow-y-auto")}>
-      <nav className="flex-1 space-y-1" data-tour="sidebar-nav">
-        {navItems.map((item) => (
+      {hub && current !== "hub" && (
+        <Link
+          href="/app/hub"
+          className={cn(
+            "mb-3 flex items-center gap-2 rounded-[10px] px-3 py-1.5 text-xs text-white/70 transition-colors hover:bg-white/10 hover:text-white",
+            collapsed && "justify-center"
+          )}
+          title="Back to Hub"
+        >
+          <ChevronLeft className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          {!collapsed && "Back to Hub"}
+        </Link>
+      )}
+      <nav className="flex-1 space-y-1" data-tour={current === "crm" ? "sidebar-nav" : undefined}>
+        {(current === "crm"
+          ? navItems
+          : current === "hub"
+            ? [hubItem, ...myModules.map((k) => ({ label: MODULES[k].name, href: MODULES[k].homeHref, icon: MODULES[k].icon }))]
+            : MODULES[current].nav
+        ).map((item) => (
           <NavItem
             key={item.href}
             item={item}
-            active={pathname.startsWith(item.href)}
+            active={
+              current === "crm"
+                ? pathname.startsWith(item.href)
+                : isActivePath(pathname, item.href, item.href === "/app/hub" || (current !== "hub" && item.href === MODULES[current].homeHref))
+            }
             collapsed={collapsed}
             pillId="nav-pill-main"
           />
         ))}
       </nav>
+      {current === "crm" && (
+      <>
       <div className="mt-4 space-y-1 border-t border-white/20 pt-4" data-tour="sidebar-import-export">
         {collapsed ? (
           /* When sidebar is collapsed, show items directly (with hover tooltips) */
@@ -434,6 +552,44 @@ export const Sidebar = memo(function Sidebar({ isAdmin, isPlatformAdmin, collaps
               </AnimatePresence>
             </>
           )}
+        </div>
+      ) : null}
+      </>
+      )}
+      {isAdmin && current !== "crm" && current !== "hub" && (MODULES[current].adminNav?.length ?? 0) > 0 ? (
+        <div className="mt-4 space-y-1 border-t border-white/20 pt-4">
+          {!collapsed && (
+            <span className="block px-3 pb-1 text-[11px] font-medium uppercase tracking-[0.14em] text-white/70">
+              Admin
+            </span>
+          )}
+          {MODULES[current].adminNav?.map((item) => (
+            <NavItem
+              key={item.href}
+              item={item}
+              active={isActivePath(pathname, item.href)}
+              collapsed={collapsed}
+              pillId="nav-pill-module-admin"
+            />
+          ))}
+        </div>
+      ) : null}
+      {isAdmin && current === "hub" ? (
+        <div className="mt-4 space-y-1 border-t border-white/20 pt-4">
+          {!collapsed && (
+            <span className="block px-3 pb-1 text-[11px] font-medium uppercase tracking-[0.14em] text-white/70">
+              Hub admin
+            </span>
+          )}
+          {hubAdminItems.map((item) => (
+            <NavItem
+              key={item.href}
+              item={item}
+              active={isActivePath(pathname, item.href)}
+              collapsed={collapsed}
+              pillId="nav-pill-hub-admin"
+            />
+          ))}
         </div>
       ) : null}
       {isPlatformAdmin ? (

@@ -3,6 +3,9 @@ import { v } from "convex/values";
 import { authTables } from "@convex-dev/auth/server";
 import { leadSourceValidator } from "./lib/leadSources";
 import { activityTypeValidator } from "./lib/activityTypes";
+import { estateRoleValidator, moduleKeyValidator } from "./lib/modules";
+import { stayTables } from "./schemas/stay";
+import { worthTables } from "./schemas/worth";
 
 export default defineSchema({
   ...authTables,
@@ -13,6 +16,16 @@ export default defineSchema({
     // Set when a platform admin starts a purge; the batched delete job then
     // removes every row that belongs to the org and finally the org itself.
     deletingAt: v.optional(v.number()),
+    // Sync Estate modules the agency pays for, switched on by LayerSync.
+    // Absent on orgs that predate the Hub, which read as CRM + SyncMedia
+    // (see convex/lib/modules.ts).
+    enabledModules: v.optional(v.array(moduleKeyValidator)),
+    // Agency settings shared by every module (receipts, reports, invoices).
+    defaultCurrency: v.optional(v.union(v.literal("USD"), v.literal("ZiG"))),
+    address: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    email: v.optional(v.string()),
+    vatNumber: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -41,12 +54,23 @@ export default defineSchema({
     // in a read-only view by setting platformViewOrgId (see helpers.ts).
     isPlatformAdmin: v.optional(v.boolean()),
     platformViewOrgId: v.optional(v.id("organizations")),
+    // Sync Estate roles held on top of admin/agent (convex/lib/modules.ts).
+    // They decide which modules an agent can open; admins need none.
+    estateRoles: v.optional(v.array(estateRoleValidator)),
+    // Landlord and tenant portal accounts. A portal user has NO orgId, so
+    // every staff function (getCurrentUserWithOrg) rejects them and they never
+    // appear in an organisation's user list. portalOrgId scopes the portal.
+    portalKind: v.optional(v.union(v.literal("landlord"), v.literal("tenant"))),
+    portalContactId: v.optional(v.id("contacts")),
+    portalOrgId: v.optional(v.id("organizations")),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_email", ["email"])
     .index("by_org", ["orgId"])
-    .index("by_platform_admin", ["isPlatformAdmin"]),
+    .index("by_platform_admin", ["isPlatformAdmin"])
+    .index("by_portal_org", ["portalOrgId"])
+    .index("by_portal_contact", ["portalContactId"]),
   // Auditable record of a user accepting a versioned legal document at sign-up.
   legalAcceptances: defineTable({
     userId: v.id("users"),
@@ -507,6 +531,8 @@ export default defineSchema({
       v.literal("property"),
       v.literal("email"),
       v.literal("system"),
+      v.literal("stay"),
+      v.literal("worth"),
       v.literal("other")
     ),
     // Optional polymorphic target reference, e.g. the user/lead/property acted on.
@@ -593,6 +619,22 @@ export default defineSchema({
       v.union(v.literal("seller"), v.literal("landlord"), v.literal("both"))
     ),
     isBuyerTenant: v.optional(v.boolean()),
+    // Hub tags used by the other modules. `isLeaseTenant` marks a tenant on a
+    // Sync Stay lease (isBuyerTenant above is a CRM rental prospect);
+    // `isValuationClient` marks a Sync Worth instructing party.
+    isLeaseTenant: v.optional(v.boolean()),
+    isValuationClient: v.optional(v.boolean()),
+    entityKind: v.optional(v.union(v.literal("individual"), v.literal("company"))),
+    idNumber: v.optional(v.string()),
+    // Payout details for landlords.
+    bankDetails: v.optional(
+      v.object({
+        bankName: v.optional(v.string()),
+        accountName: v.optional(v.string()),
+        accountNumber: v.optional(v.string()),
+        branch: v.optional(v.string()),
+      })
+    ),
     // Multiple owners can see this contact - agents only see contacts they own
     // (NB: "owner" here means the assigned agent, not the property owner above)
     ownerUserIds: v.array(v.id("users")),
@@ -604,7 +646,9 @@ export default defineSchema({
     .index("by_normalized_phone", ["normalizedPhone"])
     .index("by_name", ["name"])
     .index("by_org", ["orgId"])
-    .index("by_org_owner_type", ["orgId", "ownerType"]),
+    .index("by_org_owner_type", ["orgId", "ownerType"])
+    .index("by_org_lease_tenant", ["orgId", "isLeaseTenant"])
+    .index("by_org_valuation_client", ["orgId", "isValuationClient"]),
   // Links a property to the client who owns it (its seller or landlord), as
   // distinct from `properties.ownerUserIds`, which is the agent who owns the
   // record. A property can have several owners (joint sellers) and an owner can
@@ -775,4 +819,32 @@ export default defineSchema({
   })
     .index("by_org_owner", ["orgId", "ownerUserId"])
     .index("by_owner_property", ["ownerUserId", "propertyId"]),
+
+  // --- Sync Estate Hub -----------------------------------------------------
+  // Notification centre. Every module posts alerts here (convex/lib/notify.ts);
+  // the topbar bell shows the unread count.
+  notifications: defineTable({
+    orgId: v.id("organizations"),
+    userId: v.id("users"),
+    module: v.union(
+      v.literal("hub"),
+      v.literal("crm"),
+      v.literal("stay"),
+      v.literal("worth"),
+      v.literal("media")
+    ),
+    kind: v.string(),
+    title: v.string(),
+    body: v.optional(v.string()),
+    // In-app link to the record the alert is about.
+    href: v.optional(v.string()),
+    readAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_user_created", ["userId", "createdAt"])
+    .index("by_user_read", ["userId", "readAt"]),
+
+  ...stayTables,
+  ...worthTables,
 });

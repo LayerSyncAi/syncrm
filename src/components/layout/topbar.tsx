@@ -12,6 +12,7 @@ import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { TIMEZONES, detectBrowserTimezone } from "@/lib/timezones";
 import { viewingToasts } from "@/lib/toast";
 import { brand } from "@/config/brand";
+import { NotificationBell } from "@/components/hub/notification-bell";
 
 interface TopbarProps {
   userName: string;
@@ -21,6 +22,8 @@ interface TopbarProps {
   isRealAdmin?: boolean;
   agentMode?: boolean;
   onMobileMenuOpen?: () => void;
+  /** False for platform staff with no organisation open (no notifications to read). */
+  showNotifications?: boolean;
 }
 
 const titleMap: Record<string, string> = {
@@ -36,9 +39,11 @@ const titleMap: Record<string, string> = {
   "/app/admin/roles": "User Roles",
   "/app/admin/stages": "Stages",
   "/app/platform": "Platform",
+  "/app/hub": "Sync Estate",
+  "/app/settings": "Agency settings",
 };
 
-export function Topbar({ userName, userEmail, orgName, userTimezone, isRealAdmin, agentMode, onMobileMenuOpen }: TopbarProps) {
+export function Topbar({ userName, userEmail, orgName, userTimezone, isRealAdmin, agentMode, onMobileMenuOpen, showNotifications = true }: TopbarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { signOut } = useAuthActions();
@@ -178,6 +183,7 @@ export function Topbar({ userName, userEmail, orgName, userTimezone, isRealAdmin
           <span>Search</span>
           <kbd className="rounded border border-border px-1.5 text-[10px] font-medium">⌘K</kbd>
         </button>
+        {showNotifications && <NotificationBell />}
         <div className="relative" data-tour="user-profile">
           <button
             className="flex items-center gap-2 rounded-[10px] border border-border-strong px-3 py-2 text-sm text-text"

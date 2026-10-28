@@ -70,7 +70,7 @@ export default function LoginPage() {
       !didAttemptForward
     ) {
       didAttemptForward = true;
-      router.replace("/app/dashboard");
+      router.replace("/app/hub");
     }
   }, [authLoading, isSessionAuthenticated, submitState, router]);
 
@@ -145,13 +145,13 @@ export default function LoginPage() {
 
       if (process.env.NODE_ENV === "development") {
         console.log("[LoginPage] signIn completed successfully");
-        console.log("[LoginPage] Navigating to /app/dashboard");
+        console.log("[LoginPage] Navigating to /app/hub");
       }
 
       setSubmitState("success");
       didAttemptForward = true;
       await new Promise((resolve) => setTimeout(resolve, 600));
-      router.replace("/app/dashboard");
+      router.replace("/app/hub");
     } catch (err) {
       console.error("[LoginPage] Auth error:", err);
 

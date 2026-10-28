@@ -2,7 +2,8 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
-import { assertOrgAccess, getCurrentUserWithOrg } from "./helpers";
+import { assertOrgAccess } from "./helpers";
+import { requireModuleUser } from "./lib/moduleAccess";
 
 /**
  * SyncMedia brochure drafts.
@@ -90,7 +91,7 @@ const MAX_NUDGES = 60;
 export const listMine = query({
   args: {},
   handler: async (ctx) => {
-    const user = await getCurrentUserWithOrg(ctx);
+    const { user } = await requireModuleUser(ctx, "media");
     const rows = await ctx.db
       .query("brochures")
       .withIndex("by_org_owner", (q) =>
@@ -110,7 +111,7 @@ export const listMine = query({
 export const getMineForProperty = query({
   args: { propertyId: v.optional(v.id("properties")) },
   handler: async (ctx, args) => {
-    const user = await getCurrentUserWithOrg(ctx);
+    const { user } = await requireModuleUser(ctx, "media");
     const rows = await ctx.db
       .query("brochures")
       .withIndex("by_owner_property", (q) =>
@@ -137,7 +138,7 @@ export const save = mutation({
     ...brochureFields,
   },
   handler: async (ctx, args) => {
-    const user = await getCurrentUserWithOrg(ctx);
+    const { user } = await requireModuleUser(ctx, "media");
     const { id, ...rest } = args;
 
     // `propertyId` arrives from the client, so it is checked rather than
@@ -194,7 +195,7 @@ export const save = mutation({
 export const remove = mutation({
   args: { id: v.id("brochures") },
   handler: async (ctx, args) => {
-    const user = await getCurrentUserWithOrg(ctx);
+    const { user } = await requireModuleUser(ctx, "media");
     const existing = await ctx.db.get(args.id);
     if (
       existing === null ||
