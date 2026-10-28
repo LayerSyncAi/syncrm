@@ -29,7 +29,10 @@
       "permissions": [
         "CAMERA"
       ],
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -52,7 +55,8 @@
         "expo-image-picker",
         {
           "photosPermission": "Attach photos of properties, inspections and repairs.",
-          "cameraPermission": "Take photos of properties, inspections and repairs."
+          "cameraPermission": "Take photos of properties, inspections and repairs.",
+          "microphonePermission": false
         }
       ],
       "expo-sharing",
