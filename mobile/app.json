@@ -1,0 +1,75 @@
+{
+  "expo": {
+    "name": "Sync Estate",
+    "slug": "sync-estate",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "syncestate",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#f1f4f9",
+    "ios": {
+      "bundleIdentifier": "ai.layersync.syncestate",
+      "supportsTablet": true,
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "infoPlist": {
+        "NSCameraUsageDescription": "Take photos of properties, inspections and repairs.",
+        "NSPhotoLibraryUsageDescription": "Attach photos of properties, inspections and repairs."
+      }
+    },
+    "android": {
+      "package": "ai.layersync.syncestate",
+      "adaptiveIcon": {
+        "backgroundColor": "#2a5925",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "permissions": [
+        "CAMERA"
+      ],
+      "predictiveBackGestureEnabled": false,
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "resizeMode": "contain",
+          "imageWidth": 160,
+          "backgroundColor": "#2a5925"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Attach photos of properties, inspections and repairs.",
+          "cameraPermission": "Take photos of properties, inspections and repairs.",
+          "microphonePermission": false
+        }
+      ],
+      "expo-sharing",
+      [
+        "expo-notifications",
+        {
+          "color": "#2a5925"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": false,
+      "tsconfigPaths": false
+    }
+  }
+}

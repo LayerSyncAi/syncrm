@@ -1,5 +1,6 @@
 /**
- * Web Push (PWA) subscription management.
+ * Push subscription management: Web Push (PWA) for browsers and Expo push
+ * tokens for the mobile app.
  *
  * Public mutations let a signed-in browser register/unregister its
  * PushSubscription. Internal query/mutations serve the sender action
@@ -123,6 +124,70 @@ export const deleteByEndpoint = internalMutation({
     const existing = await ctx.db
       .query("pushSubscriptions")
       .withIndex("by_endpoint", (q) => q.eq("endpoint", args.endpoint))
+      .first();
+    if (existing) await ctx.db.delete(existing._id);
+  },
+});
+
+// ─── Expo push (the mobile app) ─────────────────────────────────────────────
+
+/** Register this phone's Expo push token for the signed-in user. Upserts by token. */
+export const registerExpoToken = mutation({
+  args: { token: v.string(), platform: v.union(v.literal("ios"), v.literal("android")) },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserOptional(ctx);
+    if (!user) throw new Error("Unauthorized");
+    if (!/^Expo(nent)?PushToken\[.+\]$/.test(args.token)) throw new Error("Not an Expo push token");
+    const now = Date.now();
+    const existing = await ctx.db
+      .query("expoPushTokens")
+      .withIndex("by_token", (q) => q.eq("token", args.token))
+      .first();
+    if (existing) {
+      await ctx.db.patch(existing._id, { userId: user._id, platform: args.platform, updatedAt: now });
+      return existing._id;
+    }
+    return ctx.db.insert("expoPushTokens", {
+      userId: user._id,
+      token: args.token,
+      platform: args.platform,
+      createdAt: now,
+      updatedAt: now,
+    });
+  },
+});
+
+/** Remove this phone's token, on sign-out or when the user turns push off. */
+export const unregisterExpoToken = mutation({
+  args: { token: v.string() },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserOptional(ctx);
+    if (!user) return;
+    const existing = await ctx.db
+      .query("expoPushTokens")
+      .withIndex("by_token", (q) => q.eq("token", args.token))
+      .first();
+    if (existing && existing.userId === user._id) await ctx.db.delete(existing._id);
+  },
+});
+
+export const getExpoTokensForUser = internalQuery({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    return ctx.db
+      .query("expoPushTokens")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .collect();
+  },
+});
+
+/** Drop a token Expo reports as no longer registered (app uninstalled). */
+export const deleteExpoToken = internalMutation({
+  args: { token: v.string() },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("expoPushTokens")
+      .withIndex("by_token", (q) => q.eq("token", args.token))
       .first();
     if (existing) await ctx.db.delete(existing._id);
   },

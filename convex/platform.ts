@@ -501,6 +501,7 @@ async function purgeUserRows(ctx: MutationCtx, user: Doc<"users">, budget: numbe
   const userKeyed = [
     ctx.db.query("copilotChats").withIndex("by_user", (q) => q.eq("userId", user._id)),
     ctx.db.query("pushSubscriptions").withIndex("by_user", (q) => q.eq("userId", user._id)),
+    ctx.db.query("expoPushTokens").withIndex("by_user", (q) => q.eq("userId", user._id)),
     ctx.db.query("passwordResetTokens").withIndex("by_user", (q) => q.eq("userId", user._id)),
     ctx.db.query("activityReminders").withIndex("by_user_digest", (q) => q.eq("userId", user._id)),
   ] as const;

@@ -20,8 +20,22 @@ const requestSchema = z.object({
   messageId: z.string().optional(),
 });
 
+/**
+ * The signed-in user's Convex token: from the Convex Auth cookies on the
+ * website, or from an `Authorization: Bearer` header on the mobile app, which
+ * has no cookies. Either way the token is only ever passed on to Convex, which
+ * validates it, so a bad header gets no further than a missing cookie does.
+ */
+async function resolveToken(req: Request): Promise<string | null> {
+  const cookieToken = await convexAuthNextjsToken();
+  if (cookieToken) return cookieToken;
+  const header = req.headers.get("authorization") ?? "";
+  const match = /^Bearer\s+(\S+)$/i.exec(header);
+  return match ? match[1] : null;
+}
+
 export async function POST(req: Request) {
-  const token = await convexAuthNextjsToken();
+  const token = await resolveToken(req);
   if (!token) {
     return new NextResponse("Unauthorized", { status: 401 });
   }

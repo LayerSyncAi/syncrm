@@ -1,0 +1,19 @@
+{
+  "cli": { "version": ">= 16.0.0", "appVersionSource": "remote" },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": { "EXPO_PUBLIC_CONVEX_URL": "https://REPLACE-dev.convex.cloud", "EXPO_PUBLIC_WEB_URL": "https://REPLACE-dev-site" }
+    },
+    "preview": {
+      "distribution": "internal",
+      "env": { "EXPO_PUBLIC_CONVEX_URL": "https://REPLACE-prod.convex.cloud", "EXPO_PUBLIC_WEB_URL": "https://app.syncrm.com" }
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": { "EXPO_PUBLIC_CONVEX_URL": "https://REPLACE-prod.convex.cloud", "EXPO_PUBLIC_WEB_URL": "https://app.syncrm.com" }
+    }
+  },
+  "submit": { "production": {} }
+}

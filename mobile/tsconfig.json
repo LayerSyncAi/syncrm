@@ -1,0 +1,19 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    // `@/` is the website's src folder, the same alias the website uses, so
+    // its data layer and types resolve unchanged here. The app's own files
+    // import each other relatively.
+    "paths": {
+      "@/*": ["../src/*"],
+      // Shared files sit outside this folder, so left alone they would pick
+      // up the website's copies of these packages' types.
+      "react": ["./node_modules/@types/react"],
+      "react/*": ["./node_modules/@types/react/*"],
+      "convex/*": ["./node_modules/convex/dist/esm-types/*"],
+      "@convex-dev/auth/*": ["./node_modules/@convex-dev/auth/dist/*"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"]
+}
