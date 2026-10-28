@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Sync Estate",
-    "slug": "sync-estate",
+    "slug": "layersync",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -70,6 +70,12 @@
     "experiments": {
       "typedRoutes": false,
       "tsconfigPaths": false
+    },
+    "owner": "layersyncs-team",
+    "extra": {
+      "eas": {
+        "projectId": "b9359e54-2dd0-470b-8261-773e1de53376"
+      }
     }
   }
 }
