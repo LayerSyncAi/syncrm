@@ -66,9 +66,18 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     }
   }, [isLoading, isSessionAuthenticated, router]);
 
+  // Portal users (landlords and tenants) have their own app.
+  const isPortalUser = !!user?.portalKind;
+  useEffect(() => {
+    if (!isLoading && isPortalUser) {
+      router.replace("/portal");
+    }
+  }, [isLoading, isPortalUser, router]);
+
   // Redirect to force-change-password if user has resetPasswordOnNextLogin flag
   useEffect(() => {
-    if (!isLoading && user && user.resetPasswordOnNextLogin && !isForceChangePasswordPage) {
+    // Portal users change their password inside the portal instead.
+    if (!isLoading && user && !user.portalKind && user.resetPasswordOnNextLogin && !isForceChangePasswordPage) {
       router.replace("/app/force-change-password");
     }
   }, [isLoading, user, isForceChangePasswordPage, router]);
@@ -161,6 +170,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     return null;
   }
 
+  if (user.portalKind) {
+    return (
+      <div className="min-h-screen bg-content-bg flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+      </div>
+    );
+  }
+
   // If user must reset password, only allow the force-change-password page (no sidebar/topbar)
   if (user.resetPasswordOnNextLogin) {
     if (isForceChangePasswordPage) {
@@ -221,6 +238,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             userTimezone={user.timezone || undefined}
             isRealAdmin={false}
             agentMode={false}
+            showNotifications={false}
             onMobileMenuOpen={() => setMobileOpen(true)}
           />
           <div className="px-3 py-4 pb-24 sm:px-6 sm:py-6 md:pb-6">

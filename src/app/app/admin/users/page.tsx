@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { TIMEZONES } from "@/lib/timezones";
 import { animatedToast } from "@/components/ui/animated-toaster";
+import { ESTATE_ROLES, ESTATE_ROLE_LABELS, type EstateRole } from "../../../../../convex/lib/modules";
 
 const listVariants = {
   hidden: {},
@@ -68,6 +69,7 @@ type EditingUser = {
   isActive: boolean;
   timezone?: string;
   resetPasswordOnNextLogin?: boolean;
+  estateRoles?: EstateRole[];
 };
 
 // ── Page ───────────────────────────────────────────────────
@@ -83,6 +85,7 @@ export default function UsersPage() {
   const setUserRole = useMutation(api.users.adminSetUserRole);
   const setUserTimezone = useMutation(api.users.adminUpdateUserTimezone);
   const resetUserPassword = useAction(api.users.adminResetUserPassword);
+  const setEstateRoles = useMutation(api.hub.adminSetEstateRoles);
 
   // Create drawer state
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -94,6 +97,8 @@ export default function UsersPage() {
   const [editingUser, setEditingUser] = useState<EditingUser | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  // Sync Estate roles being edited in the modal (saved with their own button)
+  const [rolesDraft, setRolesDraft] = useState<EstateRole[]>([]);
 
   // Row flash state: maps userId to "activate" | "deactivate"
   const [flashingRows, setFlashingRows] = useState<Map<string, "activate" | "deactivate">>(new Map());
@@ -101,7 +106,7 @@ export default function UsersPage() {
   // Redirect non-admin users
   useEffect(() => {
     if (!authLoading && (!user || user.role !== "admin")) {
-      router.replace("/app/dashboard");
+      router.replace("/app/hub");
     }
   }, [authLoading, user, router]);
 
@@ -167,6 +172,7 @@ export default function UsersPage() {
 
   const openEditModal = (u: EditingUser) => {
     setEditingUser({ ...u });
+    setRolesDraft(u.estateRoles ?? []);
     setResetConfirmOpen(false);
   };
 
@@ -195,6 +201,42 @@ export default function UsersPage() {
       setIsSaving(false);
     }
   };
+
+  const toggleDraftRole = (role: EstateRole) =>
+    setRolesDraft((prev) => (prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role]));
+
+  const handleSaveEstateRoles = async () => {
+    if (!editingUser) return;
+    setIsSaving(true);
+    const name = userName(editingUser);
+    try {
+      await setEstateRoles({ userId: editingUser._id, roles: rolesDraft });
+      setEditingUser((prev) => prev ? { ...prev, estateRoles: rolesDraft } : prev);
+      animatedToast.success(`Sync Estate roles updated for ${name}`);
+    } catch (err) {
+      animatedToast.error(`Role update failed for ${name}`, {
+        description: err instanceof Error ? err.message : "Something went wrong.",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const rolesDirty =
+    !!editingUser &&
+    (rolesDraft.length !== (editingUser.estateRoles ?? []).length ||
+      rolesDraft.some((r) => !(editingUser.estateRoles ?? []).includes(r)));
+
+  const renderEstateRoles = (u: { role: "admin" | "agent"; estateRoles?: EstateRole[] }) =>
+    u.role === "admin" ? (
+      <Badge variant="info">All modules</Badge>
+    ) : (u.estateRoles ?? []).length === 0 ? (
+      <span className="text-xs text-text-muted">No roles</span>
+    ) : (
+      (u.estateRoles ?? []).map((r) => (
+        <Badge key={r} variant="secondary">{ESTATE_ROLE_LABELS[r]}</Badge>
+      ))
+    );
 
   const handleTimezoneChange = async (timezone: string) => {
     if (!editingUser) return;
@@ -324,6 +366,7 @@ export default function UsersPage() {
               <TableRow>
                 <TableHead>User</TableHead>
                 <TableHead>Email</TableHead>
+                <TableHead>Sync Estate roles</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right w-20" />
               </TableRow>
@@ -362,6 +405,9 @@ export default function UsersPage() {
                     </TableCell>
                     <TableCell className="text-text-muted">
                       {u.email || "\u2014"}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap items-center gap-1">{renderEstateRoles(u)}</div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -428,6 +474,7 @@ export default function UsersPage() {
                   <Badge variant={u.isActive ? "success" : "secondary"}>{u.isActive ? "Active" : "Inactive"}</Badge>
                   {u.resetPasswordOnNextLogin && <Badge variant="warning">Password reset pending</Badge>}
                 </div>
+                <div className="mt-2 flex flex-wrap items-center gap-1">{renderEstateRoles(u)}</div>
               </div>
             );
           })}
@@ -458,6 +505,42 @@ export default function UsersPage() {
               <p className="text-xs text-text-muted">
                 Admins can manage users, stages, and all settings.
               </p>
+            </div>
+
+            {/* Sync Estate roles */}
+            <div className="space-y-2">
+              <Label>Sync Estate roles</Label>
+              {editingUser.role === "admin" ? (
+                <p className="text-xs text-text-muted">Admins open every module and need no roles.</p>
+              ) : (
+                <>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {ESTATE_ROLES.map((r) => (
+                      <label
+                        key={r}
+                        className="flex cursor-pointer items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={rolesDraft.includes(r)}
+                          onChange={() => toggleDraftRole(r)}
+                          disabled={isSaving}
+                          className="h-4 w-4 rounded border-border"
+                        />
+                        {ESTATE_ROLE_LABELS[r]}
+                      </label>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs text-text-muted">
+                      Roles decide which modules an agent can open. Property manager and Accounts open Sync Stay. Valuer, Signing valuer, Valuations admin and Accounts open Sync Worth. Admins open everything.
+                    </p>
+                    <Button size="sm" onClick={handleSaveEstateRoles} disabled={isSaving || !rolesDirty}>
+                      Save roles
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Timezone */}

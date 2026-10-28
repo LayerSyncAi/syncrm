@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   PURGE_TABLE_ORDER,
@@ -8,9 +8,19 @@ import {
   purgeConfirmPhrase,
 } from "../../convex/platformLib";
 
-/** Tables in convex/schema.ts whose definition carries an `orgId` field. */
+/**
+ * Tables in convex/schema.ts and the module schema files it spreads in
+ * (convex/schemas/*.ts) whose definition carries an `orgId` field.
+ */
 function orgScopedTablesFromSchema(): string[] {
-  const schema = readFileSync(join(__dirname, "../../convex/schema.ts"), "utf8");
+  const convexDir = join(__dirname, "../../convex");
+  const schemaDir = join(convexDir, "schemas");
+  const schema = [
+    readFileSync(join(convexDir, "schema.ts"), "utf8"),
+    ...readdirSync(schemaDir)
+      .filter((f) => f.endsWith(".ts"))
+      .map((f) => readFileSync(join(schemaDir, f), "utf8")),
+  ].join("\n");
   const tables: string[] = [];
   const re = /^\s{2}(\w+): defineTable\(\{/gm;
   const starts: Array<{ name: string; index: number }> = [];

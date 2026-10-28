@@ -30,6 +30,8 @@ export async function recordAudit(
       | "property"
       | "email"
       | "system"
+      | "stay"
+      | "worth"
       | "other";
     description: string;
     targetType?: string;
@@ -97,6 +99,8 @@ export const recordAuditInternal = internalMutation({
       v.literal("property"),
       v.literal("email"),
       v.literal("system"),
+      v.literal("stay"),
+      v.literal("worth"),
       v.literal("other")
     ),
     description: v.string(),
@@ -157,6 +161,8 @@ export const adminListAuditLogs = query({
         v.literal("property"),
         v.literal("email"),
         v.literal("system"),
+        v.literal("stay"),
+        v.literal("worth"),
         v.literal("other")
       )
     ),

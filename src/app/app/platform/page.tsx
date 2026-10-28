@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/table";
 import { animatedToast } from "@/components/ui/animated-toaster";
 import { getErrorMessage } from "@/lib/errors";
+import { MODULES, MODULE_ORDER, type ModuleKey } from "@/config/modules";
 
 const formatDate = (ts: number | null | undefined) =>
   ts ? new Date(ts).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—";
@@ -39,6 +40,7 @@ type OrgRow = {
   countCap: number;
   lastActivityAt: number | null;
   isViewing: boolean;
+  enabledModules: ModuleKey[];
 };
 
 /**
@@ -59,12 +61,16 @@ export default function PlatformPage() {
   const grantPlatformAdmin = useAction(api.platform.grantPlatformAdmin);
   const revokePlatformAdmin = useMutation(api.platform.revokePlatformAdmin);
   const purgeOrganization = useMutation(api.platform.purgeOrganization);
+  const setOrgModules = useMutation(api.hub.setOrgModules);
 
   const [search, setSearch] = useState("");
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<OrgRow | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
+  const [modulesTarget, setModulesTarget] = useState<OrgRow | null>(null);
+  const [modulesDraft, setModulesDraft] = useState<ModuleKey[]>([]);
+  const [isSavingModules, setIsSavingModules] = useState(false);
   const [grantEmail, setGrantEmail] = useState("");
   const [grantName, setGrantName] = useState("");
   const [isGranting, setIsGranting] = useState(false);
@@ -72,9 +78,23 @@ export default function PlatformPage() {
   const [revokeTarget, setRevokeTarget] = useState<{ _id: Id<"users">; email: string } | null>(null);
   const [isRevoking, setIsRevoking] = useState(false);
 
+  const handleSaveModules = async () => {
+    if (!modulesTarget) return;
+    setIsSavingModules(true);
+    try {
+      await setOrgModules({ orgId: modulesTarget._id, modules: modulesDraft });
+      animatedToast.success(`Modules updated for ${modulesTarget.name}`);
+      setModulesTarget(null);
+    } catch (err) {
+      animatedToast.error("Could not update modules", { description: getErrorMessage(err) });
+    } finally {
+      setIsSavingModules(false);
+    }
+  };
+
   useEffect(() => {
     if (!authLoading && user && !user.isPlatformAdmin) {
-      router.replace("/app/dashboard");
+      router.replace("/app/hub");
     }
   }, [authLoading, user, router]);
 
@@ -237,6 +257,7 @@ export default function PlatformPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Organisation</TableHead>
+                    <TableHead>Modules</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead className="text-right">Users</TableHead>
                     <TableHead className="text-right">Leads</TableHead>
@@ -258,6 +279,26 @@ export default function PlatformPage() {
                           {org.deletingAt && <Badge variant="danger">Deleting…</Badge>}
                           {org.isViewing && !org.deletingAt && <Badge variant="warning">Viewing</Badge>}
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        <button
+                          type="button"
+                          disabled={!!org.deletingAt}
+                          onClick={() => {
+                            setModulesTarget(org);
+                            setModulesDraft(org.enabledModules);
+                          }}
+                          className="flex max-w-[220px] flex-wrap gap-1 text-left"
+                          title="Change modules"
+                        >
+                          {org.enabledModules.length === 0 ? (
+                            <Badge variant="neutral">None</Badge>
+                          ) : (
+                            org.enabledModules.map((k) => (
+                              <Badge key={k} variant="secondary">{MODULES[k].name}</Badge>
+                            ))
+                          )}
+                        </button>
                       </TableCell>
                       <TableCell>{formatDate(org.createdAt)}</TableCell>
                       <TableCell className="text-right">{formatCount(org.counts.users, org.countCap)}</TableCell>
@@ -421,6 +462,46 @@ export default function PlatformPage() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Modules modal */}
+      <Modal
+        open={!!modulesTarget}
+        title="Modules"
+        description={modulesTarget ? `Choose what ${modulesTarget.name} can open.` : undefined}
+        onClose={() => {
+          if (!isSavingModules) setModulesTarget(null);
+        }}
+        footer={
+          <div className="flex justify-end gap-3">
+            <Button variant="secondary" onClick={() => setModulesTarget(null)} disabled={isSavingModules}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveModules} disabled={isSavingModules}>
+              {isSavingModules ? "Saving..." : "Save"}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-2">
+          {MODULE_ORDER.map((k) => (
+            <label
+              key={k}
+              className="flex cursor-pointer items-center gap-3 rounded-lg border border-border px-3 py-2 text-sm"
+            >
+              <input
+                type="checkbox"
+                checked={modulesDraft.includes(k)}
+                onChange={() =>
+                  setModulesDraft((prev) => (prev.includes(k) ? prev.filter((m) => m !== k) : [...prev, k]))
+                }
+                className="h-4 w-4 rounded border-border"
+              />
+              <span className="font-medium">{MODULES[k].name}</span>
+              <span className="text-xs text-text-muted">{MODULES[k].tagline}</span>
+            </label>
+          ))}
+        </div>
       </Modal>
 
       {/* Revoke modal */}

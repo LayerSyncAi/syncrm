@@ -19,7 +19,7 @@ const HEX = /^#[0-9a-f]{6}$/i;
 
 const PAGE_STYLES = ["light", "cream", "dark"] as const;
 
-async function resolveOne(
+export async function resolveOne(
   ctx: Parameters<typeof resolveRefs>[0],
   ref: string | undefined
 ): Promise<string | undefined> {

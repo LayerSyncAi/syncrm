@@ -12,6 +12,31 @@
  * so a new org-scoped table cannot be forgotten.
  */
 export const PURGE_TABLE_ORDER = [
+  // Sync Stay: children before the leases, units and properties they hang off.
+  "stayArrearsNotes",
+  "stayDocuments",
+  "stayInspections",
+  "stayMaintenance",
+  "stayExpenses",
+  "stayDeposits",
+  "stayPayments",
+  "stayCharges",
+  "stayLeases",
+  "stayUnits",
+  "stayProperties",
+  "staySettings",
+  // Sync Worth (see convex/schemas/worth.ts).
+  "worthJobComparables",
+  "worthReports",
+  "worthDocuments",
+  "worthInspections",
+  "worthJobNotes",
+  "worthComparables",
+  "worthJobs",
+  "worthValuerProfiles",
+  "worthSettings",
+  // Hub
+  "notifications",
   "legalAcceptances",
   "leadPropertyMatches",
   "activities",

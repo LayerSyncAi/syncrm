@@ -37,6 +37,11 @@ export const setupOrganization = mutation({
     if (user.isPlatformAdmin) {
       throw new Error("Platform admin accounts cannot create an organization");
     }
+    // Neither do landlord/tenant portal accounts: they have no orgId by
+    // design, and must not become the admin of a new one.
+    if (user.portalKind) {
+      throw new Error("Portal accounts cannot create an organization");
+    }
 
     // If user already has an org, return it
     if (user.orgId) {

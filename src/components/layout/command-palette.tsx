@@ -21,6 +21,10 @@ import {
   KeyRound,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { useQuery } from "convex/react";
+import { LayoutGrid } from "lucide-react";
+import { api } from "../../../convex/_generated/api";
+import { MODULES } from "@/config/modules";
 import { cn } from "@/lib/utils";
 
 interface Command {
@@ -58,6 +62,7 @@ export function CommandPalette() {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
   const [activeIndex, setActiveIndex] = React.useState(0);
+  const hub = useQuery(api.hub.getContext);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const listRef = React.useRef<HTMLDivElement>(null);
 
@@ -88,13 +93,32 @@ export function CommandPalette() {
     }
   }, [open]);
 
+  // Hub and module home pages sit alongside the CRM shortcuts.
+  const commands = React.useMemo<Command[]>(() => {
+    const moduleCommands: Command[] = (hub?.myModules ?? [])
+      .filter((k) => k !== "crm" && k !== "media")
+      .map((k) => ({
+        id: `nav-module-${k}`,
+        label: MODULES[k].name,
+        group: "Go to" as const,
+        icon: MODULES[k].icon,
+        href: MODULES[k].homeHref,
+        keywords: MODULES[k].tagline,
+      }));
+    return [
+      { id: "nav-hub", label: "Hub", group: "Go to", icon: LayoutGrid, href: "/app/hub", keywords: "sync estate modules home" },
+      ...moduleCommands,
+      ...baseCommands,
+    ];
+  }, [hub]);
+
   const results = React.useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return baseCommands;
-    return baseCommands.filter(
+    if (!q) return commands;
+    return commands.filter(
       (c) => c.label.toLowerCase().includes(q) || c.keywords?.toLowerCase().includes(q)
     );
-  }, [query]);
+  }, [query, commands]);
 
   // Keep the active index in range as results change.
   React.useEffect(() => {
