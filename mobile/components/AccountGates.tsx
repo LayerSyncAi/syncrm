@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { View } from "react-native";
 import { useAction } from "convex/react";
-import { useAuthActions } from "@convex-dev/auth/react";
+import { useSignOut } from "../lib/useSignOut";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "../../convex/_generated/api";
 import { Body, Button, Card, Notice, PasswordField, Screen, Title } from "./ui";
@@ -10,7 +10,7 @@ import { colors, space } from "../lib/theme";
 
 export function ForcedPasswordChange() {
   const change = useAction(api.users.forceChangePassword);
-  const { signOut } = useAuthActions();
+  const signOut = useSignOut();
   const [pw, setPw] = useState("");
   const [again, setAgain] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +47,7 @@ export function ForcedPasswordChange() {
 }
 
 export function DeactivatedAccount() {
-  const { signOut } = useAuthActions();
+  const signOut = useSignOut();
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, justifyContent: "center" }}>
       <View style={{ padding: space.xl, gap: space.lg }}>

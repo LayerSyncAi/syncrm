@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { Text, View } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { useAction, useMutation, useQuery } from "convex/react";
-import { useAuthActions } from "@convex-dev/auth/react";
+import { useSignOut } from "../lib/useSignOut";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { Badge, Body, Button, Card, EmptyState, Field, Loading, Notice, Screen, SearchBar, Section } from "../components/ui";
@@ -20,7 +20,7 @@ import { colors, font, space } from "../lib/theme";
 export default function Platform() {
   const router = useRouter();
   const { loading, user } = useSession();
-  const { signOut } = useAuthActions();
+  const signOut = useSignOut();
   const isPlatformAdmin = !!user?.isPlatformAdmin;
   const orgs = useQuery(api.platform.listOrganizations, isPlatformAdmin ? {} : "skip");
   const admins = useQuery(api.platform.listPlatformAdmins, isPlatformAdmin ? {} : "skip");

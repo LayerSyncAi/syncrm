@@ -12,6 +12,7 @@ import * as DocumentPicker from "expo-document-picker";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { File, Paths } from "expo-file-system";
+import { stampPdf, type StampOptions } from "./pdfStamp";
 import { Alert } from "react-native";
 
 export type PickedFile = { uri: string; name: string; mimeType: string; size?: number };
@@ -76,9 +77,12 @@ export async function uploadFile(getUploadUrl: () => Promise<string>, file: Pick
   return storageId;
 }
 
-/** Render HTML to an A4 PDF and open the share sheet (save, print, email). */
-export async function sharePdf(html: string, fileName: string): Promise<void> {
+/** Render HTML to an A4 PDF, number its pages, and open the share sheet (save, print, email). */
+export async function sharePdf(html: string, fileName: string, stamp?: StampOptions): Promise<void> {
   const printed = await Print.printToFileAsync({ html, width: 595, height: 842 });
+  // Page numbers (and any header or watermark) on every page; the PDF is
+  // still shared unstamped if this fails.
+  await stampPdf(printed.uri, stamp).catch(() => {});
   // expo-print names the file at random; give it the caller's name so the
   // saved or emailed PDF reads e.g. "261028_Receipt_RC-00012.pdf".
   const safe = fileName.replace(/[\\/:*?"<>|]+/g, "-");

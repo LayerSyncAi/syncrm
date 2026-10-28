@@ -4,12 +4,12 @@
  * (1/1080th of the reference canvas) multiplied by `s`, so one layout renders
  * the same at preview size and at export size.
  */
-import type { ReactNode } from "react";
-import { Platform, Text, View, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
+import { createContext, useContext, useRef, type ReactNode } from "react";
+import { PanResponder, Platform, Text, View, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
 import { Image } from "expo-image";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import type { FormatPreset } from "@/lib/syncmedia/formats";
-import { getNudge, type SlotId } from "@/lib/syncmedia/nudges";
+import { clampNudge, getNudge, type SlotId } from "@/lib/syncmedia/nudges";
 import type { BrandKit, BrochureDoc, BrochureTheme, Photo } from "@/lib/syncmedia/types";
 
 export type Scale = (n: number) => number;
@@ -47,7 +47,25 @@ function joinParts(parts: (string | undefined)[], sep = " · "): string {
   return parts.map((p) => p?.trim()).filter(Boolean).join(sep);
 }
 
-/** A block the agent has nudged on the web keeps its offset here. */
+/**
+ * What the editable preview supplies so blocks can be dragged. Absent for
+ * thumbnails and export, which render the stored offsets with no editing chrome.
+ */
+export interface AdjustState {
+  selected: SlotId | null;
+  onSelect: (slot: SlotId | null) => void;
+  /** Offset in canvas pixels, already clamped. */
+  onChange: (slot: SlotId, offset: { x: number; y: number }) => void;
+  onDrag: (dragging: boolean) => void;
+  /** Preview-to-canvas ratio: a drag is in screen points, an offset in canvas pixels. */
+  k: number;
+  preset: FormatPreset;
+}
+
+const AdjustContext = createContext<AdjustState | null>(null);
+export const AdjustProvider = AdjustContext.Provider;
+
+/** A block the agent can move. Stored offsets apply with or without edit mode. */
 export function Slot({
   id,
   doc,
@@ -59,9 +77,53 @@ export function Slot({
   style?: StyleProp<ViewStyle>;
   children?: ReactNode;
 }) {
+  const adjust = useContext(AdjustContext);
+  // `doc` arrives with offsets already scaled to the preview (see nudgedDoc).
   const offset = getNudge(doc.nudges, doc.formatKey, id);
   const moved = offset.x !== 0 || offset.y !== 0;
-  return <View style={[style, moved && { transform: [{ translateX: offset.x }, { translateY: offset.y }] }]}>{children}</View>;
+  const start = useRef({ x: 0, y: 0 });
+  const live = useRef({ adjust, offset });
+  live.current = { adjust, offset };
+
+  const pan = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => !!live.current.adjust,
+      onMoveShouldSetPanResponder: () => !!live.current.adjust,
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: () => {
+        const { adjust: a, offset: o } = live.current;
+        if (!a) return;
+        start.current = { x: o.x / a.k, y: o.y / a.k };
+        a.onSelect(id);
+        a.onDrag(true);
+      },
+      onPanResponderMove: (_, g) => {
+        const a = live.current.adjust;
+        if (!a || a.k <= 0) return;
+        a.onChange(id, clampNudge(a.preset, start.current.x + g.dx / a.k, start.current.y + g.dy / a.k));
+      },
+      onPanResponderRelease: () => live.current.adjust?.onDrag(false),
+      onPanResponderTerminate: () => live.current.adjust?.onDrag(false),
+    })
+  ).current;
+
+  const selected = adjust?.selected === id;
+  return (
+    <View
+      {...(adjust ? pan.panHandlers : {})}
+      style={[
+        style,
+        moved && { transform: [{ translateX: offset.x }, { translateY: offset.y }] },
+        adjust && {
+          borderWidth: 2,
+          borderStyle: selected ? "solid" : "dashed",
+          borderColor: selected ? "rgba(37,99,235,0.95)" : "rgba(37,99,235,0.45)",
+        },
+      ]}
+    >
+      {children}
+    </View>
+  );
 }
 
 /** Nudges are in canvas pixels, so Slot offsets need the preview ratio. */

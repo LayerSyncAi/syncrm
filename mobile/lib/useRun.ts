@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { Alert } from "react-native";
 import { getErrorMessage } from "@/lib/errors";
+import { toast } from "./toast";
 
 /**
  * Wrap a mutation or action call: tracks `busy`, shows the server's message
@@ -12,7 +13,7 @@ export function useRun() {
     setBusy(true);
     try {
       const r = await fn();
-      if (opts?.success) Alert.alert(opts.success);
+      if (opts?.success) toast.success(opts.success);
       return r;
     } catch (e) {
       Alert.alert("Could not complete that", getErrorMessage(e));

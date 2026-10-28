@@ -40,9 +40,11 @@ export function LeadHero({
   const status = leadStatus(lead.closedAt, stage?.terminalOutcome);
   const open = stages?.filter((s) => !s.isTerminal) ?? [];
   const maxOrder = Math.max(1, ...open.map((s) => s.order));
-  const progress = lead.closedAt ? 100 : Math.round(((stage?.order ?? 1) / maxOrder) * 100);
+  // A closed lead, or one sitting in a closing stage, is at the end of the
+  // pipeline; never show more than 100% whatever the stage order.
+  const progress = lead.closedAt || stage?.isTerminal ? 100 : Math.min(100, Math.round(((stage?.order ?? 1) / maxOrder) * 100));
   const locked = !!(lead.closedAt && lead.closeReason);
-  const lost = !!lead.closedAt && stage?.terminalOutcome === "lost";
+  const lost = (!!lead.closedAt || !!stage?.isTerminal) && stage?.terminalOutcome === "lost";
 
   return (
     <Card style={{ gap: space.md }}>

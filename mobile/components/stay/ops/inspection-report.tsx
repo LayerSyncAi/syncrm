@@ -74,8 +74,8 @@ export function InspectionReport({ inspection: r }: { inspection: Detail }) {
         <Body muted small>{`${r.propertyTitle}, ${r.unitLabel}. ${formatDay(r.date)} by ${r.inspectorName}${r.tenantName ? `. Tenant: ${r.tenantName}` : ""}`}</Body>
       </View>
 
-      <Row>
-        <Button style={{ flex: 1 }} icon="share-outline" title="Share PDF" loading={busy} onPress={pdf} />
+      <View style={{ gap: space.sm }}>
+        <Button icon="share-outline" title="Share PDF" loading={busy} onPress={pdf} />
         {r.canSend && (
           <Button
             style={{ flex: 1 }}
@@ -86,7 +86,7 @@ export function InspectionReport({ inspection: r }: { inspection: Detail }) {
             onPress={() => run(() => sendToLandlord({ id: r._id }), { success: "Sent to the landlord" })}
           />
         )}
-      </Row>
+      </View>
       {r.sentToLandlordAt ? <Body small muted>{`Sent to the landlord on ${dateLabel(r.sentToLandlordAt)}`}</Body> : null}
 
       {meters.length > 0 && (

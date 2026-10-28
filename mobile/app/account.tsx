@@ -1,21 +1,40 @@
+import { useEffect, useState } from "react";
+import { Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { useMutation } from "convex/react";
-import { useAuthActions } from "@convex-dev/auth/react";
+import { useSignOut } from "../lib/useSignOut";
 import { api } from "../../convex/_generated/api";
 import { Button, Card, Facts, ListItem, Screen, Section, Select, Toggle, Badge } from "../components/ui";
 import { useSession } from "../lib/session";
 import { useRun } from "../lib/useRun";
+import { disablePush, enablePush, pushEnabledHere } from "../lib/push";
 import { ESTATE_ROLE_LABELS } from "../../convex/lib/modules";
 
 const TIMEZONES = ["Africa/Harare", "Africa/Johannesburg", "Africa/Lusaka", "Africa/Windhoek", "Africa/Kinshasa", "Africa/Nairobi", "Europe/London", "UTC"];
 
 export default function Account() {
   const router = useRouter();
-  const { signOut } = useAuthActions();
+  const signOut = useSignOut();
   const { user, hub } = useSession();
   const setTz = useMutation(api.users.updateMyTimezone);
   const setMode = useMutation(api.users.setMyViewMode);
   const { run } = useRun();
+  const registerPush = useMutation(api.push.registerExpoToken);
+  const unregisterPush = useMutation(api.push.unregisterExpoToken);
+  const [pushOn, setPushOn] = useState(false);
+  useEffect(() => {
+    pushEnabledHere().then(setPushOn).catch(() => {});
+  }, []);
+  const togglePush = async (on: boolean) => {
+    if (!on) {
+      await disablePush(unregisterPush).catch(() => {});
+      setPushOn(false);
+      return;
+    }
+    const r = await enablePush(registerPush, true).catch(() => ({ ok: false as const, reason: "Could not switch notifications on." }));
+    if (r.ok) setPushOn(true);
+    else Alert.alert("Notifications not switched on", r.reason);
+  };
   if (!user) return null;
   const isRealAdmin = user.role === "admin" && !!user.orgId;
   return (
@@ -33,6 +52,16 @@ export default function Account() {
           <Facts items={[{ label: "Roles", value: (user.estateRoles ?? []).map((r) => ESTATE_ROLE_LABELS[r]).join(", ") }]} />
         )}
       </Card>
+      <Section title="Notifications">
+        <Card>
+          <Toggle
+            label="Phone notifications"
+            value={pushOn}
+            onChange={togglePush}
+            hint="Reminders before your activities and your daily agenda, on this phone."
+          />
+        </Card>
+      </Section>
       {!user.portalKind && (
         <Section title="Preferences">
           <Card>

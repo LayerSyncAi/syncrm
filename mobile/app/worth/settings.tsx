@@ -15,6 +15,7 @@ import { Body, Button, Card, Field, Loading, Notice, Row, Screen, Section, Sheet
 import { ErrorNote, Panel } from "../../components/worth/bits";
 import { pickDocument, pickPhoto, uploadFile, type PickedFile } from "../../lib/files";
 import { colors, font, radius, space } from "../../lib/theme";
+import { toast } from "../../lib/toast";
 
 type Profile = NonNullable<ReturnType<typeof useProfiles>>[number];
 
@@ -73,7 +74,7 @@ export default function WorthSettings() {
     setError(null);
     try {
       await update({ ...f, dueSoonDays: Number(f.dueSoonDays) || 0 });
-      Alert.alert("Settings saved");
+      toast.success("Settings saved");
     } catch (e) {
       setError(getErrorMessage(e));
     } finally {

@@ -9,9 +9,9 @@ import { getErrorMessage } from "@/lib/errors";
 import { CURRENCY_OPTIONS, scoreTone } from "../../../lib/crm/leads/helpers";
 import { colors, font, radius, space } from "../../../lib/theme";
 
-/** A lead score pill: "--" when not scored. */
+/** A lead score pill: "No score" until the lead is scored. */
 export function ScoreBadge({ score }: { score: number | undefined | null }) {
-  return <Badge label={score === undefined || score === null ? "--" : String(score)} tone={scoreTone(score)} />;
+  return <Badge label={score === undefined || score === null ? "No score" : `Score ${score}`} tone={scoreTone(score)} />;
 }
 
 /** A thin progress bar, 0 to 100. */

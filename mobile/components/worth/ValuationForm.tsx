@@ -3,7 +3,7 @@
  * The report reads these fields; nothing is typed into report text.
  */
 import { useEffect, useRef, useState } from "react";
-import { Alert, Pressable, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { useMutation, useQuery } from "convex/react";
 import { getErrorMessage } from "@/lib/errors";
 import { comparisonValue, costValue, incomeValue, roundTo } from "@/lib/worth/calculators";
@@ -25,6 +25,7 @@ import {
   type JobView,
 } from "../../lib/worth/util";
 import { ErrorNote, Pair, Panel } from "./bits";
+import { toast } from "../../lib/toast";
 
 type ValueRow = { amount: string; currency: WorthCurrency };
 type CostBuilding = { name: string; areaM2: string; rateM2: string };
@@ -161,7 +162,7 @@ export function ValuationForm({ job }: { job: JobView }) {
         },
       });
       setDirty(false);
-      Alert.alert("Valuation saved");
+      toast.success("Valuation saved");
     } catch (e) {
       setError(getErrorMessage(e));
     } finally {

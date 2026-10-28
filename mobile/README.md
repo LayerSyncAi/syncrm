@@ -36,6 +36,21 @@ address when using a local Convex backend.
 - Pure helpers from the website are imported with `@/` (the website's
   `src/`). Never import web components or DOM-only code into the app.
 
+## Push notifications
+
+Phones get the same alerts as the website's browser push (activity reminders
+and the daily agenda) through Expo's push service; `convex/pushSender.ts`
+sends to both. A phone registers when the person switches on "Phone
+notifications" on the account screen. Push needs an EAS project id: run
+`eas init` once, which writes it into `app.json`. Expo Go and simulators
+cannot receive push; use a development or store build on a real phone.
+
+## Location search
+
+Set `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` (a key restricted to the iOS and Android
+apps) for Google Places suggestions in property location fields, as on the
+website. Without it the field is plain text.
+
 ## Checks
 
 ```

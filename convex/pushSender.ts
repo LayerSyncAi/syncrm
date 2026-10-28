@@ -1,7 +1,8 @@
 "use node";
 
 /**
- * Web Push sender (Node runtime).
+ * Push sender (Node runtime): Web Push to browsers and Expo push to the
+ * mobile app.
  *
  * Sends a notification to every device a user has subscribed. Runs in the Node
  * runtime because the `web-push` library depends on Node's crypto for VAPID
@@ -16,7 +17,8 @@
  * and the reminder crons — keep working without push configured.
  */
 
-import { internalAction } from "./_generated/server";
+import { internalAction, type ActionCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
 
@@ -37,69 +39,122 @@ export const sendToUser = internalAction({
     tag: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const publicKey = process.env.VAPID_PUBLIC_KEY;
-    const privateKey = process.env.VAPID_PRIVATE_KEY;
-    const subject = process.env.VAPID_SUBJECT || "mailto:admin@example.com";
-
-    if (!publicKey || !privateKey) {
-      console.warn(
-        "[push] VAPID keys not configured — skipping push for user",
-        args.userId
-      );
-      return { sent: 0, pruned: 0 };
-    }
-
-    const subs = await ctx.runQuery(
-      internal.push.getSubscriptionsForUser,
-      { userId: args.userId }
-    );
-    if (subs.length === 0) return { sent: 0, pruned: 0 };
-
-    const webpush = await import("web-push");
-    webpush.setVapidDetails(subject, publicKey, privateKey);
-
-    const payload = JSON.stringify({
-      title: args.title,
-      body: args.body,
-      url: args.url || "/app",
-      tag: args.tag,
-    });
-
-    let sent = 0;
-    let pruned = 0;
-
-    for (const sub of subs) {
-      try {
-        await webpush.sendNotification(
-          {
-            endpoint: sub.endpoint,
-            keys: { p256dh: sub.p256dh, auth: sub.auth },
-          },
-          payload,
-          { TTL: 60 * 60 } // deliver within an hour or drop
-        );
-        sent++;
-      } catch (err: unknown) {
-        const statusCode =
-          typeof err === "object" && err !== null && "statusCode" in err
-            ? (err as { statusCode?: number }).statusCode
-            : undefined;
-        // 404 Not Found / 410 Gone => the subscription is dead. Prune it.
-        if (statusCode === 404 || statusCode === 410) {
-          await ctx.runMutation(internal.push.deleteByEndpoint, {
-            endpoint: sub.endpoint,
-          });
-          pruned++;
-        } else {
-          console.error(
-            "[push] send failed for endpoint",
-            sub.endpoint,
-            statusCode ?? err
-          );
-        }
-      }
-    }
-
-    return { sent, pruned };
+    // Phones first: Expo push needs no keys of ours, so it works even when
+    // VAPID is not configured for browsers.
+    const phone = await sendToPhones(ctx, args);
+    const web = await sendToBrowsers(ctx, args);
+    return { sent: phone.sent + web.sent, pruned: phone.pruned + web.pruned };
   },
 });
+
+type PushArgs = { userId: Id<"users">; title: string; body: string; url?: string; tag?: string };
+
+/**
+ * Expo push for the Android and iOS app. Tokens Expo reports as
+ * DeviceNotRegistered (app uninstalled, token rotated) are pruned.
+ */
+async function sendToPhones(ctx: ActionCtx, args: PushArgs): Promise<{ sent: number; pruned: number }> {
+  const tokens = await ctx.runQuery(internal.push.getExpoTokensForUser, { userId: args.userId });
+  if (tokens.length === 0) return { sent: 0, pruned: 0 };
+  const messages = tokens.map((t) => ({
+    to: t.token,
+    title: args.title,
+    body: args.body,
+    sound: "default",
+    // The app maps the website path to its own screen (mobile/lib/routes.ts).
+    data: { url: args.url || "/app", tag: args.tag },
+    ttl: 60 * 60,
+  }));
+  let sent = 0;
+  let pruned = 0;
+  try {
+    const res = await fetch("https://exp.host/--/api/v2/push/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(messages),
+    });
+    const json = (await res.json()) as {
+      data?: Array<{ status: "ok" | "error"; details?: { error?: string } }>;
+    };
+    for (const [i, ticket] of (json.data ?? []).entries()) {
+      if (ticket.status === "ok") sent++;
+      else if (ticket.details?.error === "DeviceNotRegistered") {
+        await ctx.runMutation(internal.push.deleteExpoToken, { token: tokens[i]!.token });
+        pruned++;
+      } else {
+        console.error("[push] Expo send failed", ticket.details?.error);
+      }
+    }
+  } catch (err) {
+    console.error("[push] Expo push request failed", err);
+  }
+  return { sent, pruned };
+}
+
+/** Web Push to every browser the user subscribed (VAPID). */
+async function sendToBrowsers(ctx: ActionCtx, args: PushArgs): Promise<{ sent: number; pruned: number }> {
+  const publicKey = process.env.VAPID_PUBLIC_KEY;
+  const privateKey = process.env.VAPID_PRIVATE_KEY;
+  const subject = process.env.VAPID_SUBJECT || "mailto:admin@example.com";
+
+  if (!publicKey || !privateKey) {
+    console.warn(
+      "[push] VAPID keys not configured — skipping push for user",
+      args.userId
+    );
+    return { sent: 0, pruned: 0 };
+  }
+
+  const subs = await ctx.runQuery(
+    internal.push.getSubscriptionsForUser,
+    { userId: args.userId }
+  );
+  if (subs.length === 0) return { sent: 0, pruned: 0 };
+
+  const webpush = await import("web-push");
+  webpush.setVapidDetails(subject, publicKey, privateKey);
+
+  const payload = JSON.stringify({
+    title: args.title,
+    body: args.body,
+    url: args.url || "/app",
+    tag: args.tag,
+  });
+
+  let sent = 0;
+  let pruned = 0;
+
+  for (const sub of subs) {
+    try {
+      await webpush.sendNotification(
+        {
+          endpoint: sub.endpoint,
+          keys: { p256dh: sub.p256dh, auth: sub.auth },
+        },
+        payload,
+        { TTL: 60 * 60 } // deliver within an hour or drop
+      );
+      sent++;
+    } catch (err: unknown) {
+      const statusCode =
+        typeof err === "object" && err !== null && "statusCode" in err
+          ? (err as { statusCode?: number }).statusCode
+          : undefined;
+      // 404 Not Found / 410 Gone => the subscription is dead. Prune it.
+      if (statusCode === 404 || statusCode === 410) {
+        await ctx.runMutation(internal.push.deleteByEndpoint, {
+          endpoint: sub.endpoint,
+        });
+        pruned++;
+      } else {
+        console.error(
+          "[push] send failed for endpoint",
+          sub.endpoint,
+          statusCode ?? err
+        );
+      }
+    }
+  }
+
+  return { sent, pruned };
+}

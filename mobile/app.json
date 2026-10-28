@@ -55,7 +55,13 @@
           "cameraPermission": "Take photos of properties, inspections and repairs."
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "expo-notifications",
+        {
+          "color": "#2a5925"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": false,

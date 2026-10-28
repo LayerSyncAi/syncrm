@@ -10,6 +10,7 @@ import * as Print from "expo-print";
 import { File, Paths } from "expo-file-system";
 import { pickPhoto, shareFile, type PickedFile } from "../files";
 import { shareXlsx } from "../sheets";
+import { stampPdf, type StampOptions } from "../pdfStamp";
 
 /** Resize to at most `maxDim` px wide and re-encode as JPEG, as lib/files does. */
 async function compress(uri: string, maxDim = 1600): Promise<string> {
@@ -79,8 +80,10 @@ export async function imageDataUri(url: string | null | undefined, opts: { maxDi
 }
 
 /** Render HTML to an A4 PDF in the cache under a readable file name. */
-export async function printPdf(html: string, fileName: string): Promise<PickedFile> {
+export async function printPdf(html: string, fileName: string, stamp?: StampOptions): Promise<PickedFile> {
   const { uri } = await Print.printToFileAsync({ html, width: 595, height: 842 });
+  // Page numbers on every page, plus the report's running header and DRAFT mark.
+  await stampPdf(uri, stamp).catch(() => {});
   try {
     const named = new File(Paths.cache, fileName);
     await new File(uri).move(named, { overwrite: true });

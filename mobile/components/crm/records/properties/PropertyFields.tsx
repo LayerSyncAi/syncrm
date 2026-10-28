@@ -1,6 +1,7 @@
 /** The property form fields, shared by the new and edit screens. */
 import { View } from "react-native";
 import { Field, Notice, Row, Section, Select } from "../../../ui";
+import { LocationField } from "../../../LocationField";
 import { space } from "../../../../lib/theme";
 import {
   COMMERCIAL_OPTIONS,
@@ -61,7 +62,7 @@ export function PropertyFields({
       </Section>
 
       <Section title="Location and size">
-        <Field label="Location *" value={values.location} onChangeText={(s) => set("location", s)} error={errors.location} placeholder="Suburb, city" />
+        <LocationField label="Location *" value={values.location} onChange={(s) => set("location", s)} error={errors.location} placeholder="Suburb, city" />
         <Field
           label={commercial ? "Floor area (m²) *" : "Area (m²) *"}
           value={values.area}

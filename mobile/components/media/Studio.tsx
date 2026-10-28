@@ -3,7 +3,7 @@
  * autosave to the same api.syncmedia.save the website uses, and export to a
  * PNG (or an A4 PDF for the print format) through the share sheet.
  */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Image } from "expo-image";
 import { Alert, Pressable, Text, View, useWindowDimensions, type HostInstance } from "react-native";
 import { captureRef } from "react-native-view-shot";
@@ -13,6 +13,7 @@ import type { Id } from "../../../convex/_generated/dataModel";
 import { Body, Button, Card, Chips, Field, Ionicons, Notice, Screen, SearchBar, Section, Toggle } from "../ui";
 import { BrochureCanvas } from "./BrochureCanvas";
 import { FORMAT_PRESETS, getFormat } from "@/lib/syncmedia/formats";
+import { clearNudges, getNudge, hasNudges, SLOT_LABELS, setNudge, type SlotId } from "@/lib/syncmedia/nudges";
 import { TEMPLATES } from "@/lib/syncmedia/templates";
 import { themesFor } from "@/lib/syncmedia/theme";
 import { propertyPhotos, seedFromProperty, type BrochureProperty } from "@/lib/syncmedia/fromProperty";
@@ -49,6 +50,10 @@ export function Studio({
   const [property, setProperty] = useState<Id<"properties"> | undefined>(propertyId);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [exporting, setExporting] = useState(false);
+  // Adjust mode: tap a block to select it, drag to move it.
+  const [adjusting, setAdjusting] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState<SlotId | null>(null);
+  const [dragging, setDragging] = useState(false);
   const canvasRef = useRef<HostInstance>(null);
   // A ref, not state: the first save creates the row and later saves update it.
   const brochureId = useRef<Id<"brochures"> | undefined>(savedBrochureId);
@@ -94,6 +99,17 @@ export function Studio({
   }, [doc, property, saveBrochure]);
 
   const preset = getFormat(doc.formatKey);
+  // Stored against the format on show; read from prev so mid-drag is current.
+  const nudgeSlot = useCallback(
+    (slot: SlotId, offset: { x: number; y: number }) =>
+      setDoc((prev) => ({ ...prev, nudges: setNudge(prev.nudges, prev.formatKey, slot, offset) })),
+    []
+  );
+  const adjustState = useMemo(
+    () => (adjusting && !exporting ? { selected: selectedSlot, onSelect: setSelectedSlot, onChange: nudgeSlot, onDrag: setDragging } : null),
+    [adjusting, exporting, selectedSlot, nudgeSlot]
+  );
+  const selectedOffset = selectedSlot ? getNudge(doc.nudges, doc.formatKey, selectedSlot) : null;
   // Fit the preview to the screen: full width, but no taller than 60% of it.
   const maxW = winW - space.lg * 2;
   const previewW = Math.floor(Math.min(maxW, (winH * 0.6 * preset.width) / preset.height));
@@ -102,6 +118,8 @@ export function Studio({
     if (exporting || !canvasRef.current) return;
     setExporting(true);
     try {
+      // Let the editing outlines drop out of the view before it is captured.
+      await new Promise((r) => setTimeout(r, 120));
       const name = (doc.title.trim() || "brochure").replace(/[^a-z0-9]+/gi, "-").toLowerCase();
       if (preset.kind === "print") {
         // The A4 flyer goes out as a PDF: the PNG capture placed on one page.
@@ -120,10 +138,10 @@ export function Studio({
   }
 
   return (
-    <Screen contentStyle={{ gap: space.md }}>
+    <Screen contentStyle={{ gap: space.md }} scrollEnabled={!dragging}>
       <View style={{ alignItems: "center", gap: space.sm }}>
         <View style={{ borderWidth: 1, borderColor: colors.borderStrong }}>
-          <BrochureCanvas ref={canvasRef} doc={doc} brand={brand} width={previewW} />
+          <BrochureCanvas ref={canvasRef} doc={doc} brand={brand} width={previewW} adjust={adjustState} />
         </View>
         <Body small muted>
           {preset.width} x {preset.height} px · {saveLabel(saveState)}
@@ -136,6 +154,33 @@ export function Studio({
         onPress={exportBrochure}
         loading={exporting}
       />
+
+      <Button
+        title={adjusting ? "Done adjusting" : "Adjust layout"}
+        icon={adjusting ? "checkmark" : "move-outline"}
+        variant="secondary"
+        onPress={() => {
+          setAdjusting((a) => !a);
+          setSelectedSlot(null);
+        }}
+      />
+      {adjusting ? (
+        <Card>
+          <Body small muted>
+            {selectedSlot ? `Drag the ${SLOT_LABELS[selectedSlot].toLowerCase()} on the preview. Offset ${selectedOffset?.x ?? 0}, ${selectedOffset?.y ?? 0} px.` : "Tap a dashed block on the preview, then drag it. Moves are saved for this format only."}
+          </Body>
+          <View style={{ flexDirection: "row", gap: space.sm }}>
+            <Button title="Reset this block" variant="secondary" small disabled={!selectedSlot} onPress={() => selectedSlot && nudgeSlot(selectedSlot, { x: 0, y: 0 })} />
+            <Button
+              title="Reset all"
+              variant="secondary"
+              small
+              disabled={!hasNudges(doc.nudges, doc.formatKey)}
+              onPress={() => patch({ nudges: clearNudges(doc.nudges, doc.formatKey) })}
+            />
+          </View>
+        </Card>
+      ) : null}
 
       <Chips options={TABS} value={tab} onChange={setTab} />
 

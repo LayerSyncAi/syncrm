@@ -28,6 +28,12 @@ const isPackageImport = (name) =>
   !name.startsWith(".") && !name.startsWith("/") && !name.startsWith(SHARED_ALIAS);
 
 config.resolver.resolveRequest = (context, moduleName, platform) => {
+  // pdf-lib's helpers come from tslib 1.x, whose ES build has no default
+  // export; Metro's interop then crashes with "Cannot destructure property
+  // '__extends'". Its CommonJS build works on every platform.
+  if (moduleName === "tslib") {
+    return { type: "sourceFile", filePath: path.join(projectRoot, "node_modules", "tslib", "tslib.js") };
+  }
   if (moduleName.startsWith(SHARED_ALIAS)) {
     const target = path.join(repoRoot, "src", moduleName.slice(SHARED_ALIAS.length));
     return context.resolveRequest(context, target, platform);

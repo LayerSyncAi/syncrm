@@ -15,7 +15,7 @@ import { uploadFile } from "../../lib/files";
 import { confirm, useRun } from "../../lib/useRun";
 import { colors, font, radius, space } from "../../lib/theme";
 import { printPdf, sharePdfFile } from "../../lib/worth/files";
-import { buildReportHtml, reportFilename } from "../../lib/worth/report-html";
+import { buildReportHtml, reportFilename, reportStamp } from "../../lib/worth/report-html";
 import { VALUE_KEYS, VALUE_LABELS, formatDay, formatInstant, formatMoney, type JobView } from "../../lib/worth/util";
 import { Actions, ErrorNote, Panel, ReasonSheet } from "./bits";
 
@@ -44,7 +44,7 @@ export function JobReport({ job }: { job: JobView }) {
   const makePdf = async () => {
     const data = await convex.query(api.worth.valuation.reportData, { jobId: job._id });
     const html = await buildReportHtml(data, branding?.logoUrl);
-    return printPdf(html, reportFilename(data));
+    return printPdf(html, reportFilename(data), reportStamp(data));
   };
 
   const withBusy = async (key: string, fn: () => Promise<unknown>, success?: string) => {

@@ -5,11 +5,13 @@
  */
 import { Pressable, Text, View } from "react-native";
 import { Redirect, Tabs, useRouter } from "expo-router";
-import { useAuthActions } from "@convex-dev/auth/react";
+import { useSignOut } from "../../lib/useSignOut";
 import { Ionicons, Loading } from "../../components/ui";
 import { usePortal } from "../../components/portal/common";
 import { useSession } from "../../lib/session";
 import { colors, font } from "../../lib/theme";
+
+export { ScreenError as ErrorBoundary } from "../../components/ScreenError";
 
 type Icon = keyof typeof Ionicons.glyphMap;
 const icon = (name: Icon) => ({ color, size }: { color: unknown; size: number }) => <Ionicons name={name} size={size} color={color as string} />;
@@ -17,7 +19,7 @@ const icon = (name: Icon) => ({ color, size }: { color: unknown; size: number })
 export default function PortalLayout() {
   const { loading, signedIn, user } = useSession();
   const portal = usePortal();
-  const { signOut } = useAuthActions();
+  const signOut = useSignOut();
   const router = useRouter();
 
   if (loading) return <Loading />;

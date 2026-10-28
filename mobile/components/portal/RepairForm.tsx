@@ -33,7 +33,7 @@ export function RepairForm({ open, onClose }: { open: boolean; onClose: () => vo
       for (const p of photos) ids.push((await uploadFile(() => generateUploadUrl({}), p)) as Id<"_storage">);
       await create({ leaseId: selected as Id<"stayLeases">, title, description, photos: ids });
       return true;
-    });
+    }, { success: "Repair request sent. The agency has been told." });
     if (ok) {
       setTitle("");
       setDescription("");

@@ -3,6 +3,8 @@ import { Stack, useRouter } from "expo-router";
 import { Ionicons } from "../../components/ui";
 import { colors } from "../../lib/theme";
 
+export { ScreenError as ErrorBoundary } from "../../components/ScreenError";
+
 /** Hub admin: a menu, with each setting pushed on this stack. */
 export default function Layout() {
   const router = useRouter();

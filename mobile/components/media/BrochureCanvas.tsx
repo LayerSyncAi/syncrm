@@ -4,7 +4,7 @@ import { getFormat } from "@/lib/syncmedia/formats";
 import { getTheme } from "@/lib/syncmedia/theme";
 import type { TemplateId } from "@/lib/syncmedia/templates";
 import type { BrandKit, BrochureDoc } from "@/lib/syncmedia/types";
-import { makeScale, nudgedDoc, type TemplateProps } from "./parts";
+import { AdjustProvider, makeScale, nudgedDoc, type AdjustState, type TemplateProps } from "./parts";
 import { Classic, Editorial, Overlay, Spotlight, Split } from "./templates";
 
 const REGISTRY: Record<TemplateId, (props: TemplateProps) => React.ReactElement> = {
@@ -21,8 +21,8 @@ const REGISTRY: Record<TemplateId, (props: TemplateProps) => React.ReactElement>
  * driven by design units, so the same view captured with the format's pixel
  * size (view-shot's width and height) gives the full-resolution export.
  */
-export const BrochureCanvas = forwardRef<HostInstance, { doc: BrochureDoc; brand: BrandKit; width: number }>(function BrochureCanvas(
-  { doc, brand, width },
+export const BrochureCanvas = forwardRef<HostInstance, { doc: BrochureDoc; brand: BrandKit; width: number; adjust?: Omit<AdjustState, "k" | "preset"> | null }>(function BrochureCanvas(
+  { doc, brand, width, adjust = null },
   ref
 ) {
   const preset = getFormat(doc.formatKey);
@@ -37,7 +37,9 @@ export const BrochureCanvas = forwardRef<HostInstance, { doc: BrochureDoc; brand
       collapsable={false}
       style={{ width, height: Math.round(preset.height * k), backgroundColor: theme.page, overflow: "hidden" }}
     >
-      <Template doc={nudgedDoc(doc, k)} theme={theme} preset={preset} brand={brand} s={s} />
+      <AdjustProvider value={adjust ? { ...adjust, k, preset } : null}>
+        <Template doc={nudgedDoc(doc, k)} theme={theme} preset={preset} brand={brand} s={s} />
+      </AdjustProvider>
     </View>
   );
 });

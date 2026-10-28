@@ -50,6 +50,20 @@ const ROOM_LABELS: Record<string, string> = {
 
 const CONDITION_LABELS: Record<string, string> = { excellent: "Excellent", good: "Good", fair: "Fair", poor: "Poor" };
 
+/**
+ * What is stamped on every page after printing (see lib/pdfStamp.ts): the
+ * running line from page 2, after the cover, and DRAFT until issued.
+ */
+export function reportStamp(data: ReportData): { header: string; headerFromPage: number; watermark?: string } {
+  const job = data.job;
+  const ref = `${job.reference}${job.version > 1 ? ` (version ${job.version})` : ""}`;
+  return {
+    header: `${data.org.name} | ${ref} | ${job.propertyAddress}`,
+    headerFromPage: 2,
+    watermark: job.status === "issued" ? undefined : "DRAFT",
+  };
+}
+
 export function reportFilename(data: ReportData): string {
   return `${data.job.reference}${data.job.version > 1 ? `-v${data.job.version}` : ""}${data.job.status === "issued" ? "" : "-draft"}.pdf`;
 }
@@ -94,7 +108,6 @@ export async function buildReportHtml(data: ReportData, logoUrl?: string | null)
   const valueRows = VALUE_KEYS.filter((k) => job.values[k]).map((k) => [VALUE_LABELS[k], formatMoney(job.values[k]!.amount, job.values[k]!.currency)]);
   const valuationDate = job.issuedDate ? formatDay(job.issuedDate) : "Draft, not yet issued";
   const purpose = job.purpose === "other" && job.purposeNote ? job.purposeNote : PURPOSE_LABELS[job.purpose];
-  const refLine = `${job.reference}${job.version > 1 ? ` v${job.version}` : ""}`;
   const out: string[] = [];
 
   // ---------- Cover ----------
@@ -117,8 +130,6 @@ export async function buildReportHtml(data: ReportData, logoUrl?: string | null)
     ])}
   </section>`);
 
-  // Running line at the top of the body pages.
-  out.push(`<div class="running"><span>${esc(data.org.name)} | ${esc(refLine)}</span><span>${esc(job.propertyAddress)}</span></div>`);
 
   // ---------- Summary of values ----------
   out.push(h("Summary of values"));
@@ -317,7 +328,6 @@ export async function buildReportHtml(data: ReportData, logoUrl?: string | null)
   .address { font-size: 26px; font-weight: 700; margin: 14px 0 6px; line-height: 1.2; }
   .suburb { font-size: 15px; color: #64748b; margin-bottom: 20px; }
   .cover-photo { width: 100%; max-height: 330px; object-fit: cover; margin-bottom: 22px; }
-  .running { display: flex; justify-content: space-between; color: #64748b; font-size: 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; }
   .photos { display: flex; flex-wrap: wrap; gap: 12px; }
   .photos figure { width: calc(50% - 6px); margin: 0; page-break-inside: avoid; }
   .photos img { width: 100%; height: 190px; object-fit: cover; }
@@ -330,6 +340,5 @@ export async function buildReportHtml(data: ReportData, logoUrl?: string | null)
   .sig-line { border-bottom: 1px solid #e2e8f0; width: 180px; height: 44px; margin-bottom: 8px; }
   .sig-name { font-weight: 700; font-size: 10px; }
   .foot { margin-top: 24px; color: #64748b; font-size: 8px; }
-  ${issued ? "" : `.draft { position: fixed; top: 40%; left: 0; right: 0; text-align: center; font-size: 110px; font-weight: 800; color: rgba(0,0,0,0.06); transform: rotate(-35deg); z-index: -1; }`}
-  </style></head><body>${issued ? "" : `<div class="draft">DRAFT</div>`}${out.join("\n")}</body></html>`;
+  </style></head><body>${out.join("\n")}</body></html>`;
 }

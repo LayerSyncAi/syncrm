@@ -687,6 +687,18 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_endpoint", ["endpoint"]),
+  // Expo push tokens for the Android and iOS app, one per installed device.
+  // Kept apart from pushSubscriptions (browser Web Push), which has a different
+  // shape. No orgId: rows are reached and purged through their user.
+  expoPushTokens: defineTable({
+    userId: v.id("users"),
+    token: v.string(),
+    platform: v.union(v.literal("ios"), v.literal("android")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_token", ["token"]),
   // Marketing spend records, used by the reporting module for property ROI and
   // per-channel return-on-ad-spend. Spend can be attributed to a specific property
   // (propertyId set) or to a channel generally (propertyId unset).

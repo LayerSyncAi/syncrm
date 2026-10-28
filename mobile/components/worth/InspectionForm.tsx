@@ -4,7 +4,7 @@
  * draft until the valuer marks it complete.
  */
 import { useEffect, useState } from "react";
-import { Alert, Pressable, Text, TextInput, View } from "react-native";
+import { Pressable, Text, TextInput, View } from "react-native";
 import { Image } from "expo-image";
 import { useMutation, useQuery } from "convex/react";
 import { getErrorMessage } from "@/lib/errors";
@@ -17,6 +17,7 @@ import { colors, font, radius, space } from "../../lib/theme";
 import { choosePhotos } from "../../lib/worth/files";
 import { formatArea, isEditableStatus, numOrUndef, numStr, todayIso, type JobView } from "../../lib/worth/util";
 import { Actions, ErrorNote, Pair, Panel } from "./bits";
+import { toast } from "../../lib/toast";
 
 const PROPERTY_TYPES = [
   "Detached house",
@@ -192,7 +193,7 @@ export function InspectionForm({ job }: { job: JobView }) {
     try {
       await save(payload());
       setDirty(false);
-      if (!quiet) Alert.alert("Inspection saved");
+      if (!quiet) toast.success("Inspection saved");
       return true;
     } catch (e) {
       setError(getErrorMessage(e));

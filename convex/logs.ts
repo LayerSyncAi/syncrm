@@ -5,6 +5,7 @@ import {
   internalMutation,
   MutationCtx,
 } from "./_generated/server";
+import { getAuthUserId } from "@convex-dev/auth/server";
 import { requireAdmin } from "./helpers";
 import { Doc, Id } from "./_generated/dataModel";
 
@@ -125,7 +126,6 @@ export const recordAuditInternal = internalMutation({
 
 export const recordLogin = mutation({
   handler: async (ctx) => {
-    const { getAuthUserId } = await import("@convex-dev/auth/server");
     const userId = await getAuthUserId(ctx);
     if (!userId) return;
     const user = await ctx.db.get(userId);

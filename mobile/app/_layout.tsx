@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
-import { Stack } from "expo-router";
+import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
@@ -8,8 +8,11 @@ import { convex, tokenStorage } from "../lib/convex";
 import { SessionProvider, useSession } from "../lib/session";
 import { colors } from "../lib/theme";
 import { DeactivatedAccount, ForcedPasswordChange } from "../components/AccountGates";
+import { PushBridge } from "../components/PushBridge";
+import { OfflineBanner } from "../components/OfflineBanner";
+import { ToastHost } from "../lib/toast";
 
-export { ErrorBoundary } from "expo-router";
+export { ScreenError as ErrorBoundary } from "../components/ScreenError";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -24,13 +27,34 @@ export default function RootLayout() {
   );
 }
 
+/** Screens anyone may open without signing in. */
+const PUBLIC = new Set(["sign-in", "forgot-password"]);
+
 function RootStack() {
-  const { loading, user, deactivated } = useSession();
+  const { loading, signedIn, user, deactivated, isPortal } = useSession();
+  const segments = useSegments();
+  const router = useRouter();
+  const first = segments[0] ?? "";
 
   // The splash stays up until we know who is signed in.
   useEffect(() => {
     if (!loading) SplashScreen.hideAsync();
   }, [loading]);
+
+  // Keep everyone where they belong, whatever link opened the app: signed-out
+  // people go to sign-in, portal users stay in the portal and staff out of it.
+  useEffect(() => {
+    if (loading) return;
+    if (!signedIn || !user) {
+      if (!PUBLIC.has(first)) router.replace("/sign-in");
+    } else if (PUBLIC.has(first)) {
+      router.replace("/");
+    } else if (isPortal && first !== "portal") {
+      router.replace("/portal");
+    } else if (!isPortal && first === "portal") {
+      router.replace("/");
+    }
+  }, [loading, signedIn, user, isPortal, first, router]);
 
   return (
     <View style={{ flex: 1 }}>
@@ -58,6 +82,9 @@ function RootStack() {
         <Stack.Screen name="platform" options={{ title: "Platform" }} />
         <Stack.Screen name="assistant" options={{ title: "Copilot" }} />
       </Stack>
+      <PushBridge />
+      <OfflineBanner />
+      <ToastHost />
       {deactivated && (
         <View style={StyleSheet.absoluteFill}>
           <DeactivatedAccount />
