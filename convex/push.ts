@@ -103,10 +103,12 @@ export const hasSubscription = mutation({
 
 // ─── Internal (used by the Node sender action) ──────────────────────────────
 
-/** All subscriptions for a user, across their devices. */
+/** All subscriptions for a user, across their devices. None for a deactivated user. */
 export const getSubscriptionsForUser = internalQuery({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user?.isActive) return [];
     return ctx.db
       .query("pushSubscriptions")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
@@ -171,9 +173,12 @@ export const unregisterExpoToken = mutation({
   },
 });
 
+/** This user's phones. None for a deactivated user, so a lost phone goes quiet too. */
 export const getExpoTokensForUser = internalQuery({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user?.isActive) return [];
     return ctx.db
       .query("expoPushTokens")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))

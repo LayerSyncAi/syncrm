@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { internalMutation, internalQuery, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Scrypt } from "lucia";
-import { rebuildPasswordAccount, getTempPassword } from "./lib/authReconcile";
+import { rebuildPasswordAccount, randomPassword } from "./lib/authReconcile";
 
 /**
  * One-off repair utilities for accounts whose `users` row was deleted directly
@@ -20,17 +20,13 @@ import { rebuildPasswordAccount, getTempPassword } from "./lib/authReconcile";
  * reset only patches one of the two rows.
  *
  * These functions purge every password account for an email and rebuild a single
- * clean one tied to the current live user, with the deployment's configured temp
- * password (AUTH_TEMP_PASSWORD; see getTempPassword) and a forced reset on next
- * login.
+ * clean one tied to the current live user, with a fresh random temporary
+ * password per email (returned in the result) and a forced reset on next login.
  *
  * Run from the Convex dashboard (Functions tab):
  *   1. `authRepair:diagnoseUserAuth` with { email } to inspect the mess.
  *   2. `authRepair:repairUserAuth` with { emails: ["a@x.com", "b@x.com", ...] }.
  */
-
-/** Temp password issued to repaired accounts (matches admin-create flow). */
-const DEFAULT_TEMP_PASSWORD = getTempPassword();
 
 /** Inspect every password auth account tied to an email, without changing anything. */
 export const diagnoseUserAuth = internalQuery({
@@ -141,7 +137,6 @@ export const repairUserAuthInternal = internalMutation({
       userId: user._id,
       deletedAccounts,
       deletedSessions,
-      tempPassword: DEFAULT_TEMP_PASSWORD,
     };
   },
 });
@@ -162,23 +157,23 @@ type RepairResult =
   | { ok: false; email: string; error: string };
 
 /**
- * Repair one or more emails in a single run. Hashes the temp password and
- * rebuilds a clean password account for each. Safe to re-run (idempotent).
+ * Repair one or more emails in a single run. Issues each a fresh temporary
+ * password and rebuilds a clean password account for it. Safe to re-run (idempotent).
  */
 export const repairUserAuth = internalAction({
   args: { emails: v.array(v.string()) },
   handler: async (ctx, args): Promise<RepairResult[]> => {
-    const passwordHash = await new Scrypt().hash(DEFAULT_TEMP_PASSWORD);
-
     const results: RepairResult[] = [];
     for (const rawEmail of args.emails) {
       const email = rawEmail.trim().toLowerCase();
       try {
+        const tempPassword = randomPassword();
+        const passwordHash = await new Scrypt().hash(tempPassword);
         const result = await ctx.runMutation(
           internal.authRepair.repairUserAuthInternal,
           { email, passwordHash }
         );
-        results.push({ ...result, ok: true });
+        results.push({ ...result, tempPassword, ok: true });
       } catch (error) {
         results.push({
           email,

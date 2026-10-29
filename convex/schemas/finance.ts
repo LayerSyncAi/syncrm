@@ -156,7 +156,8 @@ export const financeTables = {
     .index("by_invoice", ["invoiceId"])
     .index("by_deal_commission", ["dealCommissionId"])
     .index("by_stand", ["standId"])
-    .index("by_import", ["importId"]),
+    .index("by_import", ["importId"])
+    .index("by_contact", ["contactId"]),
 
   // Postings. Exactly one of accountId or ledger is set.
   finLines: defineTable({
@@ -349,7 +350,8 @@ export const financeTables = {
   })
     .index("by_org", ["orgId"])
     .index("by_development", ["developmentId"])
-    .index("by_import", ["importId"]),
+    .index("by_import", ["importId"])
+    .index("by_buyer_contact", ["buyerContactId"]),
 
   // One row per Excel import, so a batch can be reviewed and undone.
   finImports: defineTable({

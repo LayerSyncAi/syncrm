@@ -1,14 +1,14 @@
-/** Edit one user: role, Sync Estate roles, timezone, active status and password reset. */
+/** Edit one user: role, Sync Estate roles, branch, timezone, active status and password reset. */
 import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
-import { useAction, useMutation } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Doc } from "../../../convex/_generated/dataModel";
 import { ESTATE_ROLES, ESTATE_ROLE_LABELS, type EstateRole } from "../../../convex/lib/modules";
-import { getTempPassword } from "../../../convex/lib/authReconcile";
 import { TIMEZONES } from "@/lib/timezones";
 import { Badge, Body, Button, Card, CheckList, Row, Select, Sheet } from "../ui";
 import { confirm, useRun } from "../../lib/useRun";
+import { reportSignIn } from "../../lib/admin/signIn";
 import { colors, font, space } from "../../lib/theme";
 
 type User = Doc<"users">;
@@ -20,6 +20,8 @@ export function UserEditSheet({ user, meId, onClose }: { user: User | null; meId
   const setTimezone = useMutation(api.users.adminUpdateUserTimezone);
   const resetPassword = useAction(api.users.adminResetUserPassword);
   const setEstateRoles = useMutation(api.hub.adminSetEstateRoles);
+  const setBranch = useMutation(api.users.adminSetUserBranch);
+  const branches = useQuery(api.hub.listBranches);
   const { busy, run } = useRun();
   const [draft, setDraft] = useState<EstateRole[]>([]);
 
@@ -65,6 +67,18 @@ export function UserEditSheet({ user, meId, onClose }: { user: User | null; meId
         )}
       </View>
 
+      {branches && branches.length > 0 ? (
+        <Select
+          label="Branch"
+          value={user.branchId ?? ""}
+          options={[{ value: "", label: "No branch" }, ...branches.map((b) => ({ value: b.id, label: b.name }))]}
+          onChange={(branchId) =>
+            (user.branchId ?? "") !== branchId &&
+            run(() => setBranch({ userId: user._id, branchId: branchId || undefined }), { success: "Branch updated." })
+          }
+        />
+      ) : null}
+
       <Select
         label="Timezone"
         value={user.timezone ?? ""}
@@ -92,16 +106,17 @@ export function UserEditSheet({ user, meId, onClose }: { user: User | null; meId
           <Text style={{ fontSize: font.md, fontWeight: "600", color: colors.text }}>Reset password</Text>
           <Body small muted>
             {user.resetPasswordOnNextLogin
-              ? `Password reset is already pending. The temporary password is ${getTempPassword()}. The user will be required to change it on next login.`
-              : "Set a temporary password. User must change it on next login."}
+              ? "A temporary password is pending. Resetting again emails a new one and the old one stops working."
+              : "Emails them a new temporary password. They must change it when they next sign in."}
           </Body>
           <Button
             title="Reset password"
             variant="secondary"
             disabled={busy}
             onPress={async () => {
-              if (!(await confirm("Reset password?", `${nameOf(user)} must change it on next login.`, "Reset", true))) return;
-              await run(() => resetPassword({ targetUserId: user._id }), { success: "Password reset. User must change it on next login." });
+              if (!(await confirm("Reset password?", `${nameOf(user)} is emailed a new temporary password.`, "Reset", true))) return;
+              const result = await run(() => resetPassword({ targetUserId: user._id }));
+              reportSignIn(result, { name: nameOf(user), email: user.email ?? "" }, "New temporary password emailed.");
             }}
           />
         </Card>

@@ -31,9 +31,9 @@ it for the dev deployment):
 npx convex run platform:grantPlatformAdminCli '{"email":"ops@layersync.ai","fullName":"LayerSync Ops"}' --prod
 ```
 
-The result includes `tempPasswordHint` for a newly created account (the
-deployment's `NEXT_PUBLIC_AUTH_TEMP_PASSWORD`, default `ChangeMe!123`). Sign in
-with it; you are forced to set a new password, then land on **Platform**.
+The result includes `tempPasswordHint` for a newly created account: a random
+password generated for that account only. Sign in with it; you are forced to
+set a new password, then land on **Platform**.
 
 Rules:
 

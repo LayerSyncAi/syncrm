@@ -58,7 +58,7 @@ export default function Account() {
             label="Phone notifications"
             value={pushOn}
             onChange={togglePush}
-            hint="Reminders before your activities and your daily agenda, on this phone."
+            hint="Reminders, your daily agenda and alerts from your modules, on this phone."
           />
         </Card>
       </Section>

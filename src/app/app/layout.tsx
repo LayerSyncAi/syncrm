@@ -8,6 +8,7 @@ import { Topbar } from "@/components/layout/topbar";
 import { BottomTabBar } from "@/components/layout/bottom-tab-bar";
 import { CommandPalette } from "@/components/layout/command-palette";
 import { useAuth } from "@/hooks/useAuth";
+import { useIdleSignOut } from "@/hooks/useIdleSignOut";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Loader2, AlertCircle } from "lucide-react";
@@ -58,6 +59,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     api.users.getAccountStatus,
     !isLoading && isSessionAuthenticated && user === null ? {} : "skip"
   );
+
+  useIdleSignOut(isSessionAuthenticated, async () => {
+    await signOut();
+    router.replace("/login");
+  });
 
   // Redirect to login if not authenticated (must be in useEffect to avoid state update during render)
   useEffect(() => {

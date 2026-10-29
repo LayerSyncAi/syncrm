@@ -101,6 +101,7 @@ import type * as schemas_finance from "../schemas/finance.js";
 import type * as schemas_notify from "../schemas/notify.js";
 import type * as schemas_stay from "../schemas/stay.js";
 import type * as schemas_worth from "../schemas/worth.js";
+import type * as search from "../search.js";
 import type * as sms from "../sms.js";
 import type * as stages from "../stages.js";
 import type * as stay_access from "../stay/access.js";
@@ -243,6 +244,7 @@ declare const fullApi: ApiFromModules<{
   "schemas/notify": typeof schemas_notify;
   "schemas/stay": typeof schemas_stay;
   "schemas/worth": typeof schemas_worth;
+  search: typeof search;
   sms: typeof sms;
   stages: typeof stages;
   "stay/access": typeof stay_access;

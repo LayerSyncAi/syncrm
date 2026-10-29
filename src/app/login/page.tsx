@@ -14,6 +14,7 @@ import { authToasts } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { AuthLayout, RequiredLabel } from "@/components/auth/auth-layout";
 import { LEGAL_VERSIONS } from "@/lib/legal";
+import { markActiveNow } from "@/hooks/useIdleSignOut";
 
 type AuthMode = "signIn" | "signUp";
 type SubmitState = "idle" | "submitting" | "success";
@@ -70,7 +71,7 @@ export default function LoginPage() {
       !didAttemptForward
     ) {
       didAttemptForward = true;
-      router.replace("/app/hub");
+      router.replace("/app");
     }
   }, [authLoading, isSessionAuthenticated, submitState, router]);
 
@@ -121,6 +122,7 @@ export default function LoginPage() {
       }
 
       await signIn("password", formData);
+      markActiveNow();
 
       if (mode === "signUp") {
         // Create the org and record acceptance of the legal documents shown at
@@ -145,13 +147,13 @@ export default function LoginPage() {
 
       if (process.env.NODE_ENV === "development") {
         console.log("[LoginPage] signIn completed successfully");
-        console.log("[LoginPage] Navigating to /app/hub");
+        console.log("[LoginPage] Navigating to /app");
       }
 
       setSubmitState("success");
       didAttemptForward = true;
       await new Promise((resolve) => setTimeout(resolve, 600));
-      router.replace("/app/hub");
+      router.replace("/app");
     } catch (err) {
       console.error("[LoginPage] Auth error:", err);
 

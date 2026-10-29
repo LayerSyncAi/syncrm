@@ -23,6 +23,20 @@ export const moduleKeyValidator = v.union(
   v.literal("media")
 );
 
+/** Where a notification-centre alert comes from: a module, or the Hub itself. */
+export const NOTIFICATION_MODULES = ["hub", ...MODULE_KEYS] as const;
+export type NotificationModule = (typeof NOTIFICATION_MODULES)[number];
+
+export const notificationModuleValidator = v.union(
+  v.literal("hub"),
+  v.literal("crm"),
+  v.literal("stay"),
+  v.literal("worth"),
+  v.literal("finance"),
+  v.literal("dev"),
+  v.literal("media")
+);
+
 /**
  * Organisations created before the Hub existed have no `enabledModules`.
  * They keep exactly what they had: the CRM and the brochure studio.
@@ -106,6 +120,66 @@ export function userCanUseModule(user: UserLike, org: OrgLike, key: ModuleKey): 
 
 export function userModules(user: UserLike, org: OrgLike): ModuleKey[] {
   return orgModules(org).filter((k) => userCanUseModule(user, org, k));
+}
+
+/**
+ * Each module's home route. Mirrors `homeHref` in src/config/modules.ts,
+ * repeated here so server code never imports the front-end registry.
+ */
+export const MODULE_HOME_HREFS: Record<ModuleKey, string> = {
+  crm: "/app/dashboard",
+  stay: "/app/stay",
+  worth: "/app/worth",
+  finance: "/app/finance",
+  dev: "/app/dev",
+  media: "/app/syncmedia",
+};
+
+export const HUB_HREF = "/app/hub";
+
+/** The module each role works in day to day, which decides where they land. */
+const ROLE_HOME_MODULE: Record<EstateRole, ModuleKey> = {
+  sales_manager: "crm",
+  property_manager: "stay",
+  accounts: "finance",
+  marketing: "media",
+  valuer: "worth",
+  signing_valuer: "worth",
+  valuations_admin: "worth",
+};
+
+/**
+ * HB-51: where a user lands after signing in. Directors land on the Hub. A
+ * staff member whose roles all point at one module lands in it; one whose
+ * roles span several lands on the Hub to choose. With no role, a sales agent
+ * lands in the CRM.
+ */
+export function landingHref(user: UserLike, org: OrgLike): string {
+  if (user.role === "admin") return HUB_HREF;
+  const homes = new Set<ModuleKey>();
+  for (const r of user.estateRoles ?? []) {
+    const key = ROLE_HOME_MODULE[r];
+    if (userCanUseModule(user, org, key)) homes.add(key);
+  }
+  if (homes.size === 1) return MODULE_HOME_HREFS[[...homes][0]];
+  if (homes.size > 1) return HUB_HREF;
+  return userCanUseModule(user, org, "crm") ? MODULE_HOME_HREFS.crm : HUB_HREF;
+}
+
+/** Display names used in alert emails ("hub" is the Hub itself). */
+export const NOTIFICATION_MODULE_LABELS: Record<NotificationModule, string> = {
+  hub: "Sync Estate",
+  crm: "SynCRM",
+  stay: "Sync Stay",
+  worth: "Sync Worth",
+  finance: "Sync Finance",
+  dev: "Sync Dev",
+  media: "SyncMedia",
+};
+
+/** HB-61: alert sources a user may choose to receive by email. */
+export function emailAlertChoices(user: UserLike, org: OrgLike): NotificationModule[] {
+  return ["hub", ...userModules(user, org)];
 }
 
 /**

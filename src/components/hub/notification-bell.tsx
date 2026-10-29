@@ -56,14 +56,26 @@ export function NotificationBell() {
         <div className="absolute right-0 z-50 mt-2 w-[min(22rem,calc(100vw-1.5rem))] rounded-[12px] border border-border-strong bg-card-bg shadow-[0_10px_28px_rgba(0,0,0,0.32)]">
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <p className="text-sm font-medium">Notifications</p>
-            <button
-              type="button"
-              disabled={unread === 0}
-              onClick={() => markAllRead().catch(() => {})}
-              className="text-xs font-medium text-primary disabled:text-text-dim"
-            >
-              Mark all read
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  router.push("/app/hub/alerts");
+                }}
+                className="text-xs font-medium text-text-muted hover:text-text"
+              >
+                Email alerts
+              </button>
+              <button
+                type="button"
+                disabled={unread === 0}
+                onClick={() => markAllRead().catch(() => {})}
+                className="text-xs font-medium text-primary disabled:text-text-dim"
+              >
+                Mark all read
+              </button>
+            </div>
           </div>
           <div className="max-h-[360px] overflow-y-auto">
             {items === undefined ? (

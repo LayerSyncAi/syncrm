@@ -1,7 +1,7 @@
 /**
  * While a new contact is typed, warn when the phone or email already belongs
  * to a contact or an open lead, so the agent opens that record instead of
- * creating a second one. Uses the same list and lead checks as the website.
+ * creating a second one. Uses the same contact and lead checks as the website.
  */
 import { Pressable, Text, View } from "react-native";
 import { useRouter, type Href } from "expo-router";
@@ -16,16 +16,10 @@ export function ContactDuplicates({ phone, email, onOpen }: { phone: string; ema
   const p = useDebounced(phone.replace(/\D/g, "").length >= 7 ? phone.trim() : "", 500);
   const e = useDebounced(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) ? email.trim().toLowerCase() : "", 500);
 
-  const byPhone = useQuery(api.contacts.list, p ? { q: p, role: "all", pageSize: 5 } : "skip");
-  const byEmail = useQuery(api.contacts.list, e ? { q: e, role: "all", pageSize: 5 } : "skip");
-  const leads = useQuery(api.leadImport.findDuplicatesForLead, p || e ? { phone: p || undefined, email: e || undefined } : "skip");
-
-  const contacts = new Map<string, { _id: string; name: string; reason: string }>();
-  for (const c of byPhone?.items ?? []) contacts.set(c._id, { _id: c._id, name: c.name, reason: "Same phone" });
-  for (const c of byEmail?.items ?? []) {
-    if (c.email?.toLowerCase() === e) contacts.set(c._id, { _id: c._id, name: c.name, reason: contacts.has(c._id) ? "Same phone and email" : "Same email" });
-  }
-  const contactRows = [...contacts.values()];
+  const args = p || e ? { phone: p || undefined, email: e || undefined } : "skip";
+  // Org-wide, so a match owned by another agent is still flagged (HB-33).
+  const contactRows = useQuery(api.contacts.findDuplicates, args) ?? [];
+  const leads = useQuery(api.leadImport.findDuplicatesForLead, args);
   const leadRows = leads ?? [];
   if (contactRows.length === 0 && leadRows.length === 0) return null;
 
@@ -41,10 +35,14 @@ export function ContactDuplicates({ phone, email, onOpen }: { phone: string; ema
         <Text style={{ fontWeight: "700", color: colors.warning, fontSize: font.sm, flex: 1 }}>This person may already be on file</Text>
       </Row>
       {contactRows.map((c) => (
-        <Pressable key={c._id} onPress={() => go(`/crm/contacts/${c._id}`)} style={{ paddingVertical: 4 }}>
+        <Pressable key={c._id} disabled={!c.canOpen} onPress={() => go(`/crm/contacts/${c._id}`)} style={{ paddingVertical: 4 }}>
           <Text style={{ color: colors.text, fontSize: font.sm }}>
             Contact <Text style={{ fontWeight: "700" }}>{c.name}</Text> · {c.reason}
-            <Text style={{ color: colors.brand, fontWeight: "600" }}>  Open</Text>
+            {c.canOpen ? (
+              <Text style={{ color: colors.brand, fontWeight: "600" }}>  Open</Text>
+            ) : (
+              <Text style={{ color: colors.muted }}>  Another agent&apos;s contact</Text>
+            )}
           </Text>
         </Pressable>
       ))}

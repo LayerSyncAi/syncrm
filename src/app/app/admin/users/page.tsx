@@ -7,7 +7,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
-import { getTempPassword } from "../../../../../convex/lib/authReconcile";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RightDrawer } from "@/components/common/right-drawer";
@@ -33,6 +32,7 @@ import {
 import { TIMEZONES } from "@/lib/timezones";
 import { animatedToast } from "@/components/ui/animated-toaster";
 import { ESTATE_ROLES, ESTATE_ROLE_LABELS, type EstateRole } from "../../../../../convex/lib/modules";
+import { getErrorMessage } from "@/lib/errors";
 
 const listVariants = {
   hidden: {},
@@ -51,6 +51,8 @@ interface UserFormData {
   email: string;
   role: "admin" | "agent";
   isActive: boolean;
+  estateRoles: EstateRole[];
+  branchId: string;
 }
 
 const defaultFormData: UserFormData = {
@@ -58,7 +60,12 @@ const defaultFormData: UserFormData = {
   email: "",
   role: "agent",
   isActive: true,
+  estateRoles: [],
+  branchId: "",
 };
+
+/** A temporary password the email could not deliver, shown to the admin once. */
+type UndeliveredPassword = { name: string; email: string; password: string };
 
 type EditingUser = {
   _id: Id<"users">;
@@ -70,6 +77,7 @@ type EditingUser = {
   timezone?: string;
   resetPasswordOnNextLogin?: boolean;
   estateRoles?: EstateRole[];
+  branchId?: string;
 };
 
 // ── Page ───────────────────────────────────────────────────
@@ -86,6 +94,9 @@ export default function UsersPage() {
   const setUserTimezone = useMutation(api.users.adminUpdateUserTimezone);
   const resetUserPassword = useAction(api.users.adminResetUserPassword);
   const setEstateRoles = useMutation(api.hub.adminSetEstateRoles);
+  const setUserBranch = useMutation(api.users.adminSetUserBranch);
+  const branches = useQuery(api.hub.listBranches);
+  const branchName = (id?: string) => branches?.find((b) => b.id === id)?.name;
 
   // Create drawer state
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -99,6 +110,8 @@ export default function UsersPage() {
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   // Sync Estate roles being edited in the modal (saved with their own button)
   const [rolesDraft, setRolesDraft] = useState<EstateRole[]>([]);
+
+  const [undelivered, setUndelivered] = useState<UndeliveredPassword | null>(null);
 
   // Row flash state: maps userId to "activate" | "deactivate"
   const [flashingRows, setFlashingRows] = useState<Map<string, "activate" | "deactivate">>(new Map());
@@ -150,19 +163,27 @@ export default function UsersPage() {
     setIsSubmitting(true);
     setDrawerError(null);
 
+    const fullName = formData.fullName.trim();
+    const email = formData.email.trim().toLowerCase();
     try {
-      await createUser({
-        fullName: formData.fullName.trim(),
-        email: formData.email.trim().toLowerCase(),
+      const result = await createUser({
+        fullName,
+        email,
         role: formData.role,
         isActive: formData.isActive,
+        estateRoles: formData.role === "agent" ? formData.estateRoles : undefined,
+        branchId: formData.branchId || undefined,
       });
       closeDrawer();
-      animatedToast.success(`User created for ${formData.fullName.trim()}`, {
-        description: "They must change their password on first login.",
-      });
+      if (result.tempPassword) {
+        setUndelivered({ name: fullName, email, password: result.tempPassword });
+      } else {
+        animatedToast.success(`Invite emailed to ${fullName}`, {
+          description: "They must choose their own password when they first sign in.",
+        });
+      }
     } catch (err) {
-      setDrawerError(err instanceof Error ? err.message : "Failed to create user");
+      setDrawerError(getErrorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -204,6 +225,29 @@ export default function UsersPage() {
 
   const toggleDraftRole = (role: EstateRole) =>
     setRolesDraft((prev) => (prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role]));
+
+  const toggleFormRole = (role: EstateRole) =>
+    setFormData((prev) => ({
+      ...prev,
+      estateRoles: prev.estateRoles.includes(role)
+        ? prev.estateRoles.filter((r) => r !== role)
+        : [...prev.estateRoles, role],
+    }));
+
+  const handleBranchChange = async (branchId: string) => {
+    if (!editingUser || (editingUser.branchId ?? "") === branchId) return;
+    setIsSaving(true);
+    const name = userName(editingUser);
+    try {
+      await setUserBranch({ userId: editingUser._id, branchId: branchId || undefined });
+      setEditingUser((prev) => prev ? { ...prev, branchId: branchId || undefined } : prev);
+      animatedToast.success(`Branch updated for ${name}`);
+    } catch (err) {
+      animatedToast.error(`Branch update failed for ${name}`, { description: getErrorMessage(err) });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleSaveEstateRoles = async () => {
     if (!editingUser) return;
@@ -293,11 +337,15 @@ export default function UsersPage() {
     setResetConfirmOpen(false);
     const name = userName(editingUser);
     try {
-      await resetUserPassword({ targetUserId: editingUser._id });
+      const result = await resetUserPassword({ targetUserId: editingUser._id });
       setEditingUser((prev) => prev ? { ...prev, resetPasswordOnNextLogin: true } : prev);
-      animatedToast.success(`Password reset for ${name}`, {
-        description: "User must change password on next login.",
-      });
+      if (result.tempPassword) {
+        setUndelivered({ name, email: editingUser.email ?? "", password: result.tempPassword });
+      } else {
+        animatedToast.success(`New temporary password emailed to ${name}`, {
+          description: "They must change it when they next sign in.",
+        });
+      }
     } catch (err) {
       animatedToast.error(`Password reset failed for ${name}`, {
         description: err instanceof Error ? err.message : "Something went wrong.",
@@ -337,12 +385,12 @@ export default function UsersPage() {
         <div className="space-y-1">
           <h1 className="text-h1">Users</h1>
           <p className="text-sm text-text-muted">
-            Manage user accounts, roles, and access.
+            Invite staff, set their roles and branch, and switch access off.
           </p>
         </div>
         <Button onClick={openCreateDrawer} className="h-10 gap-2">
           <UserPlus className="h-4 w-4" />
-          Create user
+          Invite user
         </Button>
       </div>
 
@@ -356,7 +404,7 @@ export default function UsersPage() {
           <p className="text-sm text-text-muted mb-4">No users found</p>
           <Button onClick={openCreateDrawer}>
             <Plus className="mr-2 h-4 w-4" />
-            Create your first user
+            Invite your first user
           </Button>
         </div>
       ) : (
@@ -399,7 +447,10 @@ export default function UsersPage() {
                               <span className="ml-2 text-xs text-text-muted">(you)</span>
                             )}
                           </p>
-                          <p className="text-xs text-text-muted capitalize">{u.role}</p>
+                          <p className="text-xs text-text-muted">
+                            <span className="capitalize">{u.role}</span>
+                            {branchName(u.branchId) ? ` · ${branchName(u.branchId)}` : ""}
+                          </p>
                         </div>
                       </div>
                     </TableCell>
@@ -463,7 +514,11 @@ export default function UsersPage() {
                         {u.fullName || u.name || "Unknown"}
                         {isCurrentUser && <span className="ml-2 text-xs text-text-muted">(you)</span>}
                       </p>
-                      <p className="truncate text-xs text-text-muted capitalize">{u.role}{u.email ? ` · ${u.email}` : ""}</p>
+                      <p className="truncate text-xs text-text-muted">
+                        <span className="capitalize">{u.role}</span>
+                        {branchName(u.branchId) ? ` · ${branchName(u.branchId)}` : ""}
+                        {u.email ? ` · ${u.email}` : ""}
+                      </p>
                     </div>
                   </div>
                   <Button variant="ghost" size="sm" aria-label="Edit user" onClick={() => openEditModal(u)}>
@@ -543,6 +598,22 @@ export default function UsersPage() {
               )}
             </div>
 
+            {/* Branch */}
+            {branches && branches.length > 0 && (
+              <div className="space-y-2">
+                <Label>Branch</Label>
+                <StaggeredDropDown
+                  value={editingUser.branchId ?? ""}
+                  onChange={(val) => handleBranchChange(val)}
+                  disabled={isSaving}
+                  options={[
+                    { value: "", label: "No branch" },
+                    ...branches.map((b) => ({ value: b.id, label: b.name })),
+                  ]}
+                />
+              </div>
+            )}
+
             {/* Timezone */}
             <div className="space-y-2">
               <Label>Timezone</Label>
@@ -609,8 +680,8 @@ export default function UsersPage() {
                   <p className="text-sm font-medium">Reset password</p>
                   <p className="text-xs text-text-muted">
                     {editingUser.resetPasswordOnNextLogin
-                      ? <>Password reset is already pending. The temporary password is <span className="font-mono font-semibold text-text">{getTempPassword()}</span>. The user will be required to change it on next login.</>
-                      : "Set a temporary password. User must change it on next login."}
+                      ? "A temporary password is pending. Resetting again emails a new one and the old one stops working."
+                      : "Emails them a new temporary password. They must change it when they next sign in."}
                   </p>
                 </div>
                 {resetConfirmOpen ? (
@@ -652,7 +723,7 @@ export default function UsersPage() {
       <RightDrawer
         open={drawerOpen}
         onClose={closeDrawer}
-        title="Create User"
+        title="Invite user"
         footer={
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={closeDrawer}>
@@ -660,7 +731,7 @@ export default function UsersPage() {
             </Button>
             <Button onClick={handleCreate} disabled={isSubmitting}>
               {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Create User
+              Send invite
             </Button>
           </div>
         }
@@ -691,7 +762,7 @@ export default function UsersPage() {
               onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
             />
             <p className="text-xs text-text-muted">
-              This email will be used for login. A temporary password will be assigned.
+              They sign in with this email. We email them a temporary password, which they change on first sign-in.
             </p>
           </div>
 
@@ -712,6 +783,43 @@ export default function UsersPage() {
             </p>
           </div>
 
+          {formData.role === "agent" && (
+            <div className="space-y-2">
+              <Label>Sync Estate roles</Label>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {ESTATE_ROLES.map((r) => (
+                  <label
+                    key={r}
+                    className="flex cursor-pointer items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={formData.estateRoles.includes(r)}
+                      onChange={() => toggleFormRole(r)}
+                      className="h-4 w-4 rounded border-border"
+                    />
+                    {ESTATE_ROLE_LABELS[r]}
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs text-text-muted">Roles decide which modules they can open. You can change them later.</p>
+            </div>
+          )}
+
+          {branches && branches.length > 0 && (
+            <div className="space-y-2">
+              <Label>Branch</Label>
+              <StaggeredDropDown
+                value={formData.branchId}
+                onChange={(val) => setFormData((prev) => ({ ...prev, branchId: val }))}
+                options={[
+                  { value: "", label: "No branch" },
+                  ...branches.map((b) => ({ value: b.id, label: b.name })),
+                ]}
+              />
+            </div>
+          )}
+
           <div className="flex items-center gap-3 rounded-lg border border-border p-4">
             <input
               type="checkbox"
@@ -727,6 +835,31 @@ export default function UsersPage() {
           </div>
         </div>
       </RightDrawer>
+
+      {/* ── Undelivered temporary password ──────────────── */}
+      <Modal
+        open={!!undelivered}
+        onClose={() => setUndelivered(null)}
+        title="The email could not be sent"
+        description={undelivered ? `Give ${undelivered.name} this temporary password yourself. It is shown only once.` : undefined}
+        footer={
+          <div className="flex justify-end">
+            <Button onClick={() => setUndelivered(null)}>Done</Button>
+          </div>
+        }
+      >
+        {undelivered && (
+          <div className="space-y-3 text-sm">
+            <div className="rounded-lg border border-border p-3">
+              <p className="text-xs text-text-muted">Email</p>
+              <p className="font-medium">{undelivered.email}</p>
+              <p className="mt-2 text-xs text-text-muted">Temporary password</p>
+              <p className="select-all font-mono text-base font-semibold">{undelivered.password}</p>
+            </div>
+            <p className="text-xs text-text-muted">They must choose their own password when they first sign in.</p>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

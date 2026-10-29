@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import { authTables } from "@convex-dev/auth/server";
 import { leadSourceValidator } from "./lib/leadSources";
 import { activityTypeValidator } from "./lib/activityTypes";
-import { estateRoleValidator, moduleKeyValidator } from "./lib/modules";
+import { estateRoleValidator, moduleKeyValidator, notificationModuleValidator } from "./lib/modules";
 import { stayTables } from "./schemas/stay";
 import { worthTables } from "./schemas/worth";
 import { financeTables } from "./schemas/finance";
@@ -29,6 +29,9 @@ export default defineSchema({
     phone: v.optional(v.string()),
     email: v.optional(v.string()),
     vatNumber: v.optional(v.string()),
+    // Agency branches (HB-02). `id` is stable so a rename keeps every user
+    // assigned to the branch; users.branchId points at it.
+    branches: v.optional(v.array(v.object({ id: v.string(), name: v.string() }))),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -60,6 +63,11 @@ export default defineSchema({
     // Sync Estate roles held on top of admin/agent (convex/lib/modules.ts).
     // They decide which modules an agent can open; admins need none.
     estateRoles: v.optional(v.array(estateRoleValidator)),
+    // The agency branch this staff member works from (organizations.branches).
+    branchId: v.optional(v.string()),
+    // Modules whose notification-centre alerts also arrive by email (HB-61).
+    // Absent means in-app only.
+    emailAlertModules: v.optional(v.array(notificationModuleValidator)),
     // Landlord and tenant portal accounts. A portal user has NO orgId, so
     // every staff function (getCurrentUserWithOrg) rejects them and they never
     // appear in an organisation's user list. portalOrgId scopes the portal.
@@ -266,7 +274,9 @@ export default defineSchema({
     .index("by_filters", ["type", "listingType", "status"])
     .index("by_org", ["orgId"])
     .index("by_creator", ["createdByUserId"])
-    .index("by_pb_ref", ["orgId", "pbRefCode"]),
+    .index("by_pb_ref", ["orgId", "pbRefCode"])
+    .searchIndex("search_title", { searchField: "title", filterFields: ["orgId"] })
+    .searchIndex("search_location", { searchField: "location", filterFields: ["orgId"] }),
   // Explicitly authorised collaborators on a property. A row grants the agent
   // access to the property's private data (documents, mandate info) without
   // making them an owner. Granted by an owner or an admin.
@@ -492,12 +502,14 @@ export default defineSchema({
     // Polymorphic owner: exactly one of these should be set
     leadId: v.optional(v.id("leads")),
     propertyId: v.optional(v.id("properties")),
+    contactId: v.optional(v.id("contacts")),
     uploadedByUserId: v.id("users"),
     orgId: v.optional(v.id("organizations")),
     createdAt: v.number(),
   })
     .index("by_lead", ["leadId"])
     .index("by_property", ["propertyId"])
+    .index("by_contact", ["contactId"])
     .index("by_org", ["orgId"]),
   rateLimits: defineTable({
     key: v.string(), // e.g. "leadCreate:<userId>" or "importBulk:<userId>"
@@ -632,6 +644,8 @@ export default defineSchema({
     // `isValuationClient` marks a Sync Worth instructing party.
     isLeaseTenant: v.optional(v.boolean()),
     isValuationClient: v.optional(v.boolean()),
+    // A supplier or contractor the agency pays (HB-30).
+    isSupplier: v.optional(v.boolean()),
     entityKind: v.optional(v.union(v.literal("individual"), v.literal("company"))),
     idNumber: v.optional(v.string()),
     // Payout details for landlords.
@@ -656,7 +670,10 @@ export default defineSchema({
     .index("by_org", ["orgId"])
     .index("by_org_owner_type", ["orgId", "ownerType"])
     .index("by_org_lease_tenant", ["orgId", "isLeaseTenant"])
-    .index("by_org_valuation_client", ["orgId", "isValuationClient"]),
+    .index("by_org_valuation_client", ["orgId", "isValuationClient"])
+    .index("by_org_supplier", ["orgId", "isSupplier"])
+    .index("by_org_email", ["orgId", "email"])
+    .searchIndex("search_name", { searchField: "name", filterFields: ["orgId"] }),
   // Links a property to the client who owns it (its seller or landlord), as
   // distinct from `properties.ownerUserIds`, which is the agent who owns the
   // record. A property can have several owners (joint sellers) and an owner can
@@ -846,15 +863,7 @@ export default defineSchema({
   notifications: defineTable({
     orgId: v.id("organizations"),
     userId: v.id("users"),
-    module: v.union(
-      v.literal("hub"),
-      v.literal("crm"),
-      v.literal("stay"),
-      v.literal("worth"),
-      v.literal("finance"),
-      v.literal("dev"),
-      v.literal("media")
-    ),
+    module: notificationModuleValidator,
     kind: v.string(),
     title: v.string(),
     body: v.optional(v.string()),
