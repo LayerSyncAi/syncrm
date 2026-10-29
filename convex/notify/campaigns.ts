@@ -32,11 +32,13 @@ export const audiences = query({
   handler: async (ctx) => {
     const access = await requireNotify(ctx);
     const finance = userCanUseModule(access.user, access.org, "finance") && (access.user.role === "admin" || !!access.user.estateRoles?.includes("accounts"));
+    // Buyers on payment plans live in Sync Dev and Finance alike.
+    const instalments = finance || userCanUseModule(access.user, access.org, "dev");
     const stay = userCanUseModule(access.user, access.org, "stay");
     return [
       { key: "contacts", label: "Contacts", hint: "Clients captured in the Hub", available: true },
       { key: "staff", label: "Staff", hint: "Internal: your team", available: access.user.role === "admin" },
-      { key: "instalments", label: "Clients on instalments", hint: "Paid, owed and overdue on payment plans", available: finance },
+      { key: "instalments", label: "Clients on instalments", hint: "Paid, owed and overdue on payment plans", available: instalments },
       { key: "invoices", label: "Unpaid invoices", hint: "Clients with invoices still open", available: finance },
       { key: "tenants", label: "Tenants in arrears", hint: "Rent overdue in Sync Stay", available: stay },
     ];
@@ -57,6 +59,7 @@ export const recipients = query({
     const agency = org.name;
     const out: Recipient[] = [];
     const finance = userCanUseModule(access.user, org, "finance") && (access.user.role === "admin" || !!access.user.estateRoles?.includes("accounts"));
+    const instalments = finance || userCanUseModule(access.user, org, "dev");
 
     if (args.audience === "contacts") {
       const contacts = await ctx.db
@@ -81,7 +84,7 @@ export const recipients = query({
         out.push({ key: u._id, name: userLabel(u), email: u.email ?? "", phone: "", values: { name: userLabel(u), agency } });
       }
     } else if (args.audience === "instalments") {
-      if (!finance) throw new ConvexError("Sync Finance is not available to you");
+      if (!instalments) throw new ConvexError("Sync Dev or Sync Finance is needed for clients on instalments");
       const devs = new Map(
         (await ctx.db.query("finDevelopments").withIndex("by_org", (q) => q.eq("orgId", access.orgId)).collect()).map((d) => [d._id as string, d])
       );

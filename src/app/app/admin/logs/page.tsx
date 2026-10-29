@@ -41,6 +41,7 @@ type AuditCategory =
   | "stay"
   | "worth"
   | "finance"
+  | "dev"
   | "other";
 
 type EmailStatus = "sent" | "failed" | "dev_logged";
@@ -56,6 +57,7 @@ const AUDIT_CATEGORY_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "stay", label: "Sync Stay" },
   { value: "worth", label: "Sync Worth" },
   { value: "finance", label: "Sync Finance" },
+  { value: "dev", label: "Sync Dev" },
   { value: "other", label: "Other" },
 ];
 

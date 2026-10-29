@@ -99,7 +99,7 @@ export const STAND_EXAMPLES: Array<Array<string | number>> = [];
 
 export const STAND_NOTES = [
   "One row per stand sold on instalments.",
-  "The development must already exist in Finance under Instalments, with the same name.",
+  "The development must already exist, with the same name.",
   "Amounts are in the development's currency.",
   "The balance after the deposit is split into equal monthly instalments from the first due date.",
   "Paid to date is everything the buyer has paid so far. It is set against the oldest instalments first.",
@@ -135,7 +135,8 @@ export const IMPORT_SPECS = {
 
 // ── Templates and reading files ──────────────────────────────────────
 
-export async function downloadTemplate(kind: ImportKind): Promise<void> {
+/** `file` names the download (after the YYMMDD_ prefix); defaults to the kind's own. */
+export async function downloadTemplate(kind: ImportKind, file?: string): Promise<void> {
   const spec = IMPORT_SPECS[kind];
   const XLSX = await import("xlsx");
   const wb = XLSX.utils.book_new();
@@ -148,7 +149,7 @@ export async function downloadTemplate(kind: ImportKind): Promise<void> {
   const url = URL.createObjectURL(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
   const a = document.createElement("a");
   a.href = url;
-  a.download = `${datePrefix()}${spec.file}.xlsx`;
+  a.download = `${datePrefix()}${file ?? spec.file}.xlsx`;
   a.click();
   URL.revokeObjectURL(url);
 }

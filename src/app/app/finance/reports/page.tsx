@@ -142,11 +142,11 @@ export default function FinanceReportsPage() {
   const debtors = useQuery(api.finance.reports.debtors, on("debtors") ? {} : "skip");
   const commission = useQuery(api.finance.reports.commissionReport, on("commission") && validRange ? { from, to } : "skip");
   const stands = useQuery(api.finance.reports.standSales, on("stands") && /^\d{4}-\d{2}$/.test(month) ? { month } : "skip");
-  const devs = useQuery(api.finance.stands.listDevelopments, staff && report === "developer" ? {} : "skip");
+  const devs = useQuery(api.dev.sales.listDevelopments, staff && report === "developer" ? {} : "skip");
   React.useEffect(() => {
     if (!developmentId && devs?.length) setDevelopmentId(devs[0]._id);
   }, [devs, developmentId]);
-  const developer = useQuery(api.finance.stands.developerReport, on("developer") && developmentId ? { developmentId: developmentId as Id<"finDevelopments"> } : "skip");
+  const developer = useQuery(api.dev.sales.developerReport, on("developer") && developmentId ? { developmentId: developmentId as Id<"finDevelopments"> } : "skip");
 
   const built: Built | undefined = React.useMemo(() => {
     switch (report) {

@@ -31,8 +31,10 @@ export function addTo(totals: CurrencyTotals, currency: StayCurrency, amount: nu
 }
 
 export function formatAmount(amount: number, currency: StayCurrency): string {
-  const formatted = round2(amount).toLocaleString("en-GB", {
-    minimumFractionDigits: 0,
+  const r = round2(amount);
+  const formatted = r.toLocaleString("en-GB", {
+    // Cents show as two digits ("937.50"); whole amounts show none.
+    minimumFractionDigits: Number.isInteger(r) ? 0 : 2,
     maximumFractionDigits: 2,
   });
   return `${currency} ${formatted}`;

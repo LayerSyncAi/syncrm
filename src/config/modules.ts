@@ -26,6 +26,7 @@ import {
   Home,
   KeyRound,
   Landmark,
+  Map as MapIcon,
   Percent,
   LayoutDashboard,
   Megaphone,
@@ -166,6 +167,22 @@ export const MODULES: Record<ModuleKey, ModuleDef> = {
       { label: "Import and migrate", href: "/app/finance/import", icon: Upload },
     ],
   },
+  dev: {
+    key: "dev",
+    name: "Sync Dev",
+    tagline: "Developments, stands and sales",
+    description: "Every stand in every development at a glance: reserve and sell in a few taps, and see what each buyer has paid and still owes.",
+    icon: HardHat,
+    accent: "bg-orange-600 text-white",
+    homeHref: "/app/dev",
+    routes: ["/app/dev"],
+    nav: [
+      { label: "Dashboard", href: "/app/dev", icon: Gauge },
+      { label: "Developments", href: "/app/dev/developments", icon: MapIcon },
+      { label: "Buyers", href: "/app/dev/buyers", icon: UsersRound },
+    ],
+    adminNav: [{ label: "Import buyers", href: "/app/dev/import", icon: Upload }],
+  },
   media: {
     key: "media",
     name: "SyncMedia",
@@ -180,11 +197,10 @@ export const MODULES: Record<ModuleKey, ModuleDef> = {
   },
 };
 
-export const MODULE_ORDER: ModuleKey[] = ["crm", "stay", "worth", "finance", "media"];
+export const MODULE_ORDER: ModuleKey[] = ["crm", "stay", "worth", "finance", "dev", "media"];
 
 /** Modules on the roadmap, shown on the Hub as coming soon. */
 export const UPCOMING_MODULES: Array<{ name: string; tagline: string; icon: LucideIcon }> = [
-  { name: "Sync Dev", tagline: "Development projects and sales", icon: HardHat },
   { name: "Sync HR", tagline: "People, leave and payroll", icon: ShieldCheck },
 ];
 

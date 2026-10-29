@@ -27,6 +27,8 @@ export const PURGE_TABLE_ORDER = [
   "staySettings",
   // Sync Finance: lines before the transactions they post, transactions
   // before the invoices, payouts and stands they point at.
+  "devPayments",
+  "devStands",
   "finLines",
   "finAccountMonths",
   "finReconciliations",

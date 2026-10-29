@@ -3,7 +3,7 @@ import { Id } from "../_generated/dataModel";
 
 type NotifyArgs = {
   orgId: Id<"organizations">;
-  module: "hub" | "crm" | "stay" | "worth" | "finance" | "media";
+  module: "hub" | "crm" | "stay" | "worth" | "finance" | "dev" | "media";
   kind: string;
   title: string;
   body?: string;

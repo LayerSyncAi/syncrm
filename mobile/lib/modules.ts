@@ -23,12 +23,12 @@ export const MODULES: Record<ModuleKey, ModuleDef> = {
   stay: { key: "stay", name: "Sync Stay", tagline: "Leases, rent and arrears", icon: "home-outline", color: "#059669", href: "/stay" },
   worth: { key: "worth", name: "Sync Worth", tagline: "Valuations to signed report", icon: "scale-outline", color: "#d97706", href: "/worth" },
   finance: { key: "finance", name: "Sync Finance", tagline: "Trust money, payouts and statements", icon: "cash-outline", color: "#0d9488", href: "/finance" },
+  dev: { key: "dev", name: "Sync Dev", tagline: "Developments, stands and sales", icon: "construct-outline", color: "#ea580c", href: "/dev" },
   media: { key: "media", name: "SyncMedia", tagline: "Posts and flyers from listings", icon: "megaphone-outline", color: "#c026d3", href: "/media" },
 };
 
-export const MODULE_ORDER: ModuleKey[] = ["crm", "stay", "worth", "finance", "media"];
+export const MODULE_ORDER: ModuleKey[] = ["crm", "stay", "worth", "finance", "dev", "media"];
 
 export const UPCOMING: Array<{ name: string; tagline: string; icon: IconName }> = [
-  { name: "Sync Dev", tagline: "Development projects and sales", icon: "construct-outline" },
   { name: "Sync HR", tagline: "People, leave and payroll", icon: "people-outline" },
 ];

@@ -281,12 +281,14 @@ export const financeTables = {
     .index("by_org", ["orgId"])
     .index("by_account", ["accountId"]),
 
-  // Stand sales on payment plans (BRD 5.10). Sync Dev will own developments
-  // and stands when it ships; until then they live here, and the fields Sync
-  // Dev reads back (paidToDate, overdue, nextDue) are kept on the stand.
+  // Developments and stand sales on payment plans (BRD 5.10). Owned by Sync
+  // Dev (convex/dev/), shared with Sync Finance, which handles the money when
+  // the agency has it. The fin prefix is historical.
   finDevelopments: defineTable({
     orgId: v.id("organizations"),
     name: v.string(),
+    location: v.optional(v.string()),
+    notes: v.optional(v.string()),
     developerContactId: v.optional(v.id("contacts")),
     developerName: v.string(),
     developerEmail: v.optional(v.string()),
@@ -308,6 +310,8 @@ export const financeTables = {
     orgId: v.id("organizations"),
     developmentId: v.id("finDevelopments"),
     standNumber: v.string(),
+    // The stand in Sync Dev's inventory this sale is for.
+    devStandId: v.optional(v.id("devStands")),
     buyerContactId: v.optional(v.id("contacts")),
     buyerName: v.string(),
     buyerEmail: v.optional(v.string()),
