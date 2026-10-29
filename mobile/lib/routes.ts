@@ -5,6 +5,7 @@
  *   /app/stay/...      -> /stay/...
  *   /app/worth/...     -> /worth/...
  *   /app/finance/...   -> /finance/... (by tab, see financeRoute)
+ *   /app/dev/...       -> /dev/... (by tab, see devRoute)
  *   /app/syncmedia/... -> /media/...
  *   /app/admin/branding -> /media/brand-kit
  *   /app/admin/... and /app/settings -> /admin/...
@@ -21,6 +22,7 @@ export function appRoute(webHref: string | null | undefined): string | null {
   if (rest === "/hub" || rest === "/") return "/hub";
   if (rest.startsWith("/stay") || rest.startsWith("/worth")) return rest;
   if (rest.startsWith("/finance")) return financeRoute(rest);
+  if (rest === "/dev" || rest.startsWith("/dev/")) return devRoute(rest);
   if (rest.startsWith("/syncmedia")) return "/media" + rest.slice("/syncmedia".length);
   if (rest === "/admin/branding") return "/media/brand-kit";
   if (rest.startsWith("/admin")) return rest;
@@ -40,4 +42,14 @@ function financeRoute(rest: string): string {
   if (section === "money") return "/finance/money";
   if (section === "payouts") return "/finance/payouts";
   return "/finance";
+}
+
+/** Sync Dev keeps Developments and Buyers as tabs; the dashboard is the Developments tab. */
+function devRoute(rest: string): string {
+  const parts = rest.split("/").filter(Boolean); // ["dev", section, id?]
+  const section = parts[1];
+  const id = parts[2];
+  if (section === "developments") return id ? `/dev/developments/${id}` : "/dev";
+  if (section === "buyers") return id ? `/dev/buyers/${id}` : "/dev/buyers";
+  return "/dev";
 }

@@ -61,12 +61,12 @@ crons.daily(
   internal.stay.jobs.runDaily
 );
 
-// Sync Finance: keep instalment balances current and send payment
-// reminders through Sync Notify. 04:30 UTC is 06:30 Harare.
+// Sync Dev and Sync Finance: keep instalment balances current, release
+// lapsed reservations and send payment reminders through Sync Notify. 04:30 UTC is 06:30 Harare.
 crons.daily(
   "finance instalments daily",
   { hourUTC: 4, minuteUTC: 30 },
-  internal.finance.stands.runDaily
+  internal.dev.sales.runDaily
 );
 
 export default crons;

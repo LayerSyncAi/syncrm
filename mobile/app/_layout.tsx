@@ -77,6 +77,7 @@ function RootStack() {
         <Stack.Screen name="stay" options={{ headerShown: false }} />
         <Stack.Screen name="worth" options={{ headerShown: false }} />
         <Stack.Screen name="finance" options={{ headerShown: false }} />
+        <Stack.Screen name="dev" options={{ headerShown: false }} />
         <Stack.Screen name="media" options={{ headerShown: false }} />
         <Stack.Screen name="portal" options={{ headerShown: false }} />
         <Stack.Screen name="admin" options={{ headerShown: false }} />

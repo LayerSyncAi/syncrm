@@ -33,6 +33,7 @@ export default function HubPage() {
   const stay = useQuery(api.stay.dashboard.hubSummary, mine.includes("stay") ? {} : "skip");
   const worth = useQuery(api.worth.dashboard.hubSummary, mine.includes("worth") ? {} : "skip");
   const finance = useQuery(api.finance.reports.hubSummary, mine.includes("finance") ? {} : "skip");
+  const dev = useQuery(api.dev.dashboard.hubSummary, mine.includes("dev") ? {} : "skip");
   const notifications = useQuery(api.notifications.listMine, { limit: 5 });
   const markRead = useMutation(api.notifications.markRead);
 
@@ -62,6 +63,7 @@ export default function HubPage() {
     { key: "stay" as const, figures: stay },
     { key: "worth" as const, figures: worth },
     { key: "finance" as const, figures: finance },
+    { key: "dev" as const, figures: dev },
   ].filter((s) => mine.includes(s.key) && s.figures && s.figures.length > 0);
 
   return (

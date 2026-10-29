@@ -18,6 +18,7 @@ import {
   NewLine,
   categoryByKey,
   ensureAccount,
+  getAccount,
   ledgerBalance,
   financeAudit,
   financeOn,
@@ -329,6 +330,164 @@ export async function postDepositMove(
     { currency, amount: held, accountId: toAcc._id },
   ], { allowNegative: true });
 }
+
+// ── Stand sales (Sync Dev) ───────────────────────────────────────────
+
+/**
+ * FN-90: post a payment on a stand sale to the ledger. The account defaults
+ * from the development: the developer's own money to the business account,
+ * money we hold for a developer to trust, cash to the float either way.
+ * Commission per payment is moved per the agency's timing (FN-93).
+ */
+export async function postStandReceipt(
+  ctx: MutationCtx,
+  actor: Actor,
+  s: Doc<"finStands">,
+  dev: Doc<"finDevelopments">,
+  args: { date: string; amount: number; method: Doc<"finTransactions">["method"] & string; accountId?: Id<"finAccounts">; reference?: string; number: string },
+  // A cancelled sale earns no commission (used when bringing in old payments).
+  opts: { noFee?: boolean } = {}
+): Promise<{ txId: Id<"finTransactions">; account: Doc<"finAccounts"> }> {
+  const inTrust = dev.moneyHeldBy === "agency_trust";
+  const account = args.accountId
+    ? await getAccount(ctx, actor.orgId, args.accountId)
+    : await ensureAccount(ctx, actor.orgId, args.method === "cash" ? "cash" : inTrust ? "trust" : "business", s.currency);
+  if (account.currency !== s.currency) throw new ConvexError(`This stand is in ${s.currency}`);
+  const lines: NewLine[] = [{ currency: s.currency, amount: args.amount, accountId: account._id }];
+  if (inTrust) lines.push({ currency: s.currency, amount: args.amount, ledger: "developer", key: dev._id });
+  else lines.push({ currency: s.currency, amount: args.amount, ledger: "agency", categoryId: await categoryByKey(ctx, actor.orgId, "stand_sales") });
+  const fee = inTrust && dev.commissionTiming === "each_payment" && !opts.noFee ? feeOn(args.amount, dev.commissionPct) : 0;
+  const txId = await postTransaction(
+    ctx,
+    actor,
+    {
+      date: args.date,
+      kind: "receipt",
+      number: args.number,
+      description: `Stand ${s.standNumber}, ${dev.name}`,
+      method: args.method,
+      reference: args.reference?.trim() || undefined,
+      contactId: s.buyerContactId,
+      counterparty: s.buyerName,
+      standId: s._id,
+      developmentId: dev._id,
+      fee:
+        fee > 0
+          ? { ledger: "developer", key: dev._id, currency: s.currency, accountId: account._id, base: args.amount, pct: dev.commissionPct, amount: fee, categoryKey: "stand_commission" }
+          : undefined,
+    },
+    lines
+  );
+  const settings = await getSettings(ctx, actor.orgId);
+  if (fee > 0 && settings.commissionTiming === "on_receipt") await moveFee(ctx, actor, txId);
+  return { txId, account };
+}
+
+/** Commission on the full price once a stand is fully paid (FN-93). */
+export async function postFullyPaidCommission(ctx: MutationCtx, actor: Actor, s: Doc<"finStands">, dev: Doc<"finDevelopments">, date: string) {
+  const full = feeOn(s.price, dev.commissionPct);
+  if (full > 0) {
+    const business = await ensureAccount(ctx, actor.orgId, "business", s.currency);
+    const trust = await ensureAccount(ctx, actor.orgId, "trust", s.currency);
+    await postTransaction(
+      ctx,
+      actor,
+      { date, kind: "transfer", description: `Commission ${dev.commissionPct}% on stand ${s.standNumber} (fully paid)`, standId: s._id, developmentId: dev._id },
+      [
+        { currency: s.currency, amount: -full, ledger: "developer", key: dev._id },
+        { currency: s.currency, amount: full, ledger: "agency", categoryId: await categoryByKey(ctx, actor.orgId, "stand_commission") },
+        { currency: s.currency, amount: -full, accountId: trust._id },
+        { currency: s.currency, amount: full, accountId: business._id },
+      ],
+      { allowNegative: true }
+    );
+  }
+}
+
+/** FN-97: pay a buyer back on a cancelled sale, out of the ledger it went into. */
+export async function postStandRefund(
+  ctx: MutationCtx,
+  actor: Actor,
+  s: Doc<"finStands">,
+  dev: Doc<"finDevelopments">,
+  args: { date: string; amount: number; method: Doc<"finTransactions">["method"] & string; accountId?: Id<"finAccounts">; reference?: string; number: string }
+) {
+  const inTrust = dev.moneyHeldBy === "agency_trust";
+  const account = args.accountId
+    ? await getAccount(ctx, actor.orgId, args.accountId)
+    : await ensureAccount(ctx, actor.orgId, args.method === "cash" ? "cash" : inTrust ? "trust" : "business", s.currency);
+  if (account.currency !== s.currency) throw new ConvexError(`This stand is in ${s.currency}`);
+  return postTransaction(
+    ctx,
+    actor,
+    {
+      date: args.date,
+      kind: "payment",
+      number: args.number,
+      description: `Refund on cancelled stand ${s.standNumber}, ${dev.name}`,
+      method: args.method,
+      reference: args.reference?.trim() || undefined,
+      contactId: s.buyerContactId,
+      counterparty: s.buyerName,
+      standId: s._id,
+      developmentId: dev._id,
+    },
+    [
+      { currency: s.currency, amount: -args.amount, accountId: account._id },
+      inTrust
+        ? { currency: s.currency, amount: -args.amount, ledger: "developer", key: dev._id }
+        : { currency: s.currency, amount: -args.amount, ledger: "agency", categoryId: await categoryByKey(ctx, actor.orgId, "stand_sales") },
+    ]
+  );
+}
+
+/**
+ * Post Sync Dev payments recorded before the agency had Sync Finance, with
+ * their original receipt numbers. Safe to run again; 150 per call.
+ */
+export const bringInDevPayments = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const access = await requireFinance(ctx);
+    requireDirector(access);
+    const pays = await ctx.db
+      .query("devPayments")
+      .withIndex("by_org", (q) => q.eq("orgId", access.orgId))
+      .collect();
+    let posted = 0;
+    let remaining = 0;
+    const errors: string[] = [];
+    for (const p of pays.sort((a, b) => (a.date < b.date ? -1 : 1))) {
+      if (p.finTxId || p.reversedAt) continue;
+      if (posted + errors.length >= 150) {
+        remaining++;
+        continue;
+      }
+      try {
+        const s = await ctx.db.get(p.standId);
+        const dev = s ? await ctx.db.get(s.developmentId) : null;
+        if (!s || !dev) throw new ConvexError("Sale not found");
+        const args = { date: p.date, amount: p.amount, method: p.method, reference: p.reference, number: p.number };
+        const txId =
+          p.kind === "receipt"
+            ? (await postStandReceipt(ctx, access, s, dev, args, { noFee: s.status === "cancelled" })).txId
+            : await postStandRefund(ctx, access, s, dev, args);
+        await ctx.db.patch(p._id, { finTxId: txId });
+        posted++;
+      } catch (e) {
+        errors.push(`${p.number}: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+    await financeAudit(ctx, access, {
+      action: "finance.dev_catch_up",
+      description: `Brought in ${posted} Sync Dev payments`,
+      targetType: "organization",
+      targetId: access.orgId,
+      metadata: { posted, errors: errors.length },
+    });
+    return { posted, errors, remaining };
+  },
+});
 
 // ── Migration from Sync Stay ─────────────────────────────────────────
 

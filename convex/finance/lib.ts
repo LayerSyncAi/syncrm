@@ -167,6 +167,13 @@ export function planState(schedule: PlanRow[], paid: number, today: string): Pla
   return { paidToDate, balance: round2(Math.max(0, due - paidToDate)), overdue, nextDueDate, nextDueAmount, rows };
 }
 
+/** The same day next month, or that month's last day when it is shorter. */
+export function sameDayNextMonth(date: string): string {
+  const [y, m, d] = date.split("-").map(Number);
+  const last = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  return new Date(Date.UTC(y, m, Math.min(d, last))).toISOString().slice(0, 10);
+}
+
 /**
  * An even payment plan: a deposit, then `count` monthly instalments of the
  * balance from `firstDue`, the last one absorbing rounding.

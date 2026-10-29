@@ -8,6 +8,7 @@ const MODULE_NAMES: Record<ModuleKey, string> = {
   stay: "Sync Stay",
   worth: "Sync Worth",
   finance: "Sync Finance",
+  dev: "Sync Dev",
   media: "SyncMedia",
 };
 

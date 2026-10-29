@@ -14,12 +14,11 @@
  * importId, so undo() reverses a whole import in one action.
  */
 import { ConvexError, v } from "convex/values";
-import { mutation, query, MutationCtx } from "../_generated/server";
+import { mutation, query, MutationCtx, QueryCtx } from "../_generated/server";
 import { Doc, Id } from "../_generated/dataModel";
 import { normalizePhone } from "../contacts";
 import { nameMaps } from "../stay/shared";
 import {
-  FinanceAccess,
   ensureCategories,
   financeAudit,
   getSettings,
@@ -34,11 +33,27 @@ import {
 } from "./core";
 import { buildPlan, checkDate, round2 } from "./lib";
 import { finAccountType, finCurrency } from "../schemas/finance";
-import { insertStand, recomputeStand } from "./stands";
+import { cancelSale, insertStand } from "../dev/sales";
+import { requireSales } from "../dev/access";
 
 type RowResult = { row: number; ok: boolean; message?: string };
 
-async function getImport(ctx: MutationCtx, access: FinanceAccess, id: Id<"finImports">) {
+/**
+ * Imports of buyers on payment plans belong to Sync Dev as much as Finance:
+ * a director of either may run them. Money imports need Sync Finance.
+ */
+async function importAccess(ctx: QueryCtx | MutationCtx, kind: Doc<"finImports">["kind"]) {
+  if (kind === "stands") {
+    const access = await requireSales(ctx);
+    if (!access.isDirector) throw new ConvexError("Director access required");
+    return access;
+  }
+  const access = await requireFinance(ctx);
+  requireDirector(access);
+  return access;
+}
+
+async function getImport(ctx: MutationCtx, access: { orgId: Id<"organizations"> }, id: Id<"finImports">) {
   const imp = await ctx.db.get(id);
   if (!imp || imp.orgId !== access.orgId) throw new ConvexError("Import not found");
   if (imp.undoneAt) throw new ConvexError("This import was undone");
@@ -74,8 +89,7 @@ async function findContact(ctx: MutationCtx, orgId: Id<"organizations">, who: { 
 export const start = mutation({
   args: { kind: v.union(v.literal("opening"), v.literal("transactions"), v.literal("stands")), fileName: v.string(), rowCount: v.number() },
   handler: async (ctx, args) => {
-    const access = await requireFinance(ctx);
-    requireDirector(access);
+    const access = await importAccess(ctx, args.kind);
     return ctx.db.insert("finImports", {
       orgId: access.orgId,
       kind: args.kind,
@@ -327,8 +341,7 @@ export const standsBatch = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const access = await requireFinance(ctx);
-    requireDirector(access);
+    const access = await importAccess(ctx, "stands");
     const imp = await getImport(ctx, access, args.importId);
     const devs = await ctx.db
       .query("finDevelopments")
@@ -336,7 +349,7 @@ export const standsBatch = mutation({
       .collect();
     const results = await eachRow(args.rows, async (r) => {
       const dev = devs.find((d) => norm(d.name) === norm(r.development));
-      if (!dev) throw new ConvexError(`No development called "${r.development}". Add it under Instalments first.`);
+      if (!dev) throw new ConvexError(`No development called "${r.development}". Add the development first.`);
       const buyer = await findContact(ctx, access.orgId, { name: r.buyerName, phone: r.buyerPhone, email: r.buyerEmail });
       await insertStand(ctx, access, {
         developmentId: dev._id,
@@ -359,17 +372,17 @@ export const standsBatch = mutation({
 // ── Review and undo ──────────────────────────────────────────────────
 
 export const list = query({
-  args: {},
-  handler: async (ctx) => {
-    const access = await requireFinance(ctx);
-    requireDirector(access);
+  args: { kind: v.optional(v.literal("stands")) },
+  handler: async (ctx, args) => {
+    const access = await importAccess(ctx, args.kind ?? "opening");
     const rows = await ctx.db
       .query("finImports")
       .withIndex("by_org", (q) => q.eq("orgId", access.orgId))
       .order("desc")
       .take(50);
-    const names = await nameMaps(ctx, { users: rows.map((r) => r.createdByUserId) });
-    return rows.map((r) => ({ ...r, by: userLabel(names.user(r.createdByUserId)) }));
+    const shown = args.kind ? rows.filter((r) => r.kind === args.kind) : rows;
+    const names = await nameMaps(ctx, { users: shown.map((r) => r.createdByUserId) });
+    return shown.map((r) => ({ ...r, by: userLabel(names.user(r.createdByUserId)) }));
   },
 });
 
@@ -377,8 +390,9 @@ export const list = query({
 export const undo = mutation({
   args: { importId: v.id("finImports"), reason: v.string() },
   handler: async (ctx, args) => {
-    const access = await requireFinance(ctx);
-    requireDirector(access);
+    const found = await ctx.db.get(args.importId);
+    if (!found) throw new ConvexError("Import not found");
+    const access = await importAccess(ctx, found.kind);
     const imp = await getImport(ctx, access, args.importId);
     const reason = args.reason.trim() || "Import undone";
     const txs = await ctx.db
@@ -398,8 +412,7 @@ export const undo = mutation({
       .collect();
     for (const s of stands) {
       if (s.status === "cancelled") continue;
-      await ctx.db.patch(s._id, { status: "cancelled", updatedAt: Date.now() });
-      await recomputeStand(ctx, s._id);
+      await cancelSale(ctx, s);
       total++;
     }
     await ctx.db.patch(imp._id, { undoneAt: Date.now(), undoneByUserId: access.user._id });

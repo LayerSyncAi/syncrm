@@ -8,6 +8,7 @@ import { stayTables } from "./schemas/stay";
 import { worthTables } from "./schemas/worth";
 import { financeTables } from "./schemas/finance";
 import { notifyTables } from "./schemas/notify";
+import { devTables } from "./schemas/dev";
 
 export default defineSchema({
   ...authTables,
@@ -536,6 +537,7 @@ export default defineSchema({
       v.literal("stay"),
       v.literal("worth"),
       v.literal("finance"),
+      v.literal("dev"),
       v.literal("other")
     ),
     // Optional polymorphic target reference, e.g. the user/lead/property acted on.
@@ -850,6 +852,7 @@ export default defineSchema({
       v.literal("stay"),
       v.literal("worth"),
       v.literal("finance"),
+      v.literal("dev"),
       v.literal("media")
     ),
     kind: v.string(),
@@ -868,4 +871,5 @@ export default defineSchema({
   ...worthTables,
   ...financeTables,
   ...notifyTables,
+  ...devTables,
 });

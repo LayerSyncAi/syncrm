@@ -32,7 +32,7 @@ import { LEDGER_LABELS, round2 } from "./lib";
 import { finMethod } from "../schemas/finance";
 import { reverseWithFee } from "./posting";
 import { recomputeInvoice } from "./invoices";
-import { recomputeStand } from "./stands";
+import { recomputeStand } from "../dev/sales";
 import { documentEmail, queueDocumentEmail } from "./emails";
 import { receiptDocument } from "./documents";
 
