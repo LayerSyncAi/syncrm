@@ -45,6 +45,8 @@ export interface EmailOptions {
   subject: string;
   html: string;
   text?: string;
+  /** Files to attach; content is base64. */
+  attachments?: Array<{ filename: string; content: string }>;
 }
 
 const DEFAULT_FROM = "Syncrm <admin@accesshealthcare.co.zw>";
@@ -74,6 +76,7 @@ export async function sendEmail(
     console.log("To:", options.to);
     console.log("Subject:", options.subject);
     console.log("Text:", options.text || "(html only)");
+    if (options.attachments?.length) console.log("Attachments:", options.attachments.map((a) => a.filename).join(", "));
     console.log("============================================");
     result = { success: true, messageId: `dev-${Date.now()}` };
     status = "dev_logged";
@@ -87,6 +90,7 @@ export async function sendEmail(
         subject: options.subject,
         html: options.html,
         text: options.text,
+        ...(options.attachments?.length ? { attachments: options.attachments } : {}),
       });
 
       if (error) {

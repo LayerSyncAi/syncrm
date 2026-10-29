@@ -6,6 +6,8 @@ import { activityTypeValidator } from "./lib/activityTypes";
 import { estateRoleValidator, moduleKeyValidator } from "./lib/modules";
 import { stayTables } from "./schemas/stay";
 import { worthTables } from "./schemas/worth";
+import { financeTables } from "./schemas/finance";
+import { notifyTables } from "./schemas/notify";
 
 export default defineSchema({
   ...authTables,
@@ -533,6 +535,7 @@ export default defineSchema({
       v.literal("system"),
       v.literal("stay"),
       v.literal("worth"),
+      v.literal("finance"),
       v.literal("other")
     ),
     // Optional polymorphic target reference, e.g. the user/lead/property acted on.
@@ -580,6 +583,9 @@ export default defineSchema({
     .index("by_status", ["status"]),
   contacts: defineTable({
     name: v.string(),
+    // Sync Finance: this landlord's default management commission %, applied
+    // to their properties; a property or lease can still differ (FN-30).
+    landlordFeePct: v.optional(v.number()),
     phone: v.optional(v.string()),
     normalizedPhone: v.optional(v.string()),
     email: v.optional(v.string()),
@@ -843,6 +849,7 @@ export default defineSchema({
       v.literal("crm"),
       v.literal("stay"),
       v.literal("worth"),
+      v.literal("finance"),
       v.literal("media")
     ),
     kind: v.string(),
@@ -859,4 +866,6 @@ export default defineSchema({
 
   ...stayTables,
   ...worthTables,
+  ...financeTables,
+  ...notifyTables,
 });

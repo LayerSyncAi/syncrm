@@ -10,7 +10,7 @@ import { dateTimeLabel, timeAgo } from "../../lib/format";
 import { colors, font, space } from "../../lib/theme";
 
 type Tab = "email" | "audit";
-type AuditCategory = "auth" | "user" | "lead" | "property" | "email" | "system" | "stay" | "worth" | "other";
+type AuditCategory = "auth" | "user" | "lead" | "property" | "email" | "system" | "stay" | "worth" | "finance" | "other";
 type EmailStatus = "sent" | "failed" | "dev_logged";
 
 function Summary() {

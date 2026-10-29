@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useMutation, useQuery } from "convex/react";
 import { Download, FileText, Mail, Send } from "lucide-react";
 import { api } from "../../../../../convex/_generated/api";
@@ -37,6 +38,8 @@ export default function StatementsPage() {
   const validMonth = /^\d{4}-\d{2}$/.test(month);
   const overview = useQuery(api.stay.statements.overview, validMonth ? { month } : "skip");
   const emailAll = useMutation(api.stay.statements.emailAll);
+  const hub = useQuery(api.hub.getContext);
+  const financeOn = !!hub?.enabledModules.includes("finance");
 
   async function handleEmailAll() {
     setSendingAll(true);
@@ -57,6 +60,14 @@ export default function StatementsPage() {
 
   return (
     <div className="space-y-6">
+      {financeOn && (
+        <div className="rounded-[12px] border border-border-strong bg-surface-2 p-3 text-sm">
+          Landlord statements now come from Sync Finance.{" "}
+          <Link href="/app/finance/trust" className="font-medium text-primary-600 hover:underline">
+            Open Trust and landlords
+          </Link>
+        </div>
+      )}
       <StayPageHeader
         title="Landlord statements"
         description="Rent collected in the month, less the management fee and recharged expenses. This is the simple statement used when Sync Finance is not switched on."

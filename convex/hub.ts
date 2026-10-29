@@ -50,6 +50,10 @@ export const getContext = query({
       myModules: userModules(viewer, org),
       estateRoles: me.estateRoles ?? [],
       isAdmin: viewer.role === "admin",
+      // Sync Notify sits in the Hub: directors and client-facing roles.
+      canNotify:
+        viewer.role === "admin" ||
+        (me.estateRoles ?? []).some((r) => r === "accounts" || r === "marketing" || r === "sales_manager" || r === "property_manager"),
     };
   },
 });

@@ -9,7 +9,11 @@
 import type { LucideIcon } from "lucide-react";
 import {
   BarChart3,
+  ArrowLeftRight,
+  Banknote,
   Building2,
+  CalendarClock,
+  Upload,
   ClipboardCheck,
   ClipboardList,
   Coins,
@@ -17,10 +21,12 @@ import {
   FileSignature,
   FileText,
   Gauge,
+  HandCoins,
   HardHat,
   Home,
   KeyRound,
   Landmark,
+  Percent,
   LayoutDashboard,
   Megaphone,
   Palette,
@@ -76,6 +82,7 @@ export const MODULES: Record<ModuleKey, ModuleDef> = {
       "/app/properties",
       "/app/viewings",
       "/app/tasks",
+      "/app/commission",
       "/app/reports",
       "/app/admin/stages",
       "/app/admin/lead-scoring",
@@ -89,6 +96,7 @@ export const MODULES: Record<ModuleKey, ModuleDef> = {
       { label: "Properties", href: "/app/properties", icon: Building2 },
       { label: "Viewings", href: "/app/viewings", icon: FileSignature },
       { label: "Tasks", href: "/app/tasks", icon: ClipboardList },
+      { label: "My commission", href: "/app/commission", icon: HandCoins },
       { label: "Reports", href: "/app/reports", icon: BarChart3 },
     ],
   },
@@ -134,6 +142,30 @@ export const MODULES: Record<ModuleKey, ModuleDef> = {
     ],
     adminNav: [{ label: "Worth settings", href: "/app/worth/settings", icon: Settings }],
   },
+  finance: {
+    key: "finance",
+    name: "Sync Finance",
+    tagline: "Trust money, payouts and statements",
+    description: "One record of client money and agency income: receipts, trust balances, landlord payouts, commission, instalments and the statements that prove them.",
+    icon: Coins,
+    accent: "bg-teal-600 text-white",
+    homeHref: "/app/finance",
+    routes: ["/app/finance"],
+    nav: [
+      { label: "Dashboard", href: "/app/finance", icon: Gauge },
+      { label: "Money in and out", href: "/app/finance/money", icon: ArrowLeftRight },
+      { label: "Trust and landlords", href: "/app/finance/trust", icon: Landmark },
+      { label: "Payouts", href: "/app/finance/payouts", icon: Banknote },
+      { label: "Invoices", href: "/app/finance/invoices", icon: Receipt },
+      { label: "Commissions", href: "/app/finance/commissions", icon: Percent },
+      { label: "Instalments", href: "/app/finance/instalments", icon: CalendarClock },
+      { label: "Reports", href: "/app/finance/reports", icon: FileBarChart },
+    ],
+    adminNav: [
+      { label: "Finance settings", href: "/app/finance/settings", icon: Settings },
+      { label: "Import and migrate", href: "/app/finance/import", icon: Upload },
+    ],
+  },
   media: {
     key: "media",
     name: "SyncMedia",
@@ -148,17 +180,16 @@ export const MODULES: Record<ModuleKey, ModuleDef> = {
   },
 };
 
-export const MODULE_ORDER: ModuleKey[] = ["crm", "stay", "worth", "media"];
+export const MODULE_ORDER: ModuleKey[] = ["crm", "stay", "worth", "finance", "media"];
 
 /** Modules on the roadmap, shown on the Hub as coming soon. */
 export const UPCOMING_MODULES: Array<{ name: string; tagline: string; icon: LucideIcon }> = [
-  { name: "Sync Finance", tagline: "Trust accounts, payouts and statements", icon: Coins },
   { name: "Sync Dev", tagline: "Development projects and sales", icon: HardHat },
   { name: "Sync HR", tagline: "People, leave and payroll", icon: ShieldCheck },
 ];
 
 /** Routes that belong to the Hub itself rather than any module. */
-export const HUB_ROUTES = ["/app/hub", "/app/settings", "/app/admin/users", "/app/admin/roles", "/app/admin/logs", "/app/platform", "/app/force-change-password"];
+export const HUB_ROUTES = ["/app/hub", "/app/notify", "/app/settings", "/app/admin/users", "/app/admin/roles", "/app/admin/logs", "/app/platform", "/app/force-change-password"];
 
 /** The module a path belongs to, or "hub". Unclaimed /app paths are CRM. */
 export function moduleForPath(pathname: string): ModuleKey | "hub" {

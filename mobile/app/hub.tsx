@@ -18,11 +18,13 @@ export default function Hub() {
   const crm = useQuery(api.hub.crmSummary, mine.includes("crm") ? {} : "skip");
   const stay = useQuery(api.stay.dashboard.hubSummary, mine.includes("stay") ? {} : "skip");
   const worth = useQuery(api.worth.dashboard.hubSummary, mine.includes("worth") ? {} : "skip");
+  const finance = useQuery(api.finance.reports.hubSummary, mine.includes("finance") ? {} : "skip");
   const notes = useQuery(api.notifications.listMine, hub ? { limit: 5 } : "skip");
   const figures: Array<[ModuleKey, typeof crm]> = [
     ["crm", crm],
     ["stay", stay],
     ["worth", worth],
+    ["finance", finance],
   ];
   const go = (href: string | null) => href && router.push(href as Href);
   const firstName = (user?.fullName || user?.name || "").split(" ")[0];

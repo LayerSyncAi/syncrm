@@ -9,9 +9,14 @@ type Agency = { name: string; address?: string; phone?: string; email?: string; 
 const GREEN: [number, number, number] = [5, 150, 105];
 const GREY = 110;
 
-async function loadImage(url?: string | null): Promise<{ data: string; format: "PNG" | "JPEG"; w: number; h: number } | null> {
+async function loadImage(url?: string | null, doc?: Doc): Promise<{ data: string; format: "PNG" | "JPEG"; w: number; h: number } | null> {
   if (!url) return null;
   try {
+    // A logo already loaded as a data URL (the server, which has no Image).
+    if (url.startsWith("data:") && doc) {
+      const p = doc.getImageProperties(url);
+      return { data: url, format: /png/i.test(p.fileType) ? "PNG" : "JPEG", w: p.width || 1, h: p.height || 1 };
+    }
     const res = await fetch(url);
     const blob = await res.blob();
     if (!/png|jpe?g/i.test(blob.type)) return null;
@@ -36,11 +41,11 @@ async function loadImage(url?: string | null): Promise<{ data: string; format: "
 type Doc = InstanceType<(typeof import("jspdf"))["jsPDF"]>;
 
 /** Logo on the left, agency details on the right. Returns the y below it. */
-async function letterhead(doc: Doc, agency: Agency, logoUrl?: string | null): Promise<number> {
+export async function letterhead(doc: Doc, agency: Agency, logoUrl?: string | null): Promise<number> {
   const pageW = doc.internal.pageSize.getWidth();
   const margin = 40;
   let y = 40;
-  const logo = await loadImage(logoUrl);
+  const logo = await loadImage(logoUrl, doc);
   if (logo) {
     const h = 44;
     const w = Math.min(160, (logo.w / logo.h) * h);

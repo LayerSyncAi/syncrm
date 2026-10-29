@@ -32,6 +32,7 @@ export default function HubPage() {
   const crm = useQuery(api.hub.crmSummary, mine.includes("crm") ? {} : "skip");
   const stay = useQuery(api.stay.dashboard.hubSummary, mine.includes("stay") ? {} : "skip");
   const worth = useQuery(api.worth.dashboard.hubSummary, mine.includes("worth") ? {} : "skip");
+  const finance = useQuery(api.finance.reports.hubSummary, mine.includes("finance") ? {} : "skip");
   const notifications = useQuery(api.notifications.listMine, { limit: 5 });
   const markRead = useMutation(api.notifications.markRead);
 
@@ -60,6 +61,7 @@ export default function HubPage() {
     { key: "crm" as const, figures: crm },
     { key: "stay" as const, figures: stay },
     { key: "worth" as const, figures: worth },
+    { key: "finance" as const, figures: finance },
   ].filter((s) => mine.includes(s.key) && s.figures && s.figures.length > 0);
 
   return (

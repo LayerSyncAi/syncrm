@@ -12,6 +12,7 @@ import { addTo, CurrencyTotals, formatAmount, isValidDate, round2 } from "./ledg
 import { canSeeLease, depositForLease, leaseLabels, stayAudit, todayForOrg } from "./shared";
 import { applyDepositToCharges, owedOnChain } from "./money";
 import { depositHeldInValidator } from "./validators";
+import { postDepositMove, postDepositSettlement } from "../finance/posting";
 
 function heldOf(d: Doc<"stayDeposits">) {
   return round2(d.amountReceived - d.amountApplied - d.amountRefunded);
@@ -66,6 +67,7 @@ export const settle = mutation({
       status: left <= 0 ? "settled" : "held",
       updatedAt: now,
     });
+    await postDepositSettlement(ctx, access, deposit, { date: args.date, apply, refund, landlordContactId: lease.landlordContactId });
     await stayAudit(ctx, access, {
       action: "stay.deposit_settle",
       description: `Deposit: applied ${formatAmount(apply, deposit.currency)}, refunded ${formatAmount(refund, deposit.currency)}`,
@@ -86,6 +88,7 @@ export const setHeldIn = mutation({
     const deposit = await depositForLease(ctx, lease._id);
     if (!deposit) throw new ConvexError("No deposit is recorded on this lease");
     if (deposit.heldIn === args.heldIn) return;
+    await postDepositMove(ctx, access, deposit, args.heldIn);
     await ctx.db.patch(deposit._id, { heldIn: args.heldIn, updatedAt: Date.now() });
     await stayAudit(ctx, access, {
       action: "stay.deposit_held_in",
