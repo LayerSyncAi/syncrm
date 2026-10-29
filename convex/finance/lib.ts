@@ -41,6 +41,8 @@ export const DEFAULT_CATEGORIES: Array<{ name: string; kind: "income" | "expense
   { name: "Stand sales commission", kind: "income", key: "stand_commission" },
   { name: "Stand sales", kind: "income", key: "stand_sales" },
   { name: "Other income", kind: "income", key: "other_income" },
+  // VAT charged on invoices: owed to the tax authority, never agency income.
+  { name: "VAT collected", kind: "income", key: "vat_collected" },
   { name: "Agent commission", kind: "expense", key: "agent_commission" },
   { name: "Salaries", kind: "expense" },
   { name: "Fuel", kind: "expense" },
@@ -211,6 +213,18 @@ export function standRemindersDue(
     }
   }
   return out;
+}
+
+/**
+ * The reminder to send today and the keys to mark sent: one message per
+ * stand per day, the overdue notice first. It covers every overdue
+ * instalment; a "due soon" reminder for another instalment waits a day.
+ */
+export function pickReminder<T extends { key: string; kind: "before" | "overdue" }>(due: T[]): { pick: T; markSent: string[] } | null {
+  if (!due.length) return null;
+  const pick = due.find((d) => d.kind === "overdue") ?? due[0];
+  const markSent = pick.kind === "overdue" ? due.filter((d) => d.kind === "overdue").map((d) => d.key) : [pick.key];
+  return { pick, markSent };
 }
 
 /** Simple interest for one month on an overdue amount. */

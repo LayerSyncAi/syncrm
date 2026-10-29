@@ -52,7 +52,11 @@ export async function moveFee(ctx: MutationCtx, actor: Actor, receiptId: Id<"fin
     { currency: fee.currency, amount: -fee.amount, ledger: fee.ledger, key: fee.key, stayPropertyId: tx.stayPropertyId },
     { currency: fee.currency, amount: fee.amount, ledger: "agency", categoryId },
   ];
-  if (fee.accountId !== business._id) {
+  // From a bank account the commission moves to the business account. From
+  // the cash float nothing physically moves: the cash stays in the drawer
+  // until it is banked, so only who it belongs to changes.
+  const source = await ctx.db.get(fee.accountId);
+  if (fee.accountId !== business._id && source?.type !== "cash") {
     lines.push({ currency: fee.currency, amount: -fee.amount, accountId: fee.accountId });
     lines.push({ currency: fee.currency, amount: fee.amount, accountId: business._id });
   }
@@ -230,7 +234,14 @@ export async function postDepositSettlement(
   ctx: MutationCtx,
   actor: Actor,
   deposit: Doc<"stayDeposits">,
-  args: { date: string; apply: number; refund: number; landlordContactId: Id<"contacts"> }
+  args: {
+    date: string;
+    apply: number;
+    refund: number;
+    landlordContactId: Id<"contacts">;
+    // What the applied amount settled, so lease admin fees go to the agency.
+    applied: Array<{ chargeId: Id<"stayCharges">; amount: number }>;
+  }
 ) {
   const org = await ctx.db.get(actor.orgId);
   if (!financeOn(org) || deposit.heldIn === "landlord") return;
@@ -238,14 +249,21 @@ export async function postDepositSettlement(
   const held = await ensureAccount(ctx, actor.orgId, deposit.heldIn === "trust" ? "trust" : "business", currency);
   const base = { leaseId: deposit.leaseId, stayPropertyId: deposit.stayPropertyId };
   if (args.apply > 0) {
-    const lines: NewLine[] = [
-      { currency, amount: -args.apply, ledger: "deposit", key: deposit._id },
-      { currency, amount: args.apply, ledger: "landlord", key: args.landlordContactId, stayPropertyId: deposit.stayPropertyId },
-    ];
-    if (held.type !== "trust") {
-      const trust = await ensureAccount(ctx, actor.orgId, "trust", currency);
-      lines.push({ currency, amount: -args.apply, accountId: held._id }, { currency, amount: args.apply, accountId: trust._id });
+    // As with a Stay receipt: lease admin fees are agency income, the rest is
+    // the landlord's. Applied deposit carries no commission (Stay's rule).
+    let adminFee = 0;
+    for (const a of args.applied) {
+      const c = await ctx.db.get(a.chargeId);
+      if (c?.kind === "admin_fee") adminFee = round2(adminFee + a.amount);
     }
+    const toLandlord = round2(args.apply - adminFee);
+    const lines: NewLine[] = [{ currency, amount: -args.apply, ledger: "deposit", key: deposit._id }];
+    if (toLandlord > 0) lines.push({ currency, amount: toLandlord, ledger: "landlord", key: args.landlordContactId, stayPropertyId: deposit.stayPropertyId });
+    if (adminFee > 0) lines.push({ currency, amount: adminFee, ledger: "agency", categoryId: await categoryByKey(ctx, actor.orgId, "lease_admin_fee") });
+    // Landlord money belongs in trust and agency money in business.
+    const other = await ensureAccount(ctx, actor.orgId, held.type === "trust" ? "business" : "trust", currency);
+    const moving = held.type === "trust" ? adminFee : toLandlord;
+    if (moving > 0) lines.push({ currency, amount: -moving, accountId: held._id }, { currency, amount: moving, accountId: other._id });
     await postTransaction(ctx, actor, { ...base, date: args.date, kind: "transfer", description: "Deposit applied to amounts owed" }, lines, { allowNegative: true });
   }
   if (args.refund > 0) {
@@ -271,11 +289,15 @@ export async function postDepositMove(
   ctx: MutationCtx,
   actor: Actor,
   deposit: Doc<"stayDeposits">,
-  to: Doc<"stayDeposits">["heldIn"]
+  to: Doc<"stayDeposits">["heldIn"],
+  isDirector: boolean
 ) {
   const org = await ctx.db.get(actor.orgId);
   const from = deposit.heldIn;
   if (!financeOn(org) || from === to) return;
+  // Moving client money is a director's call, as for any transfer out of trust.
+  const stillHeld = round2(deposit.amountReceived - deposit.amountApplied - deposit.amountRefunded);
+  if (stillHeld > 0 && !isDirector) throw new ConvexError("A director must move a deposit the agency holds");
   const currency = deposit.currency;
   const today = await todayForOrg(ctx, actor.orgId);
   const base = { date: today, leaseId: deposit.leaseId, stayPropertyId: deposit.stayPropertyId };

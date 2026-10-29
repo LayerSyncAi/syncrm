@@ -31,7 +31,7 @@ import {
   requireFinanceStaff,
   todayForOrg,
 } from "./core";
-import { buildPlan, feeOn, monthlyInterest, planState, round2, standRemindersDue } from "./lib";
+import { buildPlan, feeOn, monthlyInterest, pickReminder, planState, round2, standRemindersDue } from "./lib";
 import { finCurrency, finMethod } from "../schemas/finance";
 import { documentEmail, queueDocumentEmail } from "./emails";
 import { standStatementDocument } from "./documents";
@@ -694,8 +694,8 @@ export const developerReport = query({
     let commission = 0;
     let paidOut = 0;
     for (const l of lines) {
-      if (l.amount >= 0) continue;
       const t = await ctx.db.get(l.txId);
+      // Net of reversals: a reversed payout or commission adds back.
       if (t?.payoutId) paidOut = round2(paidOut - l.amount);
       else if (t?.kind === "transfer") commission = round2(commission - l.amount);
     }
@@ -753,7 +753,7 @@ export const runForOrg = internalMutation({
       if (!due.length) continue;
       // One message per stand per day: the most pressing reminder, sent on
       // the agency's preferred channel through Sync Notify.
-      const pick = due.find((d) => d.kind === "overdue") ?? due[0];
+      const { pick, markSent } = pickReminder(due)!;
       const dev = devs.get(s.developmentId);
       const c = s.currency;
       const item = `stand ${s.standNumber}${dev ? `, ${dev.name}` : ""}`;
@@ -773,7 +773,7 @@ export const runForOrg = internalMutation({
         relatedType: "finStand",
         relatedId: s._id,
       });
-      await ctx.db.patch(s._id, { remindersSent: [...s.remindersSent, ...due.map((d) => d.key)] });
+      await ctx.db.patch(s._id, { remindersSent: [...s.remindersSent, ...markSent] });
     }
   },
 });

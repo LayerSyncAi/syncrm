@@ -395,6 +395,8 @@ export async function reverseTransaction(
       stayPropertyId: tx.stayPropertyId,
       invoiceId: tx.invoiceId,
       payoutId: tx.payoutId,
+      // A reversed commission is still commission (statements net it off).
+      feeOfTxId: tx.feeOfTxId,
       dealCommissionId: tx.dealCommissionId,
       agentUserId: tx.agentUserId,
       standId: tx.standId,

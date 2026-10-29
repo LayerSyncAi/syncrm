@@ -257,15 +257,22 @@ export const prepareMonthly = mutation({
     const settings = await getSettings(ctx, access.orgId);
     const balances = await ledgerBalances(ctx, access.orgId, "landlord");
     let count = 0;
+    const skipped: string[] = [];
     for (const [key, t] of balances) {
       const held = t[args.currency] ?? 0;
       const available = round2(held - (await preparedTotal(ctx, access.orgId, "landlord", key, args.currency)));
       if (available <= 0) continue;
-      const id = await prepareOne(ctx, access, { ledger: "landlord", key, currency: args.currency, amount: available, date: args.date, method: args.method });
-      if (args.payNow && access.canApprove && settings.approvers === "one") await payOne(ctx, access, id);
-      count++;
+      // One landlord that cannot be paid (e.g. a deleted contact) must not
+      // stop the run for everyone else. prepareOne checks before it writes.
+      try {
+        const id = await prepareOne(ctx, access, { ledger: "landlord", key, currency: args.currency, amount: available, date: args.date, method: args.method });
+        if (args.payNow && access.canApprove && settings.approvers === "one") await payOne(ctx, access, id);
+        count++;
+      } catch (e) {
+        skipped.push(`${formatAmount(available, args.currency)}: ${e instanceof Error ? e.message : String(e)}`);
+      }
     }
-    return { count };
+    return { count, skipped };
   },
 });
 

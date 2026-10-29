@@ -8,6 +8,7 @@ import {
   invoiceTotals,
   isLocked,
   monthlyInterest,
+  pickReminder,
   planState,
   standRemindersDue,
 } from "../../convex/finance/lib";
@@ -114,6 +115,21 @@ describe("payment plans", () => {
     expect(standRemindersDue(st.rows, "2026-02-25", 7, ["before:2026-02-28"])).toEqual([]);
     const late = planState(plan, 2000, "2026-03-02");
     expect(standRemindersDue(late.rows, "2026-03-02", 7, ["before:2026-02-28"]).map((d) => d.key)).toEqual(["overdue:2026-02-28"]);
+  });
+});
+
+describe("instalment reminders", () => {
+  it("sends the overdue notice first without swallowing a due-soon reminder", () => {
+    const due = [
+      { key: "overdue:2026-09-01", kind: "overdue" as const },
+      { key: "overdue:2026-10-01", kind: "overdue" as const },
+      { key: "before:2026-11-01", kind: "before" as const },
+    ];
+    const r = pickReminder(due)!;
+    expect(r.pick.key).toBe("overdue:2026-09-01");
+    expect(r.markSent).toEqual(["overdue:2026-09-01", "overdue:2026-10-01"]);
+    expect(pickReminder(due.filter((d) => !r.markSent.includes(d.key)))!.markSent).toEqual(["before:2026-11-01"]);
+    expect(pickReminder([])).toBeNull();
   });
 });
 

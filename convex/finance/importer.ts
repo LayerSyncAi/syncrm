@@ -29,9 +29,10 @@ import {
   requireDirector,
   requireFinance,
   reverseTransaction,
+  todayForOrg,
   userLabel,
 } from "./core";
-import { buildPlan, round2 } from "./lib";
+import { buildPlan, checkDate, round2 } from "./lib";
 import { finAccountType, finCurrency } from "../schemas/finance";
 import { insertStand, recomputeStand } from "./stands";
 
@@ -134,6 +135,9 @@ export const openingBatch = mutation({
     requireDirector(access);
     const imp = await getImport(ctx, access, args.importId);
     const settings = await getSettings(ctx, access.orgId);
+    // Checked once up front: a row must not write Stay records and then fail.
+    const dateErr = checkDate(args.date, await todayForOrg(ctx, access.orgId), settings.lockedThrough);
+    if (dateErr) throw new ConvexError(`Go-live date: ${dateErr}`);
     const results = await eachRow(args.rows, async (r) => {
       const amount = round2(r.amount);
       if (amount === 0) throw new ConvexError("Amount is zero");

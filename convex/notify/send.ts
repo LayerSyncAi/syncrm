@@ -147,7 +147,7 @@ export const loadForDelivery = internalQuery({
       .query("notifySettings")
       .withIndex("by_org", (q) => q.eq("orgId", m.orgId))
       .unique();
-    return { message: m, org, smsSealed: settings?.smsSealed ?? null, senderName: settings?.senderName ?? null };
+    return { message: m, org, smsSealed: settings?.smsSealed ?? null, senderName: settings?.senderName ?? null, replyTo: settings?.replyTo ?? null };
   },
 });
 
@@ -187,7 +187,7 @@ export const deliver = internalAction({
         } else {
           const subject = m.subject || `Message from ${data.senderName || data.org?.name || "us"}`;
           const r = await sendEmail(
-            { to: m.to, subject, html: emailHtml(data.org, data.senderName, subject, m.body), text: m.body },
+            { to: m.to, subject, html: emailHtml(data.org, data.senderName, subject, m.body), text: m.body, replyTo: data.replyTo ?? undefined },
             ctx,
             { kind: `notify_${m.kind}`, orgId: m.orgId, relatedType: "notifyMessage", relatedId: m._id, triggeredByUserId: m.createdByUserId }
           );

@@ -613,6 +613,9 @@ function MonthlyModal({ open, onClose, fin, canPayNow }: { open: boolean; onClos
         res.count ? `${res.count} ${res.count === 1 ? "payout" : "payouts"} ${canPayNow && payNow ? "paid" : "prepared"}` : "No landlord has money available",
         { description: currency }
       );
+      if (res.skipped.length) {
+        animatedToast.error(`${res.skipped.length} could not be prepared`, { description: res.skipped.join(". ") });
+      }
       onClose();
     } catch (e) {
       setError(getErrorMessage(e));

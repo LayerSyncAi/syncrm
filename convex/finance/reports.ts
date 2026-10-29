@@ -269,9 +269,11 @@ export const incomeExpense = query({
     const cats = new Map((await listCategories(ctx, access.orgId)).map((c) => [c._id as string, c]));
     const by = new Map<string, { month: string; category: string; kind: "income" | "expense"; currency: FinCurrency; amount: number }>();
     for (const l of lines) {
-      // Agency lines without a category are opening balances, not income.
+      // Agency lines without a category are opening balances, not income;
+      // VAT collected is owed to the tax authority.
       if (!l.categoryId) continue;
       const c = cats.get(l.categoryId);
+      if (c?.key === "vat_collected") continue;
       const kind = c?.kind ?? (l.amount >= 0 ? "income" : "expense");
       const k = `${l.date.slice(0, 7)}|${c?._id ?? "none"}|${l.currency}`;
       const row = by.get(k) ?? { month: l.date.slice(0, 7), category: c?.name ?? "Uncategorised", kind, currency: l.currency, amount: 0 };

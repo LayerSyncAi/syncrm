@@ -63,12 +63,20 @@ async function moneyFor(ctx: Ctx, dcId: Id<"dealCommissions">) {
     .collect();
   let received = 0;
   const paid = new Map<string, number>();
+  const isVat = new Map<string, boolean>();
   for (const t of txs) {
     const lines = await ctx.db
       .query("finLines")
       .withIndex("by_tx", (q) => q.eq("txId", t._id))
       .collect();
-    const agency = round2(lines.filter((l) => l.ledger === "agency").reduce((s, l) => s + l.amount, 0));
+    let agency = 0;
+    for (const l of lines) {
+      if (l.ledger !== "agency") continue;
+      // VAT on a commission invoice is not commission received.
+      if (l.categoryId && !isVat.has(l.categoryId)) isVat.set(l.categoryId, (await ctx.db.get(l.categoryId))?.key === "vat_collected");
+      if (l.categoryId && isVat.get(l.categoryId)) continue;
+      agency = round2(agency + l.amount);
+    }
     if (t.agentUserId) paid.set(t.agentUserId, round2((paid.get(t.agentUserId) ?? 0) - agency));
     else received = round2(received + agency);
   }

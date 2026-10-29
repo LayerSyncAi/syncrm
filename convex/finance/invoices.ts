@@ -200,10 +200,14 @@ export const recordPayment = mutation({
       shares.set(k, round2((shares.get(k) ?? 0) + l.quantity * l.unitPrice));
     }
     const ledgerLines: NewLine[] = [];
-    let left = amount;
+    // The VAT share of the payment is kept apart from income (FN-34).
+    const vat = inv.vat > 0 ? round2((amount * inv.vat) / inv.total) : 0;
+    if (vat > 0) ledgerLines.push({ currency: inv.currency, amount: vat, ledger: "agency", categoryId: await categoryByKey(ctx, access.orgId, "vat_collected") });
+    const net = round2(amount - vat);
+    let left = net;
     const keys = [...shares.keys()];
     keys.forEach((k, i) => {
-      const part = i === keys.length - 1 ? left : round2((amount * shares.get(k)!) / inv.subtotal);
+      const part = i === keys.length - 1 ? left : round2((net * shares.get(k)!) / inv.subtotal);
       left = round2(left - part);
       ledgerLines.push({ currency: inv.currency, amount: part, ledger: "agency", categoryId: k as Id<"finCategories"> });
     });

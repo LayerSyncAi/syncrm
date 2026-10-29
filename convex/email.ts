@@ -45,6 +45,8 @@ export interface EmailOptions {
   subject: string;
   html: string;
   text?: string;
+  /** Where replies go, e.g. the agency's own address. */
+  replyTo?: string;
   /** Files to attach; content is base64. */
   attachments?: Array<{ filename: string; content: string }>;
 }
@@ -91,6 +93,7 @@ export async function sendEmail(
         html: options.html,
         text: options.text,
         ...(options.attachments?.length ? { attachments: options.attachments } : {}),
+        ...(options.replyTo ? { replyTo: options.replyTo } : {}),
       });
 
       if (error) {
