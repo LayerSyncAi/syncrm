@@ -6,12 +6,13 @@
  */
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "../_generated/server";
-import { Doc } from "../_generated/dataModel";
+import { Doc, Id } from "../_generated/dataModel";
 import { getVisibleLease, requireLeaseEditor, requireStay } from "./access";
 import { addTo, CurrencyTotals, formatAmount, isValidDate, round2 } from "./ledger";
 import { canSeeLease, depositForLease, leaseLabels, stayAudit, todayForOrg } from "./shared";
 import { applyDepositToCharges, owedOnChain } from "./money";
 import { depositHeldInValidator } from "./validators";
+import { postDepositMove, postDepositSettlement } from "../finance/posting";
 
 function heldOf(d: Doc<"stayDeposits">) {
   return round2(d.amountReceived - d.amountApplied - d.amountRefunded);
@@ -47,8 +48,9 @@ export const settle = mutation({
     const now = Date.now();
     const note = args.note?.trim() || undefined;
     const movements = [...deposit.movements];
+    let applied: Array<{ chargeId: Id<"stayCharges">; amount: number }> = [];
     if (apply > 0) {
-      const applied = await applyDepositToCharges(ctx, lease, apply);
+      applied = await applyDepositToCharges(ctx, lease, apply);
       for (const a of applied) {
         movements.push({ kind: "applied", amount: a.amount, date: args.date, note, chargeId: a.chargeId, byUserId: access.user._id, at: now });
       }
@@ -66,6 +68,7 @@ export const settle = mutation({
       status: left <= 0 ? "settled" : "held",
       updatedAt: now,
     });
+    await postDepositSettlement(ctx, access, deposit, { date: args.date, apply, refund, landlordContactId: lease.landlordContactId, applied });
     await stayAudit(ctx, access, {
       action: "stay.deposit_settle",
       description: `Deposit: applied ${formatAmount(apply, deposit.currency)}, refunded ${formatAmount(refund, deposit.currency)}`,
@@ -86,6 +89,7 @@ export const setHeldIn = mutation({
     const deposit = await depositForLease(ctx, lease._id);
     if (!deposit) throw new ConvexError("No deposit is recorded on this lease");
     if (deposit.heldIn === args.heldIn) return;
+    await postDepositMove(ctx, access, deposit, args.heldIn, access.isDirector);
     await ctx.db.patch(deposit._id, { heldIn: args.heldIn, updatedAt: Date.now() });
     await stayAudit(ctx, access, {
       action: "stay.deposit_held_in",

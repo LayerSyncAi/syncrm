@@ -197,6 +197,7 @@ export default function LeaseDetailPage({ params }: { params: Promise<{ id: stri
               : []),
           ]}
         />
+        <LeaseCommissionRate leaseId={lease._id} propertyPct={lease.managementFeePct} leasePct={lease.leaseFeePct} />
       </Section>
 
       <Section title="Statement">
@@ -783,5 +784,90 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <Label>{label}</Label>
       {children}
     </div>
+  );
+}
+
+/**
+ * Sync Finance: give this lease its own management commission rate. Shown
+ * to the director and accounts when the user can open Finance.
+ */
+function LeaseCommissionRate({ leaseId, propertyPct, leasePct }: { leaseId: Id<"stayLeases">; propertyPct: number | null; leasePct: number | null }) {
+  const hub = useQuery(api.hub.getContext);
+  const canFinance = !!hub?.myModules.includes("finance");
+  const fin = useQuery(api.finance.settings.get, canFinance ? {} : "skip");
+  const setLeaseRate = useMutation(api.finance.posting.setLeaseRate);
+  const [open, setOpen] = React.useState(false);
+  const [pct, setPct] = React.useState("");
+  const [error, setError] = React.useState<string | null>(null);
+  const [busy, setBusy] = React.useState(false);
+
+  if (!canFinance || !fin?.role.isStaff) return null;
+
+  async function save(value: number | undefined) {
+    setBusy(true);
+    setError(null);
+    try {
+      await setLeaseRate({ leaseId, pct: value });
+      animatedToast.success(value === undefined ? "Lease uses the property's rate" : `Lease commission set to ${value}%`);
+      setOpen(false);
+    } catch (e) {
+      setError(getErrorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3 text-sm">
+        <span className="text-text-muted">
+          {leasePct !== null
+            ? `Sync Finance takes ${leasePct}% commission on this lease (its own rate).`
+            : `Sync Finance takes commission at the property's rate${propertyPct !== null ? ` (${propertyPct}%)` : ""}.`}
+        </span>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => {
+            setPct(leasePct !== null ? String(leasePct) : "");
+            setError(null);
+            setOpen(true);
+          }}
+        >
+          Set lease commission rate
+        </Button>
+      </div>
+      <Modal
+        open={open}
+        title="Lease commission rate"
+        description={`The property's rate is ${propertyPct !== null ? `${propertyPct}%` : "not set"}. A rate here applies to this lease only.`}
+        onClose={() => setOpen(false)}
+        footer={
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button variant="ghost" onClick={() => save(undefined)} disabled={busy}>
+              Use the property&apos;s rate
+            </Button>
+            <Button
+              disabled={busy}
+              onClick={() => {
+                const n = parseAmount(pct);
+                if (!(n >= 0 && n <= 100)) return setError("Enter a rate between 0 and 100.");
+                save(n);
+              }}
+            >
+              {busy ? "Saving..." : "Save rate"}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <FormError message={error} />
+          <div className="space-y-2">
+            <Label>Commission rate (%)</Label>
+            <Input inputMode="decimal" value={pct} onChange={(e) => setPct(e.target.value)} placeholder={propertyPct !== null ? String(propertyPct) : "10"} />
+          </div>
+        </div>
+      </Modal>
+    </>
   );
 }

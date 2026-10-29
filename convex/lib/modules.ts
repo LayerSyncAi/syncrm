@@ -11,13 +11,14 @@
  */
 import { v } from "convex/values";
 
-export const MODULE_KEYS = ["crm", "stay", "worth", "media"] as const;
+export const MODULE_KEYS = ["crm", "stay", "worth", "finance", "media"] as const;
 export type ModuleKey = (typeof MODULE_KEYS)[number];
 
 export const moduleKeyValidator = v.union(
   v.literal("crm"),
   v.literal("stay"),
   v.literal("worth"),
+  v.literal("finance"),
   v.literal("media")
 );
 
@@ -71,6 +72,8 @@ const MODULE_ROLES: Record<ModuleKey, readonly EstateRole[] | "everyone"> = {
   media: "everyone",
   stay: ["property_manager", "accounts"],
   worth: ["valuer", "signing_valuer", "valuations_admin", "accounts"],
+  // Sales agents see their own commission statement from the CRM instead.
+  finance: ["accounts", "property_manager"],
 };
 
 type OrgLike = { enabledModules?: readonly ModuleKey[] | null } | null | undefined;

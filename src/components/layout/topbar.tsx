@@ -40,6 +40,9 @@ const titleMap: Record<string, string> = {
   "/app/admin/stages": "Stages",
   "/app/platform": "Platform",
   "/app/hub": "Sync Estate",
+  "/app/notify": "Sync Notify",
+  "/app/finance": "Sync Finance",
+  "/app/commission": "My commission",
   "/app/settings": "Agency settings",
 };
 

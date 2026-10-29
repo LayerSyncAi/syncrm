@@ -13,6 +13,9 @@ import { PortalAccess, requirePortal } from "./access";
 import { shapeMaintenanceRequest } from "../stay/maintenance";
 import { inspectionDetail } from "../stay/inspections";
 import { statementForProperties } from "../stay/statements";
+import { landlordStatementFor } from "../finance/trust";
+import { financeOn } from "../finance/core";
+import { METHOD_LABELS } from "../stay/validators";
 import { agencyOf } from "../stay/shared";
 import { notifyUsers } from "../lib/notify";
 import { recordAudit } from "../logs";
@@ -281,6 +284,40 @@ export const documents = query({
       }
     }
     return out.sort((a, b) => b.createdAt - a.createdAt);
+  },
+});
+
+/**
+ * With Sync Finance on, the landlord sees Finance's statement and their
+ * remittance advices, read-only (BRD Finance §4). Null when Finance is off,
+ * so the page falls back to the Stay statement.
+ */
+export const financeStatement = query({
+  args: { month: v.string() },
+  handler: async (ctx, args) => {
+    const access = await requirePortal(ctx, "landlord");
+    if (!financeOn(access.org)) return null;
+    const st = await landlordStatementFor(ctx, access.org, access.contactId, args.month);
+    const payouts = (
+      await ctx.db
+        .query("finPayouts")
+        .withIndex("by_org_ledger_key", (q) => q.eq("orgId", access.orgId).eq("ledger", "landlord").eq("key", access.contactId))
+        .collect()
+    )
+      .filter((p) => p.status === "paid")
+      .sort((a, b) => (a.date < b.date ? 1 : -1))
+      .slice(0, 24)
+      .map((p) => ({
+        _id: p._id,
+        number: p.number,
+        date: p.date,
+        currency: p.currency,
+        amount: p.amount,
+        method: METHOD_LABELS[p.method],
+        reference: p.reference ?? "",
+        lines: p.remittance,
+      }));
+    return { ...st, payouts };
   },
 });
 

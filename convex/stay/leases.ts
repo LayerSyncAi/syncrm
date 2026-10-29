@@ -131,6 +131,8 @@ export const get = query({
       renewedFromLeaseId: lease.renewedFromLeaseId ?? null,
       renewedToLeaseId: lease.renewedToLeaseId ?? null,
       managementFeePct: sp?.managementFeePct ?? null,
+      // Sync Finance: this lease's own rate, when it differs from the property's.
+      leaseFeePct: lease.managementFeePct ?? null,
       balance: acc.balance,
       overdue: acc.overdue,
       credit: acc.credit,

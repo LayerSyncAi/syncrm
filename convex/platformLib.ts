@@ -25,6 +25,24 @@ export const PURGE_TABLE_ORDER = [
   "stayUnits",
   "stayProperties",
   "staySettings",
+  // Sync Finance: lines before the transactions they post, transactions
+  // before the invoices, payouts and stands they point at.
+  "finLines",
+  "finAccountMonths",
+  "finReconciliations",
+  "finTransactions",
+  "finPayouts",
+  "finInvoices",
+  "finStands",
+  "finDevelopments",
+  "finImports",
+  "finCategories",
+  "finAccounts",
+  "finSettings",
+  // Sync Notify: messages before the campaigns they belong to.
+  "notifyMessages",
+  "notifyCampaigns",
+  "notifySettings",
   // Sync Worth (see convex/schemas/worth.ts).
   "worthJobComparables",
   "worthReports",

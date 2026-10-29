@@ -25,6 +25,7 @@ import {
 import { allocateToLease, unwindPayment } from "./money";
 import { queueEmail, receiptEmail } from "./emails";
 import { METHOD_LABELS, depositHeldInValidator, paymentMethodValidator } from "./validators";
+import { postStayPayment, reverseStayPayment } from "../finance/posting";
 
 const currencyValidator = v.union(v.literal("USD"), v.literal("ZiG"));
 
@@ -145,6 +146,9 @@ export async function recordPayment(
     }
   }
 
+  // Sync Finance, when switched on, posts the receipt to the trust ledger.
+  await postStayPayment(ctx, access, paymentId);
+
   const label = await leaseLabels(ctx, [lease]);
   const lab = label(lease);
   await stayAudit(ctx, access, {
@@ -250,6 +254,7 @@ export const reverse = mutation({
     }
 
     await ctx.db.patch(payment._id, { reversedAt: now, reversedByUserId: access.user._id, reverseReason: reason });
+    await reverseStayPayment(ctx, access, payment._id, reason);
     await stayAudit(ctx, access, {
       action: "stay.payment_reverse",
       description: `Reversed receipt ${payment.receiptNumber} (${formatAmount(payment.amount, payment.currency)}): ${reason}`,

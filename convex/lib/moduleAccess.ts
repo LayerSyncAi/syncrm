@@ -7,6 +7,7 @@ const MODULE_NAMES: Record<ModuleKey, string> = {
   crm: "SynCRM",
   stay: "Sync Stay",
   worth: "Sync Worth",
+  finance: "Sync Finance",
   media: "SyncMedia",
 };
 

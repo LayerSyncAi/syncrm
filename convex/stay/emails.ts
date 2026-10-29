@@ -65,7 +65,7 @@ export async function queueEmail(
 
 export type Agency = { name: string; address?: string; phone?: string; email?: string };
 
-function shell(agency: Agency, preheader: string, content: string): string {
+export function shell(agency: Agency, preheader: string, content: string): string {
   const contact = [agency.address, agency.phone, agency.email].filter(Boolean).map((s) => escapeHtml(s!)).join(" &middot; ");
   return `<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -81,11 +81,11 @@ ${contact ? `<tr><td style="padding:16px 28px;background-color:#f8fafc;border-to
 </table></td></tr></table></body></html>`;
 }
 
-function p(html: string) {
+export function p(html: string) {
   return `<p style="margin:12px 0 0 0;">${html}</p>`;
 }
 
-function rows(items: Array<[string, string]>): string {
+export function rows(items: Array<[string, string]>): string {
   const tr = items
     .map(
       ([k, val]) =>
@@ -95,7 +95,7 @@ function rows(items: Array<[string, string]>): string {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0 0 0;border:1px solid #e2e8f0;border-radius:8px;font-family:${EMAIL_FONT};font-size:14px;">${tr}</table>`;
 }
 
-function table(head: string[], body: string[][]): string {
+export function table(head: string[], body: string[][]): string {
   const th = head
     .map((h, i) => `<th style="padding:8px;background:#f1f5f9;font-size:12px;text-align:${i === 0 ? "left" : "right"};color:#475569;">${escapeHtml(h)}</th>`)
     .join("");

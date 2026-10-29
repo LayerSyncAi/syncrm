@@ -15,6 +15,7 @@ import {
   LayoutGrid,
   ScrollText,
   Search,
+  Send,
   Server,
   Settings,
   Shield,
@@ -57,6 +58,8 @@ const hubAdminItems = [
 ];
 
 const hubItem = { label: "Hub", href: "/app/hub", icon: LayoutGrid };
+
+const notifyItem = { label: "Sync Notify", href: "/app/notify", icon: Send };
 
 const platformItem = { label: "Platform", href: "/app/platform", icon: Server };
 
@@ -371,7 +374,11 @@ export const Sidebar = memo(function Sidebar({ isAdmin, isPlatformAdmin, collaps
         {(current === "crm"
           ? navItems
           : current === "hub"
-            ? [hubItem, ...myModules.map((k) => ({ label: MODULES[k].name, href: MODULES[k].homeHref, icon: MODULES[k].icon }))]
+            ? [
+                hubItem,
+                ...(hub?.canNotify ? [notifyItem] : []),
+                ...myModules.map((k) => ({ label: MODULES[k].name, href: MODULES[k].homeHref, icon: MODULES[k].icon })),
+              ]
             : MODULES[current].nav
         ).map((item) => (
           <NavItem
