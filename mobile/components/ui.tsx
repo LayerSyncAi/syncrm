@@ -326,17 +326,20 @@ export function Button({
 
 const BUTTONS: Record<ButtonVariant, { bg: string; fg: string; border: string }> = {
   primary: { bg: colors.primary, fg: colors.onPrimary, border: colors.primary },
-  brand: { bg: colors.brand, fg: "#fff", border: colors.brand },
+  // The old two-accent design had a separate green "brand" button; there is
+  // now one main button style, the green fill with charcoal text.
+  brand: { bg: colors.primary, fg: colors.onPrimary, border: colors.primary },
   secondary: { bg: colors.card, fg: colors.text, border: colors.borderStrong },
   danger: { bg: colors.card, fg: colors.danger, border: "#fecaca" },
   ghost: { bg: "transparent", fg: colors.brand, border: "transparent" },
 };
 
-/** Round floating button for the main action on a list screen. */
+/** The screen's main job (New lead, Record payment) as a green pill within thumb reach. */
 export function Fab({ icon = "add", onPress, label }: { icon?: IconName; onPress: () => void; label: string }) {
   return (
-    <Pressable accessibilityLabel={label} onPress={onPress} style={({ pressed }) => [styles.fab, pressed && { opacity: 0.85 }]}>
-      <Ionicons name={icon} size={26} color="#fff" />
+    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => [styles.fab, pressed && { opacity: 0.85 }]}>
+      <Ionicons name={icon} size={22} color={colors.onPrimary} />
+      <Text style={styles.fabText}>{label}</Text>
     </Pressable>
   );
 }
@@ -521,8 +524,8 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: space.xl, backgroundColor: colors.background },
   card: { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: space.lg, gap: space.sm },
   sectionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  sectionTitle: { fontSize: font.sm, fontWeight: "700", color: colors.muted, textTransform: "uppercase", letterSpacing: 0.6 },
-  title: { fontSize: font.xl, fontWeight: "700", color: colors.text },
+  sectionTitle: { fontSize: font.xs, fontWeight: "600", color: colors.muted, textTransform: "uppercase", letterSpacing: 1.2 },
+  title: { fontSize: font.xxl, fontWeight: "600", color: colors.text, letterSpacing: -0.6 },
   body: { fontSize: font.md, color: colors.text, lineHeight: 21 },
   fact: { flexDirection: "row", justifyContent: "space-between", gap: space.md },
   factLabel: { fontSize: font.sm, color: colors.muted, flexShrink: 0 },
@@ -534,8 +537,9 @@ const styles = StyleSheet.create({
   badge: { borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 3, alignSelf: "flex-start" },
   badgeText: { fontSize: font.xs, fontWeight: "700" },
   stat: { flexBasis: "47%", flexGrow: 1, gap: 2, padding: space.md },
-  statLabel: { fontSize: font.xs, color: colors.muted, fontWeight: "600" },
-  statValue: { fontSize: font.lg, fontWeight: "700" },
+  // Small capitals label over a large, light figure, as on the website's KPI tiles.
+  statLabel: { fontSize: font.xs, color: colors.muted, fontWeight: "500", textTransform: "uppercase", letterSpacing: 0.8 },
+  statValue: { fontSize: 24, fontWeight: "300", letterSpacing: -0.5, marginTop: 4 },
   statHint: { fontSize: font.xs, color: colors.faint },
   statGrid: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
   listItem: { flexDirection: "row", alignItems: "center", gap: space.md, padding: space.md },
@@ -544,16 +548,17 @@ const styles = StyleSheet.create({
   listSubtitle: { fontSize: font.sm, color: colors.muted, marginTop: 2 },
   listMeta: { fontSize: font.xs, color: colors.faint, marginTop: 2 },
   listRight: { fontSize: font.sm, fontWeight: "600", color: colors.text },
-  search: { flexDirection: "row", alignItems: "center", gap: space.sm, backgroundColor: colors.card, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: space.md },
+  search: { flexDirection: "row", alignItems: "center", gap: space.sm, backgroundColor: colors.card, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.border, paddingHorizontal: space.md },
   searchInput: { flex: 1, paddingVertical: 10, fontSize: font.md, color: colors.text },
   chip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.borderStrong, backgroundColor: colors.card },
   chipOn: { backgroundColor: colors.brand, borderColor: colors.brand },
   chipText: { fontSize: font.sm, color: colors.text, fontWeight: "500" },
   chipTextOn: { color: "#fff" },
-  button: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: space.sm, minHeight: 48, paddingHorizontal: space.lg, borderRadius: radius.md, borderWidth: 1 },
+  button: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: space.sm, minHeight: 48, paddingHorizontal: space.lg, borderRadius: radius.pill, borderWidth: 1 },
   buttonSmall: { minHeight: 36, paddingHorizontal: space.md },
   buttonText: { fontSize: font.md, fontWeight: "600" },
-  fab: { position: "absolute", right: space.lg, bottom: space.xl, width: 56, height: 56, borderRadius: 28, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center", elevation: 4, shadowColor: "#000", shadowOpacity: 0.2, shadowRadius: 6, shadowOffset: { width: 0, height: 3 } },
+  fab: { position: "absolute", right: space.lg, bottom: space.xl, height: 56, paddingHorizontal: 20, borderRadius: radius.pill, backgroundColor: colors.primary, flexDirection: "row", alignItems: "center", gap: space.sm, elevation: 4, shadowColor: colors.ink, shadowOpacity: 0.25, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } },
+  fabText: { fontSize: font.md, fontWeight: "600", color: colors.onPrimary },
   field: { gap: 6 },
   label: { fontSize: font.sm, fontWeight: "600", color: colors.text },
   input: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radius.md, paddingHorizontal: space.md, paddingVertical: 12, fontSize: font.md, color: colors.text },

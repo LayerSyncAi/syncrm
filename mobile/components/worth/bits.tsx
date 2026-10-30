@@ -1,4 +1,4 @@
-/** Small building blocks shared by the Sync Worth screens. */
+/** Small building blocks shared by the SyncWorth screens. */
 import { useEffect, useState, type ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
 import { getErrorMessage } from "@/lib/errors";

@@ -8,5 +8,5 @@ export default function FinanceInstalments() {
   const fin = useFinance();
   if (fin === undefined) return <Loading />;
   if (!fin.role.isStaff) return <StaffOnly />;
-  return <BuyersList hrefFor={(id) => `/finance/instalments/${id}`} emptyHint="Developments and stands are set up in Sync Dev or on the website." />;
+  return <BuyersList hrefFor={(id) => `/finance/instalments/${id}`} emptyHint="Developments and stands are set up in SyncDev or on the website." />;
 }

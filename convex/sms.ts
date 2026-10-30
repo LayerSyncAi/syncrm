@@ -1,7 +1,7 @@
 /**
  * SMS sender with Twilio.
  *
- * Each agency can set its own Twilio account in Sync Notify settings; the
+ * Each agency can set its own Twilio account in SyncNotify settings; the
  * deployment's env vars are the fallback:
  *   - TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN
  *   - TWILIO_FROM: the sending number or alphanumeric sender id

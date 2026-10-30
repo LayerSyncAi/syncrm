@@ -1,5 +1,5 @@
 /**
- * Data migrations for Sync Dev. Run from the CLI; each is safe to re-run.
+ * Data migrations for SyncDev. Run from the CLI; each is safe to re-run.
  *
  *   npx convex run dev/migrations:linkInventory
  *   # repeat until isDone is true
@@ -8,7 +8,7 @@ import { v } from "convex/values";
 import { internalMutation } from "../_generated/server";
 
 /**
- * Give every sale made before Sync Dev existed (in Finance's Instalments or
+ * Give every sale made before SyncDev existed (in Finance's Instalments or
  * by import) its inventory stand, so the stand grid shows it. Live sales
  * mark their stand sold; cancelled ones leave it available.
  */

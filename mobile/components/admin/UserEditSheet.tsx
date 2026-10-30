@@ -1,4 +1,4 @@
-/** Edit one user: role, Sync Estate roles, branch, timezone, active status and password reset. */
+/** Edit one user: role, SyncEstate roles, branch, timezone, active status and password reset. */
 import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import { useAction, useMutation, useQuery } from "convex/react";
@@ -53,16 +53,16 @@ export function UserEditSheet({ user, meId, onClose }: { user: User | null; meId
       />
 
       <View style={{ gap: space.sm }}>
-        <Text style={{ fontSize: font.sm, fontWeight: "600", color: colors.muted }}>Sync Estate roles</Text>
+        <Text style={{ fontSize: font.sm, fontWeight: "600", color: colors.muted }}>SyncEstate roles</Text>
         {user.role === "admin" ? (
           <Body small muted>Admins open every module and need no roles.</Body>
         ) : (
           <>
             <CheckList options={ESTATE_ROLES.map((r) => ({ value: r, label: ESTATE_ROLE_LABELS[r] }))} value={draft} onChange={setDraft} />
             <Body small muted>
-              Roles decide which modules an agent can open. Property manager and Accounts open Sync Stay. Valuer, Signing valuer, Valuations admin and Accounts open Sync Worth. Admins open everything.
+              Roles decide which modules an agent can open. Property manager and Accounts open SyncStay. Valuer, Signing valuer, Valuations admin and Accounts open SyncWorth. Admins open everything.
             </Body>
-            <Button title="Save roles" small disabled={busy || !dirty} onPress={() => run(() => setEstateRoles({ userId: user._id, roles: draft }), { success: "Sync Estate roles updated." })} />
+            <Button title="Save roles" small disabled={busy || !dirty} onPress={() => run(() => setEstateRoles({ userId: user._id, roles: draft }), { success: "SyncEstate roles updated." })} />
           </>
         )}
       </View>

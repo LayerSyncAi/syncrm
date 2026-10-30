@@ -1,5 +1,5 @@
 /**
- * Sync Dev dashboard and Hub figures: stands available, reserved and sold,
+ * SyncDev dashboard and Hub figures: stands available, reserved and sold,
  * and what buyers have paid and still owe, per currency.
  */
 import { query } from "../_generated/server";
@@ -58,7 +58,7 @@ export const summary = query({
   },
 });
 
-/** Headline figures for the Hub. Null when Sync Dev is not open to the caller. */
+/** Headline figures for the Hub. Null when SyncDev is not open to the caller. */
 export const hubSummary = query({
   args: {},
   handler: async (ctx): Promise<HubFigure[] | null> => {

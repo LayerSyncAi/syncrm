@@ -1,5 +1,5 @@
 /**
- * Sync Stay documents: leases, ID copies, inspection reports and other files
+ * SyncStay documents: leases, ID copies, inspection reports and other files
  * kept against a property or lease. Upload is the usual two steps: ask for an
  * upload URL, post the file to it, then save the storage id here.
  *

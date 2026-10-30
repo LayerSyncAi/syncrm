@@ -2,12 +2,12 @@
  * Who may use developments and stand sales.
  *
  * The data is shared by two modules an agency pays for separately, so each
- * works on its own: Sync Dev (inventory and sales) and Sync Finance (the
+ * works on its own: SyncDev (inventory and sales) and SyncFinance (the
  * instalment money). Either opens it.
  *
- *  - Sync Dev: every agent sees availability and can reserve a stand.
+ *  - SyncDev: every agent sees availability and can reserve a stand.
  *  - Directors, sales managers and accounts also price, sell, take payments
- *    and cancel. Accounts staff with Sync Finance do the same from Finance.
+ *    and cancel. Accounts staff with SyncFinance do the same from Finance.
  *  - Reversing a payment is for directors and accounts.
  */
 import { ConvexError } from "convex/values";
@@ -30,7 +30,7 @@ export async function requireSales(ctx: Ctx) {
   const isAccounts = hasEstateRole(user, "accounts");
   const viaDev = userCanUseModule(user, org, "dev");
   const viaFinance = userCanUseModule(user, org, "finance") && (user.role === "admin" || isAccounts);
-  if (!viaDev && !viaFinance) throw new ConvexError("Sync Dev is not available to you");
+  if (!viaDev && !viaFinance) throw new ConvexError("SyncDev is not available to you");
   const modules = orgModules(org);
   return {
     user,

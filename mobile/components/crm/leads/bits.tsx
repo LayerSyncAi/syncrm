@@ -6,12 +6,28 @@ import { api } from "../../../../convex/_generated/api";
 import { Badge, Button, DateField, Field, Ionicons, Row, Select } from "../../ui";
 import { canonicalizeArea } from "../../../../convex/lib/locations";
 import { getErrorMessage } from "@/lib/errors";
-import { CURRENCY_OPTIONS, scoreTone } from "../../../lib/crm/leads/helpers";
+import { CURRENCY_OPTIONS } from "../../../lib/crm/leads/helpers";
+import { TEMPERATURE_LABELS, temperatureOf } from "@/lib/temperature";
 import { colors, font, radius, space } from "../../../lib/theme";
 
-/** A lead score pill: "No score" until the lead is scored. */
+const TEMPERATURE_COLOURS = {
+  hot: { bg: colors.hotBg, fg: colors.hot },
+  warm: { bg: colors.warmBg, fg: colors.warm },
+  cold: { bg: colors.coldBg, fg: colors.cold },
+} as const;
+
+/** Temperature and score in one chip ("Hot 72"), as on the website. */
 export function ScoreBadge({ score }: { score: number | undefined | null }) {
-  return <Badge label={score === undefined || score === null ? "No score" : `Score ${score}`} tone={scoreTone(score)} />;
+  const t = temperatureOf(score);
+  if (!t) return <Badge label="No score" />;
+  const c = TEMPERATURE_COLOURS[t];
+  return (
+    <View style={{ borderRadius: radius.pill, paddingHorizontal: 8, paddingVertical: 3, alignSelf: "flex-start", backgroundColor: c.bg }}>
+      <Text style={{ fontSize: font.xs, fontWeight: "700", color: c.fg }}>
+        {TEMPERATURE_LABELS[t]} {score}
+      </Text>
+    </View>
+  );
 }
 
 /** A thin progress bar, 0 to 100. */

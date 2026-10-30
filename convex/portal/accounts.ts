@@ -4,7 +4,7 @@
  * The agency invites; there is no public sign-up. An invite creates (or
  * re-issues) a portal account with a one-off random password, forced to
  * change on first sign-in, and emails it with the login link. One email is
- * one login across Sync Estate, so an address already used by a staff
+ * one login across SyncEstate, so an address already used by a staff
  * account or another portal account is refused.
  */
 import { action, internalMutation, mutation, query } from "../_generated/server";
@@ -111,7 +111,7 @@ export const createInviteInternal = internalMutation({
       .withIndex("by_email", (q) => q.eq("email", email))
       .unique();
     if (byEmail && byEmail._id !== byContact?._id) {
-      throw new ConvexError("This email already has a Sync Estate login");
+      throw new ConvexError("This email already has a SyncEstate login");
     }
     const existing = byContact;
     let userId: Id<"users">;

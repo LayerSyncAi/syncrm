@@ -1,5 +1,5 @@
 /**
- * Sync Dev stand inventory: every stand in a development and whether it is
+ * SyncDev stand inventory: every stand in a development and whether it is
  * available, reserved or sold. Selling a stand creates the buyer's sale and
  * payment plan (sales.ts), linked both ways; cancelling the sale puts the
  * stand back on the market.
@@ -138,7 +138,7 @@ export const update = mutation({
   },
 });
 
-/** Hold a stand for someone. Any Sync Dev user can, so agents can act on the spot. */
+/** Hold a stand for someone. Any SyncDev user can, so agents can act on the spot. */
 export const reserve = mutation({
   args: { standId: v.id("devStands"), name: v.string(), phone: v.optional(v.string()), until: v.optional(v.string()) },
   handler: async (ctx, args) => {

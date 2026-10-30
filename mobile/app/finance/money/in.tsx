@@ -1,7 +1,7 @@
 /**
  * Money in: the agency's own income received on the spot, e.g. a fee paid in
  * cash at the office. A numbered receipt is issued and can be emailed.
- * Rent and deposits are recorded in Sync Stay instead.
+ * Rent and deposits are recorded in SyncStay instead.
  */
 import { useEffect, useMemo, useState } from "react";
 import { Text, View } from "react-native";
@@ -210,7 +210,7 @@ export default function MoneyIn() {
       <DateField label="Date received" value={date} onChange={setDate} />
 
       <Button variant="brand" title={busy ? "Saving..." : `Record ${value > 0 && account ? money(value, account.currency) : "money in"}`} onPress={submit} loading={busy} />
-      <Text style={{ fontSize: font.xs, color: colors.muted, textAlign: "center" }}>Rent and deposits are recorded in Sync Stay.</Text>
+      <Text style={{ fontSize: font.xs, color: colors.muted, textAlign: "center" }}>Rent and deposits are recorded in SyncStay.</Text>
     </Screen>
   );
 }

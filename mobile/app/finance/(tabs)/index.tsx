@@ -1,4 +1,4 @@
-/** Sync Finance dashboard: money in and out, balances and what is owed, this week or this month. */
+/** SyncFinance dashboard: money in and out, balances and what is owed, this week or this month. */
 import { useState } from "react";
 import { View } from "react-native";
 import { useRouter, type Href } from "expo-router";

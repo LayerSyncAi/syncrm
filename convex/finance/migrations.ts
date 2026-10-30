@@ -1,5 +1,5 @@
 /**
- * Data migrations for Sync Finance. Run from the CLI; each is safe to re-run.
+ * Data migrations for SyncFinance. Run from the CLI; each is safe to re-run.
  *
  *   npx convex run finance/migrations:rebuildAccountMonths '{"orgId":"..."}'
  *   # repeat with the returned cursor until isDone is true

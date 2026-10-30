@@ -1,8 +1,8 @@
 /**
- * Sync Estate Hub: the shared layer every module runs on.
+ * SyncEstate Hub: the shared layer every module runs on.
  *
  * Owns which modules an organisation has (switched on by LayerSync platform
- * staff), the Sync Estate roles a user holds, agency settings, and the CRM's
+ * staff), the SyncEstate roles a user holds, agency settings, and the CRM's
  * headline figures for the director dashboard. Stay and Worth serve their own
  * figures from `stay/dashboard.hubSummary` and `worth/dashboard.hubSummary`.
  */
@@ -53,7 +53,7 @@ export const getContext = query({
       landingHref: landingHref(viewer, org),
       estateRoles: me.estateRoles ?? [],
       isAdmin: viewer.role === "admin",
-      // Sync Notify sits in the Hub: directors and client-facing roles.
+      // SyncNotify sits in the Hub: directors and client-facing roles.
       canNotify:
         viewer.role === "admin" ||
         (me.estateRoles ?? []).some((r) => r === "accounts" || r === "marketing" || r === "sales_manager" || r === "property_manager"),
@@ -123,7 +123,7 @@ export const setOrgModulesCli = internalMutation({
 // Roles and agency settings (agency admin)
 // =====================
 
-/** HB-11: assign Sync Estate roles to a user of the admin's own org. */
+/** HB-11: assign SyncEstate roles to a user of the admin's own org. */
 export const adminSetEstateRoles = mutation({
   args: { userId: v.id("users"), roles: v.array(estateRoleValidator) },
   handler: async (ctx, args) => {

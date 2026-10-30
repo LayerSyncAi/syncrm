@@ -1,5 +1,5 @@
 /**
- * Sync Stay leases and charges (BRD Stay ST-11 to ST-16, ST-21).
+ * SyncStay leases and charges (BRD Stay ST-11 to ST-16, ST-21).
  *
  * Leases are never deleted. A renewal is a new lease row; the old one is
  * marked "renewed" and the two point at each other. Every change is audited.
@@ -131,7 +131,7 @@ export const get = query({
       renewedFromLeaseId: lease.renewedFromLeaseId ?? null,
       renewedToLeaseId: lease.renewedToLeaseId ?? null,
       managementFeePct: sp?.managementFeePct ?? null,
-      // Sync Finance: this lease's own rate, when it differs from the property's.
+      // SyncFinance: this lease's own rate, when it differs from the property's.
       leaseFeePct: lease.managementFeePct ?? null,
       balance: acc.balance,
       overdue: acc.overdue,

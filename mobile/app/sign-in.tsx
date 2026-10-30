@@ -38,13 +38,14 @@ export default function SignIn() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.brand }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.ink }}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-        <Screen style={{ backgroundColor: colors.brand }} contentStyle={{ justifyContent: "center", flexGrow: 1 }}>
+        {/* Charcoal with the green mark, as on the website's sign-in panel. */}
+        <Screen style={{ backgroundColor: colors.ink }} contentStyle={{ justifyContent: "center", flexGrow: 1 }}>
           <View style={{ alignItems: "center", gap: space.sm, marginBottom: space.md }}>
-            <Image source={require("../assets/images/icon.png")} style={{ width: 72, height: 72, borderRadius: 16 }} />
-            <Title style={{ color: "#fff" }}>Sync Estate</Title>
-            <Body style={{ color: "#dfe9dc" }}>One login for every module</Body>
+            <Image source={require("../assets/images/logo-mark.png")} style={{ width: 56, height: 65 }} resizeMode="contain" />
+            <Title style={{ color: "#fff", marginTop: space.sm }}>SyncEstate</Title>
+            <Body style={{ color: "rgba(238,242,243,0.7)", textAlign: "center" }}>One sign-in for every product your agency uses</Body>
           </View>
           <Card style={{ gap: space.md }}>
             <Field label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" autoComplete="email" textContentType="username" />

@@ -4,7 +4,7 @@ import { colors } from "../../lib/theme";
 
 export { ScreenError as ErrorBoundary } from "../../components/ScreenError";
 
-/** Sync Dev: tabs for developments and buyers, everything else pushed on this stack. */
+/** SyncDev: tabs for developments and buyers, everything else pushed on this stack. */
 export default function Layout() {
   return (
     <ModuleGate module="dev">

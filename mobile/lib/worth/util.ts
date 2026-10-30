@@ -1,5 +1,5 @@
 /**
- * Sync Worth labels and small helpers shared by the app's Worth screens.
+ * SyncWorth labels and small helpers shared by the app's Worth screens.
  * Labels and money formatting come from the website (and the backend's
  * dependency-free rules), so both read the same.
  */

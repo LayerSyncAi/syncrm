@@ -1,13 +1,13 @@
 /**
- * Sync Notify: the agency's correspondence, at Hub level.
+ * SyncNotify: the agency's correspondence, at Hub level.
  *
  * Each agency chooses its channels (email, SMS) once, in notifySettings.
  * Modules only trigger a message (convex/notify/send.ts queueMessage); Sync
  * Notify picks the channel, delivers it and keeps the outcome. Bulk sends
- * written in Sync Notify are campaigns: one row, plus a message per person.
+ * written in SyncNotify are campaigns: one row, plus a message per person.
  *
- * Module emails sent before Sync Notify (receipts, statements, reminders)
- * keep logging to emailLogs; the Sync Notify log shows both.
+ * Module emails sent before SyncNotify (receipts, statements, reminders)
+ * keep logging to emailLogs; the SyncNotify log shows both.
  */
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
@@ -41,7 +41,7 @@ export const notifyTables = {
     updatedAt: v.number(),
   }).index("by_org", ["orgId"]),
 
-  // A bulk send written in Sync Notify.
+  // A bulk send written in SyncNotify.
   notifyCampaigns: defineTable({
     orgId: v.id("organizations"),
     name: v.string(),
@@ -56,7 +56,7 @@ export const notifyTables = {
     createdAt: v.number(),
   }).index("by_org", ["orgId"]),
 
-  // Every message Sync Notify sends, and how it went.
+  // Every message SyncNotify sends, and how it went.
   notifyMessages: defineTable({
     orgId: v.id("organizations"),
     channel: notifyChannel,

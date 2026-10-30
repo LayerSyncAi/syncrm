@@ -1,6 +1,6 @@
 /**
- * Buyers paying for stands on a plan, overdue first. Shared by Sync Dev
- * (Buyers) and Sync Finance (Instalments); the caller says where a row opens.
+ * Buyers paying for stands on a plan, overdue first. Shared by SyncDev
+ * (Buyers) and SyncFinance (Instalments); the caller says where a row opens.
  */
 import { useMemo, useState } from "react";
 import { Text, View } from "react-native";

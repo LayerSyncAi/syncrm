@@ -1,5 +1,5 @@
 /**
- * Sync Worth emails: the issued report to the client (VW-63) and due-date
+ * SyncWorth emails: the issued report to the client (VW-63) and due-date
  * reminders to the assigned valuer (VW-12). Scheduled from mutations; without
  * RESEND_API_KEY they are only logged.
  */
@@ -116,7 +116,7 @@ export const sendDueAlert = internalAction({
     const { accent, tint } = overdue ? ACCENTS.red : ACCENTS.amber;
     const heading = overdue ? `${args.reference} is overdue` : `${args.reference} is due soon`;
     const content =
-      emailEyebrow("Sync Worth", accent, tint) +
+      emailEyebrow("SyncWorth", accent, tint) +
       emailHeading(escapeHtml(heading)) +
       emailText(
         overdue

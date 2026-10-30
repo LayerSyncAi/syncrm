@@ -52,7 +52,7 @@ crons.daily(
   internal.stay.inspections.processDueInspections
 );
 
-// Sync Stay rent cycle: rent increases, monthly rent charges and invoices,
+// SyncStay rent cycle: rent increases, monthly rent charges and invoices,
 // overdue reminders and lease expiry alerts. 03:30 UTC is 05:30 Harare, so
 // charges and emails are in place before the working day.
 crons.daily(
@@ -61,8 +61,8 @@ crons.daily(
   internal.stay.jobs.runDaily
 );
 
-// Sync Dev and Sync Finance: keep instalment balances current, release
-// lapsed reservations and send payment reminders through Sync Notify. 04:30 UTC is 06:30 Harare.
+// SyncDev and SyncFinance: keep instalment balances current, release
+// lapsed reservations and send payment reminders through SyncNotify. 04:30 UTC is 06:30 Harare.
 crons.daily(
   "finance instalments daily",
   { hourUTC: 4, minuteUTC: 30 },

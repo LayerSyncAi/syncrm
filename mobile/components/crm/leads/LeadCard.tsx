@@ -1,9 +1,10 @@
-/** One lead in the list or board: who, interest, score, stage and owner. */
-import { Pressable, Text, View } from "react-native";
+/** One lead in the list or board: who, interest, score, stage and owner, with one-tap Call and WhatsApp. */
+import { Linking, Pressable, Text, View } from "react-native";
 import { Badge, Card, Ionicons, Row } from "../../ui";
 import { interestLabel } from "../../../lib/crm/leads/helpers";
 import { ScoreBadge } from "./bits";
 import { colors, font, radius, space } from "../../../lib/theme";
+import { telHref, whatsAppHref } from "@/lib/phone";
 
 export type LeadCardData = {
   fullName: string;
@@ -30,6 +31,8 @@ export function LeadCard({
   onDelete?: () => void;
 }) {
   const locked = !!(lead.closedAt && lead.closeReason);
+  const tel = telHref(lead.phone);
+  const wa = whatsAppHref(lead.phone);
   return (
     <Card onPress={onPress} style={{ gap: space.sm }}>
       <Row style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -78,12 +81,41 @@ export function LeadCard({
         ) : (
           <View />
         )}
-        {onDelete && (
-          <Pressable onPress={onDelete} hitSlop={10} accessibilityLabel="Delete lead" style={{ padding: 4 }}>
-            <Ionicons name="trash-outline" size={18} color={colors.danger} />
-          </Pressable>
-        )}
+        <Row style={{ gap: space.sm }}>
+          {tel && <ContactButton icon="call-outline" label={`Call ${lead.fullName}`} onPress={() => Linking.openURL(tel)} />}
+          {wa && <ContactButton icon="logo-whatsapp" label={`WhatsApp ${lead.fullName}`} onPress={() => Linking.openURL(wa)} />}
+          {onDelete && (
+            <Pressable onPress={onDelete} hitSlop={10} accessibilityLabel="Delete lead" style={{ padding: 4 }}>
+              <Ionicons name="trash-outline" size={18} color={colors.danger} />
+            </Pressable>
+          )}
+        </Row>
       </Row>
     </Card>
+  );
+}
+
+/** A round outlined button for calling or messaging the lead. */
+function ContactButton({ icon, label, onPress }: { icon: "call-outline" | "logo-whatsapp"; label: string; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={6}
+      style={({ pressed }) => ({
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: colors.borderStrong,
+        backgroundColor: colors.card,
+        alignItems: "center",
+        justifyContent: "center",
+        opacity: pressed ? 0.7 : 1,
+      })}
+    >
+      <Ionicons name={icon} size={17} color={colors.text} />
+    </Pressable>
   );
 }

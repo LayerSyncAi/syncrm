@@ -1,5 +1,5 @@
 /**
- * Sync Stay PDFs as HTML for expo-print: receipts, landlord statements,
+ * SyncStay PDFs as HTML for expo-print: receipts, landlord statements,
  * tenant statements and reports. The phone counterpart of the website's
  * jsPDF builders in src/lib/stay/pdf.ts and tenant-statement-pdf.ts, with
  * the same content. Each returns a file name and HTML for sharePdf.

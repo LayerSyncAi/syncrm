@@ -1,5 +1,5 @@
 /**
- * Dependency-free Sync Worth rules: job references, the status workflow,
+ * Dependency-free SyncWorth rules: job references, the status workflow,
  * due-date flags and turnaround. Shared by the Convex functions and the app,
  * and unit-tested without the Convex runtime.
  */

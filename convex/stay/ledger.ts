@@ -1,5 +1,5 @@
 /**
- * Sync Stay money and date rules, kept pure (no Convex imports) so they can be
+ * SyncStay money and date rules, kept pure (no Convex imports) so they can be
  * unit-tested and shared by queries, mutations, the daily job and the app.
  *
  * Business dates are "YYYY-MM-DD" strings and periods are "YYYY-MM". All date
@@ -395,7 +395,7 @@ export function buildStatement(
   return { lines, balance };
 }
 
-// ── Landlord statement (no Sync Finance) ─────────────────────────────
+// ── Landlord statement (no SyncFinance) ─────────────────────────────
 
 export type LandlordCollection = {
   stayPropertyId: string;

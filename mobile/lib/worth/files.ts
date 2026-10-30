@@ -1,5 +1,5 @@
 /**
- * Phone file helpers for Sync Worth: inspection photos (several at once),
+ * Phone file helpers for SyncWorth: inspection photos (several at once),
  * images embedded in report PDFs, named PDF files for upload and sharing,
  * and CSV in and out (the website's Excel export and import).
  */

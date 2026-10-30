@@ -1,4 +1,4 @@
-/** Sync Worth dashboard: my jobs, open jobs by status, due dates, workload, turnaround and fees. */
+/** SyncWorth dashboard: my jobs, open jobs by status, due dates, workload, turnaround and fees. */
 import { Text, View } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { useQuery } from "convex/react";

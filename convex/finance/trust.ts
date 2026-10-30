@@ -218,7 +218,7 @@ export async function landlordStatementFor(ctx: Ctx, org: Doc<"organizations">, 
       else p.expenses = round2(p.expenses - l.amount);
       movements.push({ date: l.date, number: t?.number ?? "", description: t?.description ?? "", property: p.name, kind, amount: l.amount });
     }
-    // Rent charged and arrears from Sync Stay, for the properties we manage.
+    // Rent charged and arrears from SyncStay, for the properties we manage.
     for (const sp of sps) {
       for (const ch of leaseCharges) {
         if (ch.stayPropertyId !== sp._id || ch.currency !== currency || ch.status === "cancelled" || ch.kind === "admin_fee") continue;

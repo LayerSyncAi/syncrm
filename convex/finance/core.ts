@@ -1,5 +1,5 @@
 /**
- * Sync Finance server core: who may do what (BRD §4), settings, accounts and
+ * SyncFinance server core: who may do what (BRD §4), settings, accounts and
  * categories, and the one place money is posted or reversed.
  *
  * Every write that moves money goes through postTransaction, which checks
@@ -48,7 +48,7 @@ export async function requireFinance(ctx: Ctx) {
 
 /** Director or accounts clerk. Property managers only see their landlords. */
 export function requireFinanceStaff(access: FinanceAccess) {
-  if (!access.isStaff) throw new ConvexError("Your role cannot see this part of Sync Finance");
+  if (!access.isStaff) throw new ConvexError("Your role cannot see this part of SyncFinance");
 }
 
 export function requireDirector(access: FinanceAccess) {
@@ -195,7 +195,7 @@ const DEFAULT_ACCOUNT_NAMES = { trust: "Trust account", business: "Business acco
 
 /**
  * The first active account of a type and currency, created on first use so
- * posting from Sync Stay never fails for want of set-up. The agency renames
+ * posting from SyncStay never fails for want of set-up. The agency renames
  * it and adds bank details in settings.
  */
 export async function ensureAccount(

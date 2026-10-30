@@ -1,6 +1,6 @@
-# Sync Estate mobile app
+# SyncEstate mobile app
 
-The Android and iOS app for Sync Estate (SynCRM, Sync Stay, Sync Worth,
+The Android and iOS app for SyncEstate (SynCRM, SyncStay, SyncWorth,
 SyncMedia, the Hub and the landlord and tenant portals). Built with Expo and
 expo-router. It talks to the same Convex backend as the website, using the
 functions in `../convex`, so every rule and permission is enforced in one place.

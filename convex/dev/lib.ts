@@ -1,5 +1,5 @@
 /**
- * Sync Dev rules kept pure, shared by the server and the app.
+ * SyncDev rules kept pure, shared by the server and the app.
  */
 
 /**

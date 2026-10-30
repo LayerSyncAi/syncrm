@@ -1,5 +1,5 @@
 /**
- * The Sync Stay daily job (BRD Stay ST-13, ST-16, ST-20, ST-32).
+ * The SyncStay daily job (BRD Stay ST-13, ST-16, ST-20, ST-32).
  *
  * Once a day, for every agency with Stay switched on:
  *  1. leases: apply planned rent increases, raise the month's rent charge
@@ -64,7 +64,7 @@ async function systemAudit(
   orgId: Id<"organizations">,
   a: { action: string; description: string; targetType: string; targetId: string; metadata?: Record<string, unknown> }
 ) {
-  await recordAudit(ctx, { ...a, category: "stay", actorLabel: "Sync Stay daily job", orgId });
+  await recordAudit(ctx, { ...a, category: "stay", actorLabel: "SyncStay daily job", orgId });
 }
 
 export const runLeases = internalMutation({

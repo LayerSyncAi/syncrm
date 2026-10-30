@@ -57,7 +57,7 @@ export const update = mutation({
     });
     await stayAudit(ctx, access, {
       action: "stay.settings_update",
-      description: "Updated Sync Stay settings",
+      description: "Updated SyncStay settings",
       targetType: "staySettings",
       targetId: row._id,
       metadata: { invoiceLeadDays: lead, reminderDays, expiryAlertDays, receiptPrefix: prefix },

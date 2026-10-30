@@ -44,7 +44,7 @@ function financeRoute(rest: string): string {
   return "/finance";
 }
 
-/** Sync Dev keeps Developments and Buyers as tabs; the dashboard is the Developments tab. */
+/** SyncDev keeps Developments and Buyers as tabs; the dashboard is the Developments tab. */
 function devRoute(rest: string): string {
   const parts = rest.split("/").filter(Boolean); // ["dev", section, id?]
   const section = parts[1];

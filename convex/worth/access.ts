@@ -1,5 +1,5 @@
 /**
- * Sync Worth access rules (BRD Worth §3), enforced on the server:
+ * SyncWorth access rules (BRD Worth §3), enforced on the server:
  *  - director (org admin, not in Agent Mode): everything except issuing,
  *    which the BRD reserves for a registered signing valuer.
  *  - signing valuer: all jobs; reviews, approves or returns, issues.

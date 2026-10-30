@@ -545,9 +545,9 @@ async function otherModuleUses(ctx: QueryCtx, contactId: Id<"contacts">): Promis
     ctx.db.query("users").withIndex("by_portal_contact", (q) => q.eq("portalContactId", contactId)).first(),
   ]);
   const uses: string[] = [];
-  if (asLandlord || asTenant || portal) uses.push("Sync Stay");
-  if (asClient) uses.push("Sync Worth");
-  if (invoice || tx) uses.push("Sync Finance");
+  if (asLandlord || asTenant || portal) uses.push("SyncStay");
+  if (asClient) uses.push("SyncWorth");
+  if (invoice || tx) uses.push("SyncFinance");
   if (stand) uses.push("stand sales");
   return uses;
 }
@@ -955,7 +955,7 @@ export const getAcrossModules = query({
     const isAccounts = hasEstateRole(user, "accounts");
     const propertyTitle = async (propertyId: Id<"properties">) => (await ctx.db.get(propertyId))?.title ?? "Property";
 
-    // ── Sync Stay: properties they let, leases they rent ──
+    // ── SyncStay: properties they let, leases they rent ──
     const stayAccess = await allowed(requireStay(ctx));
     let stay = null;
     if (stayAccess) {
@@ -998,7 +998,7 @@ export const getAcrossModules = query({
       stay = { properties, leases, isTenant: rented.length > 0 };
     }
 
-    // ── Sync Finance: invoices and landlord payouts ──
+    // ── SyncFinance: invoices and landlord payouts ──
     // Mirrors finance/core.ts requireFinance and visibleLandlordIds; imported
     // here would form a cycle (stay/shared imports this module).
     const financeUser = await allowed(requireModuleUser(ctx, "finance"));
@@ -1042,7 +1042,7 @@ export const getAcrossModules = query({
       finance = invoices || payouts ? { invoices, payouts } : null;
     }
 
-    // ── Sync Worth: valuations they instructed ──
+    // ── SyncWorth: valuations they instructed ──
     const worthAccess = await allowed(requireWorth(ctx));
     let worth = null;
     if (worthAccess) {
@@ -1067,7 +1067,7 @@ export const getAcrossModules = query({
       };
     }
 
-    // ── Stand sales (Sync Dev, or Sync Finance instalments) ──
+    // ── Stand sales (SyncDev, or SyncFinance instalments) ──
     // Mirrors dev/access.ts requireSales, for the same import-cycle reason.
     const viaDev = userCanUseModule(user, org, "dev");
     const viaFinance = userCanUseModule(user, org, "finance") && (user.role === "admin" || isAccounts);

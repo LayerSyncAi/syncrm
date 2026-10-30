@@ -1,4 +1,4 @@
-/** Sync Dev home: stands available, reserved and sold, what buyers owe, and every development. */
+/** SyncDev home: stands available, reserved and sold, what buyers owe, and every development. */
 import { Text, View } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { useQuery } from "convex/react";
@@ -67,7 +67,7 @@ export default function DevHome() {
         )}
       </Section>
 
-      {!summary.role.financeOn && <Body small muted>Payments are recorded in Sync Dev. Sync Finance adds trust accounting and commission.</Body>}
+      {!summary.role.financeOn && <Body small muted>Payments are recorded in SyncDev. SyncFinance adds trust accounting and commission.</Body>}
     </Screen>
   );
 }

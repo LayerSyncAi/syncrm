@@ -1,18 +1,14 @@
 import { Flame, Snowflake, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TEMPERATURE_LABELS, temperatureOf } from "@/lib/temperature";
 
-export type Temperature = "hot" | "warm" | "cold";
-
-/** Same bands as the leads score filter: hot 70+, warm 40 to 69, cold below. */
-export function temperatureOf(score: number | null | undefined): Temperature | null {
-  if (score === null || score === undefined) return null;
-  return score >= 70 ? "hot" : score >= 40 ? "warm" : "cold";
-}
+export { temperatureOf };
+export type { Temperature } from "@/lib/temperature";
 
 const meta = {
-  hot: { label: "Hot", Icon: Flame, cls: "bg-[var(--hot-soft)] text-[var(--hot-ink)]" },
-  warm: { label: "Warm", Icon: Sun, cls: "bg-[var(--warm-soft)] text-[var(--warm-ink)]" },
-  cold: { label: "Cold", Icon: Snowflake, cls: "bg-[var(--cold-soft)] text-[var(--cold-ink)]" },
+  hot: { label: TEMPERATURE_LABELS.hot, Icon: Flame, cls: "bg-[var(--hot-soft)] text-[var(--hot-ink)]" },
+  warm: { label: TEMPERATURE_LABELS.warm, Icon: Sun, cls: "bg-[var(--warm-soft)] text-[var(--warm-ink)]" },
+  cold: { label: TEMPERATURE_LABELS.cold, Icon: Snowflake, cls: "bg-[var(--cold-soft)] text-[var(--cold-ink)]" },
 } as const;
 
 /**

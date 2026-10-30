@@ -7,7 +7,7 @@ import { colors } from "../../lib/theme";
 
 export { ScreenError as ErrorBoundary } from "../../components/ScreenError";
 
-/** Sync Finance: tabs for the main screens, everything else pushed on this stack. */
+/** SyncFinance: tabs for the main screens, everything else pushed on this stack. */
 export default function Layout() {
   return (
     <ModuleGate module="finance">

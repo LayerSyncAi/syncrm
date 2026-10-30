@@ -1,4 +1,4 @@
-/** Users: list, invite, and edit role, Sync Estate roles, branch, timezone, status and password. */
+/** Users: list, invite, and edit role, SyncEstate roles, branch, timezone, status and password. */
 import { useMemo, useState } from "react";
 import { View } from "react-native";
 import { useAction, useQuery } from "convex/react";

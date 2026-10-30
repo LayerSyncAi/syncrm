@@ -1,9 +1,9 @@
 /**
- * Sync Dev tables: the stand inventory of each development, and payments
- * recorded by agencies that do not have Sync Finance.
+ * SyncDev tables: the stand inventory of each development, and payments
+ * recorded by agencies that do not have SyncFinance.
  *
  * Developments (finDevelopments) and sales to buyers on payment plans
- * (finStands) are shared with Sync Finance; see convex/schemas/finance.ts.
+ * (finStands) are shared with SyncFinance; see convex/schemas/finance.ts.
  * A sale points at its inventory stand (finStands.devStandId) and the stand
  * at its live sale (devStands.saleId).
  */
@@ -37,7 +37,7 @@ export const devTables = {
     .index("by_org", ["orgId"])
     .index("by_development", ["developmentId"]),
 
-  // Payments on a sale when the agency does not have Sync Finance. With
+  // Payments on a sale when the agency does not have SyncFinance. With
   // Finance on, payments are ledger receipts instead; bringing these into
   // Finance later sets finTxId so they are not counted twice.
   devPayments: defineTable({

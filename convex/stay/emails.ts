@@ -1,5 +1,5 @@
 /**
- * Sync Stay emails to tenants, landlords and staff (BRD Stay §5.8).
+ * SyncStay emails to tenants, landlords and staff (BRD Stay §5.8).
  *
  * Mutations build the message (plain string templates, safe in the mutation
  * runtime) and schedule `send` with ctx.scheduler.runAfter(0, ...), so the
@@ -210,7 +210,7 @@ export function expiryEmail(a: {
     `Lease ends ${a.endDate}.`,
     p(`Hello ${escapeHtml(a.managerName)},`) +
       p(`The lease for <strong>${escapeHtml(a.tenantName)}</strong> at ${escapeHtml(a.property)} ends on <strong>${escapeHtml(a.endDate)}</strong> (${a.daysLeft} days).`) +
-      p(`Renew it or plan the move-out in Sync Stay: <a href="${escapeHtml(a.link)}" style="color:${ACCENT};">open the lease</a>.`)
+      p(`Renew it or plan the move-out in SyncStay: <a href="${escapeHtml(a.link)}" style="color:${ACCENT};">open the lease</a>.`)
   );
   const text = `Hello ${a.managerName},\n\nThe lease for ${a.tenantName} at ${a.property} ends on ${a.endDate} (${a.daysLeft} days).\n\nOpen the lease: ${a.link}`;
   return { to: a.to, subject, html, text, kind: "stay_lease_expiry", relatedType: "stayLease", relatedId: a.leaseId };

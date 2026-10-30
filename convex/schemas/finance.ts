@@ -1,6 +1,6 @@
 /**
- * Sync Finance tables: client money in trust, agency income and the
- * statements that prove both (BRD Sync Finance v1).
+ * SyncFinance tables: client money in trust, agency income and the
+ * statements that prove both (BRD SyncFinance v1).
  *
  * The core is a small double-entry ledger that users never see:
  *  - finTransactions is one event (a receipt, a payment, a transfer).
@@ -14,7 +14,7 @@
  * Nothing is deleted. A mistake is reversed by a new transaction with the
  * lines negated; the original keeps a pointer to it.
  *
- * Dates a person picks are "YYYY-MM-DD" strings, as in Sync Stay. Amounts are
+ * Dates a person picks are "YYYY-MM-DD" strings, as in SyncStay. Amounts are
  * in the transaction's currency (USD or ZiG) and never converted.
  *
  * Imports (opening balances, historical transactions, stand accounts) record
@@ -70,7 +70,7 @@ export const financeTables = {
     createdAt: v.number(),
   }).index("by_org", ["orgId"]),
 
-  // One row per org (FN-05). Receipt numbers share Sync Stay's counter so
+  // One row per org (FN-05). Receipt numbers share SyncStay's counter so
   // there is one sequence per agency (FN-12).
   finSettings: defineTable({
     orgId: v.id("organizations"),
@@ -283,7 +283,7 @@ export const financeTables = {
     .index("by_account", ["accountId"]),
 
   // Developments and stand sales on payment plans (BRD 5.10). Owned by Sync
-  // Dev (convex/dev/), shared with Sync Finance, which handles the money when
+  // Dev (convex/dev/), shared with SyncFinance, which handles the money when
   // the agency has it. The fin prefix is historical.
   finDevelopments: defineTable({
     orgId: v.id("organizations"),
@@ -311,7 +311,7 @@ export const financeTables = {
     orgId: v.id("organizations"),
     developmentId: v.id("finDevelopments"),
     standNumber: v.string(),
-    // The stand in Sync Dev's inventory this sale is for.
+    // The stand in SyncDev's inventory this sale is for.
     devStandId: v.optional(v.id("devStands")),
     buyerContactId: v.optional(v.id("contacts")),
     buyerName: v.string(),
@@ -333,7 +333,7 @@ export const financeTables = {
     interestMonths: v.optional(v.array(v.string())),
     // Paid before go-live (imported), counted towards the plan.
     openingPaid: v.number(),
-    // Kept up to date on every receipt, for Sync Dev and lists.
+    // Kept up to date on every receipt, for SyncDev and lists.
     paidToDate: v.number(),
     balance: v.number(),
     overdue: v.number(),

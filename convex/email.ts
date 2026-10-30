@@ -191,7 +191,7 @@ export async function sendPasswordResetEmail(
 }
 
 /**
- * Email a staff member their Sync Estate sign-in: a new invite, or a
+ * Email a staff member their SyncEstate sign-in: a new invite, or a
  * temporary password an admin issued. The password is single-use in effect,
  * because the account is flagged to change it on first sign-in.
  *
@@ -214,8 +214,8 @@ export async function sendStaffSignInEmail(
   const { accent, tint } = ACCENTS.blue;
   const invite = args.reason === "invite";
   const intro = invite
-    ? `${escapeHtml(args.orgName)} has set up a Sync Estate login for you.`
-    : `${escapeHtml(args.orgName)} has reset your Sync Estate password.`;
+    ? `${escapeHtml(args.orgName)} has set up a SyncEstate login for you.`
+    : `${escapeHtml(args.orgName)} has reset your SyncEstate password.`;
   const content =
     emailEyebrow(escapeHtml(args.orgName), accent, tint) +
     emailHeading(`Hello ${escapeHtml(args.fullName)}`) +
@@ -227,14 +227,14 @@ export async function sendStaffSignInEmail(
     emailButton({ href: loginUrl, label: "Sign in", accentColor: accent }) +
     emailText("You will be asked to choose your own password when you first sign in.");
   const subject = invite
-    ? `Your ${args.orgName} Sync Estate login`
-    : `Your ${args.orgName} Sync Estate password was reset`;
+    ? `Your ${args.orgName} SyncEstate login`
+    : `Your ${args.orgName} SyncEstate password was reset`;
   const sent = await sendEmail(
     {
       to: args.to,
       subject,
       html: renderEmailShell({ accentColor: accent, preheader: subject, content }),
-      text: `${invite ? `${args.orgName} has set up a Sync Estate login for you.` : `${args.orgName} has reset your Sync Estate password.`}\n\nSign in at ${loginUrl}\nEmail: ${args.to}\nTemporary password: ${args.password}\n\nYou will be asked to choose your own password when you first sign in.`,
+      text: `${invite ? `${args.orgName} has set up a SyncEstate login for you.` : `${args.orgName} has reset your SyncEstate password.`}\n\nSign in at ${loginUrl}\nEmail: ${args.to}\nTemporary password: ${args.password}\n\nYou will be asked to choose your own password when you first sign in.`,
     },
     ctx,
     { kind: invite ? "staff_invite" : "staff_password_reset", ...log }

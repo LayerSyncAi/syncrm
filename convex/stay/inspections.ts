@@ -1,5 +1,5 @@
 /**
- * Sync Stay inspections (BRD Stay §5.7): move-in, routine and move-out
+ * SyncStay inspections (BRD Stay §5.7): move-in, routine and move-out
  * reports, room by room. A draft is freely editable. Completing locks the
  * report; later remarks are dated addenda. Completing a routine or move-in
  * inspection moves the unit's next due date forward by its interval, and a
@@ -721,7 +721,7 @@ export const processDueInspections = internalAction({
               emailEyebrow("Inspection due", accent, tint) +
               emailHeading(`${escapeHtml(e.unitLabel)} is due for inspection`) +
               emailText(
-                `Hello ${escapeHtml(e.name)},<br><br>${escapeHtml(e.unitLabel)}, ${escapeHtml(e.propertyTitle)}, was due for a routine inspection on ${e.due}. Open Sync Stay to start the report.`
+                `Hello ${escapeHtml(e.name)},<br><br>${escapeHtml(e.unitLabel)}, ${escapeHtml(e.propertyTitle)}, was due for a routine inspection on ${e.due}. Open SyncStay to start the report.`
               ),
           }),
           text: `Hello ${e.name}, ${e.unitLabel}, ${e.propertyTitle}, was due for a routine inspection on ${e.due}.`,

@@ -1,6 +1,6 @@
 /**
- * Take a buyer's payment on a stand. With Sync Finance it becomes a ledger
- * receipt; without, Sync Dev records it. The account picker shows only when
+ * Take a buyer's payment on a stand. With SyncFinance it becomes a ledger
+ * receipt; without, SyncDev records it. The account picker shows only when
  * the caller passes Finance accounts.
  */
 import { useState } from "react";
@@ -33,7 +33,7 @@ export function ReceivePaymentSheet({
   today: string;
   suggested: number;
   buyerEmail: string;
-  /** Sync Finance accounts. Leave out when Finance is off. */
+  /** SyncFinance accounts. Leave out when Finance is off. */
   accounts?: PaymentAccount[];
 }) {
   const receive = useMutation(api.dev.sales.receivePayment);

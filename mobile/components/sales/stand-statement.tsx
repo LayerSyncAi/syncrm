@@ -1,8 +1,8 @@
 /**
  * A buyer's statement: the plan with what is paid, payments received and
- * refunds, and Receive payment. Shared by Sync Dev and Sync Finance. What the
+ * refunds, and Receive payment. Shared by SyncDev and SyncFinance. What the
  * person may do comes from the statement's own role, so it works without
- * Sync Finance.
+ * SyncFinance.
  */
 import { useState } from "react";
 import { Text, View } from "react-native";
@@ -77,7 +77,7 @@ export function StandStatement({ standId, accounts }: { standId: Id<"finStands">
             onPress={() => run(() => emailIt({ standId }), { success: `Statement sent to ${st.buyer.email}` })}
           />
         )}
-        {!financeOn && <Body small muted>Payments are recorded in Sync Dev. Sync Finance adds trust accounting and commission.</Body>}
+        {!financeOn && <Body small muted>Payments are recorded in SyncDev. SyncFinance adds trust accounting and commission.</Body>}
 
         <Section title="Payment plan">
           {st.rows.map((r, i) => (
@@ -166,7 +166,7 @@ export function StandStatement({ standId, accounts }: { standId: Id<"finStands">
   );
 }
 
-/** Reverse a payment Sync Dev recorded. Finance receipts are reversed in Sync Finance. */
+/** Reverse a payment SyncDev recorded. Finance receipts are reversed in SyncFinance. */
 function ReverseDevPaymentSheet({ target, currency, onClose }: { target: Reversal; currency: string; onClose: () => void }) {
   const reverse = useMutation(api.dev.sales.reverseDevPayment);
   const { busy, run } = useRun();

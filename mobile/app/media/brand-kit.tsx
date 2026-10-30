@@ -80,7 +80,7 @@ export default function BrandKitScreen() {
   async function saveAll() {
     if (!HEX.test(accent)) {
       await run(async () => {
-        throw new Error("Accent must be a hex colour like #2a5925.");
+        throw new Error("Accent must be a hex colour like #3b6812.");
       });
       return;
     }
@@ -125,7 +125,7 @@ export default function BrandKitScreen() {
       </Section>
 
       <Section title="Colour">
-        <Field label="Accent colour" value={accent} onChangeText={setAccent} editable={isAdmin} autoCapitalize="none" autoCorrect={false} maxLength={7} hint="Hex, like #2a5925." error={accent && !HEX.test(accent) ? "Use a six digit hex colour." : null} />
+        <Field label="Accent colour" value={accent} onChangeText={setAccent} editable={isAdmin} autoCapitalize="none" autoCorrect={false} maxLength={7} hint="Hex, like #3b6812." error={accent && !HEX.test(accent) ? "Use a six digit hex colour." : null} />
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: space.sm }}>
           {ACCENT_SUGGESTIONS.map((c) => (
             <Pressable
