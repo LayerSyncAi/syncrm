@@ -43,7 +43,7 @@ const tabs = [
   "Viewings",
   "Activity",
   "Follow-ups",
-  "Sync Estate",
+  "SyncEstate",
   "Documents",
 ] as const;
 type Tab = (typeof tabs)[number];
@@ -141,7 +141,7 @@ export function ContactDetail({ contactId }: ContactDetailProps) {
       <Card className="p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-start gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-lg font-semibold text-primary">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-lg font-semibold text-primary-ink">
               {contact.name.slice(0, 2).toUpperCase()}
             </div>
             <div>
@@ -160,12 +160,12 @@ export function ContactDetail({ contactId }: ContactDetailProps) {
               )}
               <div className="mt-2 flex flex-wrap gap-3 text-sm text-text-muted">
                 {contact.phone && (
-                  <a href={`tel:${contact.phone}`} className="flex items-center gap-1.5 hover:text-primary">
+                  <a href={`tel:${contact.phone}`} className="flex items-center gap-1.5 hover:text-primary-ink">
                     <Phone className="h-3.5 w-3.5" /> {contact.phone}
                   </a>
                 )}
                 {contact.email && (
-                  <a href={`mailto:${contact.email}`} className="flex items-center gap-1.5 hover:text-primary">
+                  <a href={`mailto:${contact.email}`} className="flex items-center gap-1.5 hover:text-primary-ink">
                     <Mail className="h-3.5 w-3.5" /> {contact.email}
                   </a>
                 )}
@@ -420,7 +420,7 @@ export function ContactDetail({ contactId }: ContactDetailProps) {
           </motion.div>
         )}
 
-        {activeTab === "Sync Estate" && (
+        {activeTab === "SyncEstate" && (
           <motion.div key="estate" variants={tabContentVariants} initial="initial" animate="animate" exit="exit">
             <ContactAcrossModules contactId={contactId} />
           </motion.div>

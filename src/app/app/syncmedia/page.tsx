@@ -50,7 +50,7 @@ export default function SyncMediaPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-xl font-semibold text-text">
-            <Megaphone className="h-5 w-5 text-primary" /> SyncMedia
+            <Megaphone className="h-5 w-5 text-primary-ink" /> SyncMedia
           </h1>
           <p className="mt-1 text-sm text-text-muted">
             Property brochures for social posts, WhatsApp and print. Your drafts are

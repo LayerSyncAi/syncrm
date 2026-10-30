@@ -202,7 +202,7 @@ export default function OwnersPage() {
         </Button>
       </div>
 
-      <div className="rounded-[12px] border border-border-strong bg-card-bg p-4">
+      <div className="rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4">
         <div className="grid gap-3 md:grid-cols-3">
           <div className="space-y-2">
             <Label>Search</Label>
@@ -340,7 +340,7 @@ export default function OwnersPage() {
               <motion.div
                 key={owner._id}
                 variants={rowVariants}
-                className="rounded-[12px] border border-border-strong bg-card-bg p-4"
+                className="rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>

@@ -255,8 +255,8 @@ export function StaggeredDropDown({
                   "flex cursor-pointer items-center gap-2 rounded-[8px] px-2.5 py-2 text-xs font-medium transition-colors",
                   option.description ? "whitespace-normal" : "whitespace-nowrap",
                   isSelected
-                    ? "bg-primary/10 text-primary-600"
-                    : "text-text hover:bg-primary/5 hover:text-primary-600"
+                    ? "bg-primary/10 text-primary-ink"
+                    : "text-text hover:bg-primary/5 hover:text-primary-ink"
                 )}
               >
                 <motion.span

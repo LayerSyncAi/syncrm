@@ -104,7 +104,7 @@ function timeAgo(ts?: number) {
 function stageColor(stage: KanbanStage) {
   if (stage.isTerminal && stage.terminalOutcome === "won") return "text-success";
   if (stage.isTerminal && stage.terminalOutcome === "lost") return "text-danger";
-  return "text-primary";
+  return "text-primary-ink";
 }
 
 function stageBgAccent(stage: KanbanStage) {
@@ -116,7 +116,7 @@ function stageBgAccent(stage: KanbanStage) {
 function stageCountBg(stage: KanbanStage) {
   if (stage.isTerminal && stage.terminalOutcome === "won") return "bg-success/15 text-success";
   if (stage.isTerminal && stage.terminalOutcome === "lost") return "bg-danger/15 text-danger";
-  return "bg-primary/15 text-primary";
+  return "bg-primary/15 text-primary-ink";
 }
 
 function StageIcon({ stage }: { stage: KanbanStage }) {
@@ -200,7 +200,7 @@ const KanbanCard = React.memo(function KanbanCard({
         <Link
           href={`/app/leads/${lead._id}`}
           onClick={(e) => e.stopPropagation()}
-          className="text-sm font-medium text-text hover:text-primary transition-colors leading-snug line-clamp-1"
+          className="text-sm font-medium text-text hover:text-primary-ink transition-colors leading-snug line-clamp-1"
         >
           {lead.fullName}
         </Link>
@@ -208,7 +208,7 @@ const KanbanCard = React.memo(function KanbanCard({
           className={cn(
             "shrink-0 inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium",
             lead.interestType === "buy"
-              ? "bg-primary/10 text-primary"
+              ? "bg-primary/10 text-primary-ink"
               : "bg-info/10 text-info"
           )}
         >
@@ -277,7 +277,7 @@ function TouchGhost({ lead, pos }: { lead: KanbanLead; pos: { x: number; y: numb
           className={cn(
             "shrink-0 inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium",
             lead.interestType === "buy"
-              ? "bg-primary/10 text-primary"
+              ? "bg-primary/10 text-primary-ink"
               : "bg-info/10 text-info"
           )}
         >

@@ -133,7 +133,7 @@ describe("instalment reminders", () => {
   });
 });
 
-describe("Sync Notify", () => {
+describe("SyncNotify", () => {
   it("fills placeholders and leaves unknown ones as typed", () => {
     expect(fillTemplate("Dear {name}, you owe {owed}. {x}", { name: "Rudo", owed: "USD 300" })).toBe("Dear Rudo, you owe USD 300. {x}");
     expect(missingFields("{name} {owed}", { name: "Rudo" })).toEqual(["owed"]);

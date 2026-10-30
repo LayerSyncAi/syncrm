@@ -144,7 +144,7 @@ export default function MyCommissionPage() {
 
           <div className="space-y-3 md:hidden">
             {data.rows.map((r) => (
-              <div key={r._id} className="rounded-[12px] border border-border-strong bg-card-bg p-4">
+              <div key={r._id} className="rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="font-medium">{r.client}</p>
@@ -163,7 +163,7 @@ export default function MyCommissionPage() {
             ))}
           </div>
 
-          <div className="rounded-[12px] border border-border-strong bg-card-bg p-4 text-sm">
+          <div className="rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4 text-sm">
             <h2 className="mb-2 font-semibold">Totals</h2>
             {(["USD", "ZiG"] as const)
               .filter((c) => data.rows.some((r) => r.currency === c))

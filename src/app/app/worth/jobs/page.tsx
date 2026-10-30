@@ -59,7 +59,7 @@ export default function WorthJobsPage() {
         }
       />
 
-      <div className="grid gap-3 rounded-[12px] border border-border-strong bg-card-bg p-4 md:grid-cols-3">
+      <div className="grid gap-3 rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4 md:grid-cols-3">
         <Field label="Search">
           <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Reference, client, address or suburb" />
         </Field>
@@ -151,7 +151,7 @@ export default function WorthJobsPage() {
               <Link
                 key={j._id}
                 href={`/app/worth/jobs/${j._id}`}
-                className="block rounded-[12px] border border-border-strong bg-card-bg p-4"
+                className="block rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">

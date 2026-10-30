@@ -90,7 +90,7 @@ export default function ContactSegmentsPage() {
         </p>
       </div>
 
-      <div className="rounded-[12px] border border-border-strong bg-card-bg p-4 space-y-4">
+      <div className="rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4 space-y-4">
         <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-4">
           <div className="space-y-2">
             <Label>Interest Type</Label>
@@ -271,7 +271,7 @@ export default function ContactSegmentsPage() {
       {contacts.length > 0 && (
         <motion.div variants={listVariants} initial="hidden" animate="show" className="space-y-3 md:hidden">
           {contacts.map((contact: any) => (
-            <div key={contact._id} className="rounded-[12px] border border-border-strong bg-card-bg p-4 space-y-2">
+            <div key={contact._id} className="rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4 space-y-2">
               <div className="flex items-start justify-between gap-3">
                 <p className="min-w-0 truncate font-medium">{contact.name}</p>
                 {contact.interestType && <Badge variant="secondary">{contact.interestType}</Badge>}

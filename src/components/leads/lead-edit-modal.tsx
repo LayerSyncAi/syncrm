@@ -319,7 +319,7 @@ export function LeadEditModal({ open, lead, onClose }: LeadEditModalProps) {
                 {preferredAreas.map((area) => (
                   <span
                     key={area}
-                    className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary"
+                    className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary-ink"
                   >
                     {area}
                     <button

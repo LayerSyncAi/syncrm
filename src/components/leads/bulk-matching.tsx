@@ -229,7 +229,7 @@ export function BulkMatching({ open, onClose, selectedLeadIds }: BulkMatchingPro
         <motion.div variants={bulkStatContainerVariants} initial="hidden" animate="show" className="grid grid-cols-4 gap-3 mb-4">
           <motion.div variants={bulkStatItemVariants}>
           <Card className="p-3 text-center">
-            <p className="text-2xl font-bold text-primary">{summary.totalLeads}</p>
+            <p className="text-2xl font-bold text-primary-ink">{summary.totalLeads}</p>
             <p className="text-xs text-text-muted">Leads Analyzed</p>
           </Card>
           </motion.div>
@@ -309,7 +309,7 @@ export function BulkMatching({ open, onClose, selectedLeadIds }: BulkMatchingPro
                     <p className="text-xs text-text-muted">Top matching properties:</p>
                     <div className="flex gap-2">
                       <button
-                        className="text-xs text-primary hover:underline"
+                        className="text-xs text-primary-ink hover:underline"
                         onClick={(e) => {
                           e.stopPropagation();
                           selectAllForLead(

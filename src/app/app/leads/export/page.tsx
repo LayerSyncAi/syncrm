@@ -254,7 +254,7 @@ export default function LeadExportPage() {
                 transition={{ type: "spring", stiffness: 400, damping: 25 }}
                 className={`flex cursor-pointer items-center gap-2 rounded-[8px] border px-3 py-2 text-sm transition-colors ${
                   selectedFields.includes(field.key)
-                    ? "border-primary-600 bg-primary-600/10 text-primary-600"
+                    ? "border-primary-600 bg-primary-600/10 text-primary-ink"
                     : "border-border-strong text-text-muted hover:border-primary-600/40"
                 }`}
               >

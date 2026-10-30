@@ -148,7 +148,7 @@ function NewLeaseForm() {
               onClick={() => setTenantMode(m)}
               className={cn(
                 "h-10 rounded-[10px] border text-sm font-medium",
-                tenantMode === m ? "border-primary-600 bg-primary-600/10 text-primary-600" : "border-border-strong"
+                tenantMode === m ? "border-primary-600 bg-primary-600/10 text-primary-ink" : "border-border-strong"
               )}
             >
               {m === "new" ? "New tenant" : "Existing tenant"}

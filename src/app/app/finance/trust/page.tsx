@@ -49,7 +49,7 @@ export default function TrustPage() {
       {landlords === undefined ? (
         <ListSkeleton />
       ) : shownLandlords.length === 0 ? (
-        <p className="text-sm text-text-muted">{landlords.length ? "No landlord matches that search." : "No landlords yet. They appear once a property is set up in Sync Stay."}</p>
+        <p className="text-sm text-text-muted">{landlords.length ? "No landlord matches that search." : "No landlords yet. They appear once a property is set up in SyncStay."}</p>
       ) : (
         <>
           <div className="hidden md:block">
@@ -76,7 +76,7 @@ export default function TrustPage() {
                     <TableCell className={cn("whitespace-nowrap text-right", l.USD < 0 && "text-danger")}>{money(l.USD, "USD")}</TableCell>
                     <TableCell className={cn("whitespace-nowrap text-right", l.ZiG < 0 && "text-danger")}>{money(l.ZiG, "ZiG")}</TableCell>
                     <TableCell className="text-right">
-                      <Link href={`/app/finance/trust/${l._id}`} className="text-sm text-primary-600 hover:underline">
+                      <Link href={`/app/finance/trust/${l._id}`} className="text-sm text-primary-ink hover:underline">
                         Open
                       </Link>
                     </TableCell>
@@ -207,7 +207,7 @@ export default function TrustPage() {
             {deposits.some((d) => d.held !== d.stayHeld) && (
               <p className="mb-3 flex items-center gap-2 text-sm text-[var(--status-warning-fg)]">
                 <AlertTriangle className="h-4 w-4" />
-                Some deposits differ from what Sync Stay shows. Check them before the month is closed.
+                Some deposits differ from what SyncStay shows. Check them before the month is closed.
               </p>
             )}
             <div className="hidden md:block">
@@ -218,7 +218,7 @@ export default function TrustPage() {
                     <TableHead>Property</TableHead>
                     <TableHead>Held in</TableHead>
                     <TableHead className="text-right">Held</TableHead>
-                    <TableHead className="text-right">Sync Stay shows</TableHead>
+                    <TableHead className="text-right">SyncStay shows</TableHead>
                   </tr>
                 </thead>
                 <tbody>
@@ -249,7 +249,7 @@ export default function TrustPage() {
                   <p className="text-xs text-text-muted">
                     {d.property}. {heldInLabel(d.heldIn)}
                   </p>
-                  {d.held !== d.stayHeld && <Badge variant="warning">Sync Stay shows {money(d.stayHeld, d.currency)}</Badge>}
+                  {d.held !== d.stayHeld && <Badge variant="warning">SyncStay shows {money(d.stayHeld, d.currency)}</Badge>}
                 </div>
               ))}
             </div>
@@ -571,10 +571,10 @@ function BulkSendModal({
                 <Input type="month" value={month} max={thisMonth()} onChange={(e) => setMonth(e.target.value)} />
               </div>
               <div className="flex gap-2 text-sm">
-                <button type="button" className="text-primary-600 hover:underline" onClick={() => setPicked(new Set(withEmail.map((l) => l._id)))}>
+                <button type="button" className="text-primary-ink hover:underline" onClick={() => setPicked(new Set(withEmail.map((l) => l._id)))}>
                   Tick all with email
                 </button>
-                <button type="button" className="text-primary-600 hover:underline" onClick={() => setPicked(new Set())}>
+                <button type="button" className="text-primary-ink hover:underline" onClick={() => setPicked(new Set())}>
                   Clear
                 </button>
               </div>

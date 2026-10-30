@@ -1,5 +1,5 @@
 /**
- * Sync Worth branded A4 valuation report (VW-50..53), generated in the
+ * SyncWorth branded A4 valuation report (VW-50..53), generated in the
  * browser from `api.worth.valuation.reportData`. Every figure is read from the
  * job record; nothing is typed into the report text (VW-43).
  *

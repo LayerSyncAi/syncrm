@@ -453,7 +453,7 @@ export function BrochureStudio({
                 className={cn(
                   "flex-1 cursor-pointer border-b-2 px-2 py-2.5 text-sm font-medium transition",
                   tab === t.id
-                    ? "border-primary text-primary"
+                    ? "border-primary text-primary-ink"
                     : "border-transparent text-text-muted hover:text-text"
                 )}
               >

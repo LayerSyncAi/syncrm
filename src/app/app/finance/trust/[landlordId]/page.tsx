@@ -137,7 +137,7 @@ export default function LandlordStatementPage({ params }: { params: Promise<{ la
 
       <LandlordRates landlordId={id} />
 
-      <div className="flex flex-wrap items-end gap-3 rounded-[12px] border border-border-strong bg-card-bg p-4">
+      <div className="flex flex-wrap items-end gap-3 rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4">
         <div className="space-y-2">
           <Label>Month</Label>
           <Input type="month" value={month} max={thisMonth()} onChange={(e) => setMonth(e.target.value)} />
@@ -300,7 +300,7 @@ function CurrencySection({ s }: { s: StatementSection }) {
 
 /**
  * FN-30: the landlord's commission rate. Setting it applies to all their
- * properties; a property can then be changed in Sync Stay and a lease can
+ * properties; a property can then be changed in SyncStay and a lease can
  * have its own rate.
  */
 function LandlordRates({ landlordId }: { landlordId: Id<"contacts"> }) {
@@ -328,7 +328,7 @@ function LandlordRates({ landlordId }: { landlordId: Id<"contacts"> }) {
       <div className="space-y-3 text-sm">
         <p className="text-text-muted">
           {rates.landlordPct !== null ? `This landlord's rate is ${rates.landlordPct}%.` : "No landlord rate set; each property has its own."} A property
-          can differ (change it in Sync Stay) and a lease can have its own rate (on the lease).
+          can differ (change it in SyncStay) and a lease can have its own rate (on the lease).
         </p>
         {rates.properties.length > 0 && (
           <ul className="divide-y divide-border">

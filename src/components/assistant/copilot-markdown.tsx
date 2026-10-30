@@ -64,7 +64,7 @@ const markdownComponents: Components = {
     return (
       <a
         href={href}
-        className="font-medium text-primary-600 underline decoration-primary-600/40 underline-offset-2 hover:decoration-primary-600"
+        className="font-medium text-primary-ink underline decoration-primary-600/40 underline-offset-2 hover:decoration-primary-600"
         target="_blank"
         rel="noopener noreferrer"
       >

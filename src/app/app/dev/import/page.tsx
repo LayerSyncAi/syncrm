@@ -24,7 +24,7 @@ export default function DevImportPage() {
         description="Ask a director to import buyers already on payment plans."
         action={
           <Link href="/app/dev">
-            <Button variant="secondary">Back to Sync Dev</Button>
+            <Button variant="secondary">Back to SyncDev</Button>
           </Link>
         }
       />
@@ -46,7 +46,7 @@ export default function DevImportPage() {
         intro={
           <p className="text-sm text-text-muted">
             One row per stand sold. Add each development first under{" "}
-            <Link href="/app/dev/developments" className="text-primary-600 hover:underline">
+            <Link href="/app/dev/developments" className="text-primary-ink hover:underline">
               Developments
             </Link>
             , with the same name as in the file. Stands not yet in the inventory are added as sold.

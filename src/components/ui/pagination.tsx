@@ -136,7 +136,7 @@ export const PaginationControls = React.memo(function PaginationControls({
                     className={cn(
                       navBtn,
                       item === current &&
-                        "border-primary bg-primary text-white hover:border-primary hover:text-white"
+                        "border-primary bg-primary text-primary-foreground hover:border-primary hover:text-primary-foreground"
                     )}
                   >
                     {item}

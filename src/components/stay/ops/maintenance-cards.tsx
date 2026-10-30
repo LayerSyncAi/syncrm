@@ -30,7 +30,7 @@ export function MaintenanceCards({ items, showUnit = true }: { items: Maintenanc
         <Link
           key={m._id}
           href={`/app/stay/maintenance/${m._id}`}
-          className="block rounded-[12px] border border-border-strong bg-card-bg p-4 transition-colors hover:border-primary/60"
+          className="block rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4 transition-colors hover:border-primary/60"
         >
           <div className="flex items-start justify-between gap-2">
             <p className="font-medium">{m.title}</p>

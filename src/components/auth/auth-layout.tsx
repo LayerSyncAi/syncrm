@@ -73,7 +73,7 @@ function DashboardMockup() {
         <div className="grid grid-cols-3 gap-2 mb-4">
           <div className="rounded-lg bg-white/[0.06] p-2.5">
             <div className="flex items-center gap-1 mb-1">
-              <Users className="h-3 w-3 text-primary" />
+              <Users className="h-3 w-3 text-primary-ink" />
               <span className="text-[9px] text-slate-400">Leads</span>
             </div>
             <p className="text-base font-bold text-white">247</p>
@@ -84,7 +84,7 @@ function DashboardMockup() {
           </div>
           <div className="rounded-lg bg-white/[0.06] p-2.5">
             <div className="flex items-center gap-1 mb-1">
-              <Building2 className="h-3 w-3 text-primary" />
+              <Building2 className="h-3 w-3 text-primary-ink" />
               <span className="text-[9px] text-slate-400">Properties</span>
             </div>
             <p className="text-base font-bold text-white">89</p>
@@ -95,7 +95,7 @@ function DashboardMockup() {
           </div>
           <div className="rounded-lg bg-white/[0.06] p-2.5">
             <div className="flex items-center gap-1 mb-1">
-              <BarChart3 className="h-3 w-3 text-primary" />
+              <BarChart3 className="h-3 w-3 text-primary-ink" />
               <span className="text-[9px] text-slate-400">Deals</span>
             </div>
             <p className="text-base font-bold text-white">$1.2M</p>
@@ -171,7 +171,7 @@ function SupplementalContent() {
           <h2 className="text-2xl font-bold leading-tight text-white lg:text-3xl">
             Close more deals,
             <br />
-            <span className="text-primary">faster than ever.</span>
+            <span className="text-primary-ink">faster than ever.</span>
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-slate-400 max-w-sm">
             The real estate CRM that helps you track leads, manage your
@@ -205,7 +205,7 @@ function SupplementalContent() {
               {Array.from({ length: 5 }).map((_, i) => (
                 <Star
                   key={i}
-                  className="h-4 w-4 fill-primary text-primary"
+                  className="h-4 w-4 fill-primary text-primary-ink"
                 />
               ))}
             </div>

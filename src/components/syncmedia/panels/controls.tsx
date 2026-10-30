@@ -74,7 +74,7 @@ export function QuickPicks({
             "cursor-pointer rounded-full border px-2.5 py-1 text-xs font-medium transition",
             value.toUpperCase() === option.toUpperCase()
               ? "border-primary bg-primary text-primary-foreground"
-              : "border-border-strong bg-card-bg text-text-muted hover:border-primary hover:text-primary"
+              : "border-border-strong bg-card-bg text-text-muted hover:border-primary hover:text-primary-ink"
           )}
         >
           {option}

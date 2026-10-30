@@ -40,7 +40,7 @@ export default function StayDepositsPage() {
         ))}
       </div>
 
-      <div className="rounded-[12px] border border-border-strong bg-card-bg p-4">
+      <div className="rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4">
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="space-y-2">
             <Label>Show</Label>
@@ -163,7 +163,7 @@ export default function StayDepositsPage() {
 
               <div className="space-y-3 md:hidden">
                 {data.rows.map((r) => (
-                  <div key={r._id} className="rounded-[12px] border border-border-strong bg-card-bg p-4">
+                  <div key={r._id} className="rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <Link href={`/app/stay/leases/${r.leaseId}`} className="font-medium">

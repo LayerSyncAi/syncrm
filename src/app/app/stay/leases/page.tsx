@@ -54,7 +54,7 @@ function LeasesList() {
         }
       />
 
-      <div className="grid gap-3 rounded-[12px] border border-border-strong bg-card-bg p-4 sm:grid-cols-3">
+      <div className="grid gap-3 rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4 sm:grid-cols-3">
         <div className="space-y-2">
           <Label>Search</Label>
           <Input placeholder="Tenant, property, unit, landlord" value={q} onChange={(e) => setQ(e.target.value)} />
@@ -127,7 +127,7 @@ function LeasesList() {
           </div>
           <div className="space-y-3 md:hidden">
             {leases.map((l) => (
-              <Link key={l._id} href={`/app/stay/leases/${l._id}`} className="block rounded-[12px] border border-border-strong bg-card-bg p-4">
+              <Link key={l._id} href={`/app/stay/leases/${l._id}`} className="block rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate font-medium">{l.tenantName}</p>

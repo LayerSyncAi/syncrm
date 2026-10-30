@@ -89,7 +89,7 @@ export function ExportButtons({ build }: { build: () => ExportPayload }) {
 export function SectionLoader() {
   return (
     <div className="flex items-center justify-center py-16">
-      <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+      <Loader2 className="h-8 w-8 animate-spin text-primary-ink" />
     </div>
   );
 }

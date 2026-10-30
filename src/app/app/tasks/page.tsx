@@ -556,7 +556,7 @@ export default function TasksPage() {
                 variants={rowVariants}
                 layout
                 onClick={() => handleViewTask(task as TaskActivity)}
-                className={`rounded-[12px] border border-border-strong bg-card-bg p-4 space-y-3 ${overdue ? "overdue-pulse" : ""} ${celebrating ? "celebration-glow" : ""}`}
+                className={`rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4 space-y-3 ${overdue ? "overdue-pulse" : ""} ${celebrating ? "celebration-glow" : ""}`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-2 text-xs">

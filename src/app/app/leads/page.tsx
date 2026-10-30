@@ -76,7 +76,7 @@ const LeadTableRow = React.memo(function LeadTableRow({
       onClick={() => onRowClick(lead)}
     >
       <TableCell>
-        <Link href={`/app/leads/${lead._id}`} className="font-medium hover:text-primary">
+        <Link href={`/app/leads/${lead._id}`} className="font-medium hover:text-primary-ink">
           {lead.fullName}
         </Link>
         <p className="truncate text-xs text-text-muted">
@@ -158,12 +158,12 @@ const LeadCard = React.memo(function LeadCard({
   return (
     <motion.div
       variants={rowVariants}
-      className="cursor-pointer rounded-[12px] border border-border-strong bg-card-bg p-4 space-y-3 active:bg-row-hover"
+      className="cursor-pointer rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4 space-y-3 active:bg-row-hover"
       onClick={() => onRowClick(lead)}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <Link href={`/app/leads/${lead._id}`} className="block truncate font-medium hover:text-primary">
+          <Link href={`/app/leads/${lead._id}`} className="block truncate font-medium hover:text-primary-ink">
             {lead.fullName}
           </Link>
           <p className="truncate text-xs text-text-muted">
@@ -474,7 +474,7 @@ export default function LeadsPage() {
               onClick={() => setViewMode("list")}
               className={`flex items-center gap-1.5 rounded-[8px] px-3 py-1.5 text-xs font-medium transition-all duration-150 ${
                 viewMode === "list"
-                  ? "bg-primary/15 text-primary shadow-sm"
+                  ? "bg-primary/15 text-primary-ink shadow-sm"
                   : "text-text-muted hover:text-text hover:bg-surface-2"
               }`}
             >
@@ -485,7 +485,7 @@ export default function LeadsPage() {
               onClick={() => setViewMode("kanban")}
               className={`flex items-center gap-1.5 rounded-[8px] px-3 py-1.5 text-xs font-medium transition-all duration-150 ${
                 viewMode === "kanban"
-                  ? "bg-primary/15 text-primary shadow-sm"
+                  ? "bg-primary/15 text-primary-ink shadow-sm"
                   : "text-text-muted hover:text-text hover:bg-surface-2"
               }`}
             >
@@ -512,7 +512,7 @@ export default function LeadsPage() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ type: "spring", stiffness: 300, damping: 24, delay: 0.04 }}
-          className="flex flex-wrap items-center justify-between gap-3 rounded-[12px] border border-border-strong bg-card-bg p-4"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4"
         >
           <div className="flex items-start gap-2">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
@@ -537,7 +537,7 @@ export default function LeadsPage() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 300, damping: 24, delay: 0.06 }}
-        className="rounded-[12px] border border-border-strong bg-card-bg p-4"
+        className="rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4"
       >
         <button
           type="button"
@@ -674,12 +674,12 @@ export default function LeadsPage() {
                   <TableHead>
                     <button
                       onClick={toggleScoreSort}
-                      className="inline-flex items-center gap-1 hover:text-primary transition-colors"
+                      className="inline-flex items-center gap-1 hover:text-primary-ink transition-colors"
                     >
                       Score
                       {scoreSortDir === "" && <ArrowUpDown className="h-3 w-3 text-text-dim" />}
-                      {scoreSortDir === "score_desc" && <ArrowDown className="h-3 w-3 text-primary" />}
-                      {scoreSortDir === "score_asc" && <ArrowUp className="h-3 w-3 text-primary" />}
+                      {scoreSortDir === "score_desc" && <ArrowDown className="h-3 w-3 text-primary-ink" />}
+                      {scoreSortDir === "score_asc" && <ArrowUp className="h-3 w-3 text-primary-ink" />}
                     </button>
                   </TableHead>
                   <TableHead>Stage</TableHead>

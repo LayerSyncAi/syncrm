@@ -11,7 +11,6 @@ import {
 import {
   Expand,
   Globe,
-  MessageCircle,
   Minimize2,
   Plus,
   Search,
@@ -163,7 +162,7 @@ function ThinkingIndicator({
             {completedTools.map((t, i) => (
               <span
                 key={i}
-                className="inline-flex items-center gap-1 rounded-md bg-primary-600/10 px-1.5 py-0.5 text-[10px] font-medium text-primary-600"
+                className="inline-flex items-center gap-1 rounded-md bg-primary-600/10 px-1.5 py-0.5 text-[10px] font-medium text-primary-ink"
               >
                 <svg className="h-2.5 w-2.5" viewBox="0 0 12 12" fill="none">
                   <path
@@ -222,6 +221,13 @@ export const CopilotPanel = () => {
   });
 
   const busy = status === "streaming" || status === "submitted";
+
+  // The top bar's "Ask AI" button opens the panel.
+  useEffect(() => {
+    const onOpen = () => setOpen(true);
+    window.addEventListener("open-assistant", onOpen);
+    return () => window.removeEventListener("open-assistant", onOpen);
+  }, []);
 
   // Lock background scroll + allow Escape to close.
   useEffect(() => {
@@ -362,17 +368,6 @@ export const CopilotPanel = () => {
 
   return (
     <>
-      <Button
-        type="button"
-        variant="primary"
-        size="lg"
-        className="fixed bottom-20 right-4 z-40 h-12 w-12 rounded-full p-0 shadow-lg md:bottom-8 md:right-8"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        aria-label={open ? "Close assistant" : "Open assistant"}
-      >
-        {open ? <X className="h-5 w-5" /> : <MessageCircle className="h-5 w-5" />}
-      </Button>
 
       {open && (
         <div
@@ -498,7 +493,7 @@ export const CopilotPanel = () => {
                   className="flex min-h-[200px] flex-1 flex-col gap-2 overflow-y-auto overflow-x-hidden rounded-[10px] border border-border-strong/80 bg-content-bg p-3"
                 >
                   {messages.length === 0 && (
-                    <div className="rounded-[12px] border border-border-strong bg-card-bg p-3">
+                    <div className="rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-3">
                       <p className="text-sm font-semibold text-text">
                         Welcome to SynCRM Copilot{firstName ? `, ${firstName}` : ""}
                       </p>
@@ -610,7 +605,7 @@ export const CopilotPanel = () => {
                         className={cn(
                           "rounded-full transition-all flex items-center gap-1.5 px-1.5 py-1 border h-7 cursor-pointer text-xs",
                           searchMode
-                            ? "bg-primary-600/15 border-primary-600/50 text-primary-600"
+                            ? "bg-primary-600/15 border-primary-600/50 text-primary-ink"
                             : "bg-white/5 border-transparent text-text-dim hover:text-text-muted"
                         )}
                       >
@@ -629,7 +624,7 @@ export const CopilotPanel = () => {
                           <Globe
                             className={cn(
                               "h-3.5 w-3.5",
-                              searchMode ? "text-primary-600" : "text-inherit"
+                              searchMode ? "text-primary-ink" : "text-inherit"
                             )}
                           />
                         </motion.div>
@@ -640,7 +635,7 @@ export const CopilotPanel = () => {
                               animate={{ width: "auto", opacity: 1 }}
                               exit={{ width: 0, opacity: 0 }}
                               transition={{ duration: 0.2 }}
-                              className="overflow-hidden whitespace-nowrap text-primary-600 shrink-0"
+                              className="overflow-hidden whitespace-nowrap text-primary-ink shrink-0"
                             >
                               Search
                             </motion.span>
@@ -666,7 +661,7 @@ export const CopilotPanel = () => {
                         className={cn(
                           "rounded-lg p-1.5 transition-colors",
                           draft.trim()
-                            ? "bg-primary-600/15 text-primary-600 hover:bg-primary-600/25"
+                            ? "bg-primary-600/15 text-primary-ink hover:bg-primary-600/25"
                             : "bg-white/5 text-text-dim cursor-default"
                         )}
                         title="Send message"

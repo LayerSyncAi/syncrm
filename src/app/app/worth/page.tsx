@@ -68,7 +68,7 @@ export default function WorthDashboardPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Sync Worth"
+        title="SyncWorth"
         description="Valuations from instruction to signed report."
         actions={
           <>

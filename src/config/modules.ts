@@ -1,5 +1,5 @@
 /**
- * Front-end registry of Sync Estate modules: names, colours, home routes and
+ * Front-end registry of SyncEstate modules: names, colours, home routes and
  * navigation. Which modules a user may open comes from the server
  * (api.hub.getContext); this file only describes how each one looks.
  *
@@ -16,14 +16,11 @@ import {
   Upload,
   ClipboardCheck,
   ClipboardList,
-  Coins,
   FileBarChart,
   FileSignature,
   FileText,
   Gauge,
   HandCoins,
-  HardHat,
-  Home,
   KeyRound,
   Landmark,
   Map as MapIcon,
@@ -32,9 +29,7 @@ import {
   Megaphone,
   Palette,
   Receipt,
-  Scale,
   Settings,
-  ShieldCheck,
   TriangleAlert,
   Users,
   UsersRound,
@@ -43,6 +38,15 @@ import {
   Wrench,
 } from "lucide-react";
 import type { ModuleKey } from "../../convex/lib/modules";
+import {
+  SynCrmIcon,
+  SyncDevIcon,
+  SyncFinanceIcon,
+  SyncHrIcon,
+  SyncMediaIcon,
+  SyncStayIcon,
+  SyncWorthIcon,
+} from "../components/brand/product-icons";
 
 export type { ModuleKey };
 
@@ -54,7 +58,8 @@ export type ModuleDef = {
   tagline: string;
   description: string;
   icon: LucideIcon;
-  /** Tailwind classes for the module's accent tile. */
+  /** Tailwind classes for the module's icon tile. Product icons are
+   *  monochrome on a soft tile, so every module shares one style. */
   accent: string;
   homeHref: string;
   /** Route prefixes that belong to this module (longest match wins). */
@@ -64,14 +69,16 @@ export type ModuleDef = {
   adminNav?: ModuleNavItem[];
 };
 
+const TILE = "bg-surface-2 text-text ring-1 ring-inset ring-border";
+
 export const MODULES: Record<ModuleKey, ModuleDef> = {
   crm: {
     key: "crm",
     name: "SynCRM",
     tagline: "Leads, listings and deals",
     description: "Capture leads, match them to listings, run viewings and close deals with commission tracked.",
-    icon: Waypoints,
-    accent: "bg-blue-600 text-white",
+    icon: SynCrmIcon,
+    accent: TILE,
     homeHref: "/app/dashboard",
     // The CRM predates the Hub and keeps its original routes; it is the
     // fallback module for any /app path not claimed by another.
@@ -103,11 +110,11 @@ export const MODULES: Record<ModuleKey, ModuleDef> = {
   },
   stay: {
     key: "stay",
-    name: "Sync Stay",
+    name: "SyncStay",
     tagline: "Leases, rent and arrears",
     description: "Manage let properties from lease to landlord statement: rent, receipts, arrears, deposits, maintenance and inspections.",
-    icon: Home,
-    accent: "bg-emerald-600 text-white",
+    icon: SyncStayIcon,
+    accent: TILE,
     homeHref: "/app/stay",
     routes: ["/app/stay"],
     nav: [
@@ -127,11 +134,11 @@ export const MODULES: Record<ModuleKey, ModuleDef> = {
   },
   worth: {
     key: "worth",
-    name: "Sync Worth",
+    name: "SyncWorth",
     tagline: "Valuations to signed report",
     description: "Log instructions, track every valuation to sign-off, reuse comparables and issue branded reports.",
-    icon: Scale,
-    accent: "bg-amber-600 text-white",
+    icon: SyncWorthIcon,
+    accent: TILE,
     homeHref: "/app/worth",
     routes: ["/app/worth"],
     nav: [
@@ -145,11 +152,11 @@ export const MODULES: Record<ModuleKey, ModuleDef> = {
   },
   finance: {
     key: "finance",
-    name: "Sync Finance",
+    name: "SyncFinance",
     tagline: "Trust money, payouts and statements",
     description: "One record of client money and agency income: receipts, trust balances, landlord payouts, commission, instalments and the statements that prove them.",
-    icon: Coins,
-    accent: "bg-teal-600 text-white",
+    icon: SyncFinanceIcon,
+    accent: TILE,
     homeHref: "/app/finance",
     routes: ["/app/finance"],
     nav: [
@@ -169,11 +176,11 @@ export const MODULES: Record<ModuleKey, ModuleDef> = {
   },
   dev: {
     key: "dev",
-    name: "Sync Dev",
+    name: "SyncDev",
     tagline: "Developments, stands and sales",
     description: "Every stand in every development at a glance: reserve and sell in a few taps, and see what each buyer has paid and still owes.",
-    icon: HardHat,
-    accent: "bg-orange-600 text-white",
+    icon: SyncDevIcon,
+    accent: TILE,
     homeHref: "/app/dev",
     routes: ["/app/dev"],
     nav: [
@@ -188,8 +195,8 @@ export const MODULES: Record<ModuleKey, ModuleDef> = {
     name: "SyncMedia",
     tagline: "Posts and flyers from listings",
     description: "Turn listings into branded social posts, flyers and banners in your agency's brand kit.",
-    icon: Megaphone,
-    accent: "bg-fuchsia-600 text-white",
+    icon: SyncMediaIcon,
+    accent: TILE,
     homeHref: "/app/syncmedia",
     routes: ["/app/syncmedia", "/app/admin/branding"],
     nav: [{ label: "Studio", href: "/app/syncmedia", icon: Megaphone }],
@@ -201,7 +208,7 @@ export const MODULE_ORDER: ModuleKey[] = ["crm", "stay", "worth", "finance", "de
 
 /** Modules on the roadmap, shown on the Hub as coming soon. */
 export const UPCOMING_MODULES: Array<{ name: string; tagline: string; icon: LucideIcon }> = [
-  { name: "Sync HR", tagline: "People, leave and payroll", icon: ShieldCheck },
+  { name: "SyncHR", tagline: "People, leave and payroll", icon: SyncHrIcon },
 ];
 
 /** Routes that belong to the Hub itself rather than any module. */

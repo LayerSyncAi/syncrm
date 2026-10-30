@@ -27,8 +27,8 @@ export default function FinanceInstalmentsPage() {
       description="Clients paying for stands, or anything else sold on a monthly plan."
       notice={
         devOn ? (
-          <ModuleHint href={canOpenDev ? "/app/dev/developments" : undefined} linkLabel="Open Sync Dev">
-            Stand availability and inventory are in Sync Dev.
+          <ModuleHint href={canOpenDev ? "/app/dev/developments" : undefined} linkLabel="Open SyncDev">
+            Stand availability and inventory are in SyncDev.
           </ModuleHint>
         ) : undefined
       }

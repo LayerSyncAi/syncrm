@@ -67,11 +67,11 @@ function TenantHome({ orgPhone, orgEmail }: { orgPhone: string | null; orgEmail:
 
       <div className="mt-4 grid grid-cols-2 gap-3">
         <Link href="/portal/payments" className="flex min-h-14 items-center justify-center gap-2 rounded-[12px] border border-border bg-card-bg px-3 text-sm font-medium text-text">
-          <Receipt className="h-5 w-5 text-primary-600" />
+          <Receipt className="h-5 w-5 text-primary-ink" />
           Payments
         </Link>
         <Link href="/portal/maintenance" className="flex min-h-14 items-center justify-center gap-2 rounded-[12px] border border-border bg-card-bg px-3 text-sm font-medium text-text">
-          <Wrench className="h-5 w-5 text-primary-600" />
+          <Wrench className="h-5 w-5 text-primary-ink" />
           Report a repair
         </Link>
       </div>
@@ -81,12 +81,12 @@ function TenantHome({ orgPhone, orgEmail }: { orgPhone: string | null; orgEmail:
           <CardContent className="space-y-1 pt-5 text-sm">
             <p className="font-medium text-text">Need help?</p>
             {orgPhone && (
-              <a href={`tel:${orgPhone}`} className="flex min-h-10 items-center gap-2 text-primary-600">
+              <a href={`tel:${orgPhone}`} className="flex min-h-10 items-center gap-2 text-primary-ink">
                 <Phone className="h-4 w-4" /> {orgPhone}
               </a>
             )}
             {orgEmail && (
-              <a href={`mailto:${orgEmail}`} className="flex min-h-10 items-center gap-2 text-primary-600">
+              <a href={`mailto:${orgEmail}`} className="flex min-h-10 items-center gap-2 text-primary-ink">
                 <Mail className="h-4 w-4" /> {orgEmail}
               </a>
             )}

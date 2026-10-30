@@ -10,7 +10,7 @@ export function DevelopmentCard({ d }: { d: Development }) {
   return (
     <Link
       href={`/app/dev/developments/${d._id}`}
-      className={`block rounded-[12px] border border-border-strong bg-card-bg p-4 transition-colors hover:border-primary/50 ${d.isActive ? "" : "opacity-60"}`}
+      className={`block rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4 transition-colors hover:border-primary/50 ${d.isActive ? "" : "opacity-60"}`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">

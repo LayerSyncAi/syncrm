@@ -108,7 +108,7 @@ export default function UsersPage() {
   const [editingUser, setEditingUser] = useState<EditingUser | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
-  // Sync Estate roles being edited in the modal (saved with their own button)
+  // SyncEstate roles being edited in the modal (saved with their own button)
   const [rolesDraft, setRolesDraft] = useState<EstateRole[]>([]);
 
   const [undelivered, setUndelivered] = useState<UndeliveredPassword | null>(null);
@@ -126,7 +126,7 @@ export default function UsersPage() {
   if (authLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary-ink" />
       </div>
     );
   }
@@ -256,7 +256,7 @@ export default function UsersPage() {
     try {
       await setEstateRoles({ userId: editingUser._id, roles: rolesDraft });
       setEditingUser((prev) => prev ? { ...prev, estateRoles: rolesDraft } : prev);
-      animatedToast.success(`Sync Estate roles updated for ${name}`);
+      animatedToast.success(`SyncEstate roles updated for ${name}`);
     } catch (err) {
       animatedToast.error(`Role update failed for ${name}`, {
         description: err instanceof Error ? err.message : "Something went wrong.",
@@ -397,7 +397,7 @@ export default function UsersPage() {
       {/* Table */}
       {users === undefined ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary-ink" />
         </div>
       ) : sortedUsers.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-12">
@@ -414,7 +414,7 @@ export default function UsersPage() {
               <TableRow>
                 <TableHead>User</TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead>Sync Estate roles</TableHead>
+                <TableHead>SyncEstate roles</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right w-20" />
               </TableRow>
@@ -437,7 +437,7 @@ export default function UsersPage() {
                   >
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-600/20 text-xs font-medium text-primary-600">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-600/20 text-xs font-medium text-primary-ink">
                           {getInitials(u.fullName, u.name, u.email)}
                         </div>
                         <div>
@@ -503,10 +503,10 @@ export default function UsersPage() {
           {sortedUsers.map((u) => {
             const isCurrentUser = u._id === user._id;
             return (
-              <div key={u._id} className="rounded-[12px] border border-border-strong bg-card-bg p-4">
+              <div key={u._id} className="rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-600/20 text-xs font-medium text-primary-600">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-600/20 text-xs font-medium text-primary-ink">
                       {getInitials(u.fullName, u.name, u.email)}
                     </div>
                     <div className="min-w-0">
@@ -562,9 +562,9 @@ export default function UsersPage() {
               </p>
             </div>
 
-            {/* Sync Estate roles */}
+            {/* SyncEstate roles */}
             <div className="space-y-2">
-              <Label>Sync Estate roles</Label>
+              <Label>SyncEstate roles</Label>
               {editingUser.role === "admin" ? (
                 <p className="text-xs text-text-muted">Admins open every module and need no roles.</p>
               ) : (
@@ -588,7 +588,7 @@ export default function UsersPage() {
                   </div>
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-xs text-text-muted">
-                      Roles decide which modules an agent can open. Property manager and Accounts open Sync Stay. Valuer, Signing valuer, Valuations admin and Accounts open Sync Worth. Admins open everything.
+                      Roles decide which modules an agent can open. Property manager and Accounts open SyncStay. Valuer, Signing valuer, Valuations admin and Accounts open SyncWorth. Admins open everything.
                     </p>
                     <Button size="sm" onClick={handleSaveEstateRoles} disabled={isSaving || !rolesDirty}>
                       Save roles
@@ -785,7 +785,7 @@ export default function UsersPage() {
 
           {formData.role === "agent" && (
             <div className="space-y-2">
-              <Label>Sync Estate roles</Label>
+              <Label>SyncEstate roles</Label>
               <div className="grid gap-2 sm:grid-cols-2">
                 {ESTATE_ROLES.map((r) => (
                   <label

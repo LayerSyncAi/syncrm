@@ -222,7 +222,7 @@ export default function StagesPage() {
   if (authLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary-ink" />
       </div>
     );
   }
@@ -393,10 +393,10 @@ export default function StagesPage() {
         </div>
         <button
           onClick={openCreateDrawer}
-          className="group flex h-10 items-center gap-2 rounded-full bg-border pl-3 pr-4 transition-all duration-300 ease-in-out hover:bg-primary hover:pl-2 hover:text-white active:bg-primary-600"
+          className="group flex h-10 items-center gap-2 rounded-full bg-border pl-3 pr-4 transition-all duration-300 ease-in-out hover:bg-primary hover:pl-2 hover:text-primary-foreground active:bg-primary-600"
         >
-          <span className="flex items-center justify-center overflow-hidden rounded-full bg-primary p-1 text-white transition-all duration-300 group-hover:bg-white">
-            <Plus className="h-0 w-0 transition-all duration-300 group-hover:h-4 group-hover:w-4 group-hover:text-primary" />
+          <span className="flex items-center justify-center overflow-hidden rounded-full bg-primary p-1 text-primary-foreground transition-all duration-300 group-hover:bg-white">
+            <Plus className="h-0 w-0 transition-all duration-300 group-hover:h-4 group-hover:w-4 group-hover:text-primary-ink" />
           </span>
           <span className="text-sm font-medium">Add stage</span>
         </button>
@@ -417,7 +417,7 @@ export default function StagesPage() {
 
       {stages === undefined ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary-ink" />
         </div>
       ) : sortedStages.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-12">

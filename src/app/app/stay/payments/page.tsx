@@ -165,7 +165,7 @@ export default function StayPaymentsPage() {
         }
       />
 
-      <div className="rounded-[12px] border border-border-strong bg-card-bg p-4">
+      <div className="rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4">
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-2">
             <Label>From</Label>
@@ -260,7 +260,7 @@ export default function StayPaymentsPage() {
 
           <div className="space-y-3 md:hidden">
             {rows.map((r) => (
-              <div key={r._id} className={`rounded-[12px] border border-border-strong bg-card-bg p-4 ${r.reversed ? "opacity-70" : ""}`}>
+              <div key={r._id} className={`rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4 ${r.reversed ? "opacity-70" : ""}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="font-medium">{r.tenantName}</p>

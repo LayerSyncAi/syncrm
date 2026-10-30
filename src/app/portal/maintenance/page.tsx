@@ -27,7 +27,7 @@ function Photos({ urls, count }: { urls: string[]; count: number }) {
   if (count === 0) return null;
   if (!show) {
     return (
-      <button type="button" onClick={() => setShow(true)} className="min-h-10 text-sm text-primary-600">
+      <button type="button" onClick={() => setShow(true)} className="min-h-10 text-sm text-primary-ink">
         Show {count} photo{count === 1 ? "" : "s"}
       </button>
     );

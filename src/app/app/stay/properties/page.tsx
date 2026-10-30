@@ -64,7 +64,7 @@ export default function StayPropertiesPage() {
         }
       />
 
-      <div className="rounded-[12px] border border-border-strong bg-card-bg p-4">
+      <div className="rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4">
         <Input placeholder="Search by name, address, landlord or manager" value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
@@ -127,7 +127,7 @@ export default function StayPropertiesPage() {
               <Link
                 key={r._id}
                 href={`/app/stay/properties/${r._id}`}
-                className="block rounded-[12px] border border-border-strong bg-card-bg p-4"
+                className="block rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">

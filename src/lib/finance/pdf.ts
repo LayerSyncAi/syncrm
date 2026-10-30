@@ -1,5 +1,5 @@
 /**
- * One A4 layout for every Sync Finance document: receipts, payment
+ * One A4 layout for every SyncFinance document: receipts, payment
  * vouchers, remittance advices, invoices and statements. Each screen
  * describes its document as data; this draws it with the agency's
  * letterhead (BRD §8: branded, prints cleanly on A4).

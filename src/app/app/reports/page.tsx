@@ -23,7 +23,7 @@ import {
 function PageLoader() {
   return (
     <div className="flex items-center justify-center py-16">
-      <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+      <Loader2 className="h-8 w-8 animate-spin text-primary-ink" />
     </div>
   );
 }
@@ -165,7 +165,7 @@ export default function ReportsPage() {
         </Card>
 
         {/* Tab bar */}
-        <div className="flex flex-wrap gap-1 rounded-[12px] border border-border-strong bg-card-bg p-1">
+        <div className="flex flex-wrap gap-1 rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-1">
           {visibleTabs.map((t) => (
             <button
               key={t.key}
@@ -180,7 +180,7 @@ export default function ReportsPage() {
                   transition={{ type: "spring", stiffness: 350, damping: 30 }}
                 />
               )}
-              <span className={tab === t.key ? "relative text-primary" : "relative text-text-muted"}>
+              <span className={tab === t.key ? "relative text-primary-ink" : "relative text-text-muted"}>
                 {t.label}
               </span>
             </button>

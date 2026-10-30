@@ -258,7 +258,7 @@ export function InspectionEditor({ inspection }: { inspection: Detail }) {
               />
               <PhotoStrip photos={r.photos} onChange={(photos) => setRoom(r.key, { photos })} />
               {raised[r.key] ? (
-                <Link href={`/app/stay/maintenance/${raised[r.key]}`} className="text-sm text-primary-600 underline">
+                <Link href={`/app/stay/maintenance/${raised[r.key]}`} className="text-sm text-primary-ink underline">
                   Request raised. Open it
                 </Link>
               ) : (
@@ -285,7 +285,7 @@ export function InspectionEditor({ inspection }: { inspection: Detail }) {
         </Button>
       </div>
       {inspection.canSend && (
-        <button type="button" onClick={saveAsStandard} className="text-sm text-primary-600 underline">
+        <button type="button" onClick={saveAsStandard} className="text-sm text-primary-ink underline">
           Use this room list for all future inspections of this unit
         </button>
       )}

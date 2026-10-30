@@ -149,7 +149,7 @@ export default function FinanceMoneyPage() {
   const reverseBlock = (r: Row): string | null => {
     if (r.reversed) return "Already reversed";
     if (r.isReversal) return "This is a reversal";
-    if (r.fromStay) return "Recorded in Sync Stay. Reverse it there and Finance follows.";
+    if (r.fromStay) return "Recorded in SyncStay. Reverse it there and Finance follows.";
     if (r.isFee) return "Commission. Reverse the receipt it came from.";
     if (r.isPayout) return "A payout. Reverse it from Payouts.";
     if (r.kind === "opening") return "Opening balances are undone from the import screen";
@@ -199,7 +199,7 @@ export default function FinanceMoneyPage() {
   const badges = (r: Row) => (
     <div className="mt-1 flex flex-wrap gap-1">
       <Badge variant={r.kind === "receipt" ? "success" : r.kind === "payment" ? "neutral" : "info"}>{TX_KIND_LABELS[r.kind]}</Badge>
-      {r.fromStay && <Badge variant="neutral">Sync Stay</Badge>}
+      {r.fromStay && <Badge variant="neutral">SyncStay</Badge>}
       {r.isFee && <Badge variant="neutral">Commission</Badge>}
       {r.hasSlip && <Badge variant="neutral">Slip</Badge>}
       {r.reversed && (
@@ -254,7 +254,7 @@ export default function FinanceMoneyPage() {
             role="tab"
             aria-selected={tab === k}
             onClick={() => setTab(k)}
-            className={cn("rounded-[8px] px-4 py-1.5 text-sm font-medium", tab === k ? "bg-primary-600 text-white" : "text-text-muted hover:text-text")}
+            className={cn("rounded-[8px] px-4 py-1.5 text-sm font-medium", tab === k ? "bg-primary-600 text-primary-foreground" : "text-text-muted hover:text-text")}
           >
             {label}
           </button>
@@ -271,7 +271,7 @@ export default function FinanceMoneyPage() {
         />
       ) : (
         <>
-          <div className="rounded-[12px] border border-border-strong bg-card-bg p-4">
+          <div className="rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4">
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
               <div className="space-y-2">
                 <Label>From</Label>
@@ -320,7 +320,7 @@ export default function FinanceMoneyPage() {
           {rows === undefined ? (
             <ListSkeleton />
           ) : rows.length === 0 ? (
-            <EmptyState icon={Coins} title="Nothing in this period" description="Rent and deposits arrive from Sync Stay. Record other money here." />
+            <EmptyState icon={Coins} title="Nothing in this period" description="Rent and deposits arrive from SyncStay. Record other money here." />
           ) : (
             <>
               <div className="hidden md:block">
@@ -359,7 +359,7 @@ export default function FinanceMoneyPage() {
               </div>
               <div className="space-y-3 md:hidden">
                 {rows.map((r) => (
-                  <div key={r._id} className={cn("rounded-[12px] border border-border-strong bg-card-bg p-4", r.reversed && "opacity-70")}>
+                  <div key={r._id} className={cn("rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4", r.reversed && "opacity-70")}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="font-medium">{r.description}</p>
@@ -547,7 +547,7 @@ function MoneyInModal({ open, onClose, fin, accounts }: { open: boolean; onClose
     <Modal
       open={open}
       title="Money in"
-      description="Money that did not come through Sync Stay. A numbered receipt is issued."
+      description="Money that did not come through SyncStay. A numbered receipt is issued."
       onClose={onClose}
       footer={<ModalFooter onClose={onClose} onSave={save} busy={busy} label="Record money in" />}
     >
@@ -763,7 +763,7 @@ function MoneyOutModal({ open, onClose, fin, accounts }: { open: boolean; onClos
           ) : (
             <Field
               label="Property"
-              hint={property ? `Charged to ${property.landlordName}. Also shown in Sync Stay expenses.` : undefined}
+              hint={property ? `Charged to ${property.landlordName}. Also shown in SyncStay expenses.` : undefined}
             >
               <Select value={propertyId} onChange={(e) => setPropertyId(e.target.value)} disabled={properties === undefined}>
                 <option value="">{properties === undefined ? "Loading..." : "Pick a property"}</option>
@@ -1044,7 +1044,7 @@ function CashUp({ today, onBank }: { today: string; onBank: (f: { accountId: str
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end gap-3 rounded-[12px] border border-border-strong bg-card-bg p-4">
+      <div className="flex flex-wrap items-end gap-3 rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4">
         <div className="space-y-2">
           <Label>Day</Label>
           <Input type="date" value={date} max={today} onChange={(e) => setDate(e.target.value)} />

@@ -760,7 +760,7 @@ export default function NewLeadPage() {
                     {preferredAreas.map((area) => (
                       <span
                         key={area}
-                        className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary"
+                        className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary-ink"
                       >
                         {area}
                         <button
@@ -871,7 +871,7 @@ export default function NewLeadPage() {
                         onClick={() => setPropertyFilter(filter)}
                         className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                           propertyFilter === filter
-                            ? "bg-primary text-white"
+                            ? "bg-primary text-primary-foreground"
                             : "bg-border text-text-muted hover:bg-border-strong"
                         }`}
                       >

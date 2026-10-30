@@ -110,7 +110,7 @@ export default function PlatformPage() {
   if (authLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary-ink" />
       </div>
     );
   }
@@ -247,7 +247,7 @@ export default function PlatformPage() {
         <CardContent>
           {filteredOrgs === undefined ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-primary-600" />
+              <Loader2 className="h-6 w-6 animate-spin text-primary-ink" />
             </div>
           ) : filteredOrgs.length === 0 ? (
             <p className="py-8 text-center text-sm text-text-muted">No organisations match.</p>

@@ -1,5 +1,5 @@
 /**
- * Sync Worth valuation calculators (VW-42). Pure functions: the valuer sees
+ * SyncWorth valuation calculators (VW-42). Pure functions: the valuer sees
  * the workings, then chooses whether to use the result as a value.
  */
 

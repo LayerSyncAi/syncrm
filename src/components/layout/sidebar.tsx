@@ -12,7 +12,6 @@ import {
   ChevronRight,
   DollarSign,
   Download,
-  LayoutGrid,
   ScrollText,
   Search,
   Send,
@@ -30,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { brand } from "@/config/brand";
 import { api } from "../../../convex/_generated/api";
 import { MODULES, moduleForPath, type ModuleKey } from "@/config/modules";
+import { SyncEstateIcon } from "@/components/brand/product-icons";
 
 // CRM main nav comes from the module registry (SyncMedia is its own module).
 const navItems = MODULES.crm.nav;
@@ -57,9 +57,9 @@ const hubAdminItems = [
   { label: "Logs", href: "/app/admin/logs", icon: ScrollText },
 ];
 
-const hubItem = { label: "Hub", href: "/app/hub", icon: LayoutGrid };
+const hubItem = { label: "Hub", href: "/app/hub", icon: SyncEstateIcon };
 
-const notifyItem = { label: "Sync Notify", href: "/app/notify", icon: Send };
+const notifyItem = { label: "SyncNotify", href: "/app/notify", icon: Send };
 
 const platformItem = { label: "Platform", href: "/app/platform", icon: Server };
 
@@ -92,38 +92,27 @@ function NavItem({
   pillId: string;
 }) {
   const Icon = item.icon;
-  const textColor = active ? "text-primary" : "text-sidebar-fg";
+  const textColor = active ? "text-primary-foreground" : "text-sidebar-fg/80 group-hover:text-sidebar-fg";
   const [hovered, setHovered] = useState(false);
 
   return (
     <Link
       href={item.href}
       className={cn(
-        "relative flex h-10 items-center gap-3 rounded-[10px] px-3 text-sm font-medium transition-colors duration-150",
+        "group relative flex h-10 items-center gap-3 rounded-full px-3.5 text-sm font-medium transition-colors duration-150",
         collapsed ? "justify-center" : "justify-start",
-        !active && "hover:bg-white/10"
+        !active && "hover:bg-white/[0.07]"
       )}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {/* Sliding active indicator pill */}
+      {/* Sliding active indicator: the brand green marks where you are */}
       {active && (
         <motion.div
           layoutId={pillId}
-          className="absolute inset-0 rounded-[10px] bg-white/10"
+          className="absolute inset-0 rounded-full bg-primary"
           transition={{ type: "spring", stiffness: 350, damping: 30 }}
         />
-      )}
-
-      {/* Gradient underline — intense left, fades right, with sweeping glow */}
-      {active && (
-        <motion.div
-          layoutId={`${pillId}-underline`}
-          className="absolute bottom-0 left-2 right-2 h-[2px] rounded-full sidebar-underline"
-          transition={{ type: "spring", stiffness: 350, damping: 30 }}
-        >
-          <div className="absolute inset-0 rounded-full sidebar-underline-glow" style={{ filter: "blur(3px)" }} />
-        </motion.div>
       )}
 
       {/* Recommendation #1: Icon scales up when sidebar collapses */}
@@ -189,8 +178,8 @@ function ModuleSwitcher({
 }) {
   const [open, setOpen] = useState(false);
   const def = current === "hub" ? null : MODULES[current];
-  const Icon = def ? def.icon : LayoutGrid;
-  const name = def ? def.name : "Sync Estate";
+  const Icon = def ? def.icon : SyncEstateIcon;
+  const name = def ? def.name : "SyncEstate";
 
   useEffect(() => {
     if (!open) return;
@@ -210,12 +199,12 @@ function ModuleSwitcher({
         aria-expanded={open}
         aria-label="Switch module"
         className={cn(
-          "flex w-full items-center gap-3 rounded-[12px] border border-white/20 bg-white/10 px-3 py-2.5 text-left transition-colors hover:bg-white/15",
+          "flex w-full items-center gap-3 rounded-[16px] border border-white/10 bg-white/[0.04] px-2.5 py-2.5 text-left transition-colors hover:bg-white/[0.08]",
           collapsed && "justify-center px-0"
         )}
       >
-        <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", def ? def.accent : "bg-white/20 text-white")}>
-          <Icon className="h-4 w-4" aria-hidden="true" />
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px] bg-white/[0.06] text-primary ring-1 ring-inset ring-white/10">
+          <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
         </div>
         {!collapsed && (
           <>
@@ -232,10 +221,10 @@ function ModuleSwitcher({
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden="true" />
           <div
             role="menu"
-            className="absolute left-2 top-full z-50 mt-2 w-56 rounded-[12px] border border-white/20 bg-sidebar-bg p-1.5 shadow-lg"
+            className="absolute left-2 top-full z-50 mt-2 w-60 rounded-[16px] border border-white/10 bg-sidebar-bg p-1.5 shadow-[var(--shadow-pop)]"
           >
             {[
-              { key: "hub" as const, label: "Hub", href: "/app/hub", icon: LayoutGrid },
+              { key: "hub" as const, label: "Hub", href: "/app/hub", icon: SyncEstateIcon },
               ...myModules.map((k) => ({ key: k, label: MODULES[k].name, href: MODULES[k].homeHref, icon: MODULES[k].icon })),
             ].map((m) => {
               const MIcon = m.icon;
@@ -246,11 +235,11 @@ function ModuleSwitcher({
                   role="menuitem"
                   onClick={() => setOpen(false)}
                   className={cn(
-                    "flex items-center gap-3 rounded-[10px] px-3 py-2 text-sm transition-colors hover:bg-white/10",
-                    m.key === current && "bg-white/10 font-medium"
+                    "flex items-center gap-3 rounded-full px-3 py-2 text-sm transition-colors hover:bg-white/[0.07]",
+                    m.key === current && "bg-white/[0.07] font-medium"
                   )}
                 >
-                  <MIcon className="h-4 w-4" aria-hidden="true" />
+                  <MIcon className={cn("h-[18px] w-[18px]", m.key === current && "text-primary")} aria-hidden="true" />
                   {m.label}
                 </Link>
               );
@@ -336,6 +325,19 @@ export const Sidebar = memo(function Sidebar({ isAdmin, isPlatformAdmin, collaps
         >
         {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
       </button>
+      {/* Logo: the reversed lockup, or just the app icon when collapsed. */}
+      <Link
+        href="/app/hub"
+        aria-label={`${brand.name} hub`}
+        className={cn("mb-5 flex h-9 items-center px-2.5", collapsed && "justify-center px-0")}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element -- SVG logo, swappable per client */}
+        <img
+          src={collapsed ? brand.logos.appIcon : brand.logos.lockupReversed}
+          alt={brand.name}
+          className={collapsed ? "h-9 w-9" : "h-8 w-auto"}
+        />
+      </Link>
       {hub ? (
         <ModuleSwitcher current={current} myModules={myModules} orgName={hub.orgName} collapsed={collapsed} />
       ) : (
@@ -396,7 +398,7 @@ export const Sidebar = memo(function Sidebar({ isAdmin, isPlatformAdmin, collaps
       </nav>
       {current === "crm" && (
       <>
-      <div className="mt-4 space-y-1 border-t border-white/20 pt-4" data-tour="sidebar-import-export">
+      <div className="mt-4 space-y-1 border-t border-white/10 pt-4" data-tour="sidebar-import-export">
         {collapsed ? (
           /* When sidebar is collapsed, show items directly (with hover tooltips) */
           importExportItems.map((item) => (
@@ -413,9 +415,9 @@ export const Sidebar = memo(function Sidebar({ isAdmin, isPlatformAdmin, collaps
             <button
               type="button"
               onClick={() => setIoExpanded((p) => !p)}
-              className="flex w-full items-center justify-between rounded-[10px] px-3 py-1.5 transition-colors duration-150 hover:bg-white/10"
+              className="flex w-full items-center justify-between rounded-full px-3 py-1.5 transition-colors duration-150 hover:bg-white/[0.07]"
             >
-              <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/70">
+              <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-white/50">
                 Import / Export
               </span>
               <motion.div
@@ -451,7 +453,7 @@ export const Sidebar = memo(function Sidebar({ isAdmin, isPlatformAdmin, collaps
           </>
         )}
       </div>
-      <div className="mt-4 space-y-1 border-t border-white/20 pt-4" data-tour="sidebar-contact-tools">
+      <div className="mt-4 space-y-1 border-t border-white/10 pt-4" data-tour="sidebar-contact-tools">
         {collapsed ? (
           contactToolItems.map((item) => (
             <NavItem
@@ -467,9 +469,9 @@ export const Sidebar = memo(function Sidebar({ isAdmin, isPlatformAdmin, collaps
             <button
               type="button"
               onClick={() => setContactToolsExpanded((p) => !p)}
-              className="flex w-full items-center justify-between rounded-[10px] px-3 py-1.5 transition-colors duration-150 hover:bg-white/10"
+              className="flex w-full items-center justify-between rounded-full px-3 py-1.5 transition-colors duration-150 hover:bg-white/[0.07]"
             >
-              <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/70">
+              <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-white/50">
                 Contact Tools
               </span>
               <motion.div
@@ -506,7 +508,7 @@ export const Sidebar = memo(function Sidebar({ isAdmin, isPlatformAdmin, collaps
         )}
       </div>
       {isAdmin ? (
-        <div className="mt-4 space-y-1 border-t border-white/20 pt-4" data-tour="sidebar-admin">
+        <div className="mt-4 space-y-1 border-t border-white/10 pt-4" data-tour="sidebar-admin">
           {collapsed ? (
             adminItems.map((item) => (
               <NavItem
@@ -522,9 +524,9 @@ export const Sidebar = memo(function Sidebar({ isAdmin, isPlatformAdmin, collaps
               <button
                 type="button"
                 onClick={() => setAdminExpanded((p) => !p)}
-                className="flex w-full items-center justify-between rounded-[10px] px-3 py-1.5 transition-colors duration-150 hover:bg-white/10"
+                className="flex w-full items-center justify-between rounded-full px-3 py-1.5 transition-colors duration-150 hover:bg-white/[0.07]"
               >
-                <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-white/70">
+                <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-white/50">
                   Admin
                 </span>
                 <motion.div
@@ -564,9 +566,9 @@ export const Sidebar = memo(function Sidebar({ isAdmin, isPlatformAdmin, collaps
       </>
       )}
       {isAdmin && current !== "crm" && current !== "hub" && (MODULES[current].adminNav?.length ?? 0) > 0 ? (
-        <div className="mt-4 space-y-1 border-t border-white/20 pt-4">
+        <div className="mt-4 space-y-1 border-t border-white/10 pt-4">
           {!collapsed && (
-            <span className="block px-3 pb-1 text-[11px] font-medium uppercase tracking-[0.14em] text-white/70">
+            <span className="block px-3 pb-1 text-[11px] font-medium uppercase tracking-[0.12em] text-white/50">
               Admin
             </span>
           )}
@@ -582,9 +584,9 @@ export const Sidebar = memo(function Sidebar({ isAdmin, isPlatformAdmin, collaps
         </div>
       ) : null}
       {isAdmin && current === "hub" ? (
-        <div className="mt-4 space-y-1 border-t border-white/20 pt-4">
+        <div className="mt-4 space-y-1 border-t border-white/10 pt-4">
           {!collapsed && (
-            <span className="block px-3 pb-1 text-[11px] font-medium uppercase tracking-[0.14em] text-white/70">
+            <span className="block px-3 pb-1 text-[11px] font-medium uppercase tracking-[0.12em] text-white/50">
               Hub admin
             </span>
           )}
@@ -600,9 +602,9 @@ export const Sidebar = memo(function Sidebar({ isAdmin, isPlatformAdmin, collaps
         </div>
       ) : null}
       {isPlatformAdmin ? (
-        <div className="mt-4 space-y-1 border-t border-white/20 pt-4">
+        <div className="mt-4 space-y-1 border-t border-white/10 pt-4">
           {!collapsed && (
-            <span className="block px-3 pb-1 text-[11px] font-medium uppercase tracking-[0.14em] text-white/70">
+            <span className="block px-3 pb-1 text-[11px] font-medium uppercase tracking-[0.12em] text-white/50">
               LayerSync
             </span>
           )}

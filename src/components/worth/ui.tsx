@@ -1,6 +1,6 @@
 "use client";
 
-/** Small building blocks shared by the Sync Worth pages. */
+/** Small building blocks shared by the SyncWorth pages. */
 import * as React from "react";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";

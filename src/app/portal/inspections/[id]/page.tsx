@@ -14,7 +14,7 @@ export default function PortalInspectionPage() {
   const back = portal.kind === "tenant" ? "/portal/lease" : "/portal/inspections";
   return (
     <div>
-      <Link href={back} className="mb-3 inline-flex min-h-10 items-center gap-1 text-sm text-primary-600">
+      <Link href={back} className="mb-3 inline-flex min-h-10 items-center gap-1 text-sm text-primary-ink">
         <ArrowLeft className="h-4 w-4" />
         Back
       </Link>

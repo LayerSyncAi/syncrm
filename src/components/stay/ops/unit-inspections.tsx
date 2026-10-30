@@ -28,7 +28,7 @@ export function UnitInspections({ unitId }: { unitId: Id<"stayUnits"> }) {
       ) : items.length === 0 ? (
         <p className="text-sm text-text-muted">No inspections yet.</p>
       ) : (
-        <ul className="divide-y divide-border rounded-[12px] border border-border-strong bg-card-bg">
+        <ul className="divide-y divide-border rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)]">
           {items.map((i) => (
             <li key={i._id}>
               <Link href={`/app/stay/inspections/${i._id}`} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-row-hover">

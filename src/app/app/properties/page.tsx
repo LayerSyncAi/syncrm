@@ -618,7 +618,7 @@ export default function PropertiesPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <div className="hidden md:flex items-center gap-1 rounded-[12px] border border-border-strong bg-card-bg p-1">
+          <div className="hidden md:flex items-center gap-1 rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-1">
             <Button
               variant={viewMode === "list" ? "primary" : "ghost"}
               className="h-8 px-3"
@@ -650,7 +650,7 @@ export default function PropertiesPage() {
         </div>
       </div>
 
-      <div className="rounded-[12px] border border-border-strong bg-card-bg p-4">
+      <div className="rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4">
         <button
           type="button"
           onClick={() => setFiltersOpen((o) => !o)}
@@ -768,13 +768,13 @@ export default function PropertiesPage() {
               <TableHead>
                 <button
                   onClick={toggleAddedSort}
-                  className="inline-flex items-center gap-1 transition-colors hover:text-primary"
+                  className="inline-flex items-center gap-1 transition-colors hover:text-primary-ink"
                   aria-label="Sort by date added"
                 >
                   Added
                   {addedSort === "" && <ArrowUpDown className="h-3 w-3 text-text-dim" />}
-                  {addedSort === "created_desc" && <ArrowDown className="h-3 w-3 text-primary" />}
-                  {addedSort === "created_asc" && <ArrowUp className="h-3 w-3 text-primary" />}
+                  {addedSort === "created_desc" && <ArrowDown className="h-3 w-3 text-primary-ink" />}
+                  {addedSort === "created_asc" && <ArrowUp className="h-3 w-3 text-primary-ink" />}
                 </button>
               </TableHead>
               <TableHead className="text-right">Action</TableHead>
@@ -928,7 +928,7 @@ export default function PropertiesPage() {
                   onClick={(e) => { e.stopPropagation(); toggleCompare(property._id); }}
                   className={`absolute top-3 right-3 z-10 flex h-7 w-7 items-center justify-center rounded-lg border-2 transition ${
                     isCompared
-                      ? "border-primary bg-primary text-white"
+                      ? "border-primary bg-primary text-primary-foreground"
                       : "border-white/70 bg-white/60 text-transparent backdrop-blur-sm hover:border-primary/50"
                   }`}
                 >

@@ -50,7 +50,7 @@ export default function WorthArchivePage() {
     <div className="space-y-6">
       <PageHeader title="Archive" description="Every issued valuation, searchable by reference, client, address and suburb." />
 
-      <div className="grid grid-cols-2 gap-3 rounded-[12px] border border-border-strong bg-card-bg p-4 md:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4 md:grid-cols-5">
         <Field label="Search" className="col-span-2 md:col-span-1">
           <Input value={f.q} onChange={(e) => setF({ ...f, q: e.target.value })} placeholder="Reference, client, address" />
         </Field>
@@ -122,7 +122,7 @@ export default function WorthArchivePage() {
               <Link
                 key={r._id}
                 href={`/app/worth/jobs/${r._id}?tab=report`}
-                className="block rounded-[12px] border border-border-strong bg-card-bg p-4"
+                className="block rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4"
               >
                 <p className="text-xs font-medium text-text-muted">
                   {r.reference} · {formatDay(r.issuedDate)}

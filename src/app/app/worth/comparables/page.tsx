@@ -88,7 +88,7 @@ export default function ComparablesPage() {
         }
       />
 
-      <div className="rounded-[12px] border border-border-strong bg-card-bg p-4">
+      <div className="rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4">
         <ComparableFilterBar value={filters} onChange={setFilters} />
         <p className="mt-3 text-sm text-text-muted">
           {data ? `${data.total} match${data.total === 1 ? "" : "es"}${data.total > data.items.length ? `, showing ${data.items.length}` : ""}` : "Searching..."}
@@ -170,7 +170,7 @@ export default function ComparablesPage() {
           </div>
           <div className="space-y-3 md:hidden">
             {data.items.map((c) => (
-              <div key={c._id} className="rounded-[12px] border border-border-strong bg-card-bg p-4">
+              <div key={c._id} className="rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="truncate font-medium">{c.address}</p>

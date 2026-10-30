@@ -156,7 +156,7 @@ function HeroCopy() {
           href="/login"
           className="flex origin-top-left items-center rounded-full border border-text/20 bg-card-bg p-0.5 text-sm transition-transform hover:-rotate-2"
         >
-          <span className="rounded-full bg-primary-600 px-2.5 py-0.5 font-medium text-white">
+          <span className="rounded-full bg-primary-600 px-2.5 py-0.5 font-medium text-primary-foreground">
             NEW
           </span>
           <span className="ml-1.5 mr-1 inline-block text-text-muted">
@@ -188,7 +188,7 @@ function HeroCopy() {
 
       <Link
         href="/login"
-        className="rounded-lg bg-primary-600 px-5 py-3 text-sm font-bold uppercase text-white shadow-[0_4px_16px_rgba(236,164,0,0.3)] transition-colors hover:bg-primary"
+        className="rounded-lg bg-primary-600 px-5 py-3 text-sm font-bold uppercase text-primary-foreground shadow-[0_4px_16px_rgba(236,164,0,0.3)] transition-colors hover:bg-primary"
       >
         Get Started —{" "}
         <span className="font-normal">no CC required</span>
@@ -222,11 +222,11 @@ function HeroMockupScreen() {
               <Sparkles className="h-3 w-3 text-white" />
             </div>
             <span className="text-[10px] font-semibold">
-              Syn<span className="text-primary-600">CRM</span>
+              Syn<span className="text-primary-ink">CRM</span>
             </span>
           </div>
           <div className="mt-3 space-y-1.5">
-            <span className="flex items-center gap-1.5 text-xs text-primary-600">
+            <span className="flex items-center gap-1.5 text-xs text-primary-ink">
               <LayoutDashboard className="h-3 w-3" />
               <span>Dashboard</span>
             </span>
@@ -253,7 +253,7 @@ function HeroMockupScreen() {
               Search...
             </span>
             <div className="flex items-center gap-1.5">
-              <Bell className="h-4 w-4 text-primary-600" />
+              <Bell className="h-4 w-4 text-primary-ink" />
               <User className="h-4 w-4 text-text-dim" />
             </div>
           </div>
@@ -299,7 +299,7 @@ function LogoItem({
 }) {
   return (
     <span className="flex items-center justify-center gap-3 px-4 py-2 md:py-4">
-      <Icon className="h-5 w-5 shrink-0 text-primary-600 md:h-6 md:w-6" />
+      <Icon className="h-5 w-5 shrink-0 text-primary-ink md:h-6 md:w-6" />
       <span className="whitespace-nowrap text-lg font-semibold uppercase text-text md:text-xl">
         {name}
       </span>
@@ -536,7 +536,7 @@ export default function LandingPage() {
     return (
       <main className="min-h-screen bg-content-bg flex items-center justify-center px-6">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary-ink" />
           <p className="text-sm text-text-muted">Checking authentication...</p>
         </div>
       </main>
@@ -547,7 +547,7 @@ export default function LandingPage() {
     return (
       <main className="min-h-screen bg-content-bg flex items-center justify-center px-6">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary-ink" />
           <p className="text-sm text-text-muted">Redirecting to dashboard...</p>
         </div>
       </main>
@@ -564,7 +564,7 @@ export default function LandingPage() {
               <Sparkles className="h-4 w-4 text-white" />
             </div>
             <span className="text-base font-semibold tracking-tight">
-              Syn<span className="text-primary-600">CRM</span>
+              Syn<span className="text-primary-ink">CRM</span>
             </span>
           </Link>
           <div className="flex items-center gap-2 sm:gap-3">
@@ -576,7 +576,7 @@ export default function LandingPage() {
             </Link>
             <Link
               href="/login"
-              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-[10px] bg-primary-600 px-3 py-2 text-sm font-medium text-white shadow-[0_0_0_4px_rgba(236,164,0,0.12)] transition-colors hover:bg-primary sm:px-4"
+              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-[10px] bg-primary-600 px-3 py-2 text-sm font-medium text-primary-foreground shadow-[0_0_0_4px_rgba(236,164,0,0.12)] transition-colors hover:bg-primary sm:px-4"
             >
               Get Started
               <ArrowRight className="h-3.5 w-3.5" />
@@ -606,7 +606,7 @@ export default function LandingPage() {
               <motion.span
                 variants={fadeUp}
                 custom={0}
-                className="text-xs font-semibold uppercase tracking-[0.2em] text-primary-600"
+                className="text-xs font-semibold uppercase tracking-[0.2em] text-primary-ink"
               >
                 Why {brand.name}
               </motion.span>
@@ -645,7 +645,7 @@ export default function LandingPage() {
               <div className="rounded-[16px] border border-border bg-content-bg p-6 shadow-[0_16px_48px_rgba(15,23,42,0.06)]">
                 <div className="mb-5 flex items-center gap-3">
                   <div className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-primary-600/10">
-                    <Lock className="h-4 w-4 text-primary-600" />
+                    <Lock className="h-4 w-4 text-primary-ink" />
                   </div>
                   <div>
                     <p className="text-sm font-semibold">Role-Based Access</p>
@@ -743,7 +743,7 @@ export default function LandingPage() {
           >
             <Link
               href="/login"
-              className="group inline-flex items-center gap-2 rounded-[12px] bg-primary-600 px-8 py-3.5 text-base font-semibold text-white shadow-[0_0_24px_rgba(236,164,0,0.3)] transition-all duration-200 hover:bg-primary hover:shadow-[0_0_32px_rgba(236,164,0,0.45)]"
+              className="group inline-flex items-center gap-2 rounded-[12px] bg-primary-600 px-8 py-3.5 text-base font-semibold text-primary-foreground shadow-[0_0_24px_rgba(236,164,0,0.3)] transition-all duration-200 hover:bg-primary hover:shadow-[0_0_32px_rgba(236,164,0,0.45)]"
             >
               Get Started — It&apos;s Free
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
@@ -760,7 +760,7 @@ export default function LandingPage() {
               <Sparkles className="h-3.5 w-3.5 text-white" />
             </div>
             <span className="text-sm font-semibold">
-              Syn<span className="text-primary-600">CRM</span>
+              Syn<span className="text-primary-ink">CRM</span>
             </span>
           </div>
           <p className="text-xs text-text-dim">
@@ -768,7 +768,7 @@ export default function LandingPage() {
           </p>
           <Link
             href="/login"
-            className="text-xs font-medium text-primary-600 hover:underline"
+            className="text-xs font-medium text-primary-ink hover:underline"
           >
             Sign in to your account &rarr;
           </Link>

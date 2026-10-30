@@ -15,7 +15,7 @@ export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
 // Soft tinted backgrounds + AA-contrast foregrounds, driven by status tokens.
 const variantStyles: Record<NonNullable<BadgeProps["variant"]>, string> = {
   default:
-    "bg-primary-600/10 text-primary-600 border-primary-600/20",
+    "bg-primary-soft text-primary-ink border-transparent",
   success:
     "bg-[var(--status-success-bg)] text-[var(--status-success-fg)] border-transparent",
   warning:

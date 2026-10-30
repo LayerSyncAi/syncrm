@@ -69,7 +69,7 @@ export function ForceChangePasswordCard({ onChanged }: { onChanged: () => void }
         <CardHeader>
           <div className="flex flex-col items-center space-y-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-600/10">
-              <KeyRound className="h-6 w-6 text-primary-600" />
+              <KeyRound className="h-6 w-6 text-primary-ink" />
             </div>
             <div className="text-center space-y-1">
               <p className="text-xs uppercase tracking-[0.2em] text-text-dim">

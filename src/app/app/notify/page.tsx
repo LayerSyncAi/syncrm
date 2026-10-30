@@ -30,7 +30,7 @@ function NotifyPage() {
     return (
       <EmptyState
         icon={MessagesSquare}
-        title="Sync Notify is not available to you"
+        title="SyncNotify is not available to you"
         description="Directors and the accounts, marketing, sales manager and property manager roles can send messages."
         action={
           <Link href="/app/hub">
@@ -48,7 +48,7 @@ function NotifyPage() {
 
   return (
     <div className="space-y-6 pb-20">
-      <StayPageHeader title="Sync Notify" description="Email and SMS to your clients and team, and a log of every message the agency sends." />
+      <StayPageHeader title="SyncNotify" description="Email and SMS to your clients and team, and a log of every message the agency sends." />
       <Tabs<Tab>
         tabs={[
           { key: "send", label: "Send" },

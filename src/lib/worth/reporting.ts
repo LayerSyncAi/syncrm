@@ -1,5 +1,5 @@
 /**
- * Groupings for the Sync Worth reports page (BRD §6). Pure, so they are
+ * Groupings for the SyncWorth reports page (BRD §6). Pure, so they are
  * unit-tested; the server returns the register rows.
  */
 import { STATUS_FLOW, type WorthCurrency, type WorthStatus } from "../../../convex/worth/lib";

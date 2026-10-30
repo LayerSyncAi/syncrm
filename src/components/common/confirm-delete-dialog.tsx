@@ -52,7 +52,7 @@ export function ConfirmDeleteDialog({
           />
           <motion.div
             className={cn(
-              "relative z-10 w-full max-w-md rounded-[12px] border border-border-strong bg-card-bg p-5 shadow-[0_10px_28px_rgba(0,0,0,0.32)]"
+              "relative z-10 w-full max-w-md rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-5 shadow-[0_10px_28px_rgba(0,0,0,0.32)]"
             )}
             initial={{ opacity: 0, scale: 0.95, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}

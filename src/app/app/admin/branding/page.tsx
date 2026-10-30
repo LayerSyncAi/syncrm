@@ -173,7 +173,7 @@ export default function BrandingPage() {
   if (authLoading || branding === undefined) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary-ink" />
       </div>
     );
   }
@@ -184,7 +184,7 @@ export default function BrandingPage() {
 
       <div>
         <h1 className="flex items-center gap-2 text-xl font-semibold text-text">
-          <Palette className="h-5 w-5 text-primary" /> Brand kit
+          <Palette className="h-5 w-5 text-primary-ink" /> Brand kit
         </h1>
         <p className="mt-1 text-sm text-text-muted">
           The logo and colours every SyncMedia brochure is built from. Changing these
