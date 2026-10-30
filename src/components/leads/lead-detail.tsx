@@ -381,8 +381,10 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
 
   const nonTerminalStages = stages?.filter((s) => !s.isTerminal) ?? [];
   const currentStageOrder = stage?.order ?? 1;
-  const maxOrder = Math.max(...(nonTerminalStages.map((s) => s.order) ?? [1]));
-  const stageProgress = lead.closedAt ? 100 : Math.round((currentStageOrder / maxOrder) * 100);
+  const maxOrder = Math.max(1, ...nonTerminalStages.map((s) => s.order));
+  // Won and Lost sit after the last open stage, so they count as the end.
+  const stageProgress =
+    lead.closedAt || stage?.isTerminal ? 100 : Math.min(100, Math.round((currentStageOrder / maxOrder) * 100));
 
   const filteredProperties = propertiesArray.filter(
     (p) =>
@@ -434,13 +436,14 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
 
       <DuplicateWarning email={lead.email} phone={lead.phone} excludeLeadId={leadId} />
 
-      {/* Tab bar with sliding underline */}
+      {/* Tab bar with sliding underline. On phones it scrolls sideways
+          rather than squeezing the labels into each other. */}
       <div className="border-b border-border">
-        <div className="flex gap-6 relative">
+        <div className="relative flex gap-6 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
           {tabs.map((tab) => (
             <button
               key={tab}
-              className={`relative pb-3 text-sm font-medium transition-colors duration-150 ${
+              className={`relative shrink-0 whitespace-nowrap pb-3 text-sm font-medium transition-colors duration-150 ${
                 activeTab === tab ? "text-text" : "text-text-muted hover:text-text"
               }`}
               onClick={() => setActiveTab(tab)}

@@ -24,6 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListSkeleton } from "@/components/ui/list-skeleton";
 import { KanbanBoard } from "@/components/leads/kanban-board";
+import { ContactActions } from "@/components/common/contact-actions";
 
 const listVariants = {
   hidden: {},
@@ -112,6 +113,7 @@ const LeadTableRow = React.memo(function LeadTableRow({
       </TableCell>
       <TableCell className="text-right">
         <div className="flex justify-end gap-1">
+          <ContactActions phone={lead.phone} name={lead.fullName} className="mr-1.5 gap-1" />
           <Tooltip content="View">
             <Button
               variant="secondary"
@@ -139,6 +141,7 @@ const LeadTableRow = React.memo(function LeadTableRow({
 });
 
 // Mobile equivalent of LeadTableRow: data tables stack as cards below md.
+// The whole card opens the lead; Call and WhatsApp sit up front.
 const LeadCard = React.memo(function LeadCard({
   lead,
   stages,
@@ -155,14 +158,18 @@ const LeadCard = React.memo(function LeadCard({
   return (
     <motion.div
       variants={rowVariants}
-      className="rounded-[12px] border border-border-strong bg-card-bg p-4 space-y-3"
+      className="cursor-pointer rounded-[12px] border border-border-strong bg-card-bg p-4 space-y-3 active:bg-row-hover"
+      onClick={() => onRowClick(lead)}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <Link href={`/app/leads/${lead._id}`} className="block truncate font-medium hover:text-primary">
             {lead.fullName}
           </Link>
-          <p className="text-xs text-text-muted">{lead.phone}</p>
+          <p className="truncate text-xs text-text-muted">
+            {lead.phone}
+            {lead.ownerName ? ` · ${lead.ownerName}` : ""}
+          </p>
         </div>
         <ScoreBadge score={lead.score} />
       </div>
@@ -185,20 +192,15 @@ const LeadCard = React.memo(function LeadCard({
         />
       </div>
       <div className="flex items-center justify-between gap-2 pt-1">
-        <span className="text-xs text-text-dim">Owner: {lead.ownerName}</span>
-        <div className="flex gap-1.5">
-          <Button variant="secondary" className="h-9 w-9 p-0" aria-label="View lead" onClick={() => onRowClick(lead)}>
-            <Eye className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="secondary"
-            className="h-9 w-9 p-0 text-danger hover:bg-danger/10 hover:text-danger"
-            aria-label="Delete lead"
-            onClick={() => onDelete(lead)}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
+        <ContactActions phone={lead.phone} name={lead.fullName} labelled />
+        <Button
+          variant="secondary"
+          className="ml-auto h-9 w-9 p-0 text-danger hover:bg-danger/10 hover:text-danger"
+          aria-label="Delete lead"
+          onClick={(e) => { e.stopPropagation(); onDelete(lead); }}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
       </div>
     </motion.div>
   );

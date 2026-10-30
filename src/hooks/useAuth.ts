@@ -111,7 +111,10 @@ function useStableSessionAuth() {
 
   return {
     isAuthLoading,
-    isSessionAuthenticated: stableAuth,
+    // A live session counts at once. stableAuth only catches up in an effect,
+    // and for that one render the layout saw "signed out" and sent a fresh
+    // page load to /login, which bounced it to the home page.
+    isSessionAuthenticated: rawIsSessionAuthenticated || stableAuth,
     // Expose raw value for debug logging.
     rawIsSessionAuthenticated,
   };
