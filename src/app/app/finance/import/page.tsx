@@ -40,7 +40,7 @@ export default function FinanceImportPage() {
     <div className="mx-auto max-w-4xl space-y-6">
       <StayPageHeader
         title="Import and migrate"
-        description="Move your agency onto Sync Finance from Excel and receipt books. Each import can be undone as a whole."
+        description="Move your agency onto SyncFinance from Excel and receipt books. Each import can be undone as a whole."
         back={{ href: "/app/finance/settings", label: "Finance settings" }}
       />
 
@@ -70,13 +70,13 @@ function KindIntro({ kind }: { kind: ImportKind }) {
   if (kind === "opening") {
     return (
       <div className="space-y-3 text-sm text-text-muted">
-        <p>Balances on the day you start using Sync Finance: each bank account and cash float, what you hold for each landlord and each tenant deposit.</p>
+        <p>Balances on the day you start using SyncFinance: each bank account and cash float, what you hold for each landlord and each tenant deposit.</p>
         <p>
           Trust account balances start as unallocated. Each landlord and deposit balance is taken from it, so what is left shows money nobody has been matched to yet.
         </p>
         <div className="flex gap-2 rounded-lg bg-[var(--status-warning-bg)] p-3 text-[var(--status-warning-fg)]">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <p>If tenant deposits were already brought in by the Sync Stay import while Finance was on, do not import them again.</p>
+          <p>If tenant deposits were already brought in by the SyncStay import while Finance was on, do not import them again.</p>
         </div>
       </div>
     );
@@ -85,7 +85,7 @@ function KindIntro({ kind }: { kind: ImportKind }) {
     return (
       <p className="text-sm text-text-muted">
         Past receipts and payments from a receipt book or Excel, keeping their original numbers. Accounts must exist first in{" "}
-        <Link href="/app/finance/settings" className="text-primary-600 hover:underline">
+        <Link href="/app/finance/settings" className="text-primary-ink hover:underline">
           Finance settings
         </Link>
         .
@@ -95,7 +95,7 @@ function KindIntro({ kind }: { kind: ImportKind }) {
   return (
     <p className="text-sm text-text-muted">
       Buyers already paying for stands, with what they have paid so far. Developments must exist first under{" "}
-      <Link href="/app/finance/instalments" className="text-primary-600 hover:underline">
+      <Link href="/app/finance/instalments" className="text-primary-ink hover:underline">
         Instalments
       </Link>
       .
@@ -103,7 +103,7 @@ function KindIntro({ kind }: { kind: ImportKind }) {
   );
 }
 
-// ── Sync Stay receipts ───────────────────────────────────────────────
+// ── SyncStay receipts ───────────────────────────────────────────────
 
 function StayReceipts({ today }: { today: string }) {
   const bringIn = useMutation(api.finance.posting.bringInStayPayments);
@@ -139,10 +139,10 @@ function StayReceipts({ today }: { today: string }) {
   }
 
   return (
-    <Section title="Bring in Sync Stay receipts">
+    <Section title="Bring in SyncStay receipts">
       <div className="space-y-4">
         <p className="text-sm text-text-muted">
-          Posts rent and deposit receipts recorded in Sync Stay from this date into Finance, so you do not type them again. Receipts already in Finance are left alone.
+          Posts rent and deposit receipts recorded in SyncStay from this date into Finance, so you do not type them again. Receipts already in Finance are left alone.
         </p>
         <div className="flex flex-wrap items-end gap-3">
           <div className="space-y-2">
@@ -174,9 +174,9 @@ function StayReceipts({ today }: { today: string }) {
   );
 }
 
-// ── Sync Dev payments ────────────────────────────────────────────────
+// ── SyncDev payments ────────────────────────────────────────────────
 
-/** Payments Sync Dev took before the agency had Finance, posted to the ledger. */
+/** Payments SyncDev took before the agency had Finance, posted to the ledger. */
 function DevPayments() {
   const hub = useQuery(api.hub.getContext);
   const bringIn = useMutation(api.finance.posting.bringInDevPayments);
@@ -204,10 +204,10 @@ function DevPayments() {
   }
 
   return (
-    <Section title="Bring in Sync Dev payments">
+    <Section title="Bring in SyncDev payments">
       <div className="space-y-4">
         <p className="text-sm text-text-muted">
-          Posts the stand payments and refunds Sync Dev recorded before you had Sync Finance, with their receipt numbers, so they sit in your trust and cash books. Payments already in Finance are left alone.
+          Posts the stand payments and refunds SyncDev recorded before you had SyncFinance, with their receipt numbers, so they sit in your trust and cash books. Payments already in Finance are left alone.
         </p>
         <Button onClick={run} disabled={running}>
           {running ? "Bringing in..." : "Bring in payments"}

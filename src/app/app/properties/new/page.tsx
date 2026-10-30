@@ -564,7 +564,7 @@ export default function NewPropertyPage() {
                       onClick={() => setOwnershipMode("company")}
                       className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
                         ownershipMode === "company"
-                          ? "border-primary bg-primary text-white"
+                          ? "border-primary bg-primary text-primary-foreground"
                           : "border-border-strong bg-card-bg text-text-muted hover:border-primary/60"
                       }`}
                     >
@@ -575,7 +575,7 @@ export default function NewPropertyPage() {
                       onClick={() => setOwnershipMode("agents")}
                       className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
                         ownershipMode === "agents"
-                          ? "border-primary bg-primary text-white"
+                          ? "border-primary bg-primary text-primary-foreground"
                           : "border-border-strong bg-card-bg text-text-muted hover:border-primary/60"
                       }`}
                     >
@@ -598,7 +598,7 @@ export default function NewPropertyPage() {
                               onClick={() => toggleOwner(a._id as Id<"users">)}
                               className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
                                 checked
-                                  ? "border-primary bg-primary text-white"
+                                  ? "border-primary bg-primary text-primary-foreground"
                                   : "border-border-strong bg-card-bg text-text-muted hover:border-primary/60"
                               }`}
                             >

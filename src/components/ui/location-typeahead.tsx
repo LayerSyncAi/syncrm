@@ -280,8 +280,8 @@ export function LocationTypeahead({
                   className={cn(
                     "flex cursor-pointer items-center gap-2.5 rounded-[8px] px-2.5 py-2 text-xs transition-colors",
                     index === highlightIndex
-                      ? "bg-primary/10 text-primary-600"
-                      : "text-text hover:bg-primary/5 hover:text-primary-600"
+                      ? "bg-primary/10 text-primary-ink"
+                      : "text-text hover:bg-primary/5 hover:text-primary-ink"
                   )}
                 >
                   <MapPin className="h-3.5 w-3.5 shrink-0 text-text-muted" />

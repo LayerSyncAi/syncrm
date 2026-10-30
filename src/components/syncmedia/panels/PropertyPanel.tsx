@@ -127,13 +127,13 @@ export function PropertyPanel({
                         {property.title}
                       </span>
                       {selected ? (
-                        <Check className="h-3.5 w-3.5 flex-shrink-0 text-primary" />
+                        <Check className="h-3.5 w-3.5 flex-shrink-0 text-primary-ink" />
                       ) : null}
                     </span>
                     <span className="mt-0.5 block truncate text-xs text-text-muted">
                       {[property.pbRefCode, property.location].filter(Boolean).join(" · ")}
                     </span>
-                    <span className="mt-0.5 block text-xs font-medium text-primary">
+                    <span className="mt-0.5 block text-xs font-medium text-primary-ink">
                       {formatMoney(property.price, property.currency, { decimals: 0 })}
                       {property.listingType === "rent" ? " pm" : ""}
                     </span>

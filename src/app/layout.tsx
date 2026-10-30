@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Playfair_Display } from "next/font/google";
+import { Geist, Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
 import { ConvexClientProvider } from "@/components/providers/convex-client-provider";
@@ -7,9 +7,19 @@ import { AnimatedToaster } from "@/components/ui/animated-toaster";
 import { PWARegister } from "@/components/pwa/pwa-register";
 import { brand, brandThemeCss } from "@/config/brand";
 
+// The interface face. Large figures use its light weight (see .text-figure).
+const geist = Geist({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-geist",
+});
+
+// Kept for SyncMedia brochure templates, which are designed around Inter.
+// Not preloaded: only the studio uses it.
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
+  preload: false,
 });
 
 // Display serif, used only inside SyncMedia brochure templates. Loaded at the
@@ -69,11 +79,11 @@ export default function RootLayout({
 }) {
   return (
     <ConvexAuthNextjsServerProvider>
-      <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
+      <html lang="en" className={`${geist.variable} ${inter.variable} ${playfair.variable}`}>
         <body>
           {/* Brand colours: maps brand.ts values onto the --brand-* custom
               properties that globals.css reads. Inline so it applies at first
-              paint (no flash). Defaults to SynCRM when no env vars are set. */}
+              paint (no flash). Defaults to SyncEstate when no env vars are set. */}
           <style id="brand-theme" dangerouslySetInnerHTML={{ __html: brandThemeCss() }} />
           <ConvexClientProvider>{children}</ConvexClientProvider>
           <AnimatedToaster />

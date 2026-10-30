@@ -24,10 +24,10 @@ const STATUS_VARIANT: Record<string, "success" | "info" | "warning" | "danger" |
 const STATUS_LABEL: Record<string, string> = { sent: "Sent", logged: "Logged", queued: "Queued", failed: "Failed" };
 
 const SOURCE_LABEL: Record<string, string> = {
-  notify: "Sync Notify",
-  finance: "Sync Finance",
-  stay: "Sync Stay",
-  worth: "Sync Worth",
+  notify: "SyncNotify",
+  finance: "SyncFinance",
+  stay: "SyncStay",
+  worth: "SyncWorth",
   crm: "CRM",
   system: "System",
 };
@@ -85,7 +85,7 @@ export function LogTab({
       {rows === undefined ? (
         <ListSkeleton />
       ) : rows.length === 0 ? (
-        <EmptyState icon={Inbox} title="No messages yet" description="Messages sent by Sync Notify and by the modules (receipts, statements, reminders) appear here." />
+        <EmptyState icon={Inbox} title="No messages yet" description="Messages sent by SyncNotify and by the modules (receipts, statements, reminders) appear here." />
       ) : (
         <Section title={`${rows.length} message${rows.length === 1 ? "" : "s"}`}>
           <Table>

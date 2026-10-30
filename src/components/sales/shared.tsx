@@ -18,8 +18,8 @@ export type SaleRow = FunctionReturnType<typeof api.dev.sales.listStands>[number
 export type Account = { _id: Id<"finAccounts">; name: string };
 
 /**
- * Sync Finance details for sales screens, only when the agency has Finance
- * and this user can open it: a Sync Dev user without Finance cannot call any
+ * SyncFinance details for sales screens, only when the agency has Finance
+ * and this user can open it: a SyncDev user without Finance cannot call any
  * Finance query. `accountsFor` is null when the account picker should hide.
  */
 export function useSalesFinance(financeOn: boolean | undefined) {
@@ -51,7 +51,7 @@ export function ModuleHint({ children, href, linkLabel }: { children: React.Reac
         {href && linkLabel && (
           <>
             {" "}
-            <Link href={href} className="font-medium text-primary-600 hover:underline">
+            <Link href={href} className="font-medium text-primary-ink hover:underline">
               {linkLabel}
             </Link>
           </>

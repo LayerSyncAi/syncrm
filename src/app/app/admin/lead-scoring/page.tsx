@@ -36,7 +36,7 @@ function GlowSlider({
     <div className="relative w-full pt-8 pb-1">
       {/* Floating weight bubble */}
       <motion.div
-        className="absolute top-0 pointer-events-none z-10 rounded-md bg-primary px-2 py-0.5 text-[11px] font-bold text-white shadow-md"
+        className="absolute top-0 pointer-events-none z-10 rounded-md bg-primary px-2 py-0.5 text-[11px] font-bold text-primary-foreground shadow-md"
         style={{ left: `calc(${percent}% - 16px)` }}
         animate={{
           scale: isDragging ? 1.15 : 1,
@@ -331,7 +331,7 @@ export default function LeadScoringPage() {
                             }
                             className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border transition ${
                               criterion.enabled
-                                ? "border-primary-600 bg-primary-600 text-white"
+                                ? "border-primary-600 bg-primary-600 text-primary-foreground"
                                 : "border-border-strong text-transparent"
                             }`}
                           >

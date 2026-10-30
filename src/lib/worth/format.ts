@@ -1,4 +1,4 @@
-/** Display helpers shared by the Sync Worth pages and PDFs. */
+/** Display helpers shared by the SyncWorth pages and PDFs. */
 import type { WorthStatus } from "../../../convex/worth/lib";
 
 export {

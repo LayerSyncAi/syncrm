@@ -28,8 +28,8 @@ function statusBadge(s: SaleRow) {
 }
 
 /**
- * Buyers paying for stands on a plan. Shared by Sync Finance (Instalments)
- * and Sync Dev (Buyers); `basePath` is where each buyer's statement lives.
+ * Buyers paying for stands on a plan. Shared by SyncFinance (Instalments)
+ * and SyncDev (Buyers); `basePath` is where each buyer's statement lives.
  * The caller makes sure the user may use sales before this renders.
  */
 export function InstalmentsView({
@@ -267,7 +267,7 @@ export function InstalmentsView({
 
       <div className="space-y-3">
         {!isDev && <h2 className="text-base font-semibold">{people}</h2>}
-        <div className="grid gap-3 rounded-[12px] border border-border-strong bg-card-bg p-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_auto_auto]">
+        <div className="grid gap-3 rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_auto_auto]">
           <div className="space-y-2">
             <Label>Search</Label>
             <Input placeholder="Buyer, stand or phone" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -364,7 +364,7 @@ export function InstalmentsView({
 
             <div className="space-y-3 lg:hidden">
               {shown.map((s) => (
-                <div key={s._id} className={`rounded-[12px] border border-border-strong bg-card-bg p-4 ${s.status === "cancelled" ? "opacity-70" : ""}`}>
+                <div key={s._id} className={`rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4 ${s.status === "cancelled" ? "opacity-70" : ""}`}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <Link href={`${basePath}/${s._id}`} className="font-medium hover:underline">

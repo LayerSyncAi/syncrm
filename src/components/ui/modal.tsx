@@ -66,7 +66,7 @@ export function Modal({
           {/* Modal panel with drag-down-to-dismiss */}
           <motion.div
             className={cn(
-              "relative z-10 w-full max-w-2xl rounded-[14px] border border-border-strong bg-card-bg shadow-[0_10px_28px_rgba(0,0,0,0.32)] cursor-grab active:cursor-grabbing"
+              "relative z-10 w-full max-w-2xl rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-pop)] cursor-grab active:cursor-grabbing"
             )}
             initial={{ opacity: 0, scale: 0.95, y: 16 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}

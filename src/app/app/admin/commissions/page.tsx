@@ -163,7 +163,7 @@ export default function CommissionsPage() {
   if (authLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary-ink" />
       </div>
     );
   }
@@ -364,7 +364,7 @@ export default function CommissionsPage() {
 
             {configs === undefined ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+                <Loader2 className="h-8 w-8 animate-spin text-primary-ink" />
               </div>
             ) : configs.length === 0 ? (
               <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-12">
@@ -389,7 +389,7 @@ export default function CommissionsPage() {
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-2">
                           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
-                            <Icon className="h-4 w-4 text-primary" />
+                            <Icon className="h-4 w-4 text-primary-ink" />
                           </div>
                           <div>
                             <h4 className="text-sm font-medium">{config.name}</h4>
@@ -474,7 +474,7 @@ export default function CommissionsPage() {
           >
             {dealCommissions === undefined ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+                <Loader2 className="h-8 w-8 animate-spin text-primary-ink" />
               </div>
             ) : dealCommissions.length === 0 ? (
               <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-12">
@@ -515,7 +515,7 @@ export default function CommissionsPage() {
                             )}
                           </TableCell>
                           <TableCell className="whitespace-nowrap text-right font-medium tabular-nums">{fmt(commission.dealValue)}</TableCell>
-                          <TableCell className="whitespace-nowrap text-right font-medium tabular-nums text-primary">{fmt(commissionAmountOf(commission))}</TableCell>
+                          <TableCell className="whitespace-nowrap text-right font-medium tabular-nums text-primary-ink">{fmt(commissionAmountOf(commission))}</TableCell>
                           <TableCell className="min-w-[210px]">
                             <div className="space-y-0.5 text-xs">
                               <div className="flex items-center justify-between gap-3">
@@ -572,7 +572,7 @@ export default function CommissionsPage() {
                 {dealCommissions.map((commission: any) => {
                   const fmt = (amount: number) => formatMoney(amount, commission.dealCurrency, { decimals: 0 });
                   return (
-                    <div key={commission._id} className="rounded-[12px] border border-border-strong bg-card-bg p-4 space-y-3">
+                    <div key={commission._id} className="rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4 space-y-3">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="truncate font-medium">{commission.leadName}</p>
@@ -584,7 +584,7 @@ export default function CommissionsPage() {
                       </div>
                       <div>
                         <p className="text-lg font-semibold tabular-nums">{fmt(commission.dealValue)}</p>
-                        <p className="text-xs font-medium tabular-nums text-primary">
+                        <p className="text-xs font-medium tabular-nums text-primary-ink">
                           Commission ({COMMISSION_RATE_PERCENT}%): {fmt(commissionAmountOf(commission))}
                         </p>
                       </div>
@@ -842,7 +842,7 @@ export default function CommissionsPage() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-text-muted">Commission ({COMMISSION_RATE_PERCENT}%)</span>
-                  <span className="text-sm font-semibold text-primary">{fmt(commissionAmountOf(detailCommission))}</span>
+                  <span className="text-sm font-semibold text-primary-ink">{fmt(commissionAmountOf(detailCommission))}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-text-muted">Created</span>
@@ -854,7 +854,7 @@ export default function CommissionsPage() {
               <div className="rounded-lg border border-border p-4 space-y-3">
                 <div className="flex items-center gap-2">
                   <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10">
-                    <ScenarioIcon className="h-3.5 w-3.5 text-primary" />
+                    <ScenarioIcon className="h-3.5 w-3.5 text-primary-ink" />
                   </div>
                   <div>
                     <h4 className="text-sm font-medium">Split Scenario</h4>

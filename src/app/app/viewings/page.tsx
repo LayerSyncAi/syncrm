@@ -57,7 +57,7 @@ export default function ViewingsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-xl font-semibold text-text">
-            <FileSignature className="h-5 w-5 text-primary" /> Viewing Forms
+            <FileSignature className="h-5 w-5 text-primary-ink" /> Viewing Forms
           </h1>
           <p className="mt-1 text-sm text-text-muted">
             {isAdmin
@@ -113,7 +113,7 @@ export default function ViewingsPage() {
               className="group flex cursor-pointer items-center gap-3 rounded-lg border border-border-strong bg-card-bg p-3 transition-colors hover:bg-surface-2/40"
               onClick={() => setViewId(f._id)}
             >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary-ink">
                 <FileSignature className="h-4 w-4" />
               </div>
               <div className="min-w-0 flex-1">

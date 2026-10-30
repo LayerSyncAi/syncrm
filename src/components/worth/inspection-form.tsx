@@ -255,7 +255,7 @@ export function InspectionForm({ job }: { job: JobView }) {
                     onClick={() => set({ condition: f.condition === c ? "" : c })}
                     className={cn(
                       "h-10 rounded-[10px] border text-xs font-medium capitalize",
-                      f.condition === c ? "border-primary-600 bg-primary-600 text-white" : "border-border-strong text-text-muted"
+                      f.condition === c ? "border-primary-600 bg-primary-600 text-primary-foreground" : "border-border-strong text-text-muted"
                     )}
                   >
                     {c}

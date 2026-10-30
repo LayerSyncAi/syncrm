@@ -28,7 +28,7 @@ import { cn } from "@/lib/utils";
 type Filter = "all" | StandStatus;
 
 const CHIP_ACTIVE: Record<Filter, string> = {
-  all: "border-primary-600 bg-primary-600 text-white",
+  all: "border-primary-600 bg-primary-600 text-primary-foreground",
   available: "border-[var(--status-success-fg)] bg-[var(--status-success-bg)] text-[var(--status-success-fg)]",
   reserved: "border-[var(--status-warning-fg)] bg-[var(--status-warning-bg)] text-[var(--status-warning-fg)]",
   sold: "border-text bg-surface-2 text-text",
@@ -173,7 +173,7 @@ export default function DevelopmentPage() {
           )}
         </div>
       )}
-      {!financeOn && report && report.sold > 0 && <ModuleHint>Sync Finance adds commission and payouts to the developer.</ModuleHint>}
+      {!financeOn && report && report.sold > 0 && <ModuleHint>SyncFinance adds commission and payouts to the developer.</ModuleHint>}
 
       <Section title="Stands" actions={stands.length > 0 && <InventoryBar className="w-80 max-w-full" sold={counts.sold} reserved={counts.reserved} available={counts.available} />}>
         {stands.length === 0 ? (

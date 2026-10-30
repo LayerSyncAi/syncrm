@@ -138,7 +138,7 @@ export default function MaintenanceDetailPage() {
             onChange={(next) => run(() => update({ id, photos: next.map((p) => p.storageId as Id<"_storage">) }))}
           />
           {req.inspectionId && (
-            <Link href={`/app/stay/inspections/${req.inspectionId}`} className="text-sm text-primary-600 underline">
+            <Link href={`/app/stay/inspections/${req.inspectionId}`} className="text-sm text-primary-ink underline">
               Raised from an inspection report
             </Link>
           )}

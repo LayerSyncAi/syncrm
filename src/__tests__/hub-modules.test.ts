@@ -35,13 +35,13 @@ describe("userCanUseModule", () => {
     expect(userModules(agent, allOn)).toEqual(["crm", "media"]);
   });
 
-  it("opens Sync Stay to property managers and accounts", () => {
+  it("opens SyncStay to property managers and accounts", () => {
     expect(userCanUseModule({ role: "agent", estateRoles: ["property_manager"] }, allOn, "stay")).toBe(true);
     expect(userCanUseModule({ role: "agent", estateRoles: ["accounts"] }, allOn, "stay")).toBe(true);
     expect(userCanUseModule({ role: "agent", estateRoles: ["valuer"] }, allOn, "stay")).toBe(false);
   });
 
-  it("opens Sync Worth to valuation roles and accounts", () => {
+  it("opens SyncWorth to valuation roles and accounts", () => {
     for (const r of ["valuer", "signing_valuer", "valuations_admin", "accounts"] as const) {
       expect(userCanUseModule({ role: "agent", estateRoles: [r] }, allOn, "worth")).toBe(true);
     }

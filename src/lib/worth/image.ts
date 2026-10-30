@@ -1,5 +1,5 @@
 /**
- * Browser image helpers for Sync Worth: compress inspection photos before
+ * Browser image helpers for SyncWorth: compress inspection photos before
  * upload (VW-21, weak connections) and load images for the PDF report.
  */
 

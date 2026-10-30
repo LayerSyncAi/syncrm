@@ -86,7 +86,7 @@ export function StayDocuments({
     <section className="space-y-3">
       <h3 className="font-medium">Documents</h3>
 
-      <div className="space-y-3 rounded-[12px] border border-border-strong bg-card-bg p-4">
+      <div className="space-y-3 rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4">
         <div className="grid gap-3 sm:grid-cols-2">
           <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name (optional)" />
           <Select value={kind} onChange={(e) => setKind(e.target.value as Kind)} aria-label="Type">
@@ -118,7 +118,7 @@ export function StayDocuments({
       ) : docs.length === 0 ? (
         <p className="text-sm text-text-muted">No documents yet.</p>
       ) : (
-        <ul className="divide-y divide-border rounded-[12px] border border-border-strong bg-card-bg">
+        <ul className="divide-y divide-border rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)]">
           {docs.map((d) => (
             <li key={d._id} className="space-y-2 px-4 py-3">
               <div className="flex items-start justify-between gap-3">

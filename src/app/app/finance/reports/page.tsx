@@ -454,7 +454,7 @@ export default function FinanceReportsPage() {
             onClick={() => setReport(r.key)}
             className={cn(
               "h-9 shrink-0 rounded-full border px-4 text-sm font-medium transition-colors",
-              report === r.key ? "border-primary-600 bg-primary-600 text-white" : "border-border-strong hover:bg-surface-2"
+              report === r.key ? "border-primary-600 bg-primary-600 text-primary-foreground" : "border-border-strong hover:bg-surface-2"
             )}
           >
             {r.label}
@@ -462,7 +462,7 @@ export default function FinanceReportsPage() {
         ))}
       </div>
 
-      <div className="rounded-[12px] border border-border-strong bg-card-bg p-4">
+      <div className="rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4">
         <p className="text-sm text-text-muted">{meta.description}</p>
         <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {report === "cashbook" && (
@@ -525,7 +525,7 @@ export default function FinanceReportsPage() {
         <div className="space-y-6">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {built.summary.map((s) => (
-              <div key={s.label} className="rounded-[12px] border border-border-strong bg-card-bg p-4">
+              <div key={s.label} className="rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4">
                 <p className="text-xs font-medium uppercase tracking-wide text-text-muted">{s.label}</p>
                 <p className="mt-1 font-semibold break-words">{s.value}</p>
               </div>
@@ -785,7 +785,7 @@ function ReportTable({ columns, rows }: { columns: Col[]; rows: Row[] }) {
       </div>
       <div className="space-y-3 md:hidden">
         {rows.map((r, i) => (
-          <div key={i} className="rounded-[12px] border border-border-strong bg-card-bg p-4 text-sm">
+          <div key={i} className="rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4 text-sm">
             <p className="font-medium">{display(r, columns[0])}</p>
             <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1">
               {columns.slice(1).map((c) => {

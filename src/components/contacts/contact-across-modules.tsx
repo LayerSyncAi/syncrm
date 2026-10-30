@@ -26,7 +26,7 @@ const STAND_STATUS_LABELS: Record<string, string> = {
 
 /**
  * HB-32: the contact's leases, payments, valuations and stand sales from the
- * other Sync Estate modules. Each block only appears when the viewer can open
+ * other SyncEstate modules. Each block only appears when the viewer can open
  * that module; the server decides.
  */
 export function ContactAcrossModules({ contactId }: { contactId: Id<"contacts"> }) {
@@ -44,7 +44,7 @@ export function ContactAcrossModules({ contactId }: { contactId: Id<"contacts"> 
   const { stay, finance, worth, stands } = data;
   const sections = [
     stay && stay.properties.length > 0 && (
-      <Section key="stay-props" icon={Home} title="Properties let through Sync Stay">
+      <Section key="stay-props" icon={Home} title="Properties let through SyncStay">
         {stay.properties.map((p) => (
           <Row key={p._id} href={`/app/stay/properties/${p._id}`} title={p.title}>
             {!p.isActive && <Badge variant="secondary">Inactive</Badge>}
@@ -57,7 +57,7 @@ export function ContactAcrossModules({ contactId }: { contactId: Id<"contacts"> 
         key="stay-leases"
         icon={KeyRound}
         title="Leases as tenant"
-        action={<Link href={`/app/stay/tenants/${contactId}`} className="text-xs text-primary hover:underline">Tenant account</Link>}
+        action={<Link href={`/app/stay/tenants/${contactId}`} className="text-xs text-primary-ink hover:underline">Tenant account</Link>}
       >
         {stay.leases.map((l) => (
           <Row

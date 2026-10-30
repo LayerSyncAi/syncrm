@@ -43,7 +43,7 @@ export function NotificationBell() {
         aria-label={unread > 0 ? `Notifications, ${unread > 99 ? "99+" : unread} unread` : "Notifications"}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="relative flex h-9 w-9 items-center justify-center rounded-[10px] border border-border-strong text-text-muted transition hover:border-primary/60 hover:text-text"
+        className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border-strong bg-card-bg text-text-muted transition hover:bg-surface-2 hover:text-text"
       >
         <Bell className="h-4 w-4" />
         {unread > 0 && (
@@ -53,7 +53,7 @@ export function NotificationBell() {
         )}
       </button>
       {open && (
-        <div className="absolute right-0 z-50 mt-2 w-[min(22rem,calc(100vw-1.5rem))] rounded-[12px] border border-border-strong bg-card-bg shadow-[0_10px_28px_rgba(0,0,0,0.32)]">
+        <div className="absolute right-0 z-50 mt-2 w-[min(22rem,calc(100vw-1.5rem))] rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-pop)]">
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <p className="text-sm font-medium">Notifications</p>
             <div className="flex items-center gap-3">
@@ -71,7 +71,7 @@ export function NotificationBell() {
                 type="button"
                 disabled={unread === 0}
                 onClick={() => markAllRead().catch(() => {})}
-                className="text-xs font-medium text-primary disabled:text-text-dim"
+                className="text-xs font-medium text-primary-ink disabled:text-text-dim"
               >
                 Mark all read
               </button>

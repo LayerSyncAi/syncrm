@@ -1,5 +1,5 @@
 /**
- * Sync Finance "Import and migrate": the three Excel templates and the pure
+ * SyncFinance "Import and migrate": the three Excel templates and the pure
  * parsers that turn sheet rows into importer batches (convex/finance/importer.ts).
  *
  *  - opening: balances at go-live per account, landlord and tenant deposit.
@@ -46,12 +46,12 @@ export const OPENING_EXAMPLES: Array<Array<string | number>> = [
 export const OPENING_NOTES = [
   "One row per balance at the go-live date. You choose the go-live date on the import screen.",
   "Account: a bank account or cash float. A new name adds the account; Account type says which kind (Trust if left blank).",
-  "Landlord: money you hold for a landlord. The landlord must already exist in Sync Stay or Owners.",
-  "Deposit: a tenant deposit you hold. The tenant needs exactly one active lease in that currency in Sync Stay.",
+  "Landlord: money you hold for a landlord. The landlord must already exist in SyncStay or Owners.",
+  "Deposit: a tenant deposit you hold. The tenant needs exactly one active lease in that currency in SyncStay.",
   "Trust account balances start as unallocated. Each landlord and deposit balance is taken from it, so what is left is money nobody has been matched to yet.",
   "Phone or email helps tell apart two people with the same name.",
   "Currency USD or ZiG. Amounts are never converted.",
-  "If Sync Stay already brought in tenant deposits while Finance was on, leave them out of this file.",
+  "If SyncStay already brought in tenant deposits while Finance was on, leave them out of this file.",
 ];
 
 export const TRANSACTION_COLUMNS = [

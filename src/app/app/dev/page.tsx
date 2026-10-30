@@ -36,7 +36,7 @@ export default function DevDashboardPage() {
   if (devs.length === 0) {
     return (
       <div className="space-y-6">
-        <StayPageHeader title="Sync Dev" description="Your developments, their stands and the buyers paying for them." />
+        <StayPageHeader title="SyncDev" description="Your developments, their stands and the buyers paying for them." />
         <Section title="Get started">
           <ol className="space-y-4">
             {[
@@ -45,7 +45,7 @@ export default function DevDashboardPage() {
               { icon: HandCoins, title: "Reserve and sell", body: "Tap a stand to hold it for someone or sell it on a payment plan." },
             ].map((s, i) => (
               <li key={s.title} className="flex gap-3">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-600/10 text-sm font-semibold text-primary-600">{i + 1}</span>
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-600/10 text-sm font-semibold text-primary-ink">{i + 1}</span>
                 <div>
                   <p className="font-medium">{s.title}</p>
                   <p className="text-sm text-text-muted">{s.body}</p>
@@ -64,7 +64,7 @@ export default function DevDashboardPage() {
             )}
           </div>
         </Section>
-        {!financeOn && <ModuleHint>Sync Finance adds trust accounting, commission and developer payouts.</ModuleHint>}
+        {!financeOn && <ModuleHint>SyncFinance adds trust accounting, commission and developer payouts.</ModuleHint>}
         {modal}
       </div>
     );
@@ -72,7 +72,7 @@ export default function DevDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <StayPageHeader title="Sync Dev" description="Stands available, reserved and sold, and what buyers owe." actions={newButton} />
+      <StayPageHeader title="SyncDev" description="Stands available, reserved and sold, and what buyers owe." actions={newButton} />
 
       <div className="grid grid-cols-3 gap-3">
         <StatTile label="Available" value={summary.available} tone="good" href="/app/dev/developments" />
@@ -92,7 +92,7 @@ export default function DevDashboardPage() {
         />
       </div>
 
-      {!financeOn && <ModuleHint>Sync Finance adds trust accounting, commission and developer payouts.</ModuleHint>}
+      {!financeOn && <ModuleHint>SyncFinance adds trust accounting, commission and developer payouts.</ModuleHint>}
 
       <Section
         title="Developments"

@@ -69,7 +69,7 @@ export default function HubPage() {
   return (
     <div className="space-y-8">
       <div className="space-y-1">
-        <h1 className="text-h1">Sync Estate</h1>
+        <h1 className="text-h1">SyncEstate</h1>
         <p className="text-sm text-text-muted">
           {greeting()}
           {firstName ? `, ${firstName}` : ""}. Here is {hub.orgName} at a glance.

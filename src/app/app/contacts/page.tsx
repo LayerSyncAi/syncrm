@@ -208,11 +208,11 @@ const ContactCard = React.memo(function ContactCard({
       variants={rowVariants}
       initial="hidden"
       animate="show"
-      className="rounded-[12px] border border-border-strong bg-card-bg p-4 space-y-3"
+      className="rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4 space-y-3"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <button onClick={() => onView(contact)} className="block truncate text-left font-medium hover:text-primary">
+          <button onClick={() => onView(contact)} className="block truncate text-left font-medium hover:text-primary-ink">
             {contact.name}
           </button>
           {contact.company && <p className="truncate text-xs text-text-muted">{contact.company}</p>}
@@ -656,7 +656,7 @@ export default function ContactsPage() {
         </Button>
       </div>
 
-      <div className="rounded-[12px] border border-border-strong bg-card-bg p-4">
+      <div className="rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4">
         <div className="grid gap-3 md:grid-cols-4">
           <div className="space-y-2">
             <Label>Search</Label>
@@ -821,7 +821,7 @@ export default function ContactsPage() {
                 onClick={() => setModalTab(tab)}
                 className={`px-4 py-2 text-sm font-medium capitalize transition-colors ${
                   modalTab === tab
-                    ? "border-b-2 border-primary text-primary"
+                    ? "border-b-2 border-primary text-primary-ink"
                     : "text-text-muted hover:text-text"
                 }`}
               >
@@ -923,7 +923,7 @@ export default function ContactsPage() {
                   </label>
                 </div>
                 <p className="text-xs text-text-muted">
-                  Sellers, landlords, tenants and valuation clients are tagged by Owners, Sync Stay and Sync Worth.
+                  Sellers, landlords, tenants and valuation clients are tagged by Owners, SyncStay and SyncWorth.
                 </p>
               </div>
 
@@ -953,7 +953,7 @@ export default function ContactsPage() {
                             onClick={() => toggleOwner(user._id)}
                             className={`rounded-full px-3 py-1 text-sm transition-colors ${
                               isSelected
-                                ? "bg-primary text-white"
+                                ? "bg-primary text-primary-foreground"
                                 : "bg-surface-2 text-text-muted hover:bg-border"
                             }`}
                           >
@@ -1077,7 +1077,7 @@ export default function ContactsPage() {
                         }
                         className={`rounded-full px-3 py-1 text-sm transition-colors ${
                           selected
-                            ? "bg-primary text-white"
+                            ? "bg-primary text-primary-foreground"
                             : "bg-surface-2 text-text-muted hover:bg-border"
                         }`}
                       >
@@ -1134,7 +1134,7 @@ export default function ContactsPage() {
                     {preferredAreas.map((area) => (
                       <span
                         key={area}
-                        className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary"
+                        className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary-ink"
                       >
                         {area}
                         <button

@@ -2,8 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import { Bell, BellOff, ChevronDown, Globe, LogOut, Menu, Search, ShieldCheck, UserRound } from "lucide-react";
+import { Bell, BellOff, ChevronDown, Globe, LogOut, Menu, Search, ShieldCheck, Sparkles, UserRound } from "lucide-react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -40,10 +39,10 @@ const titleMap: Record<string, string> = {
   "/app/admin/stages": "Stages",
   "/app/platform": "Platform",
   "/app/hub/alerts": "Email alerts",
-  "/app/hub": "Sync Estate",
-  "/app/notify": "Sync Notify",
-  "/app/finance": "Sync Finance",
-  "/app/dev": "Sync Dev",
+  "/app/hub": "SyncEstate",
+  "/app/notify": "SyncNotify",
+  "/app/finance": "SyncFinance",
+  "/app/dev": "SyncDev",
   "/app/commission": "My commission",
   "/app/settings": "Agency settings",
 };
@@ -137,16 +136,16 @@ export function Topbar({ userName, userEmail, orgName, userTimezone, isRealAdmin
         >
           <Menu className="h-5 w-5" />
         </button>
-        <h1 className="text-lg font-semibold">{title}</h1>
+        <h1 className="truncate text-[17px] font-medium tracking-[-0.02em]">{title}</h1>
         <span className="hidden rounded-full border border-border-strong px-3 py-1 text-xs text-text-muted sm:inline-block">
           Live
         </span>
       </div>
-      <div className="flex min-w-0 flex-1 items-center justify-end gap-3">
+      <div className="flex min-w-0 flex-1 items-center justify-end gap-2 sm:gap-2.5">
         {/* Admin/Agent view toggle — only for users who are really admins. */}
         {isRealAdmin && (
           <div
-            className="hidden items-center rounded-[10px] border border-border-strong p-0.5 sm:inline-flex"
+            className="hidden items-center rounded-full border border-border-strong bg-card-bg p-0.5 sm:inline-flex"
             role="group"
             aria-label="View mode"
           >
@@ -155,8 +154,8 @@ export function Topbar({ userName, userEmail, orgName, userTimezone, isRealAdmin
               disabled={switchingMode}
               onClick={() => handleSetMode(false)}
               className={cn(
-                "flex items-center gap-1.5 rounded-[8px] px-2.5 py-1 text-xs font-medium transition-colors",
-                !agentMode ? "bg-primary-600 text-white" : "text-text-muted hover:text-text"
+                "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                !agentMode ? "bg-primary-600 text-primary-foreground" : "text-text-muted hover:text-text"
               )}
               title="Admin Mode — full organisation visibility"
             >
@@ -168,8 +167,8 @@ export function Topbar({ userName, userEmail, orgName, userTimezone, isRealAdmin
               disabled={switchingMode}
               onClick={() => handleSetMode(true)}
               className={cn(
-                "flex items-center gap-1.5 rounded-[8px] px-2.5 py-1 text-xs font-medium transition-colors",
-                agentMode ? "bg-primary-600 text-white" : "text-text-muted hover:text-text"
+                "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                agentMode ? "bg-primary-600 text-primary-foreground" : "text-text-muted hover:text-text"
               )}
               title="Agent Mode — only your own work"
             >
@@ -178,43 +177,52 @@ export function Topbar({ userName, userEmail, orgName, userTimezone, isRealAdmin
             </button>
           </div>
         )}
+        {/* Search: a wide field on desktop, an icon on phones. Both open the
+            command palette, which finds leads, properties and tenants. */}
         <button
           type="button"
           onClick={() => window.dispatchEvent(new CustomEvent("open-command-palette"))}
-          aria-label="Open command palette"
-          className="hidden h-9 items-center gap-2 rounded-[10px] border border-border-strong px-3 text-sm text-text-muted transition hover:border-primary/60 hover:text-text md:inline-flex"
+          aria-label="Search"
+          className="hidden h-10 w-[260px] items-center gap-2.5 rounded-full border border-border-strong bg-card-bg pl-4 pr-1.5 text-sm text-text-dim transition hover:bg-surface-2 lg:w-[320px] md:inline-flex"
         >
-          <Search className="h-4 w-4" />
-          <span>Search</span>
-          <kbd className="rounded border border-border px-1.5 text-[10px] font-medium">⌘K</kbd>
+          <Search className="h-4 w-4 shrink-0" />
+          <span className="flex-1 truncate text-left">Find a lead, property or tenant…</span>
+          <kbd className="rounded-[8px] border border-border bg-surface-2 px-2 py-0.5 text-[11px] font-medium text-text-muted">⌘K</kbd>
         </button>
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new CustomEvent("open-command-palette"))}
+          aria-label="Search"
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-border-strong bg-card-bg text-text-muted transition hover:bg-surface-2 md:hidden"
+        >
+          <Search className="h-[18px] w-[18px]" />
+        </button>
+        {/* The assistant needs an organisation, as notifications do. */}
+        {showNotifications && (
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent("open-assistant"))}
+            aria-label="Ask AI"
+            className="flex h-10 w-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full border border-border-strong bg-card-bg text-sm font-medium text-text transition hover:bg-surface-2 lg:w-auto lg:px-4"
+          >
+            <Sparkles className="h-[18px] w-[18px] text-primary-ink" />
+            <span className="hidden lg:inline">Ask AI</span>
+          </button>
+        )}
         {showNotifications && <NotificationBell />}
         <div className="relative" data-tour="user-profile">
           <button
-            className="flex items-center gap-2 rounded-[10px] border border-border-strong px-3 py-2 text-sm text-text"
+            className="flex items-center gap-2 rounded-full border border-border-strong bg-card-bg py-1 pl-1 pr-1 text-sm text-text transition hover:bg-surface-2 sm:pr-3"
             onClick={() => setOpen((prev) => !prev)}
           >
-            {/* Recommendation #5: Avatar with breathing pulse ring */}
-            <div className="relative flex h-8 w-8 items-center justify-center rounded-full bg-primary-600/30 text-xs font-medium text-primary-600">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
               {initials}
-              <motion.span
-                className="absolute inset-[-2px] rounded-full border-2 border-green-500/50"
-                animate={{
-                  scale: [1, 1.2, 1],
-                  opacity: [0.5, 0, 0.5],
-                }}
-                transition={{
-                  duration: 2.5,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-              />
             </div>
-            <span className="hidden sm:inline">{userName}</span>
-            <ChevronDown className="h-4 w-4 text-text-muted" />
+            <span className="hidden max-w-[140px] truncate whitespace-nowrap sm:inline">{userName}</span>
+            <ChevronDown className="hidden h-4 w-4 text-text-muted sm:block" />
           </button>
           {open ? (
-            <div className="absolute right-0 mt-2 w-56 rounded-[12px] border border-border-strong bg-card-bg p-2 shadow-[0_10px_28px_rgba(0,0,0,0.32)]">
+            <div className="absolute right-0 mt-2 w-60 rounded-[16px] border border-border bg-card-bg p-2 shadow-[var(--shadow-pop)]">
               <div className="border-b border-border px-3 py-2 mb-2">
                 <p className="text-sm font-medium text-text">{userName}</p>
                 {userEmail && (
@@ -248,7 +256,7 @@ export function Topbar({ userName, userEmail, orgName, userTimezone, isRealAdmin
                   {!userTimezone && (
                     <button
                       onClick={() => handleTimezoneChange(detectBrowserTimezone())}
-                      className="flex w-full items-center gap-2 rounded-[10px] px-3 py-1.5 text-xs text-primary-600 hover:bg-row-hover font-medium"
+                      className="flex w-full items-center gap-2 rounded-[10px] px-3 py-1.5 text-xs text-primary-ink hover:bg-row-hover font-medium"
                     >
                       Detect my timezone
                     </button>
@@ -259,7 +267,7 @@ export function Topbar({ userName, userEmail, orgName, userTimezone, isRealAdmin
                       onClick={() => handleTimezoneChange(tz.value)}
                       className={cn(
                         "flex w-full items-center rounded-[10px] px-3 py-1.5 text-xs text-text-muted hover:bg-row-hover",
-                        userTimezone === tz.value && "text-primary-600 font-medium"
+                        userTimezone === tz.value && "text-primary-ink font-medium"
                       )}
                     >
                       {tz.label}
@@ -280,7 +288,7 @@ export function Topbar({ userName, userEmail, orgName, userTimezone, isRealAdmin
                   )}
                 >
                   {push.isSubscribed ? (
-                    <Bell className="h-4 w-4 text-primary-600" />
+                    <Bell className="h-4 w-4 text-primary-ink" />
                   ) : (
                     <BellOff className="h-4 w-4" />
                   )}

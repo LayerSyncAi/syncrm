@@ -144,7 +144,7 @@ export function RevenueSummarySection({
         {/* Mobile: stacked cards instead of a horizontally scrolling table */}
         <CardContent className="space-y-3 md:hidden">
           {data.pipelineByStage.map((s) => (
-            <div key={s.stageId} className="rounded-[12px] border border-border-strong bg-card-bg p-4">
+            <div key={s.stageId} className="rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4">
               <p className="font-medium">{s.name}</p>
               <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
                 {[

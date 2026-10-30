@@ -66,7 +66,7 @@ function statusBadge(r: Row) {
 }
 
 function sourceBadge(r: Row) {
-  return r.source === "stay" ? <Badge variant="secondary">Sync Stay rent</Badge> : <Badge variant="default">Agency</Badge>;
+  return r.source === "stay" ? <Badge variant="secondary">SyncStay rent</Badge> : <Badge variant="default">Agency</Badge>;
 }
 
 export default function FinanceInvoicesPage() {
@@ -176,8 +176,8 @@ export default function FinanceInvoicesPage() {
   const actions = (r: Row) =>
     r.source === "stay" ? (
       <div className="flex justify-end">
-        <Link href="/app/stay/arrears" className="inline-flex items-center gap-1 text-sm text-primary-600 hover:underline">
-          Open in Sync Stay
+        <Link href="/app/stay/arrears" className="inline-flex items-center gap-1 text-sm text-primary-ink hover:underline">
+          Open in SyncStay
           <ExternalLink className="h-3.5 w-3.5" />
         </Link>
       </div>
@@ -194,7 +194,7 @@ export default function FinanceInvoicesPage() {
     <div className="space-y-6">
       <StayPageHeader
         title="Invoices"
-        description="Agency invoices and Sync Stay rent in one list. Amounts are shown per currency and never converted."
+        description="Agency invoices and SyncStay rent in one list. Amounts are shown per currency and never converted."
         actions={
           <Button onClick={() => setCreating(true)} className="h-11 gap-2 px-5">
             <Plus className="h-4 w-4" />
@@ -209,7 +209,7 @@ export default function FinanceInvoicesPage() {
         <StatTile label="Overdue invoices" value={String(totals.overdueCount)} />
       </div>
 
-      <div className="flex flex-wrap items-end gap-3 rounded-[12px] border border-border-strong bg-card-bg p-4">
+      <div className="flex flex-wrap items-end gap-3 rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4">
         <div className="min-w-[220px] flex-1 space-y-2">
           <Label>Search</Label>
           <Input placeholder="Number, client or description" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -280,7 +280,7 @@ export default function FinanceInvoicesPage() {
 
           <div className="space-y-3 md:hidden">
             {shown.map((r) => (
-              <div key={`${r.source}-${r._id}`} className={`rounded-[12px] border border-border-strong bg-card-bg p-4 ${r.status === "cancelled" ? "opacity-70" : ""}`}>
+              <div key={`${r.source}-${r._id}`} className={`rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4 ${r.status === "cancelled" ? "opacity-70" : ""}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="font-medium">{r.clientName}</p>

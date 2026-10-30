@@ -114,7 +114,7 @@ export default function ForgotPasswordPage() {
             >
               {/* Icon */}
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-600/10 mb-6">
-                <Mail className="h-6 w-6 text-primary-600" />
+                <Mail className="h-6 w-6 text-primary-ink" />
               </div>
 
               {/* Header */}

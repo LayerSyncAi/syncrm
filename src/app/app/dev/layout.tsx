@@ -10,7 +10,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 
 /**
- * Every Sync Dev page: checks the user may open Sync Dev before any Dev
+ * Every SyncDev page: checks the user may open SyncDev before any Dev
  * query runs (they throw otherwise).
  */
 export default function DevLayout({ children }: { children: ReactNode }) {
@@ -22,8 +22,8 @@ export default function DevLayout({ children }: { children: ReactNode }) {
     return (
       <EmptyState
         icon={MapIcon}
-        title="Sync Dev is not available to you"
-        description={hub?.enabledModules.includes("dev") ? "Ask your director for access." : "Your agency does not have Sync Dev switched on."}
+        title="SyncDev is not available to you"
+        description={hub?.enabledModules.includes("dev") ? "Ask your director for access." : "Your agency does not have SyncDev switched on."}
         action={
           <Link href="/app/hub">
             <Button variant="secondary">Back to the Hub</Button>

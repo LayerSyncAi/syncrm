@@ -58,7 +58,7 @@ export default function ContactMatchingPage() {
         </p>
       </div>
 
-      <div className="rounded-[12px] border border-border-strong bg-card-bg p-4">
+      <div className="rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4">
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <Label>Contact</Label>
@@ -99,7 +99,7 @@ export default function ContactMatchingPage() {
       {selectedContactId && matches !== undefined && (
         <div>
           {matches.length === 0 ? (
-            <div className="rounded-[12px] border border-border-strong bg-card-bg p-8 text-center text-text-muted">
+            <div className="rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-8 text-center text-text-muted">
               No matching properties found. Try updating the contact&apos;s preferences or adding more properties.
             </div>
           ) : (
@@ -143,7 +143,7 @@ export default function ContactMatchingPage() {
               {/* Mobile: stacked cards instead of a horizontally scrolling table */}
               <motion.div variants={listVariants} initial="hidden" animate="show" className="space-y-3 md:hidden">
                 {matches.map((property: any) => (
-                  <div key={property._id} className="rounded-[12px] border border-border-strong bg-card-bg p-4 space-y-2">
+                  <div key={property._id} className="rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4 space-y-2">
                     <div className="flex items-start justify-between gap-3">
                       <p className="min-w-0 truncate font-medium">{property.title}</p>
                       <Badge variant={property.status === "available" ? "success" : "secondary"}>{property.status}</Badge>

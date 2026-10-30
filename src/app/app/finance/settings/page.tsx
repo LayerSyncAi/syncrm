@@ -81,7 +81,7 @@ export default function FinanceSettingsPage() {
       <EmptyState
         icon={Coins}
         title="Finance settings are for the accounts team"
-        description="Ask a director if you need to see how Sync Finance is set up."
+        description="Ask a director if you need to see how SyncFinance is set up."
         action={
           <Link href="/app/finance">
             <Button variant="secondary">Back to Finance</Button>
@@ -284,19 +284,19 @@ function AgencySettings({
 
         <div className="space-y-1 rounded-lg bg-surface-2 p-3 text-sm text-text-muted">
           <p>
-            Receipt numbers share Sync Stay&apos;s sequence. Change the receipt prefix in{" "}
-            <Link href="/app/stay/settings" className="text-primary-600 hover:underline">
+            Receipt numbers share SyncStay&apos;s sequence. Change the receipt prefix in{" "}
+            <Link href="/app/stay/settings" className="text-primary-ink hover:underline">
               Stay settings
             </Link>
             .
           </p>
           <p>
             The agency name, address and VAT number on documents come from{" "}
-            <Link href="/app/settings" className="text-primary-600 hover:underline">
+            <Link href="/app/settings" className="text-primary-ink hover:underline">
               Agency settings
             </Link>
             , and the logo from the{" "}
-            <Link href="/app/admin/branding" className="text-primary-600 hover:underline">
+            <Link href="/app/admin/branding" className="text-primary-ink hover:underline">
               Brand kit
             </Link>
             .

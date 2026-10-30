@@ -45,7 +45,7 @@ describe("stand order and reservations", () => {
   });
 });
 
-describe("Sync Dev access", () => {
+describe("SyncDev access", () => {
   const org = { enabledModules: ["crm", "dev"] as const };
   it("opens for every agent when the agency has it", () => {
     expect(userCanUseModule({ role: "agent", estateRoles: [] }, org, "dev")).toBe(true);

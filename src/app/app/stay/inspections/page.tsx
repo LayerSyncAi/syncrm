@@ -51,7 +51,7 @@ export default function InspectionsPage() {
         </Link>
       </div>
 
-      <div className="flex gap-1 rounded-[12px] border border-border-strong bg-card-bg p-1 sm:w-fit">
+      <div className="flex gap-1 rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-1 sm:w-fit">
         {TABS.map((t) => (
           <button
             key={t.value}
@@ -59,7 +59,7 @@ export default function InspectionsPage() {
             onClick={() => setTab(t.value)}
             className={cn(
               "flex-1 rounded-[9px] px-4 py-2 text-sm font-medium transition-colors sm:flex-none",
-              tab === t.value ? "bg-primary-600 text-white" : "text-text-muted hover:text-text"
+              tab === t.value ? "bg-primary-600 text-primary-foreground" : "text-text-muted hover:text-text"
             )}
           >
             {t.label}
@@ -80,7 +80,7 @@ export default function InspectionsPage() {
         ) : (
           <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {due.map((u) => (
-              <li key={u.unitId} className="rounded-[12px] border border-border-strong bg-card-bg p-4">
+              <li key={u.unitId} className="rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="font-medium">{u.unitLabel}</p>
@@ -112,7 +112,7 @@ export default function InspectionsPage() {
             <li key={i._id}>
               <Link
                 href={`/app/stay/inspections/${i._id}`}
-                className="block rounded-[12px] border border-border-strong bg-card-bg p-4 transition-colors hover:border-primary/60"
+                className="block rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4 transition-colors hover:border-primary/60"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>

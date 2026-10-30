@@ -24,7 +24,7 @@ function lastMonth(): string {
 
 type FinanceStatement = NonNullable<FunctionReturnType<typeof api.portal.landlord.financeStatement>>;
 
-/** Statement and remittance advices from Sync Finance, read-only. */
+/** Statement and remittance advices from SyncFinance, read-only. */
 function FinanceView({ fin, logoUrl }: { fin: FinanceStatement; logoUrl?: string | null }) {
   const pdf = () =>
     downloadFinancePdf(

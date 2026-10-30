@@ -140,7 +140,7 @@ export default function DashboardPage() {
             <div className="space-y-2">
               <div className="flex items-center gap-3">
                 <h2 className="text-h2">Pipeline Overview</h2>
-                <Badge className="bg-primary/10 text-primary">{isAdmin ? "All Leads" : "My Leads"}</Badge>
+                <Badge className="bg-primary/10 text-primary-ink">{isAdmin ? "All Leads" : "My Leads"}</Badge>
               </div>
               <p className="text-sm text-text-muted">
                 Monitor your pipeline performance and conversion velocity.
@@ -400,7 +400,7 @@ export default function DashboardPage() {
                 </div>
                 <Link
                   href="/app/leads"
-                  className="text-xs text-primary hover:underline"
+                  className="text-xs text-primary-ink hover:underline"
                 >
                   View all
                 </Link>
@@ -438,7 +438,7 @@ export default function DashboardPage() {
                             {lead.score}
                           </span>
                           <div>
-                            <span className="text-sm font-medium hover:text-primary">
+                            <span className="text-sm font-medium hover:text-primary-ink">
                               {lead.fullName}
                             </span>
                             <p className="text-xs text-text-dim">

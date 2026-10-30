@@ -33,7 +33,7 @@ function Leaderboard({
     <Card>
       <CardHeader>
         <h3 className="flex items-center gap-2 text-h3">
-          <Trophy className="h-4 w-4 text-primary" />
+          <Trophy className="h-4 w-4 text-primary-ink" />
           {title}
         </h3>
       </CardHeader>
@@ -47,7 +47,7 @@ function Leaderboard({
                 <span className="flex items-center gap-2">
                   <span
                     className={`flex h-5 w-5 items-center justify-center rounded-full text-xs font-semibold ${
-                      i === 0 ? "bg-primary/15 text-primary" : "bg-border text-text-muted"
+                      i === 0 ? "bg-primary/15 text-primary-ink" : "bg-border text-text-muted"
                     }`}
                   >
                     {i + 1}

@@ -194,7 +194,7 @@ export default function LoginPage() {
     return (
       <AuthLayout>
         <div className="flex flex-col items-center gap-4 py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary-ink" />
           <p className="text-sm text-text-muted">Loading...</p>
         </div>
       </AuthLayout>
@@ -370,14 +370,14 @@ export default function LoginPage() {
                       checked={acceptedTerms}
                       onChange={(e) => setAcceptedTerms(e.target.checked)}
                       disabled={isDisabled}
-                      className="mt-0.5 h-4 w-4 shrink-0 rounded border-border-strong text-primary-600 focus:ring-primary-600"
+                      className="mt-0.5 h-4 w-4 shrink-0 rounded border-border-strong text-primary-ink focus:ring-primary-600"
                     />
                     <span>
                       I have read and agree to the{" "}
                       <Link
                         href="/privacy"
                         target="_blank"
-                        className="font-medium text-primary-600 underline hover:text-primary"
+                        className="font-medium text-primary-ink underline hover:text-primary-ink"
                       >
                         Privacy Policy
                       </Link>{" "}
@@ -385,7 +385,7 @@ export default function LoginPage() {
                       <Link
                         href="/terms"
                         target="_blank"
-                        className="font-medium text-primary-600 underline hover:text-primary"
+                        className="font-medium text-primary-ink underline hover:text-primary-ink"
                       >
                         Terms &amp; Conditions
                       </Link>
@@ -479,7 +479,7 @@ export default function LoginPage() {
                       setError(null);
                     }}
                     disabled={isDisabled}
-                    className="text-primary-600 font-medium hover:underline disabled:opacity-50"
+                    className="text-primary-ink font-medium hover:underline disabled:opacity-50"
                   >
                     Create an account
                   </button>
@@ -498,7 +498,7 @@ export default function LoginPage() {
                     setError(null);
                   }}
                   disabled={isDisabled}
-                  className="text-primary-600 font-medium hover:underline disabled:opacity-50"
+                  className="text-primary-ink font-medium hover:underline disabled:opacity-50"
                 >
                   Already have an account? Sign in
                 </button>

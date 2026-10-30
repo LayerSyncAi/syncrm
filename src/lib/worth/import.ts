@@ -1,5 +1,5 @@
 /**
- * Sync Worth spreadsheet import (VW-34): map rows read from an Excel sheet to
+ * SyncWorth spreadsheet import (VW-34): map rows read from an Excel sheet to
  * comparables. Headers are matched loosely ("Land size (m2)", "land_size",
  * "Land m²" all work). Pure, so it is unit-tested; the page reads the file
  * with xlsx and sends valid rows to the server in batches.

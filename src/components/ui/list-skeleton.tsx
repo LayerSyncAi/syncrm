@@ -7,7 +7,7 @@ import { Skeleton } from "./skeleton";
 export function ListSkeleton({ rows = 6 }: { rows?: number }) {
   return (
     <div
-      className="space-y-1 overflow-hidden rounded-[12px] border border-border-strong bg-card-bg"
+      className="space-y-1 overflow-hidden rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)]"
       role="status"
       aria-busy="true"
       aria-label="Loading"

@@ -110,13 +110,13 @@ export default function FinanceCommissionsPage() {
       {lastInvoice && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-[12px] border border-primary/40 bg-primary-600/5 p-3 text-sm">
           <span>Invoice {lastInvoice} is ready.</span>
-          <Link href="/app/finance/invoices" className="font-medium text-primary-600 hover:underline">
+          <Link href="/app/finance/invoices" className="font-medium text-primary-ink hover:underline">
             Open Invoices
           </Link>
         </div>
       )}
 
-      <div className="flex flex-wrap items-end gap-3 rounded-[12px] border border-border-strong bg-card-bg p-4">
+      <div className="flex flex-wrap items-end gap-3 rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4">
         <div className="min-w-[220px] flex-1 space-y-2">
           <Label>Search</Label>
           <Input placeholder="Client, property or agent" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -136,7 +136,7 @@ export default function FinanceCommissionsPage() {
           {shown.map((d) => {
             const c = d.currency;
             return (
-              <div key={d._id} className="rounded-[12px] border border-border-strong bg-card-bg p-4">
+              <div key={d._id} className="rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="font-semibold">{d.client}</p>

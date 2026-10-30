@@ -27,8 +27,8 @@ const STATUS_VARIANT: Record<string, "success" | "warning" | "info" | "danger"> 
 };
 
 /**
- * A buyer's statement: plan, payments and refunds. Shared by Sync Finance
- * (Instalments) and Sync Dev (Buyers). The caller makes sure the user may use
+ * A buyer's statement: plan, payments and refunds. Shared by SyncFinance
+ * (Instalments) and SyncDev (Buyers). The caller makes sure the user may use
  * sales before this renders; the role comes from the statement itself.
  */
 export function SaleStatement({ saleId, basePath, backLabel, module }: { saleId: Id<"finStands">; basePath: string; backLabel: string; module: "finance" | "dev" }) {
@@ -116,11 +116,11 @@ export function SaleStatement({ saleId, basePath, backLabel, module }: { saleId:
       ) : null;
     }
     return canOpenFinance ? (
-      <Link href="/app/finance/money" className="text-xs text-primary-600 hover:underline">
-        Reverse in Sync Finance
+      <Link href="/app/finance/money" className="text-xs text-primary-ink hover:underline">
+        Reverse in SyncFinance
       </Link>
     ) : (
-      <span className="text-xs text-text-muted">Reverse in Sync Finance</span>
+      <span className="text-xs text-text-muted">Reverse in SyncFinance</span>
     );
   };
   const showReverseColumn = d.payments.some((p) => reverseCell(p) !== null);
@@ -167,7 +167,7 @@ export function SaleStatement({ saleId, basePath, backLabel, module }: { saleId:
       {!d.buyer.email && <p className="text-sm text-text-muted">The buyer has no email address, so statements cannot be emailed.</p>}
       {financeOn && module === "dev" && (
         <ModuleHint>
-          {d.development.moneyHeldBy === "agency_trust" ? "Payments go to the trust ledger in Sync Finance, held for the developer." : "Payments are recorded in Sync Finance."}
+          {d.development.moneyHeldBy === "agency_trust" ? "Payments go to the trust ledger in SyncFinance, held for the developer." : "Payments are recorded in SyncFinance."}
         </ModuleHint>
       )}
 

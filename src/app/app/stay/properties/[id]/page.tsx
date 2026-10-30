@@ -151,7 +151,7 @@ export default function StayPropertyPage({ params }: { params: Promise<{ id: str
                 </div>
                 {u.lease ? (
                   <p className="mt-1 text-sm">
-                    <Link href={`/app/stay/leases/${u.lease._id}`} className="font-medium text-primary-600 hover:underline">
+                    <Link href={`/app/stay/leases/${u.lease._id}`} className="font-medium text-primary-ink hover:underline">
                       {u.lease.tenantName}
                     </Link>
                     <span className="text-text-muted">

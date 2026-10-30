@@ -1,5 +1,5 @@
 /**
- * Display helpers for Sync Finance screens. Plain language only: "money
+ * Display helpers for SyncFinance screens. Plain language only: "money
  * in", "money out" and "balance", never debits and credits (BRD §4).
  */
 export {

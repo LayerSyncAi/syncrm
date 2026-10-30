@@ -15,5 +15,5 @@ export function relativeTime(ts: number, now = Date.now()): string {
 
 /** Display name for a notification's module ("hub" is the Hub itself). */
 export function notificationModuleName(module: ModuleKey | "hub"): string {
-  return module === "hub" ? "Sync Estate" : MODULES[module].name;
+  return module === "hub" ? "SyncEstate" : MODULES[module].name;
 }

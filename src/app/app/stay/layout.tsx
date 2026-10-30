@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { RecordPaymentButton, RecordPaymentProvider } from "@/components/stay/record-payment";
 
 /**
- * Every Sync Stay page: checks the user may open Stay before any Stay query
+ * Every SyncStay page: checks the user may open Stay before any Stay query
  * runs (they throw otherwise) and offers "Record payment" everywhere.
  */
 export default function StayLayout({ children }: { children: ReactNode }) {
@@ -21,11 +21,11 @@ export default function StayLayout({ children }: { children: ReactNode }) {
     return (
       <EmptyState
         icon={Home}
-        title="Sync Stay is not available to you"
+        title="SyncStay is not available to you"
         description={
           hub?.enabledModules.includes("stay")
             ? "Ask your director to give you the property manager or accounts role."
-            : "Your agency does not have Sync Stay switched on."
+            : "Your agency does not have SyncStay switched on."
         }
         action={
           <Link href="/app/hub">

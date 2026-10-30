@@ -38,7 +38,7 @@ function ModeSwitch({ mode, onChange, newLabel }: { mode: "pick" | "new"; onChan
           key={m}
           type="button"
           onClick={() => onChange(m)}
-          className={`rounded-[8px] px-3 py-1.5 font-medium ${mode === m ? "bg-primary-600 text-white" : "text-text-muted"}`}
+          className={`rounded-[8px] px-3 py-1.5 font-medium ${mode === m ? "bg-primary-600 text-primary-foreground" : "text-text-muted"}`}
         >
           {m === "pick" ? "Choose existing" : newLabel}
         </button>

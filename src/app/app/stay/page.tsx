@@ -21,7 +21,7 @@ export default function StayDashboardPage() {
   if (data.propertyCount === 0) {
     return (
       <div className="space-y-6">
-        <StayPageHeader title="Sync Stay" description="Leases, rent, receipts and arrears in one place." />
+        <StayPageHeader title="SyncStay" description="Leases, rent, receipts and arrears in one place." />
         <EmptyState
           icon={Building2}
           title="No properties yet"
@@ -54,7 +54,7 @@ export default function StayDashboardPage() {
   return (
     <div className="space-y-6">
       <StayPageHeader
-        title="Sync Stay"
+        title="SyncStay"
         description={`Today is ${dateLabel(data.today)}.`}
         actions={
           <>
@@ -106,7 +106,7 @@ export default function StayDashboardPage() {
         <Section
           title="Leases ending soon"
           actions={
-            <Link href="/app/stay/leases?expiring=60" className="text-sm text-primary-600 hover:underline">
+            <Link href="/app/stay/leases?expiring=60" className="text-sm text-primary-ink hover:underline">
               All
             </Link>
           }
@@ -135,7 +135,7 @@ export default function StayDashboardPage() {
         <Section
           title="Recent payments"
           actions={
-            <Link href="/app/stay/payments" className="text-sm text-primary-600 hover:underline">
+            <Link href="/app/stay/payments" className="text-sm text-primary-ink hover:underline">
               All
             </Link>
           }

@@ -42,7 +42,7 @@ const LANDLORD_TABS: Tab[] = [
 function FullScreenLoader() {
   return (
     <div className="min-h-screen bg-content-bg flex items-center justify-center">
-      <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+      <Loader2 className="h-8 w-8 animate-spin text-primary-ink" />
     </div>
   );
 }
@@ -113,7 +113,7 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
               href={t.href}
               className={cn(
                 "rounded-lg px-3 py-1.5 text-sm font-medium",
-                isActive(t.href) ? "bg-primary-600/10 text-primary-600" : "text-text-muted hover:bg-row-hover"
+                isActive(t.href) ? "bg-primary-600/10 text-primary-ink" : "text-text-muted hover:bg-row-hover"
               )}
             >
               {t.label}
@@ -136,7 +136,7 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
               href={t.href}
               className={cn(
                 "flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium",
-                isActive(t.href) ? "text-primary-600" : "text-text-muted"
+                isActive(t.href) ? "text-primary-ink" : "text-text-muted"
               )}
             >
               <Icon className="h-5 w-5" />

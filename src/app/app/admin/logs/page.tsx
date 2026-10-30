@@ -54,10 +54,10 @@ const AUDIT_CATEGORY_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "property", label: "Property" },
   { value: "email", label: "Email" },
   { value: "system", label: "System" },
-  { value: "stay", label: "Sync Stay" },
-  { value: "worth", label: "Sync Worth" },
-  { value: "finance", label: "Sync Finance" },
-  { value: "dev", label: "Sync Dev" },
+  { value: "stay", label: "SyncStay" },
+  { value: "worth", label: "SyncWorth" },
+  { value: "finance", label: "SyncFinance" },
+  { value: "dev", label: "SyncDev" },
   { value: "other", label: "Other" },
 ];
 
@@ -145,7 +145,7 @@ export default function LogsPage() {
   if (authLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary-ink" />
       </div>
     );
   }
@@ -206,7 +206,7 @@ export default function LogsPage() {
               className={cn(
                 "relative flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors",
                 isActive
-                  ? "text-primary-600"
+                  ? "text-primary-ink"
                   : "text-text-muted hover:text-text"
               )}
             >
@@ -253,7 +253,7 @@ export default function LogsPage() {
 
           {emailLoading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+              <Loader2 className="h-8 w-8 animate-spin text-primary-ink" />
             </div>
           ) : !emailLogs || emailLogs.length === 0 ? (
             <EmptyState
@@ -334,7 +334,7 @@ export default function LogsPage() {
 
           {auditLoading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+              <Loader2 className="h-8 w-8 animate-spin text-primary-ink" />
             </div>
           ) : !auditLogs || auditLogs.length === 0 ? (
             <EmptyState

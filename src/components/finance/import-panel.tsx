@@ -46,7 +46,7 @@ const KIND_LABELS: Record<string, string> = {
 
 /**
  * One import: template, upload, check and run in batches. Used by Sync
- * Finance (all kinds) and Sync Dev (buyers already on plans, "stands").
+ * Finance (all kinds) and SyncDev (buyers already on plans, "stands").
  */
 export function ImportPanel({
   kind,
@@ -262,7 +262,7 @@ function RowErrors({ errors, note }: { errors: ImportError[]; note: string }) {
   );
 }
 
-/** Past imports with undo. `kind: "stands"` lists only buyer imports (all Sync Dev may see). */
+/** Past imports with undo. `kind: "stands"` lists only buyer imports (all SyncDev may see). */
 export function ImportHistory({ kind, kindLabels = KIND_LABELS }: { kind?: "stands"; kindLabels?: Record<string, string> }) {
   const list = useQuery(api.finance.importer.list, kind ? { kind } : {});
   const undo = useMutation(api.finance.importer.undo);

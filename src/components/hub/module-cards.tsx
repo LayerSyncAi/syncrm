@@ -41,7 +41,7 @@ export function ModuleCards({
                   </div>
                 </div>
                 <p className="flex-1 text-sm text-text-muted">{def.description}</p>
-                <span className="inline-flex items-center gap-1 text-sm font-medium text-primary">
+                <span className="inline-flex items-center gap-1 text-sm font-medium text-primary-ink">
                   Open
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
                 </span>

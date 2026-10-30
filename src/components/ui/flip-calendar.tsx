@@ -347,7 +347,7 @@ const DatePicker = (props: DatePickerProps) => {
                 type="button"
                 className={`inline-block w-[calc(100%_/_7)] rounded py-0.5 text-sm transition-colors ${
                   selected
-                    ? "bg-primary text-white"
+                    ? "bg-primary text-primary-foreground"
                     : "bg-transparent text-text hover:bg-primary/10"
                 }`}
                 key={key}
@@ -478,8 +478,8 @@ const TimePicker = ({
                   }}
                   className={`cursor-pointer rounded-[8px] px-2.5 py-1.5 text-xs font-medium transition-colors ${
                     String(hours) === opt.value
-                      ? "bg-primary/10 text-primary-600"
-                      : "text-text hover:bg-primary/5 hover:text-primary-600"
+                      ? "bg-primary/10 text-primary-ink"
+                      : "text-text hover:bg-primary/5 hover:text-primary-ink"
                   }`}
                 >
                   {opt.label}
@@ -527,8 +527,8 @@ const TimePicker = ({
                   }}
                   className={`cursor-pointer rounded-[8px] px-2.5 py-1.5 text-xs font-medium transition-colors ${
                     String(minutes) === opt.value
-                      ? "bg-primary/10 text-primary-600"
-                      : "text-text hover:bg-primary/5 hover:text-primary-600"
+                      ? "bg-primary/10 text-primary-ink"
+                      : "text-text hover:bg-primary/5 hover:text-primary-ink"
                   }`}
                 >
                   {opt.label}

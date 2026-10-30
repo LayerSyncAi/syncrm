@@ -45,7 +45,7 @@ export function ModalFooter({ busy, onClose, onSubmit, label, disabled }: { busy
 // ── Development ──────────────────────────────────────────────────────
 
 /**
- * Add or edit a development. Commission only matters with Sync Finance, so it
+ * Add or edit a development. Commission only matters with SyncFinance, so it
  * is asked only then; an edit keeps whatever was set before.
  */
 export function DevelopmentModal({
@@ -485,7 +485,7 @@ export type MoneySale = {
 };
 
 /**
- * Take a payment or refund a buyer. `accounts` is null without Sync Finance
+ * Take a payment or refund a buyer. `accounts` is null without SyncFinance
  * (or when the user cannot open it): the picker hides and the backend picks.
  */
 export function StandMoneyModal({
@@ -661,7 +661,7 @@ export function CancelSaleModal({
   );
 }
 
-/** Reverse a payment Sync Dev recorded. Finance receipts are reversed in Finance. */
+/** Reverse a payment SyncDev recorded. Finance receipts are reversed in Finance. */
 export function ReversePaymentModal({
   payment,
   currency,

@@ -147,7 +147,7 @@ export default function LeaseDetailPage({ params }: { params: Promise<{ id: stri
       {lease.renewedToLeaseId && (
         <div className="rounded-[12px] border border-border-strong bg-surface-2 p-3 text-sm">
           This lease was renewed.{" "}
-          <Link href={`/app/stay/leases/${lease.renewedToLeaseId}`} className="font-medium text-primary-600 hover:underline">
+          <Link href={`/app/stay/leases/${lease.renewedToLeaseId}`} className="font-medium text-primary-ink hover:underline">
             Open the current lease
           </Link>
         </div>
@@ -193,7 +193,7 @@ export default function LeaseDetailPage({ params }: { params: Promise<{ id: stri
                 ]
               : []),
             ...(lease.renewedFromLeaseId
-              ? [{ label: "Renewed from", value: <Link className="text-primary-600 hover:underline" href={`/app/stay/leases/${lease.renewedFromLeaseId}`}>Previous lease</Link> }]
+              ? [{ label: "Renewed from", value: <Link className="text-primary-ink hover:underline" href={`/app/stay/leases/${lease.renewedFromLeaseId}`}>Previous lease</Link> }]
               : []),
           ]}
         />
@@ -788,7 +788,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 /**
- * Sync Finance: give this lease its own management commission rate. Shown
+ * SyncFinance: give this lease its own management commission rate. Shown
  * to the director and accounts when the user can open Finance.
  */
 function LeaseCommissionRate({ leaseId, propertyPct, leasePct }: { leaseId: Id<"stayLeases">; propertyPct: number | null; leasePct: number | null }) {
@@ -822,8 +822,8 @@ function LeaseCommissionRate({ leaseId, propertyPct, leasePct }: { leaseId: Id<"
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3 text-sm">
         <span className="text-text-muted">
           {leasePct !== null
-            ? `Sync Finance takes ${leasePct}% commission on this lease (its own rate).`
-            : `Sync Finance takes commission at the property's rate${propertyPct !== null ? ` (${propertyPct}%)` : ""}.`}
+            ? `SyncFinance takes ${leasePct}% commission on this lease (its own rate).`
+            : `SyncFinance takes commission at the property's rate${propertyPct !== null ? ` (${propertyPct}%)` : ""}.`}
         </span>
         <Button
           size="sm"

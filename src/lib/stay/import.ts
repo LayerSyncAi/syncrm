@@ -1,5 +1,5 @@
 /**
- * Sync Stay Excel import (BRD Stay ST-06): the template's columns and the
+ * SyncStay Excel import (BRD Stay ST-06): the template's columns and the
  * pure parser that turns sheet rows into importer.importBatch batches.
  *
  * One row per unit. Rows with the same property name form one property; the

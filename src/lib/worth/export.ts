@@ -1,4 +1,4 @@
-/** Excel export for Sync Worth reports and the import template. xlsx loads on demand. */
+/** Excel export for SyncWorth reports and the import template. xlsx loads on demand. */
 import { downloadBlob } from "@/lib/csv";
 
 export type Sheet = { name: string; headers: string[]; rows: unknown[][] };

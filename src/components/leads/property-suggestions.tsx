@@ -257,7 +257,7 @@ export function PropertySuggestions({
 
                   {/* Score Breakdown - Collapsible */}
                   <button
-                    className="text-xs text-primary mt-2 hover:underline"
+                    className="text-xs text-primary-ink mt-2 hover:underline"
                     onClick={() => setExpandedCard(
                       expandedCard === suggestion.property._id ? null : suggestion.property._id
                     )}

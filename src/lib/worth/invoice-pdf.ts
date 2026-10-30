@@ -1,5 +1,5 @@
 /**
- * Simple valuation fee invoice (VW-71), for agencies without Sync Finance.
+ * Simple valuation fee invoice (VW-71), for agencies without SyncFinance.
  * The job reference doubles as the invoice number.
  */
 import { formatDay, formatMoney, PURPOSE_LABELS } from "./format";

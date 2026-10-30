@@ -164,7 +164,7 @@ export function InspectionReport({ inspection: r }: { inspection: Detail }) {
                   </div>
                   {(room.condition === "poor" || room.condition === "damaged") &&
                     (raised[room.name] ? (
-                      <Link href={`/app/stay/maintenance/${raised[room.name]}`} className="text-sm text-primary-600 underline">
+                      <Link href={`/app/stay/maintenance/${raised[room.name]}`} className="text-sm text-primary-ink underline">
                         Request raised. Open it
                       </Link>
                     ) : (

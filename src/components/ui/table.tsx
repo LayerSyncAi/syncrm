@@ -5,7 +5,7 @@ export function Table({
   ...props
 }: React.TableHTMLAttributes<HTMLTableElement>) {
   return (
-    <div className="w-full overflow-x-auto rounded-[12px] border border-border-strong bg-card-bg">
+    <div className="w-full overflow-x-auto rounded-[20px] border border-border bg-card-bg p-2 shadow-[var(--shadow-card)]">
       <table className={cn("w-full text-sm", className)} {...props} />
     </div>
   );
@@ -32,7 +32,8 @@ export function TableHead({
   return (
     <th
       className={cn(
-        "h-10 bg-surface-2 px-4 text-left text-[12px] font-semibold uppercase tracking-wide text-text-muted",
+        // A soft, rounded header band: plain-case labels read faster than caps.
+        "h-11 bg-surface-2 px-4 text-left text-[13px] font-normal text-text-muted first:rounded-l-[14px] last:rounded-r-[14px]",
         className
       )}
       {...props}
@@ -47,7 +48,7 @@ export function TableRow({
   return (
     <tr
       className={cn(
-        "h-11 border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)]",
+        "h-11 border-b border-border transition-colors duration-150 last:border-b-0 hover:bg-row-hover",
         className
       )}
       {...props}

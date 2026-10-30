@@ -12,7 +12,7 @@ with environment variables and a few asset files — no code edits.
 | Logo / icon / OG image files | **`public/brand/`** |
 
 `brand.ts` reads each value from a `NEXT_PUBLIC_BRAND_*` env var and **falls back
-to the SynCRM default**, so an unconfigured deploy is identical to today.
+to the SyncEstate default**, so an unconfigured deploy shows the SyncEstate brand.
 
 How colours flow into the UI:
 
@@ -43,33 +43,36 @@ so a rebrand usually only needs the one primary colour.
 
 ## Environment variables
 
-| Variable | Description | Example (SynCRM default) |
+| Variable | Description | Example (SyncEstate default) |
 |---|---|---|
-| `NEXT_PUBLIC_BRAND_NAME` | Product name in UI, titles, copy | `SynCRM` |
-| `NEXT_PUBLIC_BRAND_LEGAL_NAME` | Legal entity for footer/legal | `SynCRM` |
-| `NEXT_PUBLIC_BRAND_TAGLINE` | One-line tagline | `The CRM built for real estate teams` |
-| `NEXT_PUBLIC_BRAND_DESCRIPTION` | Meta description | `Real Estate Pipeline CRM` |
+| `NEXT_PUBLIC_BRAND_NAME` | Product name in UI, titles, copy | `SyncEstate` |
+| `NEXT_PUBLIC_BRAND_LEGAL_NAME` | Legal entity for footer/legal | `LayerSync` |
+| `NEXT_PUBLIC_BRAND_TAGLINE` | One-line tagline | `Smarter real estate. Together.` |
+| `NEXT_PUBLIC_BRAND_DESCRIPTION` | Meta description | `Leads, lettings, valuations and finance for estate agencies, on one login` |
 | `NEXT_PUBLIC_BRAND_APP_DOMAIN` | App domain shown on the marketing mock | `app.syncrm.com` |
 | `NEXT_PUBLIC_BRAND_CONTACT_EMAIL` | Contact email (optional) | _(empty)_ |
 | `NEXT_PUBLIC_BRAND_CONTACT_PHONE` | Contact phone (optional) | _(empty)_ |
 | `NEXT_PUBLIC_BRAND_CONTACT_ADDRESS` | Contact address (optional) | _(empty)_ |
-| `NEXT_PUBLIC_BRAND_COLOR_PRIMARY` | Accent colour | `#eca400` |
-| `NEXT_PUBLIC_BRAND_COLOR_PRIMARY_600` | Accent, darker (hover) | `#d89500` |
-| `NEXT_PUBLIC_BRAND_COLOR_PRIMARY_FG` | Text on the accent | `#ffffff` |
-| `NEXT_PUBLIC_BRAND_COLOR_SIDEBAR` | Sidebar surface | `#2a5925` |
-| `NEXT_PUBLIC_BRAND_COLOR_SIDEBAR_HOVER` | Sidebar hover/active | `#1e3f1a` |
-| `NEXT_PUBLIC_BRAND_COLOR_SIDEBAR_FG` | Sidebar text | `#fcfcfc` |
-| `NEXT_PUBLIC_BRAND_COLOR_BACKGROUND` | App content background | `#f1f4f9` |
-| `NEXT_PUBLIC_BRAND_COLOR_FOREGROUND` | Primary text/ink | `#1f2a44` |
-| `NEXT_PUBLIC_BRAND_COLOR_SUCCESS` | Success semantic | `#16a34a` |
-| `NEXT_PUBLIC_BRAND_COLOR_WARNING` | Warning semantic | `#ca8a04` |
-| `NEXT_PUBLIC_BRAND_COLOR_DANGER` | Danger semantic | `#dc2626` |
-| `NEXT_PUBLIC_BRAND_COLOR_INFO` | Info semantic | `#0284c7` |
+| `NEXT_PUBLIC_BRAND_COLOR_PRIMARY` | Accent colour | `#9bd83d` |
+| `NEXT_PUBLIC_BRAND_COLOR_PRIMARY_600` | Accent, darker (hover) | `#86c42e` |
+| `NEXT_PUBLIC_BRAND_COLOR_PRIMARY_FG` | Text on the accent | `#0f1419` |
+| `NEXT_PUBLIC_BRAND_COLOR_PRIMARY_INK` | Accent for text on light surfaces (links, active labels). Leave unset to mix one from the accent | `#3b6812` |
+| `NEXT_PUBLIC_BRAND_COLOR_SIDEBAR` | Sidebar surface | `#0f1419` |
+| `NEXT_PUBLIC_BRAND_COLOR_SIDEBAR_HOVER` | Sidebar hover/active | `#1a2229` |
+| `NEXT_PUBLIC_BRAND_COLOR_SIDEBAR_FG` | Sidebar text | `#eef2f3` |
+| `NEXT_PUBLIC_BRAND_COLOR_BACKGROUND` | App content background | `#f2f4f3` |
+| `NEXT_PUBLIC_BRAND_COLOR_FOREGROUND` | Primary text/ink | `#0f1419` |
+| `NEXT_PUBLIC_BRAND_COLOR_SUCCESS` | Success semantic | `#3b6812` |
+| `NEXT_PUBLIC_BRAND_COLOR_WARNING` | Warning semantic | `#b45309` |
+| `NEXT_PUBLIC_BRAND_COLOR_DANGER` | Danger semantic | `#d92d20` |
+| `NEXT_PUBLIC_BRAND_COLOR_INFO` | Info semantic | `#1f5fad` |
 | `NEXT_PUBLIC_BRAND_LOGO_FAVICON` | Favicon (32×32 png) | `/brand/favicon-32x32.png` |
 | `NEXT_PUBLIC_BRAND_LOGO_ICON` | App icon (192×192 png) | `/brand/icon-192x192.png` |
 | `NEXT_PUBLIC_BRAND_LOGO_APPLE` | Apple touch icon | `/brand/apple-touch-icon.png` |
 | `NEXT_PUBLIC_BRAND_LOGO_WORDMARK` | Image wordmark | `/brand/wordmark.png` |
 | `NEXT_PUBLIC_BRAND_LOGO_OG` | Social share image | `/brand/og.png` |
+| `NEXT_PUBLIC_BRAND_LOGO_REVERSED` | Logo for the dark sidebar | `/brand/lockup-reversed.svg` |
+| `NEXT_PUBLIC_BRAND_LOGO_APP_ICON` | Square icon for the collapsed sidebar | `/brand/app-icon-dark.svg` |
 
 ## Notes & limits
 
@@ -86,6 +89,11 @@ so a rebrand usually only needs the one primary colour.
   that file to change the browser-tab icon for the `/` route.
 - **Copilot/AI name** is intentionally left as "SynCRM" (the in-app assistant),
   not parameterised.
+- **Accent text.** A light accent (such as the SyncEstate green) is unreadable
+  as text on white, so links and active labels use `--primary-ink`, a darker
+  shade of the accent. Fills keep the accent itself with `PRIMARY_FG` text.
+- **Regenerating icons.** `npm run generate-icons` rebuilds every PNG icon
+  (PWA, favicon, wordmark, share image) from the SVGs in `public/brand`.
 - **Forks: protect your logos.** Run once so upstream merges keep your assets:
   ```bash
   git config merge.ours.driver true

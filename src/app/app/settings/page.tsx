@@ -64,7 +64,7 @@ export default function AgencySettingsPage() {
   if (settings === undefined || hubContext === undefined || !form) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary-ink" />
       </div>
     );
   }
@@ -264,7 +264,7 @@ function BranchesCard({ branches, canEdit }: { branches: BranchRow[] | undefined
       </CardHeader>
       <CardContent className="space-y-3">
         {branches === undefined ? (
-          <Loader2 className="h-5 w-5 animate-spin text-primary-600" />
+          <Loader2 className="h-5 w-5 animate-spin text-primary-ink" />
         ) : branches.length === 0 ? (
           <p className="text-sm text-text-muted">No branches yet.</p>
         ) : (

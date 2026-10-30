@@ -10,7 +10,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 
 /**
- * Every Sync Finance page: checks the user may open Finance before any
+ * Every SyncFinance page: checks the user may open Finance before any
  * Finance query runs (they throw otherwise), and seeds the agency's default
  * settings and categories on first visit.
  */
@@ -28,11 +28,11 @@ export default function FinanceLayout({ children }: { children: ReactNode }) {
     return (
       <EmptyState
         icon={Coins}
-        title="Sync Finance is not available to you"
+        title="SyncFinance is not available to you"
         description={
           hub?.enabledModules.includes("finance")
             ? "Ask your director to give you the accounts or property manager role."
-            : "Your agency does not have Sync Finance switched on."
+            : "Your agency does not have SyncFinance switched on."
         }
         action={
           <Link href="/app/hub">

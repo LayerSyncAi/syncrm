@@ -220,7 +220,7 @@ export function ImageUpload({
       {/* Drag & Drop Overlay */}
       {isDragging && !disabled && (
         <div className="rounded-[10px] border-2 border-dashed border-primary bg-primary/5 p-8 text-center">
-          <p className="text-sm font-medium text-primary">Drop images here to upload</p>
+          <p className="text-sm font-medium text-primary-ink">Drop images here to upload</p>
           <p className="text-xs text-text-muted mt-1">Supports multiple files (max 5MB each)</p>
         </div>
       )}

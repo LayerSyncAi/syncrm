@@ -46,7 +46,7 @@ export default function StayTenantsPage() {
     <div className="space-y-6">
       <StayPageHeader title="Tenants" description="Everyone on a lease you manage, with what they owe." actions={newLease} />
 
-      <div className="rounded-[12px] border border-border-strong bg-card-bg p-4">
+      <div className="rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4">
         <div className="grid gap-3 md:grid-cols-3">
           <div className="space-y-2">
             <Label>Search</Label>
@@ -118,7 +118,7 @@ export default function StayTenantsPage() {
               <Link
                 key={t._id}
                 href={`/app/stay/tenants/${t._id}`}
-                className="block rounded-[12px] border border-border-strong bg-card-bg p-4"
+                className="block rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">

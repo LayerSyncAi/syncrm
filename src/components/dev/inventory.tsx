@@ -500,7 +500,7 @@ function SellForm({
                 ? `Deposit ${dateLabel(depositDue)}, then ${n} monthly ${n === 1 ? "payment" : "payments"} of about ${money(monthly.amount, c)} from ${dateLabel(firstDue)}.`
                 : "Set the plan."}
             </p>
-            <button type="button" className="text-sm font-medium text-primary-600 hover:underline" onClick={() => setEditPlan((v) => !v)}>
+            <button type="button" className="text-sm font-medium text-primary-ink hover:underline" onClick={() => setEditPlan((v) => !v)}>
               {editPlan ? "Hide plan options" : "Change plan"}
             </button>
           </div>

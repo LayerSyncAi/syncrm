@@ -107,7 +107,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     return (
       <div className="min-h-screen bg-content-bg flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary-ink" />
           <p className="text-sm text-text-muted">Loading...</p>
         </div>
       </div>
@@ -164,7 +164,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     return (
       <div className="min-h-screen bg-content-bg flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary-ink" />
           <p className="text-sm text-text-muted">Redirecting to login...</p>
         </div>
       </div>
@@ -179,7 +179,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   if (user.portalKind) {
     return (
       <div className="min-h-screen bg-content-bg flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary-ink" />
       </div>
     );
   }
@@ -193,7 +193,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     return (
       <div className="min-h-screen bg-content-bg flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary-ink" />
           <p className="text-sm text-text-muted">Redirecting...</p>
         </div>
       </div>

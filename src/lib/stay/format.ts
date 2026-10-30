@@ -1,5 +1,5 @@
 /**
- * Display helpers for Sync Stay screens. Money always shows its currency and
+ * Display helpers for SyncStay screens. Money always shows its currency and
  * is never converted; the arithmetic rules live in convex/stay/ledger.ts.
  */
 import {

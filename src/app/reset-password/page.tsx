@@ -78,7 +78,7 @@ function ResetPasswordContent() {
     return (
       <AuthLayout>
         <div className="flex flex-col items-center gap-4 py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary-ink" />
           <p className="text-sm text-text-muted">Validating reset link...</p>
         </div>
       </AuthLayout>
@@ -212,7 +212,7 @@ function ResetPasswordContent() {
             >
               {/* Icon */}
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-600/10 mb-6">
-                <Key className="h-6 w-6 text-primary-600" />
+                <Key className="h-6 w-6 text-primary-ink" />
               </div>
 
               {/* Header */}
@@ -341,7 +341,7 @@ export default function ResetPasswordPage() {
       fallback={
         <AuthLayout>
           <div className="flex flex-col items-center gap-4 py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+            <Loader2 className="h-8 w-8 animate-spin text-primary-ink" />
           </div>
         </AuthLayout>
       }

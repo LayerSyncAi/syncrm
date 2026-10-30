@@ -27,7 +27,7 @@ export default function FinanceDashboardPage() {
   if (!isStaff) {
     return (
       <div className="space-y-6">
-        <StayPageHeader title="Sync Finance" description="See what the agency holds for the landlords of the properties you manage." />
+        <StayPageHeader title="SyncFinance" description="See what the agency holds for the landlords of the properties you manage." />
         <div className="grid gap-3 sm:grid-cols-2">
           <StatTile label="Trust and landlords" value="Landlord balances and statements" href="/app/finance/trust" />
           <StatTile label="Payouts" value="What each landlord is due" href="/app/finance/payouts" />
@@ -45,7 +45,7 @@ export default function FinanceDashboardPage() {
           onClick={() => setRange(r)}
           className={cn(
             "rounded-[8px] px-3 py-1.5 text-sm font-medium transition-colors",
-            range === r ? "bg-primary-600 text-white" : "text-text-muted hover:text-text"
+            range === r ? "bg-primary-600 text-primary-foreground" : "text-text-muted hover:text-text"
           )}
         >
           {r === "week" ? "This week" : "This month"}

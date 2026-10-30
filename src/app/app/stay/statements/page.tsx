@@ -62,15 +62,15 @@ export default function StatementsPage() {
     <div className="space-y-6">
       {financeOn && (
         <div className="rounded-[12px] border border-border-strong bg-surface-2 p-3 text-sm">
-          Landlord statements now come from Sync Finance.{" "}
-          <Link href="/app/finance/trust" className="font-medium text-primary-600 hover:underline">
+          Landlord statements now come from SyncFinance.{" "}
+          <Link href="/app/finance/trust" className="font-medium text-primary-ink hover:underline">
             Open Trust and landlords
           </Link>
         </div>
       )}
       <StayPageHeader
         title="Landlord statements"
-        description="Rent collected in the month, less the management fee and recharged expenses. This is the simple statement used when Sync Finance is not switched on."
+        description="Rent collected in the month, less the management fee and recharged expenses. This is the simple statement used when SyncFinance is not switched on."
         actions={
           <Button onClick={() => setConfirmAll(true)} disabled={!overview?.length} className="gap-2">
             <Send className="h-4 w-4" />
@@ -79,7 +79,7 @@ export default function StatementsPage() {
         }
       />
 
-      <div className="rounded-[12px] border border-border-strong bg-card-bg p-4">
+      <div className="rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4">
         <div className="flex flex-wrap items-end gap-4">
           <div className="space-y-2">
             <Label>Month</Label>

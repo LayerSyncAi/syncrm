@@ -195,7 +195,7 @@ export function DocumentManager({ leadId, propertyId, contactId, folders, disabl
             onClick={() => setActiveFolder(folder)}
             className={`relative flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-all duration-150 ${
               activeFolder === folder
-                ? "bg-primary/10 text-primary border border-primary/20"
+                ? "bg-primary/10 text-primary-ink border border-primary/20"
                 : "bg-surface-2/60 text-text-muted hover:bg-surface-2 hover:text-text border border-transparent"
             }`}
           >
@@ -206,7 +206,7 @@ export function DocumentManager({ leadId, propertyId, contactId, folders, disabl
             {folderCounts[folder] > 0 && (
               <span className={`ml-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[10px] font-semibold ${
                 activeFolder === folder
-                  ? "bg-primary text-white"
+                  ? "bg-primary text-primary-foreground"
                   : "bg-border text-text-muted"
               }`}>
                 {folderCounts[folder]}
