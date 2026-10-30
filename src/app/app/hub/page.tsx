@@ -93,7 +93,10 @@ export default function HubPage() {
         <p className="max-w-2xl text-[15px] leading-relaxed text-text-muted">{summary}</p>
         {(newLeads || attention.length > 0) && (
           // One row on phones that scrolls sideways; wraps on wider screens.
-          <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
+          <div
+            className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
+            style={{ scrollbarWidth: "none" }}
+          >
             {newLeads && (
               <StatusPill tone="good" href={newLeads.href}>
                 {newLeads.value} new lead{newLeads.value === "1" ? "" : "s"} this month
