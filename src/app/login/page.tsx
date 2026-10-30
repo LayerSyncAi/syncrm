@@ -13,6 +13,7 @@ import { api } from "../../../convex/_generated/api";
 import { authToasts } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { AuthLayout, RequiredLabel } from "@/components/auth/auth-layout";
+import { brand } from "@/config/brand";
 import { LEGAL_VERSIONS } from "@/lib/legal";
 import { markActiveNow } from "@/hooks/useIdleSignOut";
 
@@ -218,14 +219,12 @@ export default function LoginPage() {
           transition={{ duration: 0.4, ease: "easeOut" }}
         >
           {/* Header */}
-          <h1 className="text-3xl font-bold text-text mb-2">
-            {mode === "signIn"
-              ? "Sign in to your account"
-              : "Create your account"}
+          <h1 className="text-display mb-3">
+            {mode === "signIn" ? `Sign in to ${brand.name}` : "Create your account"}
           </h1>
-          <p className="text-sm text-text-muted mb-8">
+          <p className="text-[15px] text-text-muted mb-8">
             {mode === "signIn"
-              ? "Welcome back! Enter your credentials to access your pipeline."
+              ? "One sign-in for every product your agency uses."
               : "Register your organization and create an admin account."}
           </p>
 
@@ -416,10 +415,10 @@ export default function LoginPage() {
               type="submit"
               disabled={isDisabled}
               className={cn(
-                "relative inline-flex h-11 w-full items-center justify-center rounded-[10px] text-sm font-semibold text-white transition-colors duration-300 disabled:cursor-not-allowed overflow-hidden",
+                "relative inline-flex h-12 w-full items-center justify-center rounded-full text-[15px] font-semibold text-primary-foreground transition-colors duration-300 disabled:cursor-not-allowed overflow-hidden",
                 submitState === "success"
-                  ? "bg-green-500"
-                  : "bg-primary-600 hover:bg-primary shadow-[0_0_0_4px_rgba(236,164,0,0.12)] disabled:opacity-50"
+                  ? "bg-primary-600"
+                  : "bg-primary hover:bg-primary-600 shadow-[0_0_0_4px_var(--primary-glow)] disabled:opacity-50"
               )}
               whileTap={
                 submitState === "idle" ? { scale: 0.98 } : undefined

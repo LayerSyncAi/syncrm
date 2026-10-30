@@ -163,7 +163,7 @@ export default function StayTenantPage({ params }: { params: Promise<{ id: strin
                     Open lease
                   </Button>
                 </Link>
-                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" onClick={() => openPayment(a.leaseId)}>
+                <Button size="sm" className="" onClick={() => openPayment(a.leaseId)}>
                   <Receipt className="h-4 w-4" />
                   Record payment
                 </Button>

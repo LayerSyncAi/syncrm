@@ -143,7 +143,7 @@ export default function StayDepositsPage() {
                         <TableCell className="text-sm">{heldInLabel(r.heldIn)}</TableCell>
                         <TableCell className="text-right">
                           {r.received < r.expected && r.status !== "settled" ? (
-                            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" onClick={() => openPayment(r.leaseId)}>
+                            <Button size="sm" className="" onClick={() => openPayment(r.leaseId)}>
                               <Receipt className="h-4 w-4" />
                               Record deposit
                             </Button>
@@ -185,7 +185,7 @@ export default function StayDepositsPage() {
                       {r.refunded ? `, refunded ${money(r.refunded, r.currency)}` : ""}
                     </p>
                     {r.received < r.expected && r.status !== "settled" && (
-                      <Button className="mt-3 w-full bg-emerald-600 hover:bg-emerald-700" onClick={() => openPayment(r.leaseId)}>
+                      <Button className="mt-3 w-full" onClick={() => openPayment(r.leaseId)}>
                         <Receipt className="h-4 w-4" />
                         Record deposit
                       </Button>

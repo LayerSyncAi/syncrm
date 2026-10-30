@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useSearchParams } from "next/navigation";
 import { useConvex, useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Camera, Coins, Download, Landmark, Mail, Undo2, Wallet } from "lucide-react";
@@ -48,7 +49,9 @@ type AccountType = Account["type"];
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-export default function FinanceMoneyPage() {
+function FinanceMoney() {
+  // ?new=in (the dashboard's phone action) opens "Money in" straight away.
+  const params = useSearchParams();
   const fin = useQuery(api.finance.settings.get);
   const isStaff = !!fin?.role.isStaff;
 
@@ -60,7 +63,7 @@ export default function FinanceMoneyPage() {
   const [accountId, setAccountId] = React.useState("");
   const [kind, setKind] = React.useState("");
 
-  const [modal, setModal] = React.useState<"in" | "out" | "transfer" | null>(null);
+  const [modal, setModal] = React.useState<"in" | "out" | "transfer" | null>(params.get("new") === "in" ? "in" : null);
   const [transferFrom, setTransferFrom] = React.useState<{ accountId: string; amount: number } | null>(null);
   const [reversing, setReversing] = React.useState<Row | null>(null);
   const [emailing, setEmailing] = React.useState<Row | null>(null);
@@ -218,7 +221,7 @@ export default function FinanceMoneyPage() {
         description="Every amount received, paid or moved between accounts. Nothing is deleted; a mistake is reversed."
         actions={
           <>
-            <Button onClick={() => setModal("in")} className="h-11 gap-2 bg-emerald-600 px-4 hover:bg-emerald-700">
+            <Button onClick={() => setModal("in")} className="h-11 gap-2 px-4">
               <ArrowDownLeft className="h-4 w-4" />
               Money in
             </Button>
@@ -384,6 +387,14 @@ export default function FinanceMoneyPage() {
       <ReverseModal row={reversing} onClose={() => setReversing(null)} />
       <EmailModal row={emailing} onClose={() => setEmailing(null)} />
     </div>
+  );
+}
+
+export default function FinanceMoneyPage() {
+  return (
+    <React.Suspense fallback={<ListSkeleton />}>
+      <FinanceMoney />
+    </React.Suspense>
   );
 }
 

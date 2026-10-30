@@ -166,7 +166,7 @@ export default function StayPropertyPage({ params }: { params: Promise<{ id: str
               </div>
               <div className="flex flex-wrap gap-2">
                 {u.lease ? (
-                  <Button size="sm" onClick={() => recordPayment(u.lease!._id)} className="gap-1 bg-emerald-600 hover:bg-emerald-700">
+                  <Button size="sm" onClick={() => recordPayment(u.lease!._id)} className="gap-1">
                     <Receipt className="h-4 w-4" />
                     Record payment
                   </Button>
@@ -580,7 +580,7 @@ function ExpenseModal({ p, onClose }: { p: Detail; onClose: () => void }) {
           </div>
         </div>
         <label className="flex items-center gap-3 text-sm">
-          <input type="checkbox" className="h-5 w-5 accent-emerald-600" checked={recharge} onChange={(e) => setRecharge(e.target.checked)} />
+          <input type="checkbox" className="h-5 w-5 accent-[var(--primary-ink)]" checked={recharge} onChange={(e) => setRecharge(e.target.checked)} />
           Deduct from the landlord&apos;s statement
         </label>
       </div>
