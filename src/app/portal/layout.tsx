@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
+import { useIdleSignOut } from "@/hooks/useIdleSignOut";
 import { cn } from "@/lib/utils";
 import { ErrorBoundary } from "@/components/common/error-boundary";
 import { ForceChangePasswordCard } from "@/components/auth/force-change-password-card";
@@ -56,11 +57,16 @@ export default function PortalLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
+  useIdleSignOut(isSessionAuthenticated, async () => {
+    await signOut();
+    router.replace("/login");
+  });
+
   useEffect(() => {
     if (isLoading) return;
     if (!isSessionAuthenticated) router.replace("/login");
     // Staff accounts belong in the main app.
-    else if (user && !user.portalKind) router.replace("/app/hub");
+    else if (user && !user.portalKind) router.replace("/app");
   }, [isLoading, isSessionAuthenticated, user, router]);
 
   if (isLoading || !user || !user.portalKind) return <FullScreenLoader />;

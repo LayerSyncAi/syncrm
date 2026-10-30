@@ -1,26 +1,19 @@
 import type { MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 
-/** Fallback temporary password when AUTH_TEMP_PASSWORD is not configured. */
-const FALLBACK_TEMP_PASSWORD = "ChangeMe!123";
-
 /**
- * The temporary password an admin issues when provisioning or repairing a
- * login. It is always paired with `resetPasswordOnNextLogin`, so it is a
- * transient credential the admin communicates to the user for a single sign-in
- * before they set their own — not a secret (the admin UI displays it). Both the
- * Convex runtime (which hashes it) and the browser (which shows the admin the
- * hint) must resolve the same value, so it is read from the
- * `NEXT_PUBLIC_AUTH_TEMP_PASSWORD` environment variable (set it in BOTH the
- * Next.js and Convex deployment env). Never a client-specific literal; falls
- * back to a documented default when unset.
+ * A one-off temporary password for a new or reset login. Every account gets
+ * its own, always paired with `resetPasswordOnNextLogin`, and it reaches the
+ * person by email. There is no shared default: a fixed value would ship to
+ * every browser and open every account that had not yet signed in.
+ *
+ * No 0/O or 1/l/I, so it can be read off an email and typed on a phone.
  */
-export function getTempPassword(): string {
-  const fromEnv =
-    typeof process !== "undefined"
-      ? process.env.NEXT_PUBLIC_AUTH_TEMP_PASSWORD
-      : undefined;
-  return fromEnv && fromEnv.length >= 8 ? fromEnv : FALLBACK_TEMP_PASSWORD;
+export function randomPassword(): string {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+  const bytes = new Uint8Array(12);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
 }
 
 /**

@@ -1,9 +1,19 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { getCurrentUserWithOrg, assertOrgAccess, isEffectiveAdmin } from "./helpers";
 import { Doc, Id } from "./_generated/dataModel";
 import { areaMatchesLocation, canonicalizeAreas } from "./lib/locations";
-import { isBuyerTenantContact, isOwnerContact } from "./lib/contactRoles";
+import {
+  MIN_DUPLICATE_PHONE_DIGITS,
+  duplicateReason,
+  isBuyerTenantContact,
+  isOwnerContact,
+} from "./lib/contactRoles";
+import { hasEstateRole, orgModules, userCanUseModule } from "./lib/modules";
+import { requireModuleUser } from "./lib/moduleAccess";
+import { canSeeStayProperty, requireStay } from "./stay/access";
+import { canSeeJob, requireWorth } from "./worth/access";
+import { outstanding, round2 } from "./stay/ledger";
 
 export function normalizePhone(phone: string) {
   return phone.replace(/\D/g, "");
@@ -55,7 +65,8 @@ export const ownerTypeValidator = v.union(
 export const contactRoleFilter = v.union(
   v.literal("all"),
   v.literal("buyer_tenant"),
-  v.literal("owner")
+  v.literal("owner"),
+  v.literal("supplier")
 );
 
 
@@ -70,6 +81,7 @@ export const create = mutation({
     ownerUserIds: v.optional(v.array(v.id("users"))),
     ownerType: v.optional(ownerTypeValidator),
     isBuyerTenant: v.optional(v.boolean()),
+    isSupplier: v.optional(v.boolean()),
     ...preferenceArgs,
   },
   handler: async (ctx, args) => {
@@ -104,6 +116,7 @@ export const create = mutation({
       // Contacts are buyers/tenants unless the caller says otherwise, so the
       // existing create paths keep their behaviour without passing the flag.
       isBuyerTenant: args.isBuyerTenant ?? true,
+      isSupplier: args.isSupplier || undefined,
       ownerUserIds: owners,
       createdByUserId: user._id,
       orgId: user.orgId,
@@ -143,6 +156,7 @@ export const list = query({
     const filtered = contacts.filter((contact) => {
       if (role === "buyer_tenant" && !isBuyerTenantContact(contact)) return false;
       if (role === "owner" && !isOwnerContact(contact)) return false;
+      if (role === "supplier" && !contact.isSupplier) return false;
 
       if (!isAdmin) {
         if (!contact.ownerUserIds.includes(user._id)) {
@@ -429,6 +443,7 @@ export const update = mutation({
     ownerUserIds: v.optional(v.array(v.id("users"))),
     ownerType: v.optional(v.union(ownerTypeValidator, v.null())),
     isBuyerTenant: v.optional(v.boolean()),
+    isSupplier: v.optional(v.boolean()),
     ...preferenceArgs,
   },
   handler: async (ctx, args) => {
@@ -468,6 +483,7 @@ export const update = mutation({
       updates.ownerType = args.ownerType ?? undefined;
     }
     if (args.isBuyerTenant !== undefined) updates.isBuyerTenant = args.isBuyerTenant;
+    if (args.isSupplier !== undefined) updates.isSupplier = args.isSupplier || undefined;
 
     if (user.role === "admin" && args.ownerUserIds !== undefined) {
       if (args.ownerUserIds.length === 0) {
@@ -495,9 +511,46 @@ export const remove = mutation({
       throw new Error("Contact not found or access denied");
     }
 
+    // A Hub contact is shared: Stay, Worth, Finance and Dev records point at
+    // it, so deleting it there would leave them with no landlord, tenant,
+    // client or buyer.
+    const usedIn = await otherModuleUses(ctx, args.contactId);
+    if (usedIn.length > 0) {
+      throw new Error(
+        `${contact.name} is used in ${usedIn.join(", ")}, so the contact cannot be deleted`
+      );
+    }
+
+    const docs = await ctx.db
+      .query("documents")
+      .withIndex("by_contact", (q) => q.eq("contactId", args.contactId))
+      .take(500);
+    for (const doc of docs) {
+      await ctx.storage.delete(doc.storageId);
+      await ctx.db.delete(doc._id);
+    }
     await ctx.db.delete(args.contactId);
   },
 });
+
+/** Modules other than the CRM that hold records pointing at this contact. */
+async function otherModuleUses(ctx: QueryCtx, contactId: Id<"contacts">): Promise<string[]> {
+  const [asLandlord, asTenant, asClient, invoice, tx, stand, portal] = await Promise.all([
+    ctx.db.query("stayProperties").withIndex("by_landlord", (q) => q.eq("landlordContactId", contactId)).first(),
+    ctx.db.query("stayLeases").withIndex("by_tenant", (q) => q.eq("tenantContactId", contactId)).first(),
+    ctx.db.query("worthJobs").withIndex("by_client", (q) => q.eq("clientContactId", contactId)).first(),
+    ctx.db.query("finInvoices").withIndex("by_contact", (q) => q.eq("contactId", contactId)).first(),
+    ctx.db.query("finTransactions").withIndex("by_contact", (q) => q.eq("contactId", contactId)).first(),
+    ctx.db.query("finStands").withIndex("by_buyer_contact", (q) => q.eq("buyerContactId", contactId)).first(),
+    ctx.db.query("users").withIndex("by_portal_contact", (q) => q.eq("portalContactId", contactId)).first(),
+  ]);
+  const uses: string[] = [];
+  if (asLandlord || asTenant || portal) uses.push("Sync Stay");
+  if (asClient) uses.push("Sync Worth");
+  if (invoice || tx) uses.push("Sync Finance");
+  if (stand) uses.push("stand sales");
+  return uses;
+}
 
 export const addOwner = mutation({
   args: {
@@ -816,5 +869,237 @@ export const segmentedList = query({
       pageSize,
       hasMore: start + pageSize < totalCount,
     };
+  },
+});
+
+/**
+ * HB-33: existing contacts in the org that look like the person being
+ * entered, by phone or email. Like the lead duplicate warning, this names
+ * matches the caller does not own, so nobody creates a second record for the
+ * same person; `canOpen` says whether the caller can open the match.
+ */
+export const findDuplicates = query({
+  args: {
+    phone: v.optional(v.string()),
+    email: v.optional(v.string()),
+    excludeId: v.optional(v.id("contacts")),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserWithOrg(ctx);
+    const found = new Map<string, Doc<"contacts">>();
+
+    const phone = args.phone ? normalizePhone(args.phone) : "";
+    if (phone.length >= MIN_DUPLICATE_PHONE_DIGITS) {
+      const rows = await ctx.db
+        .query("contacts")
+        .withIndex("by_normalized_phone", (q) => q.eq("normalizedPhone", phone))
+        .take(20);
+      for (const c of rows) found.set(c._id, c);
+    }
+    const email = args.email?.trim();
+    if (email && email.includes("@")) {
+      // Stored as typed, so look up both the typed and the lower-case form.
+      for (const variant of new Set([email, email.toLowerCase()])) {
+        const rows = await ctx.db
+          .query("contacts")
+          .withIndex("by_org_email", (q) => q.eq("orgId", user.orgId).eq("email", variant))
+          .take(20);
+        for (const c of rows) found.set(c._id, c);
+      }
+    }
+
+    const isAdmin = user.role === "admin";
+    const matches = [];
+    for (const c of found.values()) {
+      if (c.orgId !== user.orgId || c._id === args.excludeId) continue;
+      const reason = duplicateReason(c, args);
+      if (!reason) continue;
+      matches.push({
+        _id: c._id,
+        name: c.name,
+        phone: c.phone ?? "",
+        email: c.email ?? "",
+        reason,
+        canOpen: isAdmin || c.ownerUserIds.includes(user._id),
+      });
+    }
+    return matches.slice(0, 5);
+  },
+});
+
+/** A query gate that answers "no" instead of throwing. */
+async function allowed<T>(gate: Promise<T>): Promise<T | null> {
+  try {
+    return await gate;
+  } catch {
+    return null;
+  }
+}
+
+const ROW_LIMIT = 20;
+
+/**
+ * HB-32: the contact's records in every other module on one page. Each
+ * section uses that module's own access rules and is null when the caller
+ * cannot open the module, so the page only shows what they could see there.
+ */
+export const getAcrossModules = query({
+  args: { contactId: v.id("contacts") },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserWithOrg(ctx);
+    const contact = await canAccessContact(ctx, args.contactId, user._id, user.role === "admin", user.orgId);
+    if (!contact) return null;
+    const org = await ctx.db.get(user.orgId);
+    const modules = orgModules(org);
+    const isDirector = user.role === "admin" && !user.agentMode;
+    const isAccounts = hasEstateRole(user, "accounts");
+    const propertyTitle = async (propertyId: Id<"properties">) => (await ctx.db.get(propertyId))?.title ?? "Property";
+
+    // ── Sync Stay: properties they let, leases they rent ──
+    const stayAccess = await allowed(requireStay(ctx));
+    let stay = null;
+    if (stayAccess) {
+      const [owned, rented] = await Promise.all([
+        ctx.db.query("stayProperties").withIndex("by_landlord", (q) => q.eq("landlordContactId", contact._id)).take(50),
+        ctx.db.query("stayLeases").withIndex("by_tenant", (q) => q.eq("tenantContactId", contact._id)).take(50),
+      ]);
+      const properties = await Promise.all(
+        owned
+          .filter((sp) => canSeeStayProperty(stayAccess, sp))
+          .slice(0, ROW_LIMIT)
+          .map(async (sp) => ({ _id: sp._id, title: await propertyTitle(sp.propertyId), isActive: sp.isActive }))
+      );
+      const leases = await Promise.all(
+        rented
+          .filter((l) => l.orgId === stayAccess.orgId && (stayAccess.seesAll || l.managerUserId === user._id))
+          .slice(0, ROW_LIMIT)
+          .map(async (l) => {
+            const [sp, unit, charges] = await Promise.all([
+              ctx.db.get(l.stayPropertyId),
+              ctx.db.get(l.unitId),
+              ctx.db.query("stayCharges").withIndex("by_lease", (q) => q.eq("leaseId", l._id)).take(500),
+            ]);
+            const owed = charges
+              .filter((c) => c.status === "unpaid" || c.status === "part_paid")
+              .reduce((t, c) => t + outstanding(c), 0);
+            return {
+              _id: l._id,
+              property: sp ? await propertyTitle(sp.propertyId) : "Property",
+              unit: unit?.label ?? "",
+              status: l.status,
+              startDate: l.startDate,
+              endDate: l.endDate,
+              rentAmount: l.rentAmount,
+              currency: l.currency,
+              balance: round2(owed),
+            };
+          })
+      );
+      stay = { properties, leases, isTenant: rented.length > 0 };
+    }
+
+    // ── Sync Finance: invoices and landlord payouts ──
+    // Mirrors finance/core.ts requireFinance and visibleLandlordIds; imported
+    // here would form a cycle (stay/shared imports this module).
+    const financeUser = await allowed(requireModuleUser(ctx, "finance"));
+    let finance = null;
+    if (financeUser) {
+      const isStaff = isDirector || isAccounts;
+      const managesLandlord =
+        isStaff ||
+        (await ctx.db
+          .query("stayProperties")
+          .withIndex("by_landlord", (q) => q.eq("landlordContactId", contact._id))
+          .take(50)).some((sp) => sp.managerUserId === user._id);
+      const invoices = isStaff
+        ? (await ctx.db.query("finInvoices").withIndex("by_contact", (q) => q.eq("contactId", contact._id)).order("desc").take(ROW_LIMIT))
+            .filter((i) => i.orgId === user.orgId)
+            .map((i) => ({
+              _id: i._id,
+              number: i.number,
+              date: i.date,
+              dueDate: i.dueDate,
+              currency: i.currency,
+              total: i.total,
+              amountPaid: i.amountPaid,
+              status: i.status,
+            }))
+        : null;
+      const payouts = managesLandlord
+        ? (await ctx.db
+            .query("finPayouts")
+            .withIndex("by_org_ledger_key", (q) => q.eq("orgId", user.orgId).eq("ledger", "landlord").eq("key", contact._id))
+            .order("desc")
+            .take(ROW_LIMIT)).map((p) => ({
+            _id: p._id,
+            number: p.number,
+            date: p.date,
+            currency: p.currency,
+            amount: p.amount,
+            status: p.status,
+          }))
+        : null;
+      finance = invoices || payouts ? { invoices, payouts } : null;
+    }
+
+    // ── Sync Worth: valuations they instructed ──
+    const worthAccess = await allowed(requireWorth(ctx));
+    let worth = null;
+    if (worthAccess) {
+      const jobs = await ctx.db
+        .query("worthJobs")
+        .withIndex("by_client", (q) => q.eq("clientContactId", contact._id))
+        .order("desc")
+        .take(50);
+      worth = {
+        jobs: jobs
+          .filter((j) => canSeeJob(worthAccess, j))
+          .slice(0, ROW_LIMIT)
+          .map((j) => ({
+            _id: j._id,
+            reference: j.reference,
+            propertyAddress: j.propertyAddress,
+            status: j.status,
+            receivedDate: j.receivedDate,
+            dueDate: j.dueDate,
+            issuedDate: j.issuedDate ?? null,
+          })),
+      };
+    }
+
+    // ── Stand sales (Sync Dev, or Sync Finance instalments) ──
+    // Mirrors dev/access.ts requireSales, for the same import-cycle reason.
+    const viaDev = userCanUseModule(user, org, "dev");
+    const viaFinance = userCanUseModule(user, org, "finance") && (user.role === "admin" || isAccounts);
+    let stands = null;
+    if (viaDev || viaFinance) {
+      const rows = (
+        await ctx.db
+          .query("finStands")
+          .withIndex("by_buyer_contact", (q) => q.eq("buyerContactId", contact._id))
+          .order("desc")
+          .take(ROW_LIMIT)
+      ).filter((s) => s.orgId === user.orgId);
+      const devNames = new Map<string, string>();
+      for (const s of rows) {
+        if (!devNames.has(s.developmentId)) {
+          devNames.set(s.developmentId, (await ctx.db.get(s.developmentId))?.name ?? "");
+        }
+      }
+      const base = modules.includes("dev") && viaDev ? "/app/dev/buyers" : "/app/finance/instalments";
+      stands = rows.map((s) => ({
+        _id: s._id,
+        standNumber: s.standNumber,
+        development: devNames.get(s.developmentId) ?? "",
+        currency: s.currency,
+        price: s.price,
+        balance: s.balance,
+        overdue: s.overdue,
+        status: s.status,
+        href: `${base}/${s._id}`,
+      }));
+    }
+
+    return { stay, finance, worth, stands };
   },
 });

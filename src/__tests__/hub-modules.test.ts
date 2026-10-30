@@ -1,11 +1,14 @@
 import { describe, it, expect } from "vitest";
 import {
   LEGACY_DEFAULT_MODULES,
+  MODULE_HOME_HREFS,
+  emailAlertChoices,
+  landingHref,
   orgModules,
   userCanUseModule,
   userModules,
 } from "../../convex/lib/modules";
-import { moduleForPath } from "../config/modules";
+import { MODULES, MODULE_ORDER, moduleForPath } from "../config/modules";
 
 const allOn = { enabledModules: ["media", "worth", "stay", "crm"] as const };
 
@@ -66,5 +69,45 @@ describe("moduleForPath", () => {
     expect(moduleForPath("/app/leads/123")).toBe("crm");
     expect(moduleForPath("/app/admin/stages")).toBe("crm");
     expect(moduleForPath("/app/staying")).toBe("crm");
+  });
+});
+
+describe("landingHref", () => {
+  const everything = { enabledModules: ["crm", "stay", "worth", "finance", "dev", "media"] as const };
+
+  it("lands directors on the Hub", () => {
+    expect(landingHref({ role: "admin" }, everything)).toBe("/app/hub");
+  });
+
+  it("lands a sales agent or sales manager in the CRM", () => {
+    expect(landingHref({ role: "agent" }, everything)).toBe("/app/dashboard");
+    expect(landingHref({ role: "agent", estateRoles: ["sales_manager"] }, everything)).toBe("/app/dashboard");
+  });
+
+  it("lands a single-role user in that role's module", () => {
+    expect(landingHref({ role: "agent", estateRoles: ["property_manager"] }, everything)).toBe("/app/stay");
+    expect(landingHref({ role: "agent", estateRoles: ["accounts"] }, everything)).toBe("/app/finance");
+    expect(landingHref({ role: "agent", estateRoles: ["marketing"] }, everything)).toBe("/app/syncmedia");
+    expect(landingHref({ role: "agent", estateRoles: ["valuer", "signing_valuer"] }, everything)).toBe("/app/worth");
+  });
+
+  it("lands someone whose roles span modules on the Hub", () => {
+    expect(landingHref({ role: "agent", estateRoles: ["property_manager", "sales_manager"] }, everything)).toBe("/app/hub");
+  });
+
+  it("ignores roles for modules the agency has switched off", () => {
+    const crmOnly = { enabledModules: ["crm", "media"] as const };
+    expect(landingHref({ role: "agent", estateRoles: ["property_manager"] }, crmOnly)).toBe("/app/dashboard");
+  });
+
+  it("keeps the server home routes in step with the front-end registry", () => {
+    for (const k of MODULE_ORDER) expect(MODULE_HOME_HREFS[k]).toBe(MODULES[k].homeHref);
+  });
+});
+
+describe("emailAlertChoices", () => {
+  it("offers the Hub plus the modules the user can open", () => {
+    expect(emailAlertChoices({ role: "agent" }, allOn)).toEqual(["hub", "crm", "media"]);
+    expect(emailAlertChoices({ role: "agent", estateRoles: ["property_manager"] }, allOn)).toEqual(["hub", "crm", "stay", "media"]);
   });
 });

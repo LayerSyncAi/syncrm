@@ -21,6 +21,7 @@ import {
   HubFigure,
   ModuleKey,
   estateRoleValidator,
+  landingHref,
   moduleKeyValidator,
   orgModules,
   userCanUseModule,
@@ -48,6 +49,8 @@ export const getContext = query({
       orgName: org.name,
       enabledModules: orgModules(org),
       myModules: userModules(viewer, org),
+      // HB-51: the page this user opens on after signing in.
+      landingHref: landingHref(viewer, org),
       estateRoles: me.estateRoles ?? [],
       isAdmin: viewer.role === "admin",
       // Sync Notify sits in the Hub: directors and client-facing roles.
@@ -198,6 +201,125 @@ export const updateOrgSettings = mutation({
       targetId: admin.orgId,
       targetLabel: name,
       orgId: admin.orgId,
+    });
+  },
+});
+
+/**
+ * HB-02: the agency's branches, with how many staff work from each. Readable
+ * by everyone in the org; staff are assigned in admin/users.
+ */
+export const listBranches = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUserWithOrg(ctx);
+    const org = await ctx.db.get(user.orgId);
+    const branches = org?.branches ?? [];
+    if (branches.length === 0) return [];
+    const staff = await ctx.db
+      .query("users")
+      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
+      .take(1000);
+    return branches.map((b) => ({
+      id: b.id,
+      name: b.name,
+      userCount: staff.filter((u) => u.branchId === b.id).length,
+    }));
+  },
+});
+
+function cleanBranchName(name: string, others: { name: string }[]): string {
+  const clean = name.trim();
+  if (!clean) throw new ConvexError("Branch name is required");
+  if (others.some((b) => b.name.toLowerCase() === clean.toLowerCase())) {
+    throw new ConvexError(`There is already a branch called ${clean}`);
+  }
+  return clean;
+}
+
+async function auditBranch(
+  ctx: MutationCtx,
+  admin: Doc<"users"> & { orgId: Id<"organizations"> },
+  action: string,
+  description: string,
+  metadata: Record<string, unknown>
+) {
+  await recordAudit(ctx, {
+    actorUserId: admin._id,
+    actorLabel: admin.fullName || admin.name || admin.email,
+    action,
+    category: "system",
+    description,
+    targetType: "organization",
+    targetId: admin.orgId,
+    metadata,
+    orgId: admin.orgId,
+  });
+}
+
+export const addBranch = mutation({
+  args: { name: v.string() },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+    const org = await ctx.db.get(admin.orgId);
+    if (!org) throw new ConvexError("Organisation not found");
+    const branches = org.branches ?? [];
+    const name = cleanBranchName(args.name, branches);
+    // Stable id, so renaming keeps everyone assigned to the branch.
+    const id = crypto.randomUUID().slice(0, 8);
+    await ctx.db.patch(org._id, { branches: [...branches, { id, name }], updatedAt: Date.now() });
+    await auditBranch(ctx, admin, "org.branch_add", `Added branch ${name}`, { id, name });
+    return id;
+  },
+});
+
+export const renameBranch = mutation({
+  args: { id: v.string(), name: v.string() },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+    const org = await ctx.db.get(admin.orgId);
+    const branches = org?.branches ?? [];
+    const current = branches.find((b) => b.id === args.id);
+    if (!org || !current) throw new ConvexError("Branch not found");
+    const name = cleanBranchName(args.name, branches.filter((b) => b.id !== args.id));
+    await ctx.db.patch(org._id, {
+      branches: branches.map((b) => (b.id === args.id ? { ...b, name } : b)),
+      updatedAt: Date.now(),
+    });
+    await auditBranch(ctx, admin, "org.branch_rename", `Renamed branch ${current.name} to ${name}`, {
+      id: args.id,
+      from: current.name,
+      to: name,
+    });
+  },
+});
+
+/** Refused while staff are still assigned, so nobody is left on a branch that no longer exists. */
+export const removeBranch = mutation({
+  args: { id: v.string() },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+    const org = await ctx.db.get(admin.orgId);
+    const branches = org?.branches ?? [];
+    const current = branches.find((b) => b.id === args.id);
+    if (!org || !current) throw new ConvexError("Branch not found");
+    const staff = await ctx.db
+      .query("users")
+      .withIndex("by_org", (q) => q.eq("orgId", admin.orgId))
+      .take(1000);
+    const assigned = staff.filter((u) => u.branchId === args.id).length;
+    if (assigned > 0) {
+      throw new ConvexError(
+        `${assigned} staff ${assigned === 1 ? "member works" : "members work"} from ${current.name}. Move them to another branch first.`
+      );
+    }
+    await ctx.db.patch(org._id, {
+      branches: branches.filter((b) => b.id !== args.id),
+      updatedAt: Date.now(),
+    });
+    await auditBranch(ctx, admin, "org.branch_remove", `Removed branch ${current.name}`, {
+      id: args.id,
+      name: current.name,
     });
   },
 });

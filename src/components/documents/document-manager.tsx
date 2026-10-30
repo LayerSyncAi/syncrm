@@ -35,6 +35,7 @@ const FOLDER_ICONS: Record<Folder, string> = {
 interface DocumentManagerProps {
   leadId?: Id<"leads">;
   propertyId?: Id<"properties">;
+  contactId?: Id<"contacts">;
   folders: Folder[];
   disabled?: boolean;
 }
@@ -73,7 +74,7 @@ const itemVariants = {
   show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
 } as const;
 
-export function DocumentManager({ leadId, propertyId, folders, disabled = false }: DocumentManagerProps) {
+export function DocumentManager({ leadId, propertyId, contactId, folders, disabled = false }: DocumentManagerProps) {
   const [activeFolder, setActiveFolder] = React.useState<Folder>(folders[0]);
   const [isUploading, setIsUploading] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -83,10 +84,16 @@ export function DocumentManager({ leadId, propertyId, folders, disabled = false 
   const removeDocument = useMutation(api.documents.remove);
   const logAdminAccess = useMutation(api.documents.logAdminPropertyDocumentAccess);
 
-  const documents = useQuery(
-    leadId ? api.documents.listByLead : api.documents.listByProperty,
-    leadId ? { leadId } : propertyId ? { propertyId } : "skip"
-  ) as DocumentWithUrl[] | undefined;
+  // One parent record; only its list query runs.
+  const leadDocs = useQuery(api.documents.listByLead, leadId ? { leadId } : "skip");
+  const propertyDocs = useQuery(api.documents.listByProperty, !leadId && propertyId ? { propertyId } : "skip");
+  const contactDocs = useQuery(
+    api.documents.listByContact,
+    !leadId && !propertyId && contactId ? { contactId } : "skip"
+  );
+  const documents = (leadId ? leadDocs : propertyId ? propertyDocs : contactDocs) as
+    | DocumentWithUrl[]
+    | undefined;
 
   // Auditability: record when an admin opens a property's private documents via
   // their admin bypass. The backend decides whether to log (no-op otherwise).
@@ -144,6 +151,7 @@ export function DocumentManager({ leadId, propertyId, folders, disabled = false 
           size: file.size,
           leadId,
           propertyId,
+          contactId,
         });
 
         documentToasts.uploaded(file.name);

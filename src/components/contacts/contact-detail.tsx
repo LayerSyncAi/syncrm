@@ -28,6 +28,9 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ViewingFormsList } from "@/components/viewings/viewing-forms-list";
 import { formatMoney } from "@/lib/currency";
 import { leadSourceLabel } from "@/lib/lead-sources";
+import { DocumentManager } from "@/components/documents/document-manager";
+import { ContactAcrossModules } from "@/components/contacts/contact-across-modules";
+import { contactTags } from "../../../convex/lib/contactRoles";
 
 interface ContactDetailProps {
   contactId: Id<"contacts">;
@@ -40,6 +43,8 @@ const tabs = [
   "Viewings",
   "Activity",
   "Follow-ups",
+  "Sync Estate",
+  "Documents",
 ] as const;
 type Tab = (typeof tabs)[number];
 
@@ -141,6 +146,13 @@ export function ContactDetail({ contactId }: ContactDetailProps) {
             </div>
             <div>
               <h1 className="text-xl font-semibold text-text">{contact.name}</h1>
+              {contactTags(contact).length > 0 && (
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {contactTags(contact).map((t) => (
+                    <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>
+                  ))}
+                </div>
+              )}
               {contact.company && (
                 <p className="flex items-center gap-1.5 text-sm text-text-muted">
                   <Building2 className="h-3.5 w-3.5" /> {contact.company}
@@ -405,6 +417,20 @@ export function ContactDetail({ contactId }: ContactDetailProps) {
                 ))}
               </div>
             )}
+          </motion.div>
+        )}
+
+        {activeTab === "Sync Estate" && (
+          <motion.div key="estate" variants={tabContentVariants} initial="initial" animate="animate" exit="exit">
+            <ContactAcrossModules contactId={contactId} />
+          </motion.div>
+        )}
+
+        {activeTab === "Documents" && (
+          <motion.div key="documents" variants={tabContentVariants} initial="initial" animate="animate" exit="exit">
+            <Card className="p-5">
+              <DocumentManager contactId={contactId} folders={["id_copies", "proof_of_funds", "contracts"]} />
+            </Card>
           </motion.div>
         )}
       </AnimatePresence>

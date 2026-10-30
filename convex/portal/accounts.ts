@@ -14,7 +14,7 @@ import { internal } from "../_generated/api";
 import { Doc, Id } from "../_generated/dataModel";
 import { MutationCtx, QueryCtx } from "../_generated/server";
 import { recordAudit } from "../logs";
-import { rebuildPasswordAccount } from "../lib/authReconcile";
+import { randomPassword, rebuildPasswordAccount } from "../lib/authReconcile";
 import { canSeeStayProperty, requireStay, StayAccess } from "../stay/access";
 import { sendEmail } from "../email";
 import {
@@ -163,14 +163,6 @@ export const createInviteInternal = internalMutation({
     return { email, name: contact.name, orgName: access.org.name, userId };
   },
 });
-
-function randomPassword(): string {
-  // No 0/O or 1/l/I, so it can be read off an email and typed on a phone.
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
-  const bytes = new Uint8Array(12);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
-}
 
 /** Invite (or re-invite) a landlord or tenant to their portal. */
 export const invite = action({

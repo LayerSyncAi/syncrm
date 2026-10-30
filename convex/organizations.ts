@@ -6,16 +6,7 @@ import {
   getCurrentUserWithOrg,
   getEffectiveOrgId,
 } from "./helpers";
-
-function generateSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 50);
-}
+import { generateSlug } from "./platformLib";
 
 // Called after signup to create an org and assign it to the new user. Legal
 // acceptance is recorded in the same mutation so it is atomic with org creation

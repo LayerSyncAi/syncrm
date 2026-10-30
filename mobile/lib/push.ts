@@ -1,7 +1,8 @@
 /**
  * Push notifications on the phone, through Expo's push service. The backend
  * sends the same alerts it sends to browsers (convex/pushSender.ts): activity
- * reminders and the daily agenda. Tapping one opens the matching screen.
+ * reminders, the daily agenda and every notification-centre alert from the
+ * modules. Tapping one opens the matching screen.
  */
 import { Platform } from "react-native";
 import * as Device from "expo-device";
@@ -10,6 +11,7 @@ import * as SecureStore from "expo-secure-store";
 import Constants from "expo-constants";
 
 const TOKEN_KEY = "syncestate.pushToken";
+const ASKED_KEY = "syncestate.pushAsked";
 
 // Show alerts even while the app is open, as the website's toasts do.
 if (Platform.OS !== "web") Notifications.setNotificationHandler({
@@ -65,6 +67,21 @@ export async function disablePush(remove: (args: { token: string }) => Promise<u
   } finally {
     await SecureStore.deleteItemAsync(TOKEN_KEY);
   }
+}
+
+/**
+ * Whether to offer push now: on a phone, never asked here before, and the
+ * system can still show its permission prompt. Marks the offer as made, so
+ * the app asks once; after that the switch on the account screen is the way.
+ */
+export async function shouldOfferPush(): Promise<boolean> {
+  if (Platform.OS !== "ios" && Platform.OS !== "android") return false;
+  if (!Device.isDevice) return false;
+  if (await SecureStore.getItemAsync(ASKED_KEY)) return false;
+  const { status, canAskAgain } = await Notifications.getPermissionsAsync();
+  if (status === "granted" || !canAskAgain) return false;
+  await SecureStore.setItemAsync(ASKED_KEY, "1");
+  return true;
 }
 
 export async function pushEnabledHere(): Promise<boolean> {

@@ -34,9 +34,9 @@ export default convexAuthNextjsMiddleware(async (request, { convexAuth }) => {
   // Redirect authenticated users from auth pages to dashboard
   if (isPublicAuthRoute(request) && isAuthenticated) {
     if (process.env.NODE_ENV === "development") {
-      console.log("[Middleware] Redirecting to /app/hub - already authenticated");
+      console.log("[Middleware] Redirecting to /app - already authenticated");
     }
-    return nextjsMiddlewareRedirect(request, "/app/hub");
+    return nextjsMiddlewareRedirect(request, "/app");
   }
 });
 

@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
+  contactTags,
+  duplicateReason,
   isBuyerTenantContact,
   isOwnerContact,
   ownerTypeMatches,
@@ -64,5 +66,39 @@ describe("roleForProperty", () => {
   it("resolves 'both' from the listing type", () => {
     expect(roleForProperty("both", "rent")).toBe("landlord");
     expect(roleForProperty("both", "sale")).toBe("seller");
+  });
+});
+
+describe("contactTags", () => {
+  it("returns no tags for a plain buyer/tenant", () => {
+    expect(contactTags({})).toEqual([]);
+  });
+
+  it("splits 'both' into seller and landlord and adds module tags in order", () => {
+    expect(
+      contactTags({ ownerType: "both", isLeaseTenant: true, isValuationClient: true, isSupplier: true })
+    ).toEqual(["Seller", "Landlord", "Tenant", "Valuation client", "Supplier"]);
+  });
+});
+
+describe("duplicateReason", () => {
+  it("matches phones on digits only", () => {
+    expect(duplicateReason({ normalizedPhone: "263771234567" }, { phone: "+263 77 123 4567" })).toBe("Phone match");
+  });
+
+  it("falls back to the raw phone when the stored digits are missing", () => {
+    expect(duplicateReason({ phone: "077-123-4567" }, { phone: "0771234567" })).toBe("Phone match");
+  });
+
+  it("ignores phones too short to identify anyone", () => {
+    expect(duplicateReason({ normalizedPhone: "12345" }, { phone: "12345" })).toBeNull();
+  });
+
+  it("matches email ignoring case and spaces", () => {
+    expect(duplicateReason({ email: "Jo@Example.com " }, { email: " jo@example.COM" })).toBe("Email match");
+  });
+
+  it("returns null when nothing matches", () => {
+    expect(duplicateReason({ phone: "0771234567", email: "a@b.com" }, { phone: "0779999999", email: "c@d.com" })).toBeNull();
   });
 });

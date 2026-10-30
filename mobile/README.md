@@ -38,12 +38,23 @@ address when using a local Convex backend.
 
 ## Push notifications
 
-Phones get the same alerts as the website's browser push (activity reminders
-and the daily agenda) through Expo's push service; `convex/pushSender.ts`
-sends to both. A phone registers when the person switches on "Phone
-notifications" on the account screen. Push needs an EAS project id: run
-`eas init` once, which writes it into `app.json`. Expo Go and simulators
-cannot receive push; use a development or store build on a real phone.
+Phones get the same alerts as the website's browser push (activity reminders,
+the daily agenda and every notification-centre alert from the modules) through
+Expo's push service; `convex/pushSender.ts` sends to both. The app offers push
+once after the first sign-in, and "Phone notifications" on the account screen
+switches it on or off. Push needs an EAS project id: run `eas init` once,
+which writes it into `app.json`. Expo Go and simulators cannot receive push;
+use a development or store build on a real phone.
+
+Store builds also need the platform credentials, set up once per app:
+
+- iOS: let EAS manage credentials when it asks during `eas build`; it creates
+  the Apple push key.
+- Android: create a Firebase project for `ai.layersync.syncestate`, then
+  upload its FCM V1 service-account key with `eas credentials` (Android, Push
+  Notifications) and its `google-services.json` with
+  `eas env:create --name GOOGLE_SERVICES_JSON --type file --value ./google-services.json`.
+  `app.config.js` picks the file up.
 
 ## Location search
 

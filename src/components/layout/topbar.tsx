@@ -39,6 +39,7 @@ const titleMap: Record<string, string> = {
   "/app/admin/roles": "User Roles",
   "/app/admin/stages": "Stages",
   "/app/platform": "Platform",
+  "/app/hub/alerts": "Email alerts",
   "/app/hub": "Sync Estate",
   "/app/notify": "Sync Notify",
   "/app/finance": "Sync Finance",

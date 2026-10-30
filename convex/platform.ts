@@ -28,7 +28,7 @@ import { Doc, Id, TableNames } from "./_generated/dataModel";
 import { requirePlatformAdmin } from "./helpers";
 import { recordAudit } from "./logs";
 import { orgModules } from "./lib/modules";
-import { rebuildPasswordAccount, getTempPassword } from "./lib/authReconcile";
+import { rebuildPasswordAccount, randomPassword } from "./lib/authReconcile";
 import { RATE_LIMITS } from "./rateLimit";
 import {
   PURGE_BATCH_SIZE,
@@ -185,8 +185,9 @@ export const getPlatformAdminForAction = internalQuery({
 
 /**
  * Flag an existing org-less account, or create a new one, as a platform admin.
- * Shared by the UI action and the CLI bootstrap. A new account gets the
- * deployment's temporary password and must reset it on first sign-in.
+ * Shared by the UI action and the CLI bootstrap. A new account gets a random
+ * temporary password, shown once to whoever granted it, and must reset it on
+ * first sign-in.
  */
 export const grantPlatformAdminInternal = internalMutation({
   args: {
@@ -269,7 +270,7 @@ export const grantPlatformAdmin = action({
     const caller = await ctx.runQuery(internal.platform.getPlatformAdminForAction, { userId: callerId });
     if (!caller) throw new ConvexError("Platform access required");
 
-    const tempPassword = getTempPassword();
+    const tempPassword = randomPassword();
     const passwordHash = await new Scrypt().hash(tempPassword);
     const result = await ctx.runMutation(internal.platform.grantPlatformAdminInternal, {
       email: args.email,
@@ -288,7 +289,7 @@ export const grantPlatformAdmin = action({
 export const grantPlatformAdminCli = internalAction({
   args: { email: v.string(), fullName: v.optional(v.string()) },
   handler: async (ctx, args): Promise<{ userId: Id<"users">; created: boolean; alreadyAdmin: boolean; tempPasswordHint: string | null }> => {
-    const tempPassword = getTempPassword();
+    const tempPassword = randomPassword();
     const passwordHash = await new Scrypt().hash(tempPassword);
     const result = await ctx.runMutation(internal.platform.grantPlatformAdminInternal, {
       email: args.email,

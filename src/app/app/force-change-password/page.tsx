@@ -5,5 +5,5 @@ import { ForceChangePasswordCard } from "@/components/auth/force-change-password
 
 export default function ForceChangePasswordPage() {
   const router = useRouter();
-  return <ForceChangePasswordCard onChanged={() => router.replace("/app/hub")} />;
+  return <ForceChangePasswordCard onChanged={() => router.replace("/app")} />;
 }
