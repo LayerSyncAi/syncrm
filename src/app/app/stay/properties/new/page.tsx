@@ -31,7 +31,7 @@ function Toggle<T extends string>({ value, options, onChange }: { value: T; opti
           onClick={() => onChange(o.value)}
           className={cn(
             "h-11 rounded-[10px] border px-2 text-sm font-medium",
-            value === o.value ? "border-emerald-600 bg-emerald-600/10 text-emerald-700" : "border-border-strong"
+            value === o.value ? "border-primary-600 bg-primary-soft text-primary-ink" : "border-border-strong"
           )}
         >
           {o.label}

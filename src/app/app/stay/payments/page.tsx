@@ -158,7 +158,7 @@ export default function StayPaymentsPage() {
         title="Payments"
         description="Every payment received, with its receipt. Payments are never deleted; a mistake is reversed."
         actions={
-          <Button onClick={() => openPayment()} className="h-11 gap-2 bg-emerald-600 px-5 hover:bg-emerald-700">
+          <Button onClick={() => openPayment()} className="h-11 gap-2 px-5">
             <Receipt className="h-4 w-4" />
             Record payment
           </Button>

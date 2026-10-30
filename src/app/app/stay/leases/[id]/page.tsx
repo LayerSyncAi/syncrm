@@ -111,7 +111,7 @@ export default function LeaseDetailPage({ params }: { params: Promise<{ id: stri
         actions={
           <>
             <LeaseStatusBadge status={lease.status} notice={!!lease.noticeGivenOn} />
-            <Button onClick={() => recordPayment(leaseId)} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
+            <Button onClick={() => recordPayment(leaseId)} className="gap-2">
               <Receipt className="h-4 w-4" />
               Record payment
             </Button>

@@ -18,6 +18,7 @@ import { api } from "../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { KpiTile } from "@/components/ui/kpi-tile";
+import { DashboardHeader } from "@/components/ui/dashboard-header";
 import { ListSkeleton } from "@/components/ui/list-skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Section, StayPageHeader } from "@/components/stay/page-header";
@@ -99,27 +100,27 @@ export default function StayDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div className="max-w-2xl space-y-2">
-          <p className="text-eyebrow text-text-muted">{dateLabel(data.today)}</p>
-          <h1 className="text-display">Lettings overview</h1>
-          <p className="text-[15px] leading-relaxed text-text-muted">{summary}</p>
-        </div>
-        <div className="hidden flex-wrap items-center gap-2 md:flex">
-          {data.canEditLeases && (
-            <Link href="/app/stay/leases/new">
-              <Button variant="secondary" className="gap-2">
-                <FileSignature className="h-4 w-4" />
-                New lease
-              </Button>
-            </Link>
-          )}
-          <Button onClick={() => recordPayment()} className="gap-2">
-            <Receipt className="h-4 w-4" />
-            Record payment
-          </Button>
-        </div>
-      </header>
+      <DashboardHeader
+        eyebrow={dateLabel(data.today)}
+        title="Lettings overview"
+        summary={summary}
+        actions={
+          <>
+            {data.canEditLeases && (
+              <Link href="/app/stay/leases/new">
+                <Button variant="secondary" className="gap-2">
+                  <FileSignature className="h-4 w-4" />
+                  New lease
+                </Button>
+              </Link>
+            )}
+            <Button onClick={() => recordPayment()} className="gap-2">
+              <Receipt className="h-4 w-4" />
+              Record payment
+            </Button>
+          </>
+        }
+      />
 
       {/* Phones: the jobs done on a site visit, one tap away. */}
       <nav aria-label="Quick actions" className="grid grid-cols-4 gap-2 md:hidden">

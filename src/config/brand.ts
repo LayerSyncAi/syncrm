@@ -54,8 +54,12 @@ export interface BrandConfig {
     appleTouch: string;
     wordmark: string;
     og: string;
+    /** Logo for light surfaces (the sign-in page). */
+    lockup: string;
     /** Logo for dark surfaces (the sidebar). */
     lockupReversed: string;
+    /** The mark alone, in colour. */
+    mark: string;
     /** Square app icon, shown when the sidebar is collapsed. */
     appIcon: string;
   };
@@ -103,7 +107,9 @@ export const brand: BrandConfig = {
     appleTouch: env.NEXT_PUBLIC_BRAND_LOGO_APPLE ?? "/brand/apple-touch-icon.png",
     wordmark: env.NEXT_PUBLIC_BRAND_LOGO_WORDMARK ?? "/brand/wordmark.png",
     og: env.NEXT_PUBLIC_BRAND_LOGO_OG ?? "/brand/og.png",
+    lockup: env.NEXT_PUBLIC_BRAND_LOGO_LOCKUP ?? "/brand/lockup.svg",
     lockupReversed: env.NEXT_PUBLIC_BRAND_LOGO_REVERSED ?? "/brand/lockup-reversed.svg",
+    mark: env.NEXT_PUBLIC_BRAND_LOGO_MARK ?? "/brand/mark.svg",
     appIcon: env.NEXT_PUBLIC_BRAND_LOGO_APP_ICON ?? "/brand/app-icon-dark.svg",
   },
 

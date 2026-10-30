@@ -252,14 +252,14 @@ function NewLeaseForm() {
 
         <div className="mt-4 space-y-3">
           <label className="flex items-start gap-3 text-sm">
-            <input type="checkbox" className="mt-0.5 h-5 w-5 accent-emerald-600" checked={chargeFirst} onChange={(e) => setChargeFirst(e.target.checked)} />
+            <input type="checkbox" className="mt-0.5 h-5 w-5 accent-[var(--primary-ink)]" checked={chargeFirst} onChange={(e) => setChargeFirst(e.target.checked)} />
             <span>
               Charge the first month&apos;s rent now{rent && parseAmount(rent) > 0 ? ` (${money(parseAmount(rent), cur)})` : ""}, due on the start date.
               <span className="block text-xs text-text-muted">After that, rent is charged automatically each month on the due day.</span>
             </span>
           </label>
           <label className="flex items-center gap-3 text-sm">
-            <input type="checkbox" className="h-5 w-5 accent-emerald-600" checked={increaseOn} onChange={(e) => setIncreaseOn(e.target.checked)} />
+            <input type="checkbox" className="h-5 w-5 accent-[var(--primary-ink)]" checked={increaseOn} onChange={(e) => setIncreaseOn(e.target.checked)} />
             Plan a rent increase
           </label>
           {increaseOn && (

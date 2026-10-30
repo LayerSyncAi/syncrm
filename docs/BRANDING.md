@@ -71,7 +71,9 @@ so a rebrand usually only needs the one primary colour.
 | `NEXT_PUBLIC_BRAND_LOGO_APPLE` | Apple touch icon | `/brand/apple-touch-icon.png` |
 | `NEXT_PUBLIC_BRAND_LOGO_WORDMARK` | Image wordmark | `/brand/wordmark.png` |
 | `NEXT_PUBLIC_BRAND_LOGO_OG` | Social share image | `/brand/og.png` |
+| `NEXT_PUBLIC_BRAND_LOGO_LOCKUP` | Logo for light surfaces (sign-in page) | `/brand/lockup.svg` |
 | `NEXT_PUBLIC_BRAND_LOGO_REVERSED` | Logo for the dark sidebar | `/brand/lockup-reversed.svg` |
+| `NEXT_PUBLIC_BRAND_LOGO_MARK` | The mark alone, in colour (sign-in panel) | `/brand/mark.svg` |
 | `NEXT_PUBLIC_BRAND_LOGO_APP_ICON` | Square icon for the collapsed sidebar | `/brand/app-icon-dark.svg` |
 
 ## Notes & limits

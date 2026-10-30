@@ -8,9 +8,10 @@ import { Megaphone, Palette, Plus, Trash2 } from "lucide-react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { useRequireAuth } from "@/hooks/useAuth";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { DashboardHeader } from "@/components/ui/dashboard-header";
+import { PhoneMainAction } from "@/components/ui/phone-main-action";
 import { ListSkeleton } from "@/components/ui/list-skeleton";
 import { BrochureThumb } from "@/components/syncmedia/BrochureStage";
 import { getFormat } from "@/lib/syncmedia/formats";
@@ -45,33 +46,31 @@ export default function SyncMediaPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <Breadcrumb items={[{ label: "SyncMedia" }]} />
-
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-xl font-semibold text-text">
-            <Megaphone className="h-5 w-5 text-primary-ink" /> SyncMedia
-          </h1>
-          <p className="mt-1 text-sm text-text-muted">
-            Property brochures for social posts, WhatsApp and print. Your drafts are
-            private to you.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {isAdmin ? (
-            <Link href="/app/admin/branding">
-              <Button variant="secondary">
-                <Palette className="h-4 w-4" /> Brand kit
+      <DashboardHeader
+        eyebrow="Studio"
+        title="Brochures and posts"
+        summary={
+          brochures === undefined
+            ? null
+            : `${brochures.length ? `${brochures.length} draft${brochures.length === 1 ? "" : "s"}, private to you. ` : ""}Pick a listing, choose a layout, and download a post for WhatsApp and social, or a print-ready flyer.`
+        }
+        actions={
+          <>
+            {isAdmin ? (
+              <Link href="/app/admin/branding">
+                <Button variant="secondary">
+                  <Palette className="h-4 w-4" /> Brand kit
+                </Button>
+              </Link>
+            ) : null}
+            <Link href="/app/syncmedia/new">
+              <Button>
+                <Plus className="h-4 w-4" /> New brochure
               </Button>
             </Link>
-          ) : null}
-          <Link href="/app/syncmedia/new">
-            <Button>
-              <Plus className="h-4 w-4" /> New brochure
-            </Button>
-          </Link>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {brochures === undefined ? (
         <ListSkeleton rows={3} />
@@ -116,7 +115,7 @@ export default function SyncMediaPage() {
               <motion.li
                 key={brochure._id}
                 variants={cardVariants}
-                className="group relative overflow-hidden rounded-[12px] border border-border bg-card-bg"
+                className="group relative overflow-hidden rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] transition-transform duration-200 hover:-translate-y-0.5"
               >
                 <Link
                   href={
@@ -126,10 +125,10 @@ export default function SyncMediaPage() {
                   }
                   className="block"
                 >
-                  <div className="flex items-center justify-center bg-surface-2 p-4">
+                  <div className="m-2 flex items-center justify-center rounded-[14px] bg-surface-2 p-4">
                     <BrochureThumb doc={doc} brand={brand} width={150} />
                   </div>
-                  <div className="border-t border-border p-3">
+                  <div className="px-4 pb-4 pt-2">
                     <p className="truncate text-sm font-semibold text-text">
                       {brochure.title || "Untitled brochure"}
                     </p>
@@ -142,7 +141,7 @@ export default function SyncMediaPage() {
                   type="button"
                   onClick={() => handleDelete(brochure._id)}
                   aria-label={`Delete ${brochure.title || "brochure"}`}
-                  className="absolute right-2 top-2 cursor-pointer rounded-lg bg-card-bg/90 p-1.5 text-text-muted opacity-0 transition hover:text-danger focus-visible:opacity-100 group-hover:opacity-100"
+                  className="absolute right-4 top-4 cursor-pointer rounded-full bg-card-bg/90 p-1.5 text-text-muted opacity-100 shadow-sm transition hover:text-danger focus-visible:opacity-100 md:opacity-0 md:group-hover:opacity-100"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -151,6 +150,8 @@ export default function SyncMediaPage() {
           })}
         </motion.ul>
       )}
+
+      <PhoneMainAction label="New brochure" icon={Plus} href="/app/syncmedia/new" />
     </div>
   );
 }

@@ -206,7 +206,7 @@ function RecordPaymentModal({
             <Button variant="secondary" onClick={() => setPicked(null)} disabled={saving} className="h-12 sm:h-10">
               Back
             </Button>
-            <Button onClick={submit} disabled={saving} className="h-12 bg-emerald-600 hover:bg-emerald-700 sm:h-10">
+            <Button onClick={submit} disabled={saving} className="h-12 sm:h-10">
               {saving ? "Saving..." : `Record ${amount ? money(parseAmount(amount) || 0, picked.currency) : "payment"}`}
             </Button>
           </div>
@@ -291,7 +291,7 @@ function RecordPaymentModal({
                   }}
                   className={cn(
                     "h-11 rounded-[10px] border text-sm font-medium",
-                    purpose === p ? "border-emerald-600 bg-emerald-600/10 text-emerald-700" : "border-border-strong"
+                    purpose === p ? "border-primary-600 bg-primary-soft text-primary-ink" : "border-border-strong"
                   )}
                 >
                   {p === "rent" ? "Rent and charges" : `Deposit (${money(picked.depositOutstanding, picked.currency)} due)`}
@@ -316,7 +316,7 @@ function RecordPaymentModal({
                   onClick={() => setMethod(m.value)}
                   className={cn(
                     "h-11 rounded-[10px] border text-sm font-medium",
-                    method === m.value ? "border-emerald-600 bg-emerald-600/10 text-emerald-700" : "border-border-strong"
+                    method === m.value ? "border-primary-600 bg-primary-soft text-primary-ink" : "border-border-strong"
                   )}
                 >
                   {m.label}
@@ -347,7 +347,7 @@ function RecordPaymentModal({
                     onClick={() => setHeldIn(h.value)}
                     className={cn(
                       "min-h-11 rounded-[10px] border px-2 text-xs font-medium",
-                      heldIn === h.value ? "border-emerald-600 bg-emerald-600/10 text-emerald-700" : "border-border-strong"
+                      heldIn === h.value ? "border-primary-600 bg-primary-soft text-primary-ink" : "border-border-strong"
                     )}
                   >
                     {h.label}
@@ -360,7 +360,7 @@ function RecordPaymentModal({
           <label className="flex items-center gap-3 text-sm">
             <input
               type="checkbox"
-              className="h-5 w-5 accent-emerald-600"
+              className="h-5 w-5 accent-[var(--primary-ink)]"
               checked={emailReceipt && !!picked.tenantEmail}
               disabled={!picked.tenantEmail}
               onChange={(e) => setEmailReceipt(e.target.checked)}

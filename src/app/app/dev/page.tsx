@@ -9,6 +9,9 @@ import { api } from "../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { ListSkeleton } from "@/components/ui/list-skeleton";
 import { Section, StatTile, StayPageHeader } from "@/components/stay/page-header";
+import { DashboardHeader } from "@/components/ui/dashboard-header";
+import { PhoneMainAction } from "@/components/ui/phone-main-action";
+import { SuggestionCard } from "@/components/ui/suggestion-card";
 import { DevelopmentModal } from "@/components/sales/modals";
 import { ModuleHint } from "@/components/sales/shared";
 import { DevelopmentCard } from "@/components/dev/development-card";
@@ -70,14 +73,24 @@ export default function DevDashboardPage() {
     );
   }
 
+  const late = summary.overdueBuyers;
+  const total = summary.available + summary.reserved + summary.sold;
+  const text =
+    `${summary.available} stand${summary.available === 1 ? "" : "s"} available, ${summary.reserved} reserved and ${summary.sold} sold` +
+    ` across ${active.length} development${active.length === 1 ? "" : "s"}. ` +
+    (late ? `${late} buyer${late === 1 ? " is" : "s are"} behind (${summary.overdue}).` : "Every buyer is up to date.");
+  // The most common job is reserving or selling a stand, so the phone
+  // action goes straight to the stand map when there is one development.
+  const standsHref = active.length === 1 ? `/app/dev/developments/${active[0]._id}` : "/app/dev/developments";
+
   return (
     <div className="space-y-6">
-      <StayPageHeader title="SyncDev" description="Stands available, reserved and sold, and what buyers owe." actions={newButton} />
+      <DashboardHeader eyebrow="Developments" title="Stands and sales" summary={text} actions={newButton} />
 
       <div className="grid grid-cols-3 gap-3">
         <StatTile label="Available" value={summary.available} tone="good" href="/app/dev/developments" />
         <StatTile label="Reserved" value={summary.reserved} tone={summary.reserved > 0 ? "warning" : "default"} href="/app/dev/developments" />
-        <StatTile label="Sold" value={summary.sold} href="/app/dev/buyers" />
+        <StatTile label="Sold" value={summary.sold} hint={total ? `${Math.round((summary.sold / total) * 100)}% of stands` : undefined} href="/app/dev/buyers" />
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile label="Contracted" value={summary.contracted} href="/app/dev/buyers" />
@@ -91,6 +104,21 @@ export default function DevDashboardPage() {
           href="/app/dev/buyers"
         />
       </div>
+
+      {late > 0 && hub?.canNotify && (
+        <SuggestionCard
+          action={
+            <Link href="/app/notify?audience=instalments&filter=overdue" className="w-fit">
+              <Button className="gap-2">
+                <Send className="h-4 w-4" />
+                Send reminders
+              </Button>
+            </Link>
+          }
+        >
+          {late} buyer{late === 1 ? " has" : "s have"} missed an instalment ({summary.overdue} overdue). Send each a reminder with what they owe.
+        </SuggestionCard>
+      )}
 
       {!financeOn && <ModuleHint>SyncFinance adds trust accounting, commission and developer payouts.</ModuleHint>}
 
@@ -124,6 +152,7 @@ export default function DevDashboardPage() {
           </div>
         )}
       </Section>
+      {active.length > 0 && <PhoneMainAction label="Reserve or sell" icon={Grid3x3} href={standsHref} />}
       {modal}
     </div>
   );

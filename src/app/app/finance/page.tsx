@@ -3,13 +3,16 @@
 import * as React from "react";
 import Link from "next/link";
 import { useQuery } from "convex/react";
-import { ArrowLeftRight, Banknote, Landmark, Wallet } from "lucide-react";
+import { ArrowDownLeft, ArrowLeftRight, Banknote, Landmark, Wallet } from "lucide-react";
 import { api } from "../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { ListSkeleton } from "@/components/ui/list-skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
+import { DashboardHeader } from "@/components/ui/dashboard-header";
+import { PhoneMainAction } from "@/components/ui/phone-main-action";
+import { SuggestionCard } from "@/components/ui/suggestion-card";
 import { Section, StatTile, StayPageHeader } from "@/components/stay/page-header";
 import { ACCOUNT_TYPE_LABELS, dateLabel, money } from "@/lib/finance/format";
 import { cn } from "@/lib/utils";
@@ -37,14 +40,14 @@ export default function FinanceDashboardPage() {
   }
 
   const toggle = (
-    <div className="inline-flex rounded-[10px] border border-border-strong p-0.5" role="group" aria-label="Period">
+    <div className="inline-flex rounded-full border border-border-strong bg-card-bg p-0.5" role="group" aria-label="Period">
       {(["week", "month"] as const).map((r) => (
         <button
           key={r}
           type="button"
           onClick={() => setRange(r)}
           className={cn(
-            "rounded-[8px] px-3 py-1.5 text-sm font-medium transition-colors",
+            "rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors",
             range === r ? "bg-primary-600 text-primary-foreground" : "text-text-muted hover:text-text"
           )}
         >
@@ -54,23 +57,44 @@ export default function FinanceDashboardPage() {
     </div>
   );
 
+  const period = range === "week" ? "this week" : "this month";
+  const awaiting = data?.payoutsAwaitingApproval ?? 0;
+  const summary =
+    data === undefined
+      ? null
+      : `${data.totals.moneyIn} in and ${data.totals.moneyOut} out ${period}, with ${data.heldInTrust} held in trust.` +
+        (awaiting ? ` ${awaiting} landlord payout${awaiting === 1 ? " is" : "s are"} waiting for approval.` : "");
+
   return (
     <div className="space-y-6">
-      <StayPageHeader
-        title="Finance"
-        description={data ? `Money in and out from ${dateLabel(data.from)} to ${dateLabel(data.to)}. USD and ZiG are shown separately.` : "Money in, money out and what we hold."}
+      <DashboardHeader
+        eyebrow={data ? `${dateLabel(data.from)} to ${dateLabel(data.to)}` : period}
+        title="Money overview"
+        summary={summary}
         actions={
           <>
-            {toggle}
             <Link href="/app/finance/money">
               <Button variant="secondary" className="gap-2">
                 <ArrowLeftRight className="h-4 w-4" />
                 Money in and out
               </Button>
             </Link>
+            <Link href="/app/finance/money?new=in">
+              <Button className="gap-2">
+                <ArrowDownLeft className="h-4 w-4" />
+                Money in
+              </Button>
+            </Link>
           </>
         }
       />
+
+      {/* The period applies on every screen size, so it sits outside the
+          desktop-only header actions. USD and ZiG are never added together. */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        {toggle}
+        <p className="text-xs text-text-muted">USD and ZiG are shown separately.</p>
+      </div>
 
       {data === undefined ? (
         <ListSkeleton />
@@ -81,6 +105,22 @@ export default function FinanceDashboardPage() {
             <StatTile label="Money out" value={data.totals.moneyOut} hint="Excluding transfers between accounts" />
             <StatTile label="Balance" value={data.totals.balance} hint="All active accounts today" />
           </div>
+
+          {awaiting > 0 && (
+            <SuggestionCard
+              action={
+                <Link href="/app/finance/payouts" className="w-fit">
+                  <Button className="gap-2">
+                    <Banknote className="h-4 w-4" />
+                    Review payouts
+                  </Button>
+                </Link>
+              }
+            >
+              {awaiting} landlord payout{awaiting === 1 ? " is" : "s are"} waiting for approval ({data.payoutsDue} due). Landlords are
+              paid once a director approves.
+            </SuggestionCard>
+          )}
 
           <Section title="Accounts">
             {data.accounts.length === 0 ? (
@@ -164,6 +204,8 @@ export default function FinanceDashboardPage() {
             />
             <StatTile label="Tenant arrears" value={data.tenantArrears} tone={data.tenantArrears === "USD 0" ? "default" : "danger"} hint="Rent and charges past due" />
           </div>
+
+          <PhoneMainAction label="Money in" icon={ArrowDownLeft} href="/app/finance/money?new=in" />
 
           <div className="flex flex-wrap gap-2">
             <Link href="/app/finance/trust">

@@ -177,7 +177,7 @@ export default function StayArrearsPage() {
                           <MessageSquarePlus className="h-4 w-4" />
                           Note
                         </Button>
-                        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" onClick={() => openPayment(r.leaseId)}>
+                        <Button size="sm" className="" onClick={() => openPayment(r.leaseId)}>
                           <Receipt className="h-4 w-4" />
                           Payment
                         </Button>
@@ -223,7 +223,7 @@ export default function StayArrearsPage() {
                   <Button variant="secondary" onClick={() => setNoteFor({ leaseId: r.leaseId, tenantName: r.tenantName })}>
                     Note
                   </Button>
-                  <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => openPayment(r.leaseId)}>
+                  <Button className="" onClick={() => openPayment(r.leaseId)}>
                     Payment
                   </Button>
                 </div>

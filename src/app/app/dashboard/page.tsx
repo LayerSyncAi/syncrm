@@ -9,6 +9,7 @@ import type { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { KpiTile } from "@/components/ui/kpi-tile";
+import { DashboardHeader } from "@/components/ui/dashboard-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SuggestionCard } from "@/components/ui/suggestion-card";
 import { PhoneMainAction } from "@/components/ui/phone-main-action";
@@ -103,23 +104,19 @@ export default function DashboardPage() {
   return (
     <ErrorBoundary sectionName="Dashboard">
       <div className="space-y-6">
-        <header className="flex flex-wrap items-end justify-between gap-4">
-          <div className="max-w-2xl space-y-2">
-            <p className="text-eyebrow text-text-muted">{isAdmin ? "All leads" : "My leads"}</p>
-            <h1 className="text-display">Pipeline overview</h1>
-            {summary ? (
-              <p className="text-[15px] leading-relaxed text-text-muted">{summary}</p>
-            ) : (
-              <Skeleton className="h-5 w-80" />
-            )}
-          </div>
-          <Link href="/app/leads/new" className="hidden md:block">
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              New lead
-            </Button>
-          </Link>
-        </header>
+        <DashboardHeader
+          eyebrow={isAdmin ? "All leads" : "My leads"}
+          title="Pipeline overview"
+          summary={summary}
+          actions={
+            <Link href="/app/leads/new">
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" />
+                New lead
+              </Button>
+            </Link>
+          }
+        />
 
         {isLoading ? (
           <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
