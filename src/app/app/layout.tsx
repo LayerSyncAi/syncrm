@@ -247,7 +247,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             showNotifications={false}
             onMobileMenuOpen={() => setMobileOpen(true)}
           />
-          <div className="px-3 py-4 pb-24 sm:px-6 sm:py-6 md:pb-6">
+          <div className="px-3 py-4 pb-36 sm:px-6 sm:py-6 md:pb-6">
             <ErrorBoundary sectionName="Page Content">
               {isPlatformPage ? children : null}
             </ErrorBoundary>
@@ -284,7 +284,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       >
         {inPlatformView && <PlatformViewBanner orgName={org?.name} />}
         <Topbar userName={userName} userEmail={user.email || undefined} orgName={org?.name} userTimezone={user.timezone || undefined} isRealAdmin={isRealAdmin && !inPlatformView} agentMode={agentMode} onMobileMenuOpen={() => setMobileOpen(true)} />
-        <div className="px-3 py-4 pb-24 sm:px-6 sm:py-6 md:pb-6">
+        <div className="px-3 py-4 pb-36 sm:px-6 sm:py-6 md:pb-6">
           <ErrorBoundary sectionName="Page Content">
             {children}
           </ErrorBoundary>

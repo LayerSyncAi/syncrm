@@ -25,6 +25,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ListSkeleton } from "@/components/ui/list-skeleton";
 import { KanbanBoard } from "@/components/leads/kanban-board";
 import { ContactActions } from "@/components/common/contact-actions";
+import { TemperatureChip } from "@/components/leads/temperature";
+import { PhoneMainAction } from "@/components/ui/phone-main-action";
 
 const listVariants = {
   hidden: {},
@@ -206,18 +208,9 @@ const LeadCard = React.memo(function LeadCard({
   );
 });
 
+// Score and temperature in one chip (hot 70+, warm 40 to 69, cold below).
 function ScoreBadge({ score }: { score: number | undefined }) {
-  if (score === undefined || score === null) {
-    return <Badge variant="neutral" className="px-2 py-0.5">--</Badge>;
-  }
-  const variant = score >= 70 ? "success" : score >= 40 ? "warning" : "danger";
-  const dot = score >= 70 ? "bg-success" : score >= 40 ? "bg-warning" : "bg-danger";
-  return (
-    <Badge variant={variant} className="gap-1 px-2 py-0.5 font-semibold">
-      <span className={`inline-block h-1.5 w-1.5 rounded-full ${dot}`} />
-      {score}
-    </Badge>
-  );
+  return <TemperatureChip score={score} />;
 }
 
 export default function LeadsPage() {
@@ -496,10 +489,11 @@ export default function LeadsPage() {
           <Button variant="secondary" onClick={() => setBulkMatchingOpen(true)}>
             Bulk Match
           </Button>
-          <Link href="/app/leads/new">
+          {/* On phones the same action floats above the tab bar. */}
+          <Link href="/app/leads/new" className="hidden md:block">
             <Button className="h-10 gap-2">
               <Plus className="h-4 w-4" />
-              New Lead
+              New lead
             </Button>
           </Link>
         </div>
@@ -739,6 +733,8 @@ export default function LeadsPage() {
           </ErrorBoundary>
         )
       )}
+
+      <PhoneMainAction label="New lead" icon={Plus} href="/app/leads/new" />
 
       {bulkMatchingOpen && (
         <Suspense fallback={null}>

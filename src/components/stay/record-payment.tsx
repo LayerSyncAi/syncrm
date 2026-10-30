@@ -72,7 +72,7 @@ export function RecordPaymentButton() {
     <button
       type="button"
       onClick={() => open()}
-      className="fixed right-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-40 inline-flex h-14 items-center gap-2 rounded-full bg-emerald-600 px-5 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(5,150,105,0.35)] transition hover:bg-emerald-700 active:scale-[0.97] md:right-8 md:bottom-8"
+      className="fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-40 inline-flex h-14 items-center gap-2 rounded-full bg-primary px-5 text-[15px] font-semibold text-primary-foreground shadow-[var(--shadow-pop)] transition hover:bg-primary-600 active:scale-[0.97] md:right-8 md:bottom-8"
     >
       <Receipt className="h-5 w-5" />
       Record payment
