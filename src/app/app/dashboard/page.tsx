@@ -1,114 +1,42 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { motion, useMotionValue, animate } from "framer-motion";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useMutation } from "convex/react";
+import { ArrowUpRight, CircleCheck, Plus } from "lucide-react";
+import { api } from "../../../../convex/_generated/api";
+import type { Id } from "../../../../convex/_generated/dataModel";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { KpiTile } from "@/components/ui/kpi-tile";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SuggestionCard } from "@/components/ui/suggestion-card";
+import { PhoneMainAction } from "@/components/ui/phone-main-action";
+import { animatedToast } from "@/components/ui/animated-toaster";
+import { TemperatureChip } from "@/components/leads/temperature";
+import { ErrorBoundary } from "@/components/common/error-boundary";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { useRequireAuth } from "@/hooks/useAuth";
-import { ErrorBoundary } from "@/components/common/error-boundary";
-import { Tooltip } from "@/components/ui/tooltip";
-import { Info } from "lucide-react";
+import { detectBrowserTimezone } from "@/lib/timezones";
+import { getErrorMessage } from "@/lib/errors";
 
-// Plain-language explanation for each KPI, surfaced on hover/focus.
-const kpiHelp: Record<string, string> = {
-  "Total leads": "Every lead in your pipeline",
-  "Open leads": "Leads not yet won or lost",
-  Won: "Leads closed as won",
-  Lost: "Leads closed as lost",
-};
-
-// --- #13: Animated counter that rolls up from 0 ---
-
-function AnimatedCounter({ value }: { value: number }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const mv = useMotionValue(0);
-
-  useEffect(() => {
-    // Reset to 0 and animate to target
-    mv.set(0);
-    const controls = animate(mv, value, {
-      duration: 1,
-      ease: "easeOut",
-    });
-    return () => controls.stop();
-  }, [mv, value]);
-
-  useEffect(() => {
-    const unsubscribe = mv.on("change", (v) => {
-      if (ref.current) {
-        ref.current.textContent = Math.round(v).toString();
-      }
-    });
-    return unsubscribe;
-  }, [mv]);
-
-  // Show actual value as fallback text in case animation doesn't fire
-  return <span ref={ref} className="tabular-nums">{value}</span>;
-}
-
-// --- Skeleton loaders (unchanged) ---
-
-function StatsCardSkeleton() {
-  return (
-    <Card className="p-4">
-      <Skeleton className="h-3 w-24 mb-3" />
-      <Skeleton className="h-8 w-12" />
-    </Card>
-  );
-}
-
-function StageRowSkeleton() {
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <Skeleton className="h-4 w-24" />
-        <Skeleton className="h-4 w-8" />
-      </div>
-      <Skeleton className="h-2 w-full rounded-full" />
-    </div>
-  );
-}
-
-// --- #12: Stagger entrance variants ---
-
-const containerVariants = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.08 } },
-};
-
-const cardVariants = {
-  hidden: { opacity: 0, y: 20 },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: { type: "spring", stiffness: 300, damping: 24 },
-  },
-} as const;
-
-const stageContainerVariants = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.1, delayChildren: 0.1 } },
-};
-
-const stageItemVariants = {
-  hidden: { opacity: 0, x: -10 },
-  show: {
-    opacity: 1,
-    x: 0,
-    transition: { type: "spring", stiffness: 300, damping: 24 },
-  },
-} as const;
-
-const DISTRIBUTION_COLORS = [
-  "bg-danger",    // Cold
-  "bg-orange-500",  // Cool
-  "bg-warning",   // Warm
-  "bg-primary",   // Hot
-  "bg-success",   // On Fire
+// Score buckets come from the server coldest first: Cold, Cool, Warm, Hot,
+// On Fire. Their bars use the lead-temperature colours.
+const BUCKET_COLOURS = [
+  "bg-[var(--cold)]",
+  "bg-[var(--cold)]/55",
+  "bg-[var(--warm)]",
+  "bg-[var(--hot)]/70",
+  "bg-[var(--hot)]",
 ];
+
+/** 09:00 tomorrow, local time. */
+function tomorrowAtNine(): number {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  d.setHours(9, 0, 0, 0);
+  return d.getTime();
+}
 
 export default function DashboardPage() {
   const {
@@ -118,7 +46,6 @@ export default function DashboardPage() {
     stageBreakdown,
     monthlyProgress,
     distribution,
-    avgScoreByStage,
     topUnworked,
     maxDistCount,
     scoredCount,
@@ -126,432 +53,238 @@ export default function DashboardPage() {
     overallAvg,
   } = useDashboardData();
   const { isAdmin } = useRequireAuth();
+  const createActivity = useMutation(api.activities.createForLead);
+  const [scheduling, setScheduling] = useState(false);
+  const [scheduled, setScheduled] = useState(0);
 
-  // Track mount state: only animate on initial mount, not on real-time data updates
-  const hasMounted = useRef(false);
-  useEffect(() => { hasMounted.current = true; }, []);
+  const stat = (label: string) => stats.find((s) => s.label === label)?.value ?? 0;
+  const total = stat("Total leads");
+  const open = stat("Open leads");
+  const won = stat("Won");
+  const lost = stat("Lost");
+  const quiet = topUnworked.length;
+
+  const summary = isScoreLoading
+    ? null
+    : totalActive === 0
+      ? "No open leads yet. New leads appear here as they come in."
+      : (scoredCount === 0
+          ? `${totalActive} open lead${totalActive === 1 ? "" : "s"}, none scored yet.`
+          : `${scoredCount} of ${totalActive} open lead${totalActive === 1 ? " is" : "s are"} scored, averaging ${overallAvg}.`) +
+        (quiet ? ` ${quiet} high-scoring lead${quiet === 1 ? " has" : "s have"} gone quiet for more than a week.` : "");
+
+  // One follow-up task per quiet lead, assigned to its owner, due tomorrow.
+  const scheduleFollowUps = async () => {
+    setScheduling(true);
+    const due = tomorrowAtNine();
+    const tz = detectBrowserTimezone();
+    let made = 0;
+    try {
+      for (const lead of topUnworked) {
+        await createActivity({
+          leadId: lead._id as Id<"leads">,
+          type: "follow_up",
+          title: "Follow up",
+          description: "Suggested on the dashboard: a high score but no activity in the last 7 days.",
+          scheduledAt: due,
+          scheduledTimezone: tz,
+        });
+        made++;
+      }
+      animatedToast.success(`${made} follow-up task${made === 1 ? "" : "s"} created`, { description: "Due tomorrow at 09:00." });
+    } catch (e) {
+      animatedToast.error("Could not create every task", { description: `${made} created. ${getErrorMessage(e)}` });
+    } finally {
+      setScheduled(made);
+      setScheduling(false);
+    }
+  };
 
   return (
     <ErrorBoundary sectionName="Dashboard">
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="space-y-2">
-              <div className="flex items-center gap-3">
-                <h2 className="text-h2">Pipeline Overview</h2>
-                <Badge className="bg-primary/10 text-primary-ink">{isAdmin ? "All Leads" : "My Leads"}</Badge>
+      <div className="space-y-6">
+        <header className="flex flex-wrap items-end justify-between gap-4">
+          <div className="max-w-2xl space-y-2">
+            <p className="text-eyebrow text-text-muted">{isAdmin ? "All leads" : "My leads"}</p>
+            <h1 className="text-display">Pipeline overview</h1>
+            {summary ? (
+              <p className="text-[15px] leading-relaxed text-text-muted">{summary}</p>
+            ) : (
+              <Skeleton className="h-5 w-80" />
+            )}
+          </div>
+          <Link href="/app/leads/new" className="hidden md:block">
+            <Button className="gap-2">
+              <Plus className="h-4 w-4" />
+              New lead
+            </Button>
+          </Link>
+        </header>
+
+        {isLoading ? (
+          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+            {[0, 1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-36 w-full rounded-[20px]" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+            <KpiTile label="Total leads" value={total} hint={`${open} open`} meter={total ? open / total : 0} href="/app/leads" />
+            <KpiTile
+              label="Win rate"
+              value={`${monthlyProgress}%`}
+              hint={`${won} won · ${lost} lost`}
+              meter={monthlyProgress / 100}
+              href="/app/reports"
+            />
+            <KpiTile
+              label="Avg lead score"
+              value={isScoreLoading ? "–" : overallAvg}
+              hint={`${scoredCount} of ${totalActive} scored`}
+              meter={overallAvg / 100}
+            />
+            <KpiTile label="Deals won" value={won} tone={won ? "good" : "default"} hint="Closed as won" href="/app/reports" />
+          </div>
+        )}
+
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+          <Card className="p-5">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-h3">Leads by stage</h2>
+                <p className="text-xs text-text-muted">How many leads are at each stage</p>
               </div>
-              <p className="text-sm text-text-muted">
-                Monitor your pipeline performance and conversion velocity.
+              <Link href="/app/leads" className="text-xs font-medium text-primary-ink hover:underline">
+                Open leads
+              </Link>
+            </div>
+            {isLoading ? (
+              <Skeleton className="h-40 w-full rounded-[12px]" />
+            ) : stageBreakdown.length === 0 ? (
+              <p className="py-4 text-sm text-text-muted">No leads in the pipeline yet.</p>
+            ) : (
+              <ul className="space-y-3">
+                {stageBreakdown.map((s) => (
+                  <li key={s.id}>
+                    <div className="flex items-baseline justify-between gap-3 text-sm">
+                      <span className="truncate">{s.name}</span>
+                      <span className="tabular-nums text-text-muted">{s.count}</span>
+                    </div>
+                    <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-surface-3" aria-hidden="true">
+                      <div className="h-full rounded-full bg-[var(--text)]" style={{ width: `${Math.min(100, s.percent * 100)}%` }} />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+
+          <Card className="p-5">
+            <div className="mb-4">
+              <h2 className="text-h3">Lead scores</h2>
+              <p className="text-xs text-text-muted">
+                {isScoreLoading ? "Loading…" : `${scoredCount} of ${totalActive} open leads scored`}
               </p>
             </div>
-            <div className="w-full lg:min-w-[220px]">
-              <div className="flex items-center justify-between text-xs text-text-muted">
-                <span>Win rate</span>
-                {isLoading ? (
-                  <Skeleton className="h-3 w-8" />
-                ) : (
-                  <span>{monthlyProgress}%</span>
-                )}
-              </div>
-              {/* #14: Progress bar with spring fill + shimmer */}
-              <div className="mt-2 h-2 rounded-full bg-border overflow-hidden">
-                {isLoading ? (
-                  <Skeleton className="h-2 w-full rounded-full" />
-                ) : (
-                  <motion.div
-                    className="h-2 rounded-full bg-primary relative overflow-hidden"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${monthlyProgress}%` }}
-                    transition={{ type: "spring", stiffness: 80, damping: 20, delay: 0.3 }}
-                  >
-                    <div className="shimmer-overlay" />
-                  </motion.div>
-                )}
-              </div>
-            </div>
-          </div>
-        </CardHeader>
-      </Card>
-
-      {/* #12: KPI cards with stagger entrance + hover lift */}
-      {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <StatsCardSkeleton key={i} />
-          ))}
-        </div>
-      ) : (
-        <motion.div
-          variants={containerVariants}
-          initial={hasMounted.current ? false : "hidden"}
-          animate="show"
-          className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"
-        >
-          {stats.map((stat) => (
-            <motion.div
-              key={stat.label}
-              variants={cardVariants}
-              whileHover={{ scale: 1.02, boxShadow: "0 10px 24px rgba(31,42,68,0.10)" }}
-              transition={{ type: "spring", stiffness: 400, damping: 25 }}
-            >
-              <Card className="p-5">
-                <div className="flex items-center gap-1.5">
-                  <p className="text-eyebrow text-text-muted">
-                    {stat.label}
-                  </p>
-                  {kpiHelp[stat.label] && (
-                    <Tooltip content={kpiHelp[stat.label]} side="bottom">
-                      <Info className="h-3 w-3 cursor-help text-text-dim" aria-label={kpiHelp[stat.label]} />
-                    </Tooltip>
-                  )}
-                </div>
-                {/* #13: Counter number roll-up */}
-                <p className="mt-2 text-display tabular-nums">
-                  <AnimatedCounter value={stat.value} />
-                </p>
-              </Card>
-            </motion.div>
-          ))}
-        </motion.div>
-      )}
-
-      {/* Lead Score Insights section */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Score Distribution */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ type: "spring", stiffness: 300, damping: 24, delay: 0.2 }}
-        >
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-h3">
-                    Lead Score Distribution
-                  </h3>
-                  {!isScoreLoading && (
-                    <p className="mt-1 text-xs text-text-dim">
-                      {scoredCount} of {totalActive} leads scored
-                      {scoredCount > 0 && (
-                        <> &middot; Avg: <span className="font-medium text-text-muted">{overallAvg}</span></>
-                      )}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {isScoreLoading ? (
-                <div className="space-y-3">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <StageRowSkeleton key={i} />
-                  ))}
-                </div>
-              ) : totalActive === 0 ? (
-                <p className="text-sm text-text-muted text-center py-4">
-                  No leads to display
-                </p>
-              ) : (
-                <motion.div
-                  variants={stageContainerVariants}
-                  initial={hasMounted.current ? false : "hidden"}
-                  animate="show"
-                  className="space-y-3"
-                >
-                  {distribution.map((bucket, index) => (
-                    <motion.div
-                      key={bucket.label}
-                      variants={stageItemVariants}
-                      className="group"
-                    >
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="flex items-center gap-2">
-                          <span className={`inline-block h-2 w-2 rounded-full ${DISTRIBUTION_COLORS[index]}`} />
-                          <span>{bucket.label}</span>
-                          <span className="text-xs text-text-dim">({bucket.range})</span>
-                        </span>
-                        <span className="text-text-muted font-medium">
-                          <AnimatedCounter value={bucket.count} />
-                        </span>
-                      </div>
-                      <div className="mt-1 h-2 rounded-full bg-border overflow-hidden">
-                        <motion.div
-                          className={`h-2 rounded-full ${DISTRIBUTION_COLORS[index]} relative overflow-hidden`}
-                          initial={{ width: 0 }}
-                          animate={{
-                            width: `${maxDistCount > 0 ? (bucket.count / maxDistCount) * 100 : 0}%`,
-                          }}
-                          transition={{
-                            type: "spring",
-                            stiffness: 80,
-                            damping: 20,
-                            delay: 0.3 + index * 0.06,
-                          }}
-                        >
-                          <div className="shimmer-overlay" />
-                        </motion.div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </motion.div>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Avg Score by Stage */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ type: "spring", stiffness: 300, damping: 24, delay: 0.3 }}
-        >
-          <Card>
-            <CardHeader>
-              <h3 className="text-h3">
-                Avg Score by Stage
-              </h3>
-            </CardHeader>
-            <CardContent>
-              {isScoreLoading ? (
-                <div className="space-y-3">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <StageRowSkeleton key={i} />
-                  ))}
-                </div>
-              ) : avgScoreByStage.length === 0 ? (
-                <p className="text-sm text-text-muted text-center py-4">
-                  No stage data yet
-                </p>
-              ) : (
-                <motion.div
-                  variants={stageContainerVariants}
-                  initial={hasMounted.current ? false : "hidden"}
-                  animate="show"
-                  className="space-y-3"
-                >
-                  {avgScoreByStage
-                    .filter((s) => s.count > 0)
-                    .map((stage, index) => {
-                      const color =
-                        stage.avgScore >= 70
-                          ? "bg-success"
-                          : stage.avgScore >= 40
-                            ? "bg-warning"
-                            : "bg-danger";
-                      return (
-                        <motion.div
-                          key={stage.id}
-                          variants={stageItemVariants}
-                        >
-                          <div className="flex items-center justify-between text-sm">
-                            <span>{stage.name}</span>
-                            <span className="flex items-center gap-2 text-text-muted">
-                              <span className="text-xs">({stage.count} leads)</span>
-                              <span className="font-medium">
-                                <AnimatedCounter value={stage.avgScore} />
-                              </span>
-                            </span>
-                          </div>
-                          <div className="mt-1 h-2 rounded-full bg-border overflow-hidden">
-                            <motion.div
-                              className={`h-2 rounded-full ${color} relative overflow-hidden`}
-                              initial={{ width: 0 }}
-                              animate={{ width: `${stage.avgScore}%` }}
-                              transition={{
-                                type: "spring",
-                                stiffness: 80,
-                                damping: 20,
-                                delay: 0.4 + index * 0.06,
-                              }}
-                            >
-                              <div className="shimmer-overlay" />
-                            </motion.div>
-                          </div>
-                        </motion.div>
-                      );
-                    })}
-                </motion.div>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-
-      {/* Top Unworked High-Score Leads */}
-      {!isScoreLoading && topUnworked.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ type: "spring", stiffness: 300, damping: 24, delay: 0.4 }}
-        >
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-h3">
-                    Top Unworked Leads
-                  </h3>
-                  <p className="mt-1 text-xs text-text-dim">
-                    High-scoring leads with no activity in the last 7 days
-                  </p>
-                </div>
-                <Link
-                  href="/app/leads"
-                  className="text-xs text-primary-ink hover:underline"
-                >
-                  View all
-                </Link>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <motion.div
-                variants={stageContainerVariants}
-                initial="hidden"
-                animate="show"
-                className="space-y-2"
-              >
-                {topUnworked.map((lead, index) => {
-                  const scoreColor =
-                    lead.score >= 70
-                      ? "text-success"
-                      : lead.score >= 40
-                        ? "text-warning"
-                        : "text-danger";
-                  const dotColor =
-                    lead.score >= 70
-                      ? "bg-success"
-                      : lead.score >= 40
-                        ? "bg-warning"
-                        : "bg-danger";
-                  return (
-                    <motion.div key={lead._id} variants={stageItemVariants}>
-                      <Link
-                        href={`/app/leads/${lead._id}`}
-                        className="flex items-center justify-between rounded-lg px-3 py-2 -mx-3 transition-colors hover:bg-row-hover"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${scoreColor} ${dotColor}/15`}>
-                            <span className={`inline-block h-1.5 w-1.5 rounded-full ${dotColor}`} />
-                            {lead.score}
-                          </span>
-                          <div>
-                            <span className="text-sm font-medium hover:text-primary-ink">
-                              {lead.fullName}
-                            </span>
-                            <p className="text-xs text-text-dim">
-                              Owner: {lead.ownerName}
-                            </p>
-                          </div>
-                        </div>
-                        <span className="text-xs text-text-dim">
-                          Needs attention
-                        </span>
-                      </Link>
-                    </motion.div>
-                  );
-                })}
-              </motion.div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      )}
-
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <h3 className="text-h3">
-              Leads by Stage
-            </h3>
-            {/* #17: Live pulse indicator */}
-            <span className="flex items-center gap-1.5 text-xs text-text-dim">
-              <motion.span
-                className="inline-block h-1.5 w-1.5 rounded-full bg-green-500"
-                animate={{
-                  scale: [1, 1.4, 1],
-                  opacity: [0.6, 1, 0.6],
-                }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-              />
-              Live
-            </span>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-4">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <StageRowSkeleton key={i} />
-              ))}
-            </div>
-          ) : stageBreakdown.length === 0 ? (
-            <p className="text-sm text-text-muted text-center py-4">
-              No leads in pipeline yet
-            </p>
-          ) : (
-            // #16: Stage rows with stagger + animated accent bar
-            <motion.div
-              variants={stageContainerVariants}
-              initial={hasMounted.current ? false : "hidden"}
-              animate="show"
-              className="space-y-4"
-            >
-              {stageBreakdown.map((stage, index) => (
-                <motion.div
-                  key={stage.id}
-                  variants={stageItemVariants}
-                  className="group relative pl-4"
-                >
-                  {/* #16: Left accent bar — grows from top on mount, widens on hover */}
-                  <motion.div
-                    className="absolute left-0 top-0 bottom-0 w-1 rounded-full bg-primary transition-[width,filter] duration-200 group-hover:w-1.5 group-hover:brightness-125"
-                    initial={{ scaleY: 0 }}
-                    animate={{ scaleY: 1 }}
-                    transition={{
-                      type: "spring",
-                      stiffness: 200,
-                      damping: 25,
-                      delay: 0.2 + index * 0.08,
-                    }}
-                    style={{ transformOrigin: "top" }}
-                  />
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span>{stage.name}</span>
-                      <span className="text-text-muted">
-                        <AnimatedCounter value={stage.count} />
+            {isScoreLoading ? (
+              <Skeleton className="h-40 w-full rounded-[12px]" />
+            ) : totalActive === 0 ? (
+              <p className="py-4 text-sm text-text-muted">No leads to score yet.</p>
+            ) : (
+              <ul className="space-y-3">
+                {distribution.map((b, i) => (
+                  <li key={b.label}>
+                    <div className="flex items-baseline justify-between gap-3 text-sm">
+                      <span>
+                        {b.label} <span className="text-xs text-text-dim">{b.range}</span>
                       </span>
+                      <span className="tabular-nums text-text-muted">{b.count}</span>
                     </div>
-                    {/* #14: Progress bar with spring fill + shimmer */}
-                    <div className="h-2 rounded-full bg-border overflow-hidden">
-                      <motion.div
-                        className="h-2 rounded-full bg-primary relative overflow-hidden"
-                        initial={{ width: 0 }}
-                        animate={{ width: `${stage.percent * 100}%` }}
-                        transition={{
-                          type: "spring",
-                          stiffness: 80,
-                          damping: 20,
-                          delay: 0.4 + index * 0.08,
-                        }}
-                      >
-                        <div className="shimmer-overlay" />
-                      </motion.div>
+                    <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-surface-3" aria-hidden="true">
+                      <div
+                        className={`h-full rounded-full ${BUCKET_COLOURS[i] ?? "bg-[var(--text)]"}`}
+                        style={{ width: `${maxDistCount ? (b.count / maxDistCount) * 100 : 0}%` }}
+                      />
                     </div>
-                  </div>
-                </motion.div>
-              ))}
-            </motion.div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+          <Card className="p-5">
+            <div className="mb-2 flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-h3">Top unworked leads</h2>
+                <p className="text-xs text-text-muted">High scores with no activity in the last 7 days</p>
+              </div>
+              <Link href="/app/leads" className="text-xs font-medium text-primary-ink hover:underline">
+                View all
+              </Link>
+            </div>
+            {isScoreLoading ? (
+              <Skeleton className="h-32 w-full rounded-[12px]" />
+            ) : quiet === 0 ? (
+              <p className="flex items-center gap-2 py-4 text-sm text-text-muted">
+                <CircleCheck className="h-4 w-4 text-primary-ink" aria-hidden="true" />
+                Every high-scoring lead has been worked this week.
+              </p>
+            ) : (
+              <ul className="divide-y divide-border">
+                {topUnworked.map((lead) => (
+                  <li key={lead._id}>
+                    <Link
+                      href={`/app/leads/${lead._id}`}
+                      className="-mx-2 flex items-center gap-3 rounded-[12px] px-2 py-3 hover:bg-row-hover"
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">{lead.fullName}</span>
+                        <span className="block truncate text-xs text-text-muted">Owner: {lead.ownerName}</span>
+                      </span>
+                      <TemperatureChip score={lead.score} />
+                      <ArrowUpRight className="h-4 w-4 shrink-0 text-text-dim" aria-hidden="true" />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+
+          {quiet > 0 && (
+            <SuggestionCard
+              action={
+                scheduled > 0 ? (
+                  <Link href="/app/tasks">
+                    <Button variant="secondary" className="w-full">
+                      See the tasks
+                    </Button>
+                  </Link>
+                ) : (
+                  <Button onClick={scheduleFollowUps} disabled={scheduling} className="w-full">
+                    {scheduling ? "Creating tasks…" : `Create ${quiet} follow-up task${quiet === 1 ? "" : "s"}`}
+                  </Button>
+                )
+              }
+            >
+              {scheduled > 0 ? (
+                <>
+                  Done. {scheduled} follow-up task{scheduled === 1 ? " is" : "s are"} on {scheduled === 1 ? "its owner's" : "their owners'"} list for tomorrow at
+                  09:00.
+                </>
+              ) : (
+                <>
+                  {quiet === 1 ? "This lead scores" : `These ${quiet} leads score`} well, but nobody has worked{" "}
+                  {quiet === 1 ? "it" : "them"} in 7 days. Schedule a follow-up for each owner, due tomorrow at 09:00.
+                </>
+              )}
+            </SuggestionCard>
           )}
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+
+        <PhoneMainAction label="New lead" icon={Plus} href="/app/leads/new" />
+      </div>
     </ErrorBoundary>
   );
 }

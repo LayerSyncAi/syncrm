@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { animatedToast } from "@/components/ui/animated-toaster";
 import { getErrorMessage } from "@/lib/errors";
 import { cn } from "@/lib/utils";
+import { KpiTile } from "@/components/ui/kpi-tile";
 import { STATUS_BADGE, STATUS_LABELS, formatDay } from "@/lib/worth/format";
 import type { WorthStatus } from "../../../convex/worth/lib";
 
@@ -131,7 +132,7 @@ export function StatTile({
   value,
   hint,
   tone = "default",
-  icon: Icon,
+  icon,
   href,
 }: {
   label: string;
@@ -141,25 +142,7 @@ export function StatTile({
   icon?: LucideIcon;
   href?: string;
 }) {
-  const body = (
-    <Card className={cn("h-full p-4", href && "transition-colors hover:border-primary/60")}>
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-medium text-text-muted">{label}</p>
-        {Icon && <Icon className="h-4 w-4 text-text-dim" aria-hidden="true" />}
-      </div>
-      <p
-        className={cn(
-          "mt-2 text-2xl font-semibold tabular-nums",
-          tone === "warning" && "text-[var(--status-warning-fg)]",
-          tone === "good" && "text-[var(--status-success-fg)]"
-        )}
-      >
-        {value}
-      </p>
-      {hint && <p className="mt-1 text-xs text-text-dim">{hint}</p>}
-    </Card>
-  );
-  return href ? <Link href={href}>{body}</Link> : body;
+  return <KpiTile label={label} value={value} hint={hint} tone={tone} icon={icon} href={href} />;
 }
 
 export function Tabs<T extends string>({

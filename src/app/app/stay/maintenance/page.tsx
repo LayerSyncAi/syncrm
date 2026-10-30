@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "convex/react";
 import { Plus, Wrench } from "lucide-react";
 import { api } from "../../../../../convex/_generated/api";
@@ -15,12 +15,14 @@ import { MaintenanceCards } from "@/components/stay/ops/maintenance-cards";
 import { MaintenanceForm } from "@/components/stay/ops/maintenance-form";
 import { MAINTENANCE_STATUSES, type MaintenanceStatus } from "@/lib/stay-ops/labels";
 
-export default function MaintenancePage() {
+function Maintenance() {
   const router = useRouter();
+  // ?new=1 (the dashboard's "Log repair") opens the form straight away.
+  const search = useSearchParams();
   const { isLoading: authLoading } = useRequireAuth();
   const [status, setStatus] = React.useState<MaintenanceStatus | "">("");
   const [propertyId, setPropertyId] = React.useState("");
-  const [creating, setCreating] = React.useState(false);
+  const [creating, setCreating] = React.useState(search.get("new") === "1");
 
   const units = useQuery(api.stay.maintenance.unitOptions);
   const items = useQuery(api.stay.maintenance.list, {
@@ -83,5 +85,13 @@ export default function MaintenancePage() {
         onCreated={(id) => router.push(`/app/stay/maintenance/${id}`)}
       />
     </div>
+  );
+}
+
+export default function MaintenancePage() {
+  return (
+    <React.Suspense fallback={<ListSkeleton />}>
+      <Maintenance />
+    </React.Suspense>
   );
 }

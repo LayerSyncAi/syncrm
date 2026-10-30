@@ -1,6 +1,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
+import { KpiTile } from "@/components/ui/kpi-tile";
 
 /** Title row used on every Stay page. */
 export function StayPageHeader({
@@ -33,7 +34,7 @@ export function StayPageHeader({
   );
 }
 
-/** A labelled figure tile. */
+/** A labelled figure tile (the shared KPI tile). */
 export function StatTile({
   label,
   value,
@@ -47,22 +48,7 @@ export function StatTile({
   tone?: "default" | "good" | "warning" | "danger";
   href?: string;
 }) {
-  const toneClass =
-    tone === "good" ? "text-[var(--status-success-fg)]" : tone === "warning" ? "text-[var(--status-warning-fg)]" : tone === "danger" ? "text-danger" : "text-text";
-  const body = (
-    <div className="h-full rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4 transition-colors hover:border-primary/50">
-      <p className="text-xs font-medium uppercase tracking-wide text-text-muted">{label}</p>
-      <p className={`mt-2 text-xl font-semibold leading-tight break-words ${toneClass}`}>{value}</p>
-      {hint && <p className="mt-1 text-xs text-text-muted">{hint}</p>}
-    </div>
-  );
-  return href ? (
-    <Link href={href} className="block h-full">
-      {body}
-    </Link>
-  ) : (
-    body
-  );
+  return <KpiTile label={label} value={value} hint={hint} tone={tone} href={href} />;
 }
 
 /** A bordered section with a heading. */
@@ -80,7 +66,7 @@ export function Section({
   return (
     <section className={`rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] ${className ?? ""}`}>
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
-        <h2 className="text-base font-semibold">{title}</h2>
+        <h2 className="text-h3">{title}</h2>
         {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
       </div>
       <div className="p-4">{children}</div>
