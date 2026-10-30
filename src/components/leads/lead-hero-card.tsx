@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { StaggeredDropDown } from "@/components/ui/staggered-dropdown";
+import { ContactActions } from "@/components/common/contact-actions";
 
 const formatDate = (timestamp: number) =>
   new Date(timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
@@ -118,6 +119,7 @@ export const LeadHeroCard = React.memo(function LeadHeroCard({
               </div>
             )}
             <div className="flex flex-wrap gap-2 mt-2">
+              <ContactActions phone={lead.phone} name={lead.fullName} labelled />
               <Button variant="secondary" className="h-9 px-3 text-xs" onClick={onViewDetails}>
                 Edit details
               </Button>

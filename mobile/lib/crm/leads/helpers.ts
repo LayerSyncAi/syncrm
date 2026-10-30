@@ -10,6 +10,7 @@ import { ALL_LEAD_SOURCES, LEAD_SOURCE_OPTIONS, leadSourceLabel, type LeadSource
 import { currencies } from "@/lib/currency";
 import { detectBrowserTimezone } from "@/lib/timezones";
 import { generateCSV, parseCSV } from "@/lib/csv";
+import { whatsAppHref } from "@/lib/phone";
 import type { BadgeTone } from "../../../components/ui";
 import type { Doc } from "../../../../convex/_generated/dataModel";
 
@@ -153,9 +154,9 @@ export function isOverdue(a: { status: string; scheduledAt?: number }): boolean 
 
 // ── Contact links ─────────────────────────────────────────────────────
 
-/** WhatsApp wants digits only, with the country code. */
+/** WhatsApp wants the full international number; local ones get +263. */
 export function whatsappUrl(phone: string): string {
-  return `https://wa.me/${phone.replace(/[^\d]/g, "")}`;
+  return whatsAppHref(phone) ?? `https://wa.me/${phone.replace(/[^\d]/g, "")}`;
 }
 
 // ── CSV files ─────────────────────────────────────────────────────────
