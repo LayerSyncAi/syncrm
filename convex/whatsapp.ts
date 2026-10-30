@@ -4,8 +4,10 @@
  * the extension signs in as the agent, so everything here uses their session
  * and the CRM's usual access rules.
  *
- * Follow-ups need nothing here: the extension calls activities.createForLead,
- * so they remind the agent like any other task.
+ * Everything else the panel shows already has a home: follow-ups go through
+ * activities.createForLead, so they remind the agent like any other task, and
+ * notes, history, enquiries and stage changes use the same functions as the
+ * lead page.
  */
 import { ConvexError, v } from "convex/values";
 import { mutation, query, QueryCtx } from "./_generated/server";
@@ -100,6 +102,7 @@ export const lookup = query({
           _id: lead._id,
           fullName: lead.fullName,
           interestType: lead.interestType,
+          stageId: lead.stageId,
           stageName: stage?.name ?? "Unknown",
           ownerName: await ownerName(ctx, lead.ownerUserId),
           nextFollowUpAt: followUps[0] ?? null,
@@ -114,28 +117,40 @@ export const lookup = query({
   },
 });
 
-/** Which of these numbers the org already has, to spot enquiries with no lead. */
-export const knownPhones = query({
+/**
+ * Where each number stands in the CRM, for the extension's list of recent
+ * chats. Numbers the org doesn't have are left out. As in `lookup`, a
+ * colleague's lead is named but not opened.
+ */
+export const chatStatuses = query({
   args: { phones: v.array(v.string()) },
   handler: async (ctx, args) => {
     const { user } = await requireModuleUser(ctx, "crm");
-    const known: string[] = [];
+    const statuses = [];
     for (const phone of args.phones.slice(0, MAX_PHONES)) {
-      const rows = await Promise.all(
-        phoneVariants(phone).flatMap((variant) => [
-          ctx.db
-            .query("contacts")
-            .withIndex("by_normalized_phone", (q) => q.eq("normalizedPhone", variant))
-            .take(PHONE_SCAN),
-          ctx.db
-            .query("leads")
-            .withIndex("by_normalized_phone", (q) => q.eq("normalizedPhone", variant))
-            .take(PHONE_SCAN),
-        ])
-      );
-      if (rows.flat().some((row) => row.orgId === user.orgId)) known.push(phone);
+      const { contacts, leads } = await findByPhone(ctx, user.orgId, phone);
+      const lead = pickOpenLead(leads, user._id);
+      if (lead && !canOpenLead(lead, user)) {
+        statuses.push({
+          phone,
+          state: "colleague" as const,
+          name: lead.fullName,
+          ownerName: await ownerName(ctx, lead.ownerUserId),
+        });
+      } else if (lead) {
+        const stage = await ctx.db.get(lead.stageId);
+        statuses.push({
+          phone,
+          state: "lead" as const,
+          name: lead.fullName,
+          stageId: lead.stageId,
+          stageName: stage?.name ?? "Unknown",
+        });
+      } else if (contacts[0]) {
+        statuses.push({ phone, state: "contact" as const, name: contacts[0].name });
+      }
     }
-    return known;
+    return statuses;
   },
 });
 
