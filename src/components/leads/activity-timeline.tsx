@@ -92,7 +92,11 @@ const TimelineItem = React.memo(function TimelineItem({
           )}
         </div>
       </div>
-      {activity.description && <p className="mt-2 text-sm text-text-muted">{activity.description}</p>}
+      {activity.description && (
+        <p className="mt-2 max-h-64 overflow-y-auto whitespace-pre-wrap text-sm text-text-muted">
+          {activity.description}
+        </p>
+      )}
       {activity.status === "completed" && activity.completionNotes && (
         <div className="mt-3 rounded-md border border-success/20 bg-success/5 p-2">
           <p className="text-xs text-text-muted mb-1">Completion notes:</p>
