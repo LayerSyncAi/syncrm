@@ -34,7 +34,7 @@ export default function FinanceLandlords() {
             </Body>
           </View>
         }
-        empty={<EmptyState icon="people-outline" title={search ? "No landlord matches" : "No landlords yet"} message={search ? undefined : "Landlords appear once properties are under management in Sync Stay."} />}
+        empty={<EmptyState icon="people-outline" title={search ? "No landlord matches" : "No landlords yet"} message={search ? undefined : "Landlords appear once properties are under management in SyncStay."} />}
         keyExtractor={(r) => r._id}
         renderItem={({ item: r }) => {
           const held = [r.USD ? money(r.USD, "USD") : "", r.ZiG ? money(r.ZiG, "ZiG") : ""].filter(Boolean);

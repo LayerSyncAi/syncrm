@@ -1,5 +1,5 @@
 /**
- * Sync Finance set-up (BRD 5.1): agency settings (FN-05), bank accounts and
+ * SyncFinance set-up (BRD 5.1): agency settings (FN-05), bank accounts and
  * cash floats (FN-01), income and expense categories (FN-03) and closing a
  * month (period lock). Agency details for documents (FN-04) are the Hub's
  * agency settings and brand kit, shared by every module.
@@ -95,7 +95,7 @@ export const update = mutation({
     });
     await financeAudit(ctx, access, {
       action: "finance.settings_update",
-      description: "Updated Sync Finance settings",
+      description: "Updated SyncFinance settings",
       targetType: "finSettings",
       targetId: row._id,
       metadata: args,

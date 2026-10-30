@@ -1,7 +1,7 @@
 /**
- * Sync Finance rules kept pure (no Convex imports) so they can be unit-tested
+ * SyncFinance rules kept pure (no Convex imports) so they can be unit-tested
  * and shared by the server and the app. Money and date helpers come from
- * Sync Stay's ledger so both modules round and format the same way.
+ * SyncStay's ledger so both modules round and format the same way.
  */
 import { addTo, isValidDate, round2, type CurrencyTotals, type StayCurrency } from "../stay/ledger";
 

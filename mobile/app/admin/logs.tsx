@@ -1,4 +1,4 @@
-/** Logs: email log and audit trail, with category filters (including Sync Stay and Sync Worth). */
+/** Logs: email log and audit trail, with category filters (including SyncStay and SyncWorth). */
 import { useState } from "react";
 import { Text, View } from "react-native";
 import { useQuery } from "convex/react";

@@ -324,7 +324,7 @@ export const invoiceDeal = mutation({
 /**
  * An agent's own commission statement (BRD §4, §6): deals closed, commission
  * earned, their split, paid and unpaid. Any staff user, for themselves only.
- * Without Sync Finance "paid" follows the CRM's status.
+ * Without SyncFinance "paid" follows the CRM's status.
  */
 export const myStatement = query({
   args: {},

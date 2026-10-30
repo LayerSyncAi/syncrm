@@ -1,5 +1,5 @@
 /**
- * Sync Stay tables: property management, from lease to landlord statement.
+ * SyncStay tables: property management, from lease to landlord statement.
  *
  * Stay reads the Hub's shared records rather than keeping its own copies:
  *  - a landlord or tenant is a `contacts` row (landlords via `ownerType`,
@@ -78,7 +78,7 @@ export const stayTables = {
     // Day of the month rent falls due, 1 to 28.
     dueDay: v.number(),
     depositAmount: v.number(),
-    // Sync Finance: management fee % for this lease when it differs from the
+    // SyncFinance: management fee % for this lease when it differs from the
     // property's (BRD Finance FN-30). Absent = the property's rate.
     managementFeePct: v.optional(v.number()),
     status: v.union(v.literal("active"), v.literal("ended"), v.literal("renewed")),

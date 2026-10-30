@@ -1,5 +1,5 @@
 /**
- * Sync Notify settings: which channels the agency uses, which one it
+ * SyncNotify settings: which channels the agency uses, which one it
  * prefers, and its own SMS account. Directors only.
  */
 import { ConvexError, v } from "convex/values";
@@ -71,7 +71,7 @@ export const update = mutation({
       actorLabel: userLabel(access.user),
       action: "notify.settings_update",
       category: "email",
-      description: `Sync Notify: email ${args.emailEnabled ? "on" : "off"}, SMS ${args.smsEnabled ? "on" : "off"}, prefers ${args.preferredChannel}${args.sms === null ? ", SMS account removed" : args.sms ? ", SMS account updated" : ""}`,
+      description: `SyncNotify: email ${args.emailEnabled ? "on" : "off"}, SMS ${args.smsEnabled ? "on" : "off"}, prefers ${args.preferredChannel}${args.sms === null ? ", SMS account removed" : args.sms ? ", SMS account updated" : ""}`,
       targetType: "organization",
       targetId: access.orgId,
       orgId: access.orgId,
@@ -89,8 +89,8 @@ export const sendTest = mutation({
       name: userLabel(access.user),
       email: args.channel === "email" ? args.to : undefined,
       phone: args.channel === "sms" ? args.to : undefined,
-      subject: "Sync Notify test",
-      body: `This is a test message from ${access.org.name} via Sync Notify.`,
+      subject: "SyncNotify test",
+      body: `This is a test message from ${access.org.name} via SyncNotify.`,
       source: "notify",
       kind: "test",
       createdByUserId: access.user._id,

@@ -5,10 +5,10 @@ import { ModuleKey, userCanUseModule } from "./modules";
 
 const MODULE_NAMES: Record<ModuleKey, string> = {
   crm: "SynCRM",
-  stay: "Sync Stay",
-  worth: "Sync Worth",
-  finance: "Sync Finance",
-  dev: "Sync Dev",
+  stay: "SyncStay",
+  worth: "SyncWorth",
+  finance: "SyncFinance",
+  dev: "SyncDev",
   media: "SyncMedia",
 };
 

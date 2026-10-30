@@ -1,5 +1,5 @@
 /**
- * Sync Worth archive and management reports (BRD §6). The server returns
+ * SyncWorth archive and management reports (BRD §6). The server returns
  * rows the caller may see; the app groups them (src/lib/worth/reporting.ts)
  * and exports to PDF and Excel.
  */

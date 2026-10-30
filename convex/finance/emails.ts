@@ -1,6 +1,6 @@
 /**
- * Sync Finance emails: receipts, remittance advices, invoices, statements and
- * instalment reminders. Built with Sync Stay's layout and queued the same
+ * SyncFinance emails: receipts, remittance advices, invoices, statements and
+ * instalment reminders. Built with SyncStay's layout and queued the same
  * way, so the record and the email commit together.
  */
 import { v } from "convex/values";

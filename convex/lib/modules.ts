@@ -1,5 +1,5 @@
 /**
- * Sync Estate modules and the fixed role list.
+ * SyncEstate modules and the fixed role list.
  *
  * SynCRM is one module in a suite that shares one login, one set of users and
  * one list of contacts and properties (the Hub). An organisation pays for a
@@ -168,12 +168,12 @@ export function landingHref(user: UserLike, org: OrgLike): string {
 
 /** Display names used in alert emails ("hub" is the Hub itself). */
 export const NOTIFICATION_MODULE_LABELS: Record<NotificationModule, string> = {
-  hub: "Sync Estate",
+  hub: "SyncEstate",
   crm: "SynCRM",
-  stay: "Sync Stay",
-  worth: "Sync Worth",
-  finance: "Sync Finance",
-  dev: "Sync Dev",
+  stay: "SyncStay",
+  worth: "SyncWorth",
+  finance: "SyncFinance",
+  dev: "SyncDev",
   media: "SyncMedia",
 };
 

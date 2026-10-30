@@ -1,5 +1,5 @@
 /**
- * Sync Stay report definitions: turn query results into columns, rows and a
+ * SyncStay report definitions: turn query results into columns, rows and a
  * summary. The same six reports and columns as src/app/app/stay/reports.
  */
 import type { FunctionReturnType } from "convex/server";

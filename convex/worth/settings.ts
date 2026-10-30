@@ -1,5 +1,5 @@
 /**
- * Sync Worth agency settings (standard report wording, hold-until-paid) and
+ * SyncWorth agency settings (standard report wording, hold-until-paid) and
  * valuer profiles (registration number, qualifications, scanned signature).
  */
 import { ConvexError, v } from "convex/values";
@@ -116,7 +116,7 @@ export const update = mutation({
       actorLabel: displayName(access.user),
       action: "worth.settings_update",
       category: "worth",
-      description: "Updated Sync Worth settings",
+      description: "Updated SyncWorth settings",
       orgId: access.orgId,
       metadata: { holdReportUntilPaid: args.holdReportUntilPaid, referencePrefix: prefix },
     });

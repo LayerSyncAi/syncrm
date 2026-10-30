@@ -1,5 +1,5 @@
 /**
- * Sync Worth comparables database (VW-30..35): sale, rental and valuation
+ * SyncWorth comparables database (VW-30..35): sale, rental and valuation
  * evidence private to the firm, and the comparables chosen for each job with
  * the valuer's adjustment (stored structured for the v2 AI).
  */

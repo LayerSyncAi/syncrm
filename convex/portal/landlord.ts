@@ -288,7 +288,7 @@ export const documents = query({
 });
 
 /**
- * With Sync Finance on, the landlord sees Finance's statement and their
+ * With SyncFinance on, the landlord sees Finance's statement and their
  * remittance advices, read-only (BRD Finance §4). Null when Finance is off,
  * so the page falls back to the Stay statement.
  */

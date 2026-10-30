@@ -1,7 +1,7 @@
 /**
  * Invoices to landlords, buyers, sellers and other clients (FN-60 to FN-63).
  * Payments against an invoice are receipts into agency income, split across
- * the invoice's categories. Rent invoices stay in Sync Stay; list() shows
+ * the invoice's categories. Rent invoices stay in SyncStay; list() shows
  * them alongside so there is one place to see what clients owe (FN-61).
  */
 import { ConvexError, v } from "convex/values";
@@ -287,7 +287,7 @@ export const email = mutation({
 });
 
 /**
- * Agency invoices and Sync Stay rent invoices in one list, with age. `open`
+ * Agency invoices and SyncStay rent invoices in one list, with age. `open`
  * limits it to what is still unpaid (FN-62).
  */
 export const list = query({

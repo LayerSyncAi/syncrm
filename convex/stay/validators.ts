@@ -1,4 +1,4 @@
-/** Argument validators shared by the Sync Stay functions. */
+/** Argument validators shared by the SyncStay functions. */
 import { v } from "convex/values";
 
 export const personValidator = v.object({

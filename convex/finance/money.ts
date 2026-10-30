@@ -1,9 +1,9 @@
 /**
- * Money in and money out recorded directly in Sync Finance (FN-11, FN-40,
+ * Money in and money out recorded directly in SyncFinance (FN-11, FN-40,
  * FN-70), transfers between accounts (including banking cash, FN-14),
  * reversals (FN-13), the transaction list and the daily cash-up.
  *
- * Rent and deposits are recorded in Sync Stay and arrive through posting.ts.
+ * Rent and deposits are recorded in SyncStay and arrive through posting.ts.
  */
 import { ConvexError, v } from "convex/values";
 import { mutation, query, MutationCtx, QueryCtx } from "../_generated/server";
@@ -50,7 +50,7 @@ function positive(amount: number): number {
 // ── Money in ─────────────────────────────────────────────────────────
 
 /**
- * FN-11: money in that did not come through Sync Stay.
+ * FN-11: money in that did not come through SyncStay.
  *  - income: agency income in a category (fees from clients, other income).
  *  - sale_deposit: a buyer's deposit held in trust for a deal (FN-22).
  *  - landlord: money a landlord pays in (e.g. towards repairs).
@@ -134,7 +134,7 @@ export const recordIn = mutation({
  * Money out that is not a payout.
  *  - expense: the agency's own costs (FN-70), with supplier and slip photo.
  *  - landlord_expense: paid from trust for a landlord (FN-40), e.g. repairs,
- *    rates or levies. Also written to Sync Stay's expenses so both modules
+ *    rates or levies. Also written to SyncStay's expenses so both modules
  *    show it, unless it pays an expense already recorded there.
  */
 export const recordOut = mutation({
@@ -283,7 +283,7 @@ export const reverse = mutation({
     requireDirector(access);
     const tx = await ctx.db.get(args.txId);
     if (!tx || tx.orgId !== access.orgId) throw new ConvexError("Transaction not found");
-    if (tx.stayPaymentId) throw new ConvexError("This receipt came from Sync Stay. Reverse it there and Finance follows.");
+    if (tx.stayPaymentId) throw new ConvexError("This receipt came from SyncStay. Reverse it there and Finance follows.");
     if (tx.payoutId) throw new ConvexError("Reverse a payout from the payouts screen");
     if (tx.feeOfTxId) throw new ConvexError("Reverse the receipt this commission came from");
     await reverseWithFee(ctx, access, tx._id, args.reason);

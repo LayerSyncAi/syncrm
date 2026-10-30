@@ -1,5 +1,5 @@
 /**
- * Landlords and tenants in Sync Stay (BRD Stay ST-01, ST-10, ST-26).
+ * Landlords and tenants in SyncStay (BRD Stay ST-01, ST-10, ST-26).
  *
  * Both are Hub `contacts`: a landlord carries ownerType "landlord"/"both",
  * a tenant carries isLeaseTenant. Stay reaches a contact through the Stay

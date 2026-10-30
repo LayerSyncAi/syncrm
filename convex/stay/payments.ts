@@ -146,7 +146,7 @@ export async function recordPayment(
     }
   }
 
-  // Sync Finance, when switched on, posts the receipt to the trust ledger.
+  // SyncFinance, when switched on, posts the receipt to the trust ledger.
   await postStayPayment(ctx, access, paymentId);
 
   const label = await leaseLabels(ctx, [lease]);

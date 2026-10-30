@@ -32,7 +32,7 @@ export const audiences = query({
   handler: async (ctx) => {
     const access = await requireNotify(ctx);
     const finance = userCanUseModule(access.user, access.org, "finance") && (access.user.role === "admin" || !!access.user.estateRoles?.includes("accounts"));
-    // Buyers on payment plans live in Sync Dev and Finance alike.
+    // Buyers on payment plans live in SyncDev and Finance alike.
     const instalments = finance || userCanUseModule(access.user, access.org, "dev");
     const stay = userCanUseModule(access.user, access.org, "stay");
     return [
@@ -40,7 +40,7 @@ export const audiences = query({
       { key: "staff", label: "Staff", hint: "Internal: your team", available: access.user.role === "admin" },
       { key: "instalments", label: "Clients on instalments", hint: "Paid, owed and overdue on payment plans", available: instalments },
       { key: "invoices", label: "Unpaid invoices", hint: "Clients with invoices still open", available: finance },
-      { key: "tenants", label: "Tenants in arrears", hint: "Rent overdue in Sync Stay", available: stay },
+      { key: "tenants", label: "Tenants in arrears", hint: "Rent overdue in SyncStay", available: stay },
     ];
   },
 });
@@ -84,7 +84,7 @@ export const recipients = query({
         out.push({ key: u._id, name: userLabel(u), email: u.email ?? "", phone: "", values: { name: userLabel(u), agency } });
       }
     } else if (args.audience === "instalments") {
-      if (!instalments) throw new ConvexError("Sync Dev or Sync Finance is needed for clients on instalments");
+      if (!instalments) throw new ConvexError("SyncDev or SyncFinance is needed for clients on instalments");
       const devs = new Map(
         (await ctx.db.query("finDevelopments").withIndex("by_org", (q) => q.eq("orgId", access.orgId)).collect()).map((d) => [d._id as string, d])
       );
@@ -116,7 +116,7 @@ export const recipients = query({
         });
       }
     } else if (args.audience === "invoices") {
-      if (!finance) throw new ConvexError("Sync Finance is not available to you");
+      if (!finance) throw new ConvexError("SyncFinance is not available to you");
       const invs = (
         await Promise.all(
           (["unpaid", "part_paid"] as const).map((st) =>
@@ -160,7 +160,7 @@ export const recipients = query({
         });
       }
     } else {
-      if (!userCanUseModule(access.user, org, "stay")) throw new ConvexError("Sync Stay is not available to you");
+      if (!userCanUseModule(access.user, org, "stay")) throw new ConvexError("SyncStay is not available to you");
       const charges = (
         await Promise.all(
           (["unpaid", "part_paid"] as const).map((st) =>
@@ -288,7 +288,7 @@ export const list = query({
 });
 
 /**
- * The correspondence log: Sync Notify messages and the emails modules send
+ * The correspondence log: SyncNotify messages and the emails modules send
  * themselves (receipts, statements, reminders), newest first.
  */
 export const log = query({
@@ -333,7 +333,7 @@ export const log = query({
         .order("desc")
         .take(limit);
       for (const e of emails) {
-        // Sync Notify emails are already listed from their own rows.
+        // SyncNotify emails are already listed from their own rows.
         if (e.kind.startsWith("notify_")) continue;
         rows.push({
           _id: e._id,

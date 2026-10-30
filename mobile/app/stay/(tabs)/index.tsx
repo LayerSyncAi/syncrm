@@ -1,4 +1,4 @@
-/** Sync Stay dashboard: this month's rent, arrears, vacancies and what needs doing. */
+/** SyncStay dashboard: this month's rent, arrears, vacancies and what needs doing. */
 import { Text, View } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { useQuery } from "convex/react";

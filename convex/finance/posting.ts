@@ -1,7 +1,7 @@
 /**
- * Money that reaches Sync Finance from elsewhere, and the fee rules on it.
+ * Money that reaches SyncFinance from elsewhere, and the fee rules on it.
  *
- *  - Sync Stay calls postStayPayment, reverseStayPayment and
+ *  - SyncStay calls postStayPayment, reverseStayPayment and
  *    postDepositSettlement from its own mutations when the agency has Sync
  *    Finance on (FN-10). Stay has already checked the amounts against its own
  *    records, so these never block on a ledger balance.
@@ -125,7 +125,7 @@ export const moveCommissionBatch = mutation({
   },
 });
 
-// ── Sync Stay receipts ───────────────────────────────────────────────
+// ── SyncStay receipts ───────────────────────────────────────────────
 
 /**
  * FN-10: post a Stay payment. Rent lands with the landlord (admin fees with
@@ -331,7 +331,7 @@ export async function postDepositMove(
   ], { allowNegative: true });
 }
 
-// ── Stand sales (Sync Dev) ───────────────────────────────────────────
+// ── Stand sales (SyncDev) ───────────────────────────────────────────
 
 /**
  * FN-90: post a payment on a stand sale to the ledger. The account defaults
@@ -442,7 +442,7 @@ export async function postStandRefund(
 }
 
 /**
- * Post Sync Dev payments recorded before the agency had Sync Finance, with
+ * Post SyncDev payments recorded before the agency had SyncFinance, with
  * their original receipt numbers. Safe to run again; 150 per call.
  */
 export const bringInDevPayments = mutation({
@@ -480,7 +480,7 @@ export const bringInDevPayments = mutation({
     }
     await financeAudit(ctx, access, {
       action: "finance.dev_catch_up",
-      description: `Brought in ${posted} Sync Dev payments`,
+      description: `Brought in ${posted} SyncDev payments`,
       targetType: "organization",
       targetId: access.orgId,
       metadata: { posted, errors: errors.length },
@@ -489,7 +489,7 @@ export const bringInDevPayments = mutation({
   },
 });
 
-// ── Migration from Sync Stay ─────────────────────────────────────────
+// ── Migration from SyncStay ─────────────────────────────────────────
 
 /**
  * Post Stay receipts from `from` onwards that Finance has not seen, oldest
@@ -531,7 +531,7 @@ export const bringInStayPayments = mutation({
     }
     await financeAudit(ctx, access, {
       action: "finance.stay_catch_up",
-      description: `Brought in ${posted} Sync Stay receipts from ${args.from}`,
+      description: `Brought in ${posted} SyncStay receipts from ${args.from}`,
       targetType: "organization",
       targetId: access.orgId,
       metadata: { posted, skipped, errors: errors.length },
@@ -542,7 +542,7 @@ export const bringInStayPayments = mutation({
 
 /**
  * FN-30: a landlord's default commission rate. Sets it on every Stay property
- * of theirs; a single property can then be changed in Sync Stay and a lease
+ * of theirs; a single property can then be changed in SyncStay and a lease
  * can have its own rate, both of which win at receipt time.
  */
 export const setLandlordRate = mutation({

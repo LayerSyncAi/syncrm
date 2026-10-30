@@ -1,5 +1,5 @@
 /**
- * Sync Notify delivery. Any module calls queueMessage from a mutation; the
+ * SyncNotify delivery. Any module calls queueMessage from a mutation; the
  * message row and the decision to send commit together, and a scheduled
  * action delivers it by email (Resend) or SMS (Twilio) and records the
  * outcome on the row.
@@ -36,7 +36,7 @@ export async function requireNotify(ctx: Ctx) {
   const allowed =
     user.role === "admin" ||
     (["accounts", "marketing", "sales_manager", "property_manager"] as const).some((r) => hasEstateRole(user, r));
-  if (!allowed) throw new ConvexError("Sync Notify is not available to you");
+  if (!allowed) throw new ConvexError("SyncNotify is not available to you");
   return { user, org, orgId: user.orgId, isDirector };
 }
 

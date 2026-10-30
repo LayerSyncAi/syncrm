@@ -1,5 +1,5 @@
 /**
- * Moving an agency onto Sync Finance from Excel and receipt books.
+ * Moving an agency onto SyncFinance from Excel and receipt books.
  *
  *  - opening: balances at go-live per account, landlord and tenant deposit
  *    (FN-02). Trust account balances start "unallocated"; each landlord and
@@ -39,8 +39,8 @@ import { requireSales } from "../dev/access";
 type RowResult = { row: number; ok: boolean; message?: string };
 
 /**
- * Imports of buyers on payment plans belong to Sync Dev as much as Finance:
- * a director of either may run them. Money imports need Sync Finance.
+ * Imports of buyers on payment plans belong to SyncDev as much as Finance:
+ * a director of either may run them. Money imports need SyncFinance.
  */
 async function importAccess(ctx: QueryCtx | MutationCtx, kind: Doc<"finImports">["kind"]) {
   if (kind === "stands") {
@@ -179,7 +179,7 @@ export const openingBatch = mutation({
         );
       } else if (r.type === "landlord") {
         const c = await findContact(ctx, access.orgId, r, (x) => x.ownerType === "landlord" || x.ownerType === "both");
-        if (!c) throw new ConvexError(`No landlord called "${r.name}". Add them in Sync Stay or Owners first.`);
+        if (!c) throw new ConvexError(`No landlord called "${r.name}". Add them in SyncStay or Owners first.`);
         await postTransaction(
           ctx,
           access,
@@ -192,7 +192,7 @@ export const openingBatch = mutation({
         );
       } else {
         const c = await findContact(ctx, access.orgId, r, (x) => !!x.isLeaseTenant);
-        if (!c) throw new ConvexError(`No tenant called "${r.name}" in Sync Stay`);
+        if (!c) throw new ConvexError(`No tenant called "${r.name}" in SyncStay`);
         const leases = (
           await ctx.db
             .query("stayLeases")
@@ -210,7 +210,7 @@ export const openingBatch = mutation({
         }
         const now = Date.now();
         if (!deposit) {
-          // Sync Stay has no record of this deposit yet: add it, so both modules agree.
+          // SyncStay has no record of this deposit yet: add it, so both modules agree.
           const id = await ctx.db.insert("stayDeposits", {
             orgId: access.orgId,
             leaseId: lease._id,

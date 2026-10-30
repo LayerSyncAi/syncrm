@@ -1,5 +1,5 @@
 /**
- * Sync Stay access rules (BRD Stay §3), enforced on the server:
+ * SyncStay access rules (BRD Stay §3), enforced on the server:
  *  - director (org admin): everything.
  *  - property manager: properties assigned to them, and their tenants,
  *    leases, payments and requests. Can edit leases.

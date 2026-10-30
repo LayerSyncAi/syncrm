@@ -40,7 +40,7 @@ export default function FinanceMoney() {
               <Button variant="secondary" icon="calculator-outline" title="Cash-up" onPress={() => router.push("/finance/money/cash-up")} style={{ flex: 1 }} />
             </Row>
             <Body muted small>
-              {today ? periodLabel(today.slice(0, 7), true) : ""}. Rent and deposits come in from Sync Stay.
+              {today ? periodLabel(today.slice(0, 7), true) : ""}. Rent and deposits come in from SyncStay.
             </Body>
             <Chips<Kind>
               value={kind}
@@ -90,7 +90,7 @@ export default function FinanceMoney() {
                 </Text>
                 <Badge label={r.isReversal ? "Reversal" : TX_KIND_LABELS[r.kind] ?? r.kind} tone={r.kind === "receipt" ? "success" : "neutral"} />
                 {r.reversed && <Badge tone="danger" label="Reversed" />}
-                {r.fromStay && <Badge tone="info" label="Sync Stay" />}
+                {r.fromStay && <Badge tone="info" label="SyncStay" />}
               </View>
             </Row>
           </Card>

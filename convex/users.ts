@@ -124,7 +124,7 @@ export const adminCreateUserInternal = internalMutation({
     if (args.branchId && !branchExists(org, args.branchId)) {
       throw new ConvexError("That branch no longer exists");
     }
-    // Admins open every module and need no Sync Estate roles.
+    // Admins open every module and need no SyncEstate roles.
     const estateRoles = args.role === "admin" ? [] : [...new Set(args.estateRoles ?? [])];
 
     const timestamp = Date.now();

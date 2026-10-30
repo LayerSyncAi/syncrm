@@ -1,5 +1,5 @@
 /**
- * Landlord statement when Sync Finance is not switched on (BRD Stay §8):
+ * Landlord statement when SyncFinance is not switched on (BRD Stay §8):
  * rent collected in the month (by payment date), less the management fee per
  * property, less expenses recharged to the landlord, per currency.
  */

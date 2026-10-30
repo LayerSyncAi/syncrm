@@ -12,7 +12,7 @@
  * so a new org-scoped table cannot be forgotten.
  */
 export const PURGE_TABLE_ORDER = [
-  // Sync Stay: children before the leases, units and properties they hang off.
+  // SyncStay: children before the leases, units and properties they hang off.
   "stayArrearsNotes",
   "stayDocuments",
   "stayInspections",
@@ -25,7 +25,7 @@ export const PURGE_TABLE_ORDER = [
   "stayUnits",
   "stayProperties",
   "staySettings",
-  // Sync Finance: lines before the transactions they post, transactions
+  // SyncFinance: lines before the transactions they post, transactions
   // before the invoices, payouts and stands they point at.
   "devPayments",
   "devStands",
@@ -41,11 +41,11 @@ export const PURGE_TABLE_ORDER = [
   "finCategories",
   "finAccounts",
   "finSettings",
-  // Sync Notify: messages before the campaigns they belong to.
+  // SyncNotify: messages before the campaigns they belong to.
   "notifyMessages",
   "notifyCampaigns",
   "notifySettings",
-  // Sync Worth (see convex/schemas/worth.ts).
+  // SyncWorth (see convex/schemas/worth.ts).
   "worthJobComparables",
   "worthReports",
   "worthDocuments",

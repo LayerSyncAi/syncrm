@@ -99,7 +99,7 @@ export const setMyEmailAlerts = mutation({
 
 export const orgNameForEmail = internalQuery({
   args: { orgId: v.id("organizations") },
-  handler: async (ctx, args) => (await ctx.db.get(args.orgId))?.name ?? "Sync Estate",
+  handler: async (ctx, args) => (await ctx.db.get(args.orgId))?.name ?? "SyncEstate",
 });
 
 /** Scheduled by lib/notify.ts once the alert rows are committed. */

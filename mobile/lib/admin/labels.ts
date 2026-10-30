@@ -7,8 +7,8 @@ export const AUDIT_CATEGORIES = [
   { value: "property", label: "Property" },
   { value: "email", label: "Email" },
   { value: "system", label: "System" },
-  { value: "stay", label: "Sync Stay" },
-  { value: "worth", label: "Sync Worth" },
+  { value: "stay", label: "SyncStay" },
+  { value: "worth", label: "SyncWorth" },
   { value: "other", label: "Other" },
 ] as const;
 

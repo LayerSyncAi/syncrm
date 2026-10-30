@@ -1,5 +1,5 @@
 /**
- * Sync Worth tables: valuations, from instruction to signed report.
+ * SyncWorth tables: valuations, from instruction to signed report.
  *
  * Worth reads the Hub's shared records rather than keeping its own copies:
  *  - the instructing party (bank, owner, lawyer...) is a `contacts` row
@@ -151,7 +151,7 @@ export const worthTables = {
     preparedByUserId: v.optional(v.id("users")),
     signedByUserId: v.optional(v.id("users")),
     currentReportId: v.optional(v.id("worthReports")),
-    // Fee invoice without Sync Finance (VW-71).
+    // Fee invoice without SyncFinance (VW-71).
     invoicedAt: v.optional(v.number()),
     paidAt: v.optional(v.number()),
     // Due-date alert already sent for the current due date (VW-12).

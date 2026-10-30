@@ -1,5 +1,5 @@
 /**
- * Sync Worth values, review and issue (VW-40..43, VW-50..63).
+ * SyncWorth values, review and issue (VW-40..43, VW-50..63).
  *
  * The report is generated in the browser from `reportData`, so its figures
  * always come from the job record (VW-43). Issuing locks the job and keeps a

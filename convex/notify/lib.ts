@@ -1,5 +1,5 @@
 /**
- * Sync Notify rules kept pure, shared by the server and the compose screen.
+ * SyncNotify rules kept pure, shared by the server and the compose screen.
  */
 
 /** Placeholders every audience fills. Imported lists may add their own columns. */
@@ -53,7 +53,7 @@ export function routeMessage(
     m.channel === "preferred" ? (s.preferredChannel === "sms" ? ["sms", "email"] : ["email", "sms"]) : [m.channel];
   for (const c of order) if (can[c]) return { channel: c, to: c === "email" ? m.email!.trim() : m.phone!.trim() };
   if (m.channel !== "preferred" && !(m.channel === "email" ? s.emailEnabled : s.smsEnabled)) {
-    return { error: `${m.channel === "email" ? "Email" : "SMS"} is switched off in Sync Notify settings` };
+    return { error: `${m.channel === "email" ? "Email" : "SMS"} is switched off in SyncNotify settings` };
   }
   return { error: m.channel === "sms" ? "No usable phone number" : m.channel === "email" ? "No usable email address" : "No usable email or phone" };
 }

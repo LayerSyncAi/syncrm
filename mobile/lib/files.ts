@@ -120,11 +120,11 @@ export function pdfShell(opts: { title: string; agencyName: string; agencyLines?
   return `<!doctype html><html><head><meta charset="utf-8"><style>
   @page { size: A4; margin: 18mm 16mm; }
   body { font-family: -apple-system, Helvetica, Arial, sans-serif; color: #1f2a44; font-size: 11px; }
-  h1 { font-size: 18px; margin: 0 0 4px; } h2 { font-size: 13px; margin: 18px 0 6px; color: #2a5925; }
+  h1 { font-size: 18px; margin: 0 0 4px; } h2 { font-size: 13px; margin: 18px 0 6px; color: #3b6812; }
   table { width: 100%; border-collapse: collapse; margin: 6px 0; }
   th, td { text-align: left; padding: 5px 6px; border-bottom: 1px solid #dfe3ee; vertical-align: top; }
   th { background: #f1f4f9; font-weight: 600; } .r { text-align: right; } .muted { color: #5b647f; }
-  .head { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #2a5925; padding-bottom: 10px; margin-bottom: 14px; }
+  .head { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #3b6812; padding-bottom: 10px; margin-bottom: 14px; }
   .total td { font-weight: 700; border-top: 2px solid #1f2a44; } img.logo { max-height: 48px; }
   .photos { display: flex; flex-wrap: wrap; gap: 6px; } .photos img { width: 160px; height: 120px; object-fit: cover; border-radius: 4px; }
   </style></head><body>

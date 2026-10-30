@@ -1,5 +1,5 @@
 /**
- * Sync Worth jobs: instructions (VW-01..04), assignment and tracking
+ * SyncWorth jobs: instructions (VW-01..04), assignment and tracking
  * (VW-10..13) and fees (VW-70..72).
  */
 import { ConvexError, v } from "convex/values";

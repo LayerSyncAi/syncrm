@@ -1,5 +1,5 @@
 /**
- * Server helpers shared by the Sync Stay functions: settings, visibility-
+ * Server helpers shared by the SyncStay functions: settings, visibility-
  * scoped lists, lease chains, audit and Hub contact records.
  */
 import { ConvexError } from "convex/values";

@@ -1,5 +1,5 @@
 /**
- * Sync Stay properties and units (BRD Stay ST-02 to ST-05).
+ * SyncStay properties and units (BRD Stay ST-02 to ST-05).
  *
  * A Stay property is the management agreement on top of a Hub `properties`
  * row: the landlord, the assigned manager and the fee. Creating one either
@@ -275,7 +275,7 @@ export const create = mutation({
         .query("stayProperties")
         .withIndex("by_property", (q) => q.eq("propertyId", prop._id))
         .first();
-      if (managed) throw new ConvexError("This property is already managed in Sync Stay");
+      if (managed) throw new ConvexError("This property is already managed in SyncStay");
       propertyId = prop._id;
       propertyName = prop.title;
     } else {
@@ -339,7 +339,7 @@ export const create = mutation({
 
     await stayAudit(ctx, access, {
       action: "stay.property_create",
-      description: `Added ${propertyName} to Sync Stay with ${units.length} unit${units.length === 1 ? "" : "s"}`,
+      description: `Added ${propertyName} to SyncStay with ${units.length} unit${units.length === 1 ? "" : "s"}`,
       targetType: "stayProperty",
       targetId: stayPropertyId,
       targetLabel: propertyName,

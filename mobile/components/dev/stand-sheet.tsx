@@ -29,7 +29,7 @@ export type InventoryStand = {
 
 type Mode = "view" | "reserve" | "sell";
 
-const FINANCE_HINT = "Without Sync Finance, payments are recorded in Sync Dev. Finance adds trust accounting and commission.";
+const FINANCE_HINT = "Without SyncFinance, payments are recorded in SyncDev. Finance adds trust accounting and commission.";
 
 
 export function StandSheet({

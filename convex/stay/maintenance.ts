@@ -1,5 +1,5 @@
 /**
- * Sync Stay maintenance (BRD Stay §5.6). A request belongs to a unit, moves
+ * SyncStay maintenance (BRD Stay §5.6). A request belongs to a unit, moves
  * new > in progress > done, can be assigned to a staff member, and its cost
  * becomes a stayExpenses row. Costs above the property's repair threshold
  * wait for the landlord's approval (staff can record it on their behalf until

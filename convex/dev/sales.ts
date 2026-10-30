@@ -7,9 +7,9 @@
  * instalment first, and the sale keeps paid to date, balance, overdue and
  * next due up to date for lists and reminders.
  *
- * Works with Sync Dev, Sync Finance or both:
+ * Works with SyncDev, SyncFinance or both:
  *  - With Finance, a payment is a ledger receipt (trust, commission, payouts).
- *  - Without it, Sync Dev records the payment itself (devPayments). Finance
+ *  - Without it, SyncDev records the payment itself (devPayments). Finance
  *    can bring those in later (finance/posting:bringInDevPayments).
  *
  * Interest is optional per development and only charged when staff run it.
@@ -41,7 +41,7 @@ async function getSale(ctx: Ctx, orgId: Id<"organizations">, id: Id<"finStands">
 
 /**
  * Every payment and refund on a sale, from both places a payment can live:
- * Finance receipts and Sync Dev's own records. A Dev payment brought into
+ * Finance receipts and SyncDev's own records. A Dev payment brought into
  * Finance is counted once, as the Finance receipt.
  */
 async function moneyOn(ctx: Ctx, standId: Id<"finStands">) {
@@ -423,7 +423,7 @@ const methodArgs = {
   date: v.string(),
   amount: v.number(),
   method: finMethod,
-  // Only with Sync Finance: the bank or cash account.
+  // Only with SyncFinance: the bank or cash account.
   accountId: v.optional(v.id("finAccounts")),
   reference: v.optional(v.string()),
 };
@@ -476,8 +476,8 @@ export const refundStand = mutation({
 });
 
 /**
- * FN-90: take a payment on a sale. With Sync Finance it is a ledger receipt
- * (trust, commission); without, Sync Dev records it. Either way it gets the
+ * FN-90: take a payment on a sale. With SyncFinance it is a ledger receipt
+ * (trust, commission); without, SyncDev records it. Either way it gets the
  * agency's next receipt number and the buyer an updated statement.
  */
 export const receivePayment = mutation({
@@ -525,12 +525,12 @@ export const receivePayment = mutation({
       targetLabel: number,
     });
     if (args.emailStatement !== false) await emailStatement(ctx, access, s._id);
-    // The ledger receipt, when Sync Finance posted it.
+    // The ledger receipt, when SyncFinance posted it.
     return { number, txId };
   },
 });
 
-/** Reverse a payment Sync Dev recorded (Finance receipts are reversed in Finance). */
+/** Reverse a payment SyncDev recorded (Finance receipts are reversed in Finance). */
 export const reverseDevPayment = mutation({
   args: { paymentId: v.id("devPayments"), reason: v.string() },
   handler: async (ctx, args) => {
@@ -539,7 +539,7 @@ export const reverseDevPayment = mutation({
     const p = await ctx.db.get(args.paymentId);
     if (!p || p.orgId !== access.orgId) throw new ConvexError("Payment not found");
     if (p.reversedAt) throw new ConvexError("Already reversed");
-    if (p.finTxId) throw new ConvexError("This payment is now in Sync Finance. Reverse it there.");
+    if (p.finTxId) throw new ConvexError("This payment is now in SyncFinance. Reverse it there.");
     const reason = args.reason.trim();
     if (!reason) throw new ConvexError("Give a reason");
     await ctx.db.patch(p._id, { reversedAt: Date.now(), reversedByUserId: access.user._id, reverseReason: reason });
@@ -714,7 +714,7 @@ export const chargeInterest = mutation({
 
 /**
  * FN-96: per development, stands sold, contracted, collected, outstanding,
- * overdue by buyer. Commission, payouts and money held need Sync Finance.
+ * overdue by buyer. Commission, payouts and money held need SyncFinance.
  */
 export const developerReport = query({
   args: { developmentId: v.id("finDevelopments") },
@@ -804,7 +804,7 @@ export const runForOrg = internalMutation({
       const due = standRemindersDue(st.rows, today, settings.standReminderDays, s.remindersSent);
       if (!due.length) continue;
       // One message per sale per day: the most pressing reminder, sent on
-      // the agency's preferred channel through Sync Notify.
+      // the agency's preferred channel through SyncNotify.
       const { pick, markSent } = pickReminder(due)!;
       const dev = devs.get(s.developmentId);
       const c = s.currency;

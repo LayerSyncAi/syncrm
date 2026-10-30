@@ -1,5 +1,5 @@
 /**
- * Sync Worth inspection (VW-20..22), filled in on a phone at the property and
+ * SyncWorth inspection (VW-20..22), filled in on a phone at the property and
  * saved as a draft until complete. Photos are compressed in the browser
  * before upload and stored against the inspection.
  */

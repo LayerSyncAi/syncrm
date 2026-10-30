@@ -19,7 +19,7 @@ export default defineSchema({
     // Set when a platform admin starts a purge; the batched delete job then
     // removes every row that belongs to the org and finally the org itself.
     deletingAt: v.optional(v.number()),
-    // Sync Estate modules the agency pays for, switched on by LayerSync.
+    // SyncEstate modules the agency pays for, switched on by LayerSync.
     // Absent on orgs that predate the Hub, which read as CRM + SyncMedia
     // (see convex/lib/modules.ts).
     enabledModules: v.optional(v.array(moduleKeyValidator)),
@@ -60,7 +60,7 @@ export default defineSchema({
     // in a read-only view by setting platformViewOrgId (see helpers.ts).
     isPlatformAdmin: v.optional(v.boolean()),
     platformViewOrgId: v.optional(v.id("organizations")),
-    // Sync Estate roles held on top of admin/agent (convex/lib/modules.ts).
+    // SyncEstate roles held on top of admin/agent (convex/lib/modules.ts).
     // They decide which modules an agent can open; admins need none.
     estateRoles: v.optional(v.array(estateRoleValidator)),
     // The agency branch this staff member works from (organizations.branches).
@@ -597,7 +597,7 @@ export default defineSchema({
     .index("by_status", ["status"]),
   contacts: defineTable({
     name: v.string(),
-    // Sync Finance: this landlord's default management commission %, applied
+    // SyncFinance: this landlord's default management commission %, applied
     // to their properties; a property or lease can still differ (FN-30).
     landlordFeePct: v.optional(v.number()),
     phone: v.optional(v.string()),
@@ -640,8 +640,8 @@ export default defineSchema({
     ),
     isBuyerTenant: v.optional(v.boolean()),
     // Hub tags used by the other modules. `isLeaseTenant` marks a tenant on a
-    // Sync Stay lease (isBuyerTenant above is a CRM rental prospect);
-    // `isValuationClient` marks a Sync Worth instructing party.
+    // SyncStay lease (isBuyerTenant above is a CRM rental prospect);
+    // `isValuationClient` marks a SyncWorth instructing party.
     isLeaseTenant: v.optional(v.boolean()),
     isValuationClient: v.optional(v.boolean()),
     // A supplier or contractor the agency pays (HB-30).
@@ -857,7 +857,7 @@ export default defineSchema({
     .index("by_org_owner", ["orgId", "ownerUserId"])
     .index("by_owner_property", ["ownerUserId", "propertyId"]),
 
-  // --- Sync Estate Hub -----------------------------------------------------
+  // --- SyncEstate Hub -----------------------------------------------------
   // Notification centre. Every module posts alerts here (convex/lib/notify.ts);
   // the topbar bell shows the unread count.
   notifications: defineTable({
