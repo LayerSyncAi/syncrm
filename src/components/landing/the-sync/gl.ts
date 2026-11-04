@@ -108,19 +108,41 @@ export type Layout = {
   markHeight: number;
 };
 
-/** Where the glyphs and the mark sit for a given canvas shape. */
-export function layoutFor(width: number, height: number): Layout {
+/**
+ * Where the glyphs and the mark sit for a given canvas shape. Wide stages put
+ * the field on the right, beside the copy; narrow stages put it above the
+ * copy, where `reserveBottom` is the share of the height the copy covers.
+ * Either way the field keeps clear of the floating nav and shrinks to fit
+ * short screens (landscape phones, small phones).
+ */
+export function layoutFor(width: number, height: number, reserveBottom = 0): Layout {
   const aspect = width / height;
-  const wide = aspect > 1.05;
-  const cx = wide ? aspect * 0.42 : 0;
-  const cy = wide ? 0 : 0.28;
-  const r = wide ? 0.56 : Math.min(0.5, aspect * 0.6);
-  const glyphSize = wide ? 0.36 : Math.min(0.34, aspect * 0.4);
-  const clusters = Array.from({ length: 5 }, (_, k) => {
-    const ang = (-90 + k * 72) * (Math.PI / 180);
+  const wide = aspect > 1;
+  let cx = wide ? aspect * 0.42 : 0;
+  let r = wide ? 0.56 : Math.min(0.5, aspect * 0.6);
+  let glyphSize = wide ? 0.36 : Math.min(0.34, aspect * 0.4);
+  let markHeight = wide ? 1.0 : Math.min(0.9, aspect * 1.5);
+  const preferredY = wide ? 0 : 0.28;
+
+  // Room between the nav (about 84px down) and the copy or the bottom edge.
+  const top = Math.max(0.4, 1 - (2 * 84) / height);
+  const floor = wide ? -0.95 : -1 + 2 * Math.min(0.7, Math.max(0, reserveBottom)) + 0.04;
+  // How far the pentagon reaches above and below its centre, captions (drawn
+  // under each glyph) included.
+  const up = r + glyphSize * 0.5;
+  const down = 0.81 * r + glyphSize * 0.62 + 0.08;
+  const k = Math.min(1, (top - floor) / (up + down));
+  r *= k;
+  glyphSize *= k;
+  const cy = Math.min(top - up * k, Math.max(floor + down * k, preferredY));
+  markHeight = Math.min(markHeight, 2 * Math.min(top - cy, cy - floor) * 0.92);
+  cx = wide ? cx : 0;
+
+  const clusters = Array.from({ length: 5 }, (_, i) => {
+    const ang = (-90 + i * 72) * (Math.PI / 180);
     return { x: cx + r * Math.cos(ang), y: cy - r * Math.sin(ang) };
   });
-  return { aspect, clusters, glyphSize, markCentre: { x: cx, y: cy }, markHeight: wide ? 1.0 : Math.min(0.9, aspect * 1.5) };
+  return { aspect, clusters, glyphSize, markCentre: { x: cx, y: cy }, markHeight };
 }
 
 function samplePixels(draw: (ctx: CanvasRenderingContext2D, size: number) => void, size = 200): [number, number][] {
@@ -198,7 +220,7 @@ function compile(gl: WebGLRenderingContext, type: number, src: string) {
 }
 
 export type SyncField = {
-  resize(width: number, height: number, dpr: number): Layout;
+  resize(width: number, height: number, dpr: number, reserveBottom?: number): Layout;
   /** light: draw dark particles with normal blending for the light theme. */
   render(progress: number, time: number, mouse: { x: number; y: number; force: number }, light: boolean): void;
   dispose(): void;
@@ -268,11 +290,11 @@ export async function createSyncField(canvas: HTMLCanvasElement, count: number):
   let pointSize = 2;
 
   return {
-    resize(width, height, dpr) {
+    resize(width, height, dpr, reserveBottom = 0) {
       canvas.width = Math.round(width * dpr);
       canvas.height = Math.round(height * dpr);
       gl.viewport(0, 0, canvas.width, canvas.height);
-      const L = layoutFor(width, height);
+      const L = layoutFor(width, height, reserveBottom);
       const s = new Float32Array(n * 2);
       const e = new Float32Array(n * 2);
       for (let i = 0; i < n; i++) {

@@ -277,18 +277,22 @@ export function ModuleShowcase() {
                   refs.current[i] = el;
                 }}
                 aria-label={ch.name}
-                className="scroll-mt-40 lg:flex lg:min-h-[88vh] lg:items-center"
+                className="scroll-mt-40 md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,0.85fr)] md:items-center md:gap-10 lg:flex lg:min-h-[88vh] lg:items-center"
               >
                 <div className={`transition-opacity duration-500 lg:py-16 ${i === active ? "lg:opacity-100" : "lg:opacity-35"}`}>
                   <ChapterCopy ch={ch} index={i} />
                 </div>
-                {/* Mobile: the chapter's own phone. */}
-                <div className="l-stage l-stage-panel mt-10 overflow-hidden rounded-[28px] lg:hidden">
+                {/* Below desktop: the chapter's own phone, beside the copy from
+                    768px. Never taller than the screen (landscape phones). */}
+                <div
+                  className="l-stage l-stage-panel mx-auto mt-10 w-full overflow-hidden rounded-[28px] md:mt-0 lg:hidden"
+                  style={{ maxWidth: "calc(86svh * 0.775)" }}
+                >
                   <ThemedPhoneStage
                     photo="stage"
                     screens={CHAPTER_SCREENS[ch.key]}
                     crop={{ x: [0.06, 0.92], y: [0.05, 0.88] }}
-                    sizes="(max-width: 1023px) 130vw, 1px"
+                    sizes="(max-width: 767px) 130vw, (max-width: 1023px) 60vw, 1px"
                     showDots
                     label={`${ch.name} on a phone: ${ch.eyebrow.toLowerCase()}.`}
                   />
@@ -315,7 +319,8 @@ export function ModuleShowcase() {
                   {chapters[active].name}
                 </div>
               </div>
-              <p className="l-mono mt-4 text-center text-xs text-[var(--l-ink-3)]">Hover the phone and scroll to look around</p>
+              {/* Touch screens: the screen scrolls by itself and never takes the page's scroll. */}
+              <p className="l-mono mt-4 text-center text-xs text-[var(--l-ink-3)] [@media(hover:none)]:hidden">Hover the phone and scroll to look around</p>
             </div>
           </div>
         </div>

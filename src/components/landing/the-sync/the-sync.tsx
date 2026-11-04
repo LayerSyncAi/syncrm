@@ -22,7 +22,11 @@ function stateFor(p: number) {
   return p < 0.35 ? 0 : p < 0.75 ? 1 : 2;
 }
 
-function captionPositions(L: Layout) {
+function captionPositions(L: Layout, height: number) {
+  // When the field has had to shrink (short phones) or sits in a short
+  // landscape stage, the captions would pile onto each other; the glyphs
+  // carry the idea on their own.
+  if ((L.glyphSize * height) / 2 < 44 || (L.aspect > 1 && height < 500)) return null;
   // On narrow stages keep captions clear of the edges.
   const edge = L.aspect < 1 ? 26 : 8;
   return L.clusters.map((c) => ({
@@ -35,6 +39,7 @@ export function TheSync() {
   const sectionRef = useRef<HTMLElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const copyRef = useRef<HTMLDivElement>(null);
   const reduce = useReducedMotion();
   const [theme] = useLandingTheme();
   const lightRef = useRef(false);
@@ -100,9 +105,14 @@ export function TheSync() {
       const w = stage.clientWidth;
       const h = stage.clientHeight;
       const dpr = Math.min(window.devicePixelRatio || 1, w > 2560 ? 1.5 : 2);
-      const L = field.resize(w, h, dpr);
+      // On narrow stages the copy sits at the bottom; keep the field above it.
+      const copy = copyRef.current;
+      const reserve = copy && w <= h ? copy.offsetHeight / h : 0;
+      const L = field.resize(w, h, dpr, reserve);
       aspect = L.aspect;
-      setCaptions(captionPositions(L));
+      stage.style.setProperty("--halo-x", `${((L.markCentre.x + L.aspect) / (2 * L.aspect)) * 100}%`);
+      stage.style.setProperty("--halo-y", `${((1 - L.markCentre.y) / 2) * 100}%`);
+      setCaptions(captionPositions(L, h));
     };
 
     const count =
@@ -144,6 +154,7 @@ export function TheSync() {
 
     const ro = new ResizeObserver(resize);
     ro.observe(stage);
+    if (copyRef.current) ro.observe(copyRef.current);
 
     const onMove = (e: PointerEvent) => {
       const r = stage.getBoundingClientRect();
@@ -226,8 +237,13 @@ export function TheSync() {
           {/* Halo behind the mark once synced. */}
           <div
             aria-hidden
-            className="pointer-events-none absolute left-1/2 top-[36%] h-[60vmin] w-[60vmin] -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl lg:left-[71%] lg:top-1/2"
-            style={{ background: "radial-gradient(closest-side, rgba(155,216,61,0.38), transparent)", opacity: "var(--halo-o)" }}
+            className="pointer-events-none absolute h-[60vmin] w-[60vmin] -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl"
+            style={{
+              left: "var(--halo-x, 50%)",
+              top: "var(--halo-y, 36%)",
+              background: "radial-gradient(closest-side, rgba(155,216,61,0.38), transparent)",
+              opacity: "var(--halo-o)",
+            }}
           />
           <canvas ref={canvasRef} aria-hidden className="absolute inset-0 h-full w-full" />
 
@@ -246,16 +262,36 @@ export function TheSync() {
             </ul>
           ) : null}
 
-          {/* Copy: left on desktop, at the bottom on mobile. */}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 p-6 pb-10 sm:p-10 lg:inset-y-0 lg:left-0 lg:right-auto lg:flex lg:w-[44%] lg:items-center lg:p-16">
+          {/* Copy: on the left on landscape screens (the field sits on the
+              right), at the bottom on portrait ones (the field sits above).
+              gl.ts picks the same split from the stage's shape. */}
+          <div
+            ref={copyRef}
+            className="pointer-events-none absolute inset-x-0 bottom-0 p-6 pb-10 sm:p-10 landscape:inset-y-0 landscape:right-auto landscape:flex landscape:w-[54%] landscape:items-center landscape:py-6 lg:landscape:w-[44%] lg:landscape:p-16"
+          >
             <div className="relative">
-              <div className="absolute -inset-10 -z-10 lg:hidden" style={{ background: "radial-gradient(closest-side, color-mix(in srgb, var(--l-stage) 85%, transparent), transparent)" }} />
-              <div key={state} className="l-sync-copy flex flex-col gap-4" aria-hidden>
-                <Eyebrow dot={state === 2}>{current.eyebrow}</Eyebrow>
-                <p className="l-h2 max-w-[16ch]">
-                  <Accent h={current.headline} />
-                </p>
-                <p className="l-body-lg max-w-[44ch]">{current.body}</p>
+              <div className="absolute -inset-10 -z-10 lg:landscape:hidden" style={{ background: "radial-gradient(closest-side, color-mix(in srgb, var(--l-stage) 85%, transparent), transparent)" }} />
+              {/* All three states share one grid cell; the hidden ones only
+                  hold the height, so the block never jumps between states. */}
+              <div className="grid" aria-hidden>
+                {sync.states.map((s, i) =>
+                  i === state ? null : (
+                    <div key={`sizer-${s.eyebrow}`} className="invisible col-start-1 row-start-1 flex flex-col gap-4">
+                      <Eyebrow>{s.eyebrow}</Eyebrow>
+                      <p className="l-h2 max-w-[16ch]">
+                        <Accent h={s.headline} />
+                      </p>
+                      <p className="l-body-lg max-w-[44ch]">{s.body}</p>
+                    </div>
+                  )
+                )}
+                <div key={state} className="l-sync-copy col-start-1 row-start-1 flex flex-col gap-4">
+                  <Eyebrow dot={state === 2}>{current.eyebrow}</Eyebrow>
+                  <p className="l-h2 max-w-[16ch]">
+                    <Accent h={current.headline} />
+                  </p>
+                  <p className="l-body-lg max-w-[44ch]">{current.body}</p>
+                </div>
               </div>
               <div className="mt-8 flex gap-1.5" aria-hidden>
                 {[0, 1, 2].map((i) => (
