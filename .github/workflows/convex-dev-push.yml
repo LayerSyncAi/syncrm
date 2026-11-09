@@ -1,0 +1,52 @@
+name: Push Convex functions (convex dev)
+
+# Runs `npx convex dev --once` whenever backend code lands on main, so nobody
+# has to run `convex dev` locally after a merge. `--once` pushes the functions
+# and schema in convex/ to the deployment once (codegen, typecheck, push) and
+# exits instead of watching for changes.
+#
+# Setup (once per repo): Convex dashboard -> this project -> the development
+# deployment the app uses -> Settings -> Deploy Keys -> generate a key, then add
+# it here under Settings -> Secrets and variables -> Actions as
+# CONVEX_DEV_DEPLOY_KEY.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "convex/**"
+      - "convex.json"
+      - "package.json"
+      - "package-lock.json"
+  workflow_dispatch:
+
+concurrency:
+  group: convex-dev-push
+  cancel-in-progress: false
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Check the deploy key is configured
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEV_DEPLOY_KEY }}
+        run: |
+          if [ -z "$CONVEX_DEPLOY_KEY" ]; then
+            echo "::error::Add the CONVEX_DEV_DEPLOY_KEY secret (see the comment at the top of this workflow)."
+            exit 1
+          fi
+
+      - run: npm ci
+
+      - name: npx convex dev --once
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEV_DEPLOY_KEY }}
+        run: npx convex dev --once
