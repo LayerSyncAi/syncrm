@@ -75,6 +75,11 @@ export const leadToasts = {
       description: detail || "Something went wrong. Please try again.",
     }),
 
+  bulkDeleted: (count: number) =>
+    animatedToast.success(count === 1 ? "Lead deleted" : "Leads deleted", {
+      description: `${count} ${count === 1 ? "lead was" : "leads were"} deleted.`,
+    }),
+
   stageMoved: (stageName: string) =>
     animatedToast.success("Stage updated", {
       description: `Lead moved to "${stageName}".`,
@@ -176,6 +181,13 @@ export const contactToasts = {
   saveFailed: (detail?: string) =>
     animatedToast.error("Failed to save contact", {
       description: detail || "Something went wrong. Please try again.",
+    }),
+
+  bulkDeleted: (count: number, leads: number) =>
+    animatedToast.success(count === 1 ? "Contact deleted" : "Contacts deleted", {
+      description: `${count} ${count === 1 ? "contact was" : "contacts were"} deleted${
+        leads ? `, with ${leads} ${leads === 1 ? "lead" : "leads"}` : ""
+      }.`,
     }),
 
   deleted: (name: string) =>

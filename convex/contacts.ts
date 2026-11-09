@@ -14,6 +14,8 @@ import { requireModuleUser } from "./lib/moduleAccess";
 import { canSeeStayProperty, requireStay } from "./stay/access";
 import { canSeeJob, requireWorth } from "./worth/access";
 import { outstanding, round2 } from "./stay/ledger";
+import { deleteLeadCascade, leadDeleteBlocker } from "./leads";
+import { recordAudit } from "./logs";
 
 export function normalizePhone(phone: string) {
   return phone.replace(/\D/g, "");
@@ -530,6 +532,98 @@ export const remove = mutation({
       await ctx.db.delete(doc._id);
     }
     await ctx.db.delete(args.contactId);
+  },
+});
+
+/** Most contacts one bulkRemove call handles; the page sends larger selections in chunks. */
+const BULK_REMOVE_LIMIT = 50;
+
+/**
+ * Delete several contacts at once (the Contacts list's select-and-delete).
+ * Same rules as `remove`, per contact. A contact that still has leads is
+ * skipped unless `includeLeads` is set, in which case its leads are deleted
+ * too (only when the user may delete every one of them). Anything that can't
+ * be deleted is skipped and reported rather than failing the whole batch.
+ */
+export const bulkRemove = mutation({
+  args: {
+    contactIds: v.array(v.id("contacts")),
+    includeLeads: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserWithOrg(ctx);
+    const isAdmin = user.role === "admin";
+    if (args.contactIds.length > BULK_REMOVE_LIMIT) {
+      throw new Error(`Delete at most ${BULK_REMOVE_LIMIT} contacts at a time`);
+    }
+    const deletedNames: string[] = [];
+    let leadsDeleted = 0;
+    const skipped: Array<{ contactId: Id<"contacts">; name: string; reason: string }> = [];
+
+    for (const contactId of Array.from(new Set(args.contactIds))) {
+      const raw = await ctx.db.get(contactId);
+      if (!raw) continue; // already gone
+      const contact = await canAccessContact(ctx, contactId, user._id, isAdmin, user.orgId);
+      if (!contact) {
+        skipped.push({ contactId, name: raw.name, reason: "Not your contact" });
+        continue;
+      }
+      const usedIn = await otherModuleUses(ctx, contactId);
+      if (usedIn.length > 0) {
+        skipped.push({ contactId, name: contact.name, reason: `Used in ${usedIn.join(", ")}` });
+        continue;
+      }
+      const leads = await ctx.db
+        .query("leads")
+        .withIndex("by_contact", (q) => q.eq("contactId", contactId))
+        .collect();
+      if (leads.length > 0) {
+        if (!args.includeLeads) {
+          skipped.push({
+            contactId,
+            name: contact.name,
+            reason: `Has ${leads.length} lead${leads.length === 1 ? "" : "s"}`,
+          });
+          continue;
+        }
+        const blocked = leads.map((l) => leadDeleteBlocker(l, user)).find((b) => b !== null);
+        if (blocked) {
+          skipped.push({ contactId, name: contact.name, reason: `A lead can't be deleted: ${blocked}` });
+          continue;
+        }
+        for (const lead of leads) {
+          await deleteLeadCascade(ctx, lead._id, user.orgId);
+          leadsDeleted++;
+        }
+      }
+
+      const docs = await ctx.db
+        .query("documents")
+        .withIndex("by_contact", (q) => q.eq("contactId", contactId))
+        .take(500);
+      for (const doc of docs) {
+        await ctx.storage.delete(doc.storageId);
+        await ctx.db.delete(doc._id);
+      }
+      await ctx.db.delete(contactId);
+      deletedNames.push(contact.name);
+    }
+
+    if (deletedNames.length > 0) {
+      await recordAudit(ctx, {
+        actorUserId: user._id,
+        actorLabel: user.fullName || user.name || user.email,
+        action: "contact.bulk_delete",
+        category: "other",
+        description: `Deleted ${deletedNames.length} contact${deletedNames.length === 1 ? "" : "s"}${
+          leadsDeleted ? ` and ${leadsDeleted} lead${leadsDeleted === 1 ? "" : "s"}` : ""
+        }: ${deletedNames.slice(0, 20).join(", ")}${deletedNames.length > 20 ? ", …" : ""}`,
+        targetType: "contact",
+        metadata: { count: deletedNames.length, leadsDeleted },
+        orgId: user.orgId,
+      });
+    }
+    return { deleted: deletedNames.length, leadsDeleted, skipped };
   },
 });
 

@@ -20,6 +20,13 @@ import { Modal } from "@/components/ui/modal";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Eye, Trash2, ArrowUpDown, ArrowUp, ArrowDown, LayoutList, Columns3, Plus, Waypoints, AlertTriangle } from "lucide-react";
 import { ErrorBoundary } from "@/components/common/error-boundary";
+import {
+  BulkActionBar,
+  BulkDeleteDialog,
+  SelectCheckbox,
+  runInChunks,
+  useSelection,
+} from "@/components/common/bulk-select";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListSkeleton } from "@/components/ui/list-skeleton";
@@ -69,19 +76,31 @@ const LeadTableRow = React.memo(function LeadTableRow({
   onStageChange,
   onDelete,
   onRowClick,
+  selected,
+  onToggleSelect,
 }: {
   lead: LeadRowData;
   stages: { _id: string; name: string }[] | undefined;
   onStageChange: (leadId: Id<"leads">, stageId: Id<"pipelineStages">) => void;
   onDelete: (lead: LeadRowData) => void;
   onRowClick: (lead: LeadRowData) => void;
+  selected: boolean;
+  onToggleSelect: (leadId: Id<"leads">) => void;
 }) {
   return (
     <motion.tr
       variants={rowVariants}
       className="group h-11 cursor-pointer border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)]"
       onClick={() => onRowClick(lead)}
+      data-selected={selected || undefined}
     >
+      <TableCell className="w-10 pr-0">
+        <SelectCheckbox
+          checked={selected}
+          onChange={() => onToggleSelect(lead._id)}
+          label={`Select ${lead.fullName}`}
+        />
+      </TableCell>
       <TableCell>
         <Link href={`/app/leads/${lead._id}`} className="font-medium hover:text-primary-ink">
           {lead.fullName}
@@ -159,12 +178,16 @@ const LeadCard = React.memo(function LeadCard({
   onStageChange,
   onDelete,
   onRowClick,
+  selected,
+  onToggleSelect,
 }: {
   lead: LeadRowData;
   stages: { _id: string; name: string }[] | undefined;
   onStageChange: (leadId: Id<"leads">, stageId: Id<"pipelineStages">) => void;
   onDelete: (lead: LeadRowData) => void;
   onRowClick: (lead: LeadRowData) => void;
+  selected: boolean;
+  onToggleSelect: (leadId: Id<"leads">) => void;
 }) {
   return (
     <motion.div
@@ -173,7 +196,14 @@ const LeadCard = React.memo(function LeadCard({
       onClick={() => onRowClick(lead)}
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
+        <div className="-ml-2 -mt-1 shrink-0">
+          <SelectCheckbox
+            checked={selected}
+            onChange={() => onToggleSelect(lead._id)}
+            label={`Select ${lead.fullName}`}
+          />
+        </div>
+        <div className="min-w-0 flex-1">
           <Link href={`/app/leads/${lead._id}`} className="block truncate font-medium hover:text-primary-ink">
             {lead.fullName}
           </Link>
@@ -363,6 +393,40 @@ export default function LeadsPage() {
       setIsDeleting(false);
     }
   }, [deleteTarget, deleteLeadMutation]);
+
+  // ── Select and bulk delete ──
+  const selection = useSelection<Id<"leads">>();
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const bulkDeleteLeads = useMutation(api.leads.bulkDelete);
+  const visibleLeadIds = useMemo(
+    () => (viewMode === "list" ? ((leads ?? []) as LeadRowData[]).map((l) => l._id) : []),
+    [leads, viewMode]
+  );
+  const { keepOnly } = selection;
+  // Selection follows what's on screen: paging, filtering or deleting drops
+  // rows that are no longer shown.
+  useEffect(() => {
+    keepOnly(visibleLeadIds);
+  }, [visibleLeadIds, keepOnly]);
+  const allVisibleSelected =
+    visibleLeadIds.length > 0 && visibleLeadIds.every((id) => selection.selected.has(id));
+  const someVisibleSelected = visibleLeadIds.some((id) => selection.selected.has(id));
+  const selectedLeadNames = useMemo(
+    () =>
+      ((leads ?? []) as LeadRowData[])
+        .filter((l) => selection.selected.has(l._id))
+        .map((l) => l.fullName),
+    [leads, selection.selected]
+  );
+  const handleBulkDelete = useCallback(async () => {
+    const ids = Array.from(selection.selected);
+    const result = await runInChunks(ids, 50, (chunk) => bulkDeleteLeads({ leadIds: chunk }));
+    if (result.deleted > 0) {
+      leadToasts.bulkDeleted(result.deleted);
+    }
+    selection.clear();
+    return { deleted: result.deleted, skipped: result.skipped };
+  }, [selection, bulkDeleteLeads]);
 
   const handleStageChange = useCallback(async (
     leadId: Id<"leads">,
@@ -677,6 +741,14 @@ export default function LeadsPage() {
             <Table>
               <thead>
                 <tr>
+                  <TableHead className="w-10 pr-0">
+                    <SelectCheckbox
+                      checked={allVisibleSelected}
+                      indeterminate={someVisibleSelected}
+                      onChange={() => selection.toggleAll(visibleLeadIds)}
+                      label="Select all leads on this page"
+                    />
+                  </TableHead>
                   <TableHead>Contact</TableHead>
                   <TableHead>Interest</TableHead>
                   <TableHead>
@@ -709,6 +781,8 @@ export default function LeadsPage() {
                     onStageChange={handleStageChange}
                     onDelete={(l) => { setDeleteTarget(l); setDeleteConfirmText(""); }}
                     onRowClick={(l) => router.push(`/app/leads/${l._id}`)}
+                    selected={selection.selected.has(lead._id)}
+                    onToggleSelect={selection.toggle}
                   />
                 ))}
               </motion.tbody>
@@ -722,6 +796,15 @@ export default function LeadsPage() {
               animate="show"
               className="space-y-3 md:hidden"
             >
+              <label className="flex items-center gap-1 text-sm text-text-muted">
+                <SelectCheckbox
+                  checked={allVisibleSelected}
+                  indeterminate={someVisibleSelected}
+                  onChange={() => selection.toggleAll(visibleLeadIds)}
+                  label="Select all leads on this page"
+                />
+                Select all on this page
+              </label>
               {leads.map((lead: LeadRowData) => (
                 <LeadCard
                   key={lead._id}
@@ -730,6 +813,8 @@ export default function LeadsPage() {
                   onStageChange={handleStageChange}
                   onDelete={(l) => { setDeleteTarget(l); setDeleteConfirmText(""); }}
                   onRowClick={(l) => router.push(`/app/leads/${l._id}`)}
+                  selected={selection.selected.has(lead._id)}
+                  onToggleSelect={selection.toggle}
                 />
               ))}
             </motion.div>
@@ -758,6 +843,24 @@ export default function LeadsPage() {
           />
         </Suspense>
       )}
+
+      {viewMode === "list" && (
+        <BulkActionBar
+          count={selection.selected.size}
+          noun={{ one: "lead", many: "leads" }}
+          onDelete={() => setBulkDeleteOpen(true)}
+          onClear={selection.clear}
+        />
+      )}
+      <BulkDeleteDialog
+        open={bulkDeleteOpen}
+        count={selection.selected.size}
+        noun={{ one: "lead", many: "leads" }}
+        description="Each lead is deleted with its activities, and attached properties are freed. The contacts stay."
+        names={selectedLeadNames}
+        onConfirm={handleBulkDelete}
+        onClose={() => setBulkDeleteOpen(false)}
+      />
 
       {/* Delete lead confirmation modal */}
       <Modal
