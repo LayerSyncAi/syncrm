@@ -1,4 +1,4 @@
-import { mutation, query, type QueryCtx } from "./_generated/server";
+import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { getCurrentUserWithOrg, assertOrgAccess, isEffectiveAdmin } from "./helpers";
 import { internal } from "./_generated/api";
@@ -1713,36 +1713,34 @@ export const bulkSetSource = mutation({
   },
 });
 
-export const deleteLead = mutation({
-  args: {
-    leadId: v.id("leads"),
-  },
-  handler: async (ctx, args) => {
-    const user = await getCurrentUserWithOrg(ctx);
-    const lead = await assertLeadAccess(ctx, args.leadId, user._id, user.role === "admin", user.orgId);
-    if (!lead) throw new Error("Lead not found");
-    // Unassigned leads are shared with the whole org for working, not for
-    // deleting: only an admin may remove one.
-    if (lead.isUnassigned && user.role !== "admin") {
-      throw new Error("Only an admin can delete an unassigned lead");
-    }
-
-    // Delete all property matches for this lead and mark freed properties as available
-    const matches = await ctx.db
+/**
+ * Delete a lead with its property matches and activities, freeing any
+ * attached property no other open lead still references. Shared by
+ * deleteLead, bulkDelete and contacts.bulkRemove. Caller checks access.
+ */
+export async function deleteLeadCascade(
+  ctx: MutationCtx,
+  leadId: Id<"leads">,
+  orgId: Id<"organizations">
+) {
+  const matches = await ctx.db
+    .query("leadPropertyMatches")
+    .withIndex("by_lead", (q) => q.eq("leadId", leadId))
+    .collect();
+  if (matches.length > 0) {
+    const orgMatches = await ctx.db
       .query("leadPropertyMatches")
-      .withIndex("by_lead", (q: any) => q.eq("leadId", args.leadId))
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
       .collect();
     for (const match of matches) {
-      // Check if any other open (non-closed, non-archived) lead references this property
-      const otherMatches = await ctx.db
-        .query("leadPropertyMatches")
-        .withIndex("by_org", (q: any) => q.eq("orgId", user.orgId))
-        .collect();
-      const otherMatchesForProperty = otherMatches.filter(
-        (m) => m.propertyId === match.propertyId && m.leadId !== args.leadId
+      // Free the property unless another open (non-closed, non-archived)
+      // lead still references it. Leads already deleted earlier in the same
+      // bulk call read back as null here, so they don't hold it.
+      const others = orgMatches.filter(
+        (m) => m.propertyId === match.propertyId && m.leadId !== leadId
       );
       let hasActiveReference = false;
-      for (const om of otherMatchesForProperty) {
+      for (const om of others) {
         const otherLead = await ctx.db.get(om.leadId);
         if (otherLead && !otherLead.isArchived && !otherLead.closedAt) {
           hasActiveReference = true;
@@ -1757,19 +1755,91 @@ export const deleteLead = mutation({
       }
       await ctx.db.delete(match._id);
     }
+  }
 
-    // Delete all activities for this lead
-    const activities = await ctx.db
-      .query("activities")
-      .withIndex("by_lead", (q: any) => q.eq("leadId", args.leadId))
-      .collect();
-    for (const activity of activities) {
-      await ctx.db.delete(activity._id);
+  const activities = await ctx.db
+    .query("activities")
+    .withIndex("by_lead", (q) => q.eq("leadId", leadId))
+    .collect();
+  for (const activity of activities) {
+    await ctx.db.delete(activity._id);
+  }
+
+  await ctx.db.delete(leadId);
+}
+
+/** Why the current user may not delete this lead, or null if they may. */
+export function leadDeleteBlocker(
+  lead: { orgId?: Id<"organizations">; ownerUserId: Id<"users">; isUnassigned?: boolean },
+  user: { _id: Id<"users">; role: string; orgId: Id<"organizations"> }
+): string | null {
+  const isAdmin = user.role === "admin";
+  if (lead.orgId && lead.orgId !== user.orgId) return "Not found";
+  if (lead.isUnassigned) return isAdmin ? null : "Only an admin can delete an unassigned lead";
+  if (!isAdmin && lead.ownerUserId !== user._id) return "Not your lead";
+  return null;
+}
+
+export const deleteLead = mutation({
+  args: {
+    leadId: v.id("leads"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserWithOrg(ctx);
+    const lead = await assertLeadAccess(ctx, args.leadId, user._id, user.role === "admin", user.orgId);
+    if (!lead) throw new Error("Lead not found");
+    // Unassigned leads are shared with the whole org for working, not for
+    // deleting: only an admin may remove one.
+    if (lead.isUnassigned && user.role !== "admin") {
+      throw new Error("Only an admin can delete an unassigned lead");
     }
-
-    // Delete the lead itself
-    await ctx.db.delete(args.leadId);
-
+    await deleteLeadCascade(ctx, args.leadId, user.orgId);
     return { deleted: true };
+  },
+});
+
+/** Most leads one bulkDelete call handles; the page sends larger selections in chunks. */
+const BULK_DELETE_LIMIT = 100;
+
+/**
+ * Delete several leads at once (the Leads list's select-and-delete). Same
+ * rules as deleteLead, applied per lead: anything the user may not delete is
+ * skipped and reported rather than failing the whole batch.
+ */
+export const bulkDelete = mutation({
+  args: { leadIds: v.array(v.id("leads")) },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUserWithOrg(ctx);
+    if (args.leadIds.length > BULK_DELETE_LIMIT) {
+      throw new Error(`Delete at most ${BULK_DELETE_LIMIT} leads at a time`);
+    }
+    const deletedNames: string[] = [];
+    const skipped: Array<{ leadId: Id<"leads">; name: string; reason: string }> = [];
+    for (const leadId of Array.from(new Set(args.leadIds))) {
+      const lead = await ctx.db.get(leadId);
+      if (!lead) continue; // already gone
+      const blocker = leadDeleteBlocker(lead, user);
+      if (blocker) {
+        skipped.push({ leadId, name: lead.fullName, reason: blocker });
+        continue;
+      }
+      await deleteLeadCascade(ctx, leadId, user.orgId);
+      deletedNames.push(lead.fullName);
+    }
+    if (deletedNames.length > 0) {
+      await recordAudit(ctx, {
+        actorUserId: user._id,
+        actorLabel: user.fullName || user.name || user.email,
+        action: "lead.bulk_delete",
+        category: "lead",
+        description: `Deleted ${deletedNames.length} lead${deletedNames.length === 1 ? "" : "s"}: ${deletedNames
+          .slice(0, 20)
+          .join(", ")}${deletedNames.length > 20 ? ", …" : ""}`,
+        targetType: "lead",
+        metadata: { count: deletedNames.length },
+        orgId: user.orgId,
+      });
+    }
+    return { deleted: deletedNames.length, skipped };
   },
 });

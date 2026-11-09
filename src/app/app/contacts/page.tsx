@@ -20,6 +20,13 @@ import { Badge } from "@/components/ui/badge";
 import { PaginationControls } from "@/components/ui/pagination";
 import { usePagination } from "@/hooks/usePagination";
 import { ConfirmDeleteDialog } from "@/components/common/confirm-delete-dialog";
+import {
+  BulkActionBar,
+  BulkDeleteDialog,
+  SelectCheckbox,
+  runInChunks,
+  useSelection,
+} from "@/components/common/bulk-select";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { contactToasts, locationToasts } from "@/lib/toast";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -93,6 +100,8 @@ const ContactTableRow = React.memo(function ContactTableRow({
   onEdit,
   onView,
   onDelete,
+  selected,
+  onToggleSelect,
 }: {
   contact: ContactWithOwners;
   isAdmin: boolean;
@@ -100,6 +109,8 @@ const ContactTableRow = React.memo(function ContactTableRow({
   onEdit: (contact: ContactWithOwners) => void;
   onView: (contact: ContactWithOwners) => void;
   onDelete: (contact: ContactWithOwners) => void;
+  selected: boolean;
+  onToggleSelect: (contactId: Id<"contacts">) => void;
 }) {
   return (
     <motion.tr
@@ -108,7 +119,15 @@ const ContactTableRow = React.memo(function ContactTableRow({
       animate="show"
       className="group h-11 cursor-pointer border-b border-[rgba(148,163,184,0.1)] transition-all duration-150 hover:bg-row-hover hover:shadow-[inset_3px_0_0_var(--primary)]"
       onClick={() => onView(contact)}
+      data-selected={selected || undefined}
     >
+      <TableCell className="w-10 pr-0">
+        <SelectCheckbox
+          checked={selected}
+          onChange={() => onToggleSelect(contact._id)}
+          label={`Select ${contact.name}`}
+        />
+      </TableCell>
       <TableCell>
         <p className="font-medium">{contact.name}</p>
         <ContactTagBadges contact={contact} />
@@ -195,6 +214,8 @@ const ContactCard = React.memo(function ContactCard({
   onEdit,
   onView,
   onDelete,
+  selected,
+  onToggleSelect,
 }: {
   contact: ContactWithOwners;
   isAdmin: boolean;
@@ -202,6 +223,8 @@ const ContactCard = React.memo(function ContactCard({
   onEdit: (contact: ContactWithOwners) => void;
   onView: (contact: ContactWithOwners) => void;
   onDelete: (contact: ContactWithOwners) => void;
+  selected: boolean;
+  onToggleSelect: (contactId: Id<"contacts">) => void;
 }) {
   return (
     <motion.div
@@ -211,7 +234,14 @@ const ContactCard = React.memo(function ContactCard({
       className="rounded-[20px] border border-border bg-card-bg shadow-[var(--shadow-card)] p-4 space-y-3"
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
+        <div className="-ml-2 -mt-1 shrink-0">
+          <SelectCheckbox
+            checked={selected}
+            onChange={() => onToggleSelect(contact._id)}
+            label={`Select ${contact.name}`}
+          />
+        </div>
+        <div className="min-w-0 flex-1">
           <button onClick={() => onView(contact)} className="block truncate text-left font-medium hover:text-primary-ink">
             {contact.name}
           </button>
@@ -571,6 +601,40 @@ export default function ContactsPage() {
     }
   };
 
+  // ── Select and bulk delete ──
+  const selection = useSelection<Id<"contacts">>();
+  const [bulkDeleteOpen, setBulkDeleteOpen] = React.useState(false);
+  const [alsoDeleteLeads, setAlsoDeleteLeads] = React.useState(false);
+  const bulkRemoveContacts = useMutation(api.contacts.bulkRemove);
+  const visibleContactIds = React.useMemo(
+    () => (contacts ?? []).map((c) => c._id),
+    [contacts]
+  );
+  const { keepOnly } = selection;
+  React.useEffect(() => {
+    keepOnly(visibleContactIds);
+  }, [visibleContactIds, keepOnly]);
+  const allVisibleSelected =
+    visibleContactIds.length > 0 && visibleContactIds.every((id) => selection.selected.has(id));
+  const someVisibleSelected = visibleContactIds.some((id) => selection.selected.has(id));
+  const selectedContactNames = (contacts ?? [])
+    .filter((c) => selection.selected.has(c._id))
+    .map((c) => c.name);
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selection.selected);
+    let leadsDeleted = 0;
+    const result = await runInChunks(ids, 25, async (chunk) => {
+      const r = await bulkRemoveContacts({ contactIds: chunk, includeLeads: alsoDeleteLeads });
+      leadsDeleted += r.leadsDeleted;
+      return r;
+    });
+    if (result.deleted > 0) {
+      contactToasts.bulkDeleted(result.deleted, leadsDeleted);
+    }
+    selection.clear();
+    return result;
+  };
+
   const toggleOwner = (userId: Id<"users">) => {
     setOwnerUserIds((current) => {
       if (current.includes(userId)) {
@@ -707,6 +771,14 @@ export default function ContactsPage() {
       <Table>
         <thead>
           <tr>
+            <TableHead className="w-10 pr-0">
+              <SelectCheckbox
+                checked={allVisibleSelected}
+                indeterminate={someVisibleSelected}
+                onChange={() => selection.toggleAll(visibleContactIds)}
+                label="Select all contacts on this page"
+              />
+            </TableHead>
             <TableHead>Name</TableHead>
             <TableHead>Phone</TableHead>
             <TableHead>Email</TableHead>
@@ -718,7 +790,7 @@ export default function ContactsPage() {
         {!contacts ? (
           <tbody>
             <TableRow>
-              <TableCell colSpan={6} className="text-center text-text-muted">
+              <TableCell colSpan={7} className="text-center text-text-muted">
                 Loading contacts...
               </TableCell>
             </TableRow>
@@ -726,7 +798,7 @@ export default function ContactsPage() {
         ) : contacts.length === 0 ? (
           <tbody>
             <TableRow>
-              <TableCell colSpan={6} className="text-center text-text-muted">
+              <TableCell colSpan={7} className="text-center text-text-muted">
                 {debouncedSearch || ownerFilter || roleFilter !== "buyer_tenant"
                   ? "No contacts match your filters"
                   : "No contacts yet. Create one to get started."}
@@ -749,6 +821,8 @@ export default function ContactsPage() {
                 onEdit={setSelectedContact}
                 onView={handleViewContact}
                 onDelete={setDeleteTarget}
+                selected={selection.selected.has(contact._id)}
+                onToggleSelect={selection.toggle}
               />
             ))}
           </motion.tbody>
@@ -759,6 +833,15 @@ export default function ContactsPage() {
       {/* Mobile: stacked cards instead of a horizontally scrolling table */}
       {contacts && contacts.length > 0 && (
         <motion.div variants={listVariants} initial="hidden" animate="show" className="space-y-3 md:hidden">
+          <label className="flex items-center gap-1 text-sm text-text-muted">
+            <SelectCheckbox
+              checked={allVisibleSelected}
+              indeterminate={someVisibleSelected}
+              onChange={() => selection.toggleAll(visibleContactIds)}
+              label="Select all contacts on this page"
+            />
+            Select all on this page
+          </label>
           {contacts.map((contact: ContactWithOwners) => (
             <ContactCard
               key={contact._id}
@@ -768,6 +851,8 @@ export default function ContactsPage() {
               onEdit={setSelectedContact}
               onView={handleViewContact}
               onDelete={setDeleteTarget}
+              selected={selection.selected.has(contact._id)}
+              onToggleSelect={selection.toggle}
             />
           ))}
         </motion.div>
@@ -1155,6 +1240,40 @@ export default function ContactsPage() {
       </Modal>
 
       {/* Delete Confirmation */}
+      <BulkActionBar
+        count={selection.selected.size}
+        noun={{ one: "contact", many: "contacts" }}
+        onDelete={() => {
+          setAlsoDeleteLeads(false);
+          setBulkDeleteOpen(true);
+        }}
+        onClear={selection.clear}
+      />
+      <BulkDeleteDialog
+        open={bulkDeleteOpen}
+        count={selection.selected.size}
+        noun={{ one: "contact", many: "contacts" }}
+        description="Each contact is deleted with its documents."
+        names={selectedContactNames}
+        onConfirm={handleBulkDelete}
+        onClose={() => setBulkDeleteOpen(false)}
+      >
+        <label className="flex cursor-pointer items-start gap-2 text-sm text-text">
+          <input
+            type="checkbox"
+            className="mt-0.5 h-4 w-4 accent-[var(--primary)]"
+            checked={alsoDeleteLeads}
+            onChange={(e) => setAlsoDeleteLeads(e.target.checked)}
+          />
+          <span>
+            Also delete their leads (with activities).
+            <span className="block text-xs text-text-muted">
+              Otherwise contacts that still have leads are skipped.
+            </span>
+          </span>
+        </label>
+      </BulkDeleteDialog>
+
       <ConfirmDeleteDialog
         open={Boolean(deleteTarget)}
         title="Delete Contact"
