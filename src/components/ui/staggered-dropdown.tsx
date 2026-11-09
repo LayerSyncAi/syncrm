@@ -39,7 +39,12 @@ export interface StaggeredDropDownProps {
   selectedIcon?: React.ReactNode;
   /** Icon shown as the open/close chevron. Default: ChevronDown */
   chevronIcon?: React.ReactNode;
-  /** Render the dropdown list via a portal so it escapes overflow:hidden containers (e.g. tables). Default: false */
+  /**
+   * Render the list in a portal on <body>, above modals and drawers, so it is
+   * never clipped by a scrolling or overflow:hidden parent (tables, modal
+   * bodies, drawers). Default: true. Pass false only for a list that must
+   * scroll with its container.
+   */
   portal?: boolean;
   /** Show a search input inside the dropdown to filter options. Default: false */
   searchable?: boolean;
@@ -58,7 +63,7 @@ export function StaggeredDropDown({
   maxHeight = 256,
   selectedIcon,
   chevronIcon,
-  portal = false,
+  portal = true,
   searchable = false,
 }: StaggeredDropDownProps) {
   const [open, setOpen] = useState(false);
@@ -88,18 +93,43 @@ export function StaggeredDropDown({
     }
   }, [open, searchable]);
 
-  // Portal positioning state
-  const [portalPos, setPortalPos] = useState({ top: 0, left: 0, width: 0 });
+  // The portaled list is only in the DOM from the first open until it has
+  // animated closed, so pages with many dropdowns (a stage picker per row)
+  // don't fill <body>, and nothing portals during server rendering.
+  const [listMounted, setListMounted] = useState(false);
+
+  // Portal positioning: below the button, or above it when there isn't room
+  // below; the list height is capped to the space available.
+  const [portalPos, setPortalPos] = useState<{
+    left: number;
+    width: number;
+    top?: number;
+    bottom?: number;
+    listMaxHeight: number;
+  }>({ left: 0, width: 0, top: 0, listMaxHeight: maxHeight });
 
   const updatePortalPos = useCallback(() => {
     if (!portal || !buttonRef.current) return;
     const rect = buttonRef.current.getBoundingClientRect();
+    const margin = 8;
+    const gap = 4;
+    const chrome = 12 + (searchable ? 48 : 0); // list padding + search box
+    const spaceBelow = window.innerHeight - rect.bottom - gap - margin;
+    const spaceAbove = rect.top - gap - margin;
+    const wanted = Math.min(maxHeight, options.length * 34 + 4) + chrome;
+    const openUp = spaceBelow < wanted && spaceAbove > spaceBelow;
+    const room = Math.max(openUp ? spaceAbove : spaceBelow, 120);
+    const width = Math.max(rect.width, 160);
+    const left = Math.max(margin, Math.min(rect.left, window.innerWidth - width - margin));
     setPortalPos({
-      top: rect.bottom + 4,
-      left: rect.left,
-      width: rect.width,
+      left,
+      width,
+      ...(openUp
+        ? { bottom: window.innerHeight - rect.top + gap }
+        : { top: rect.bottom + gap }),
+      listMaxHeight: Math.max(80, Math.min(maxHeight, room - chrome)),
     });
-  }, [portal]);
+  }, [portal, maxHeight, options.length, searchable]);
 
   // Update portal position when open
   useLayoutEffect(() => {
@@ -204,22 +234,29 @@ export function StaggeredDropDown({
       animate={open ? "open" : "closed"}
       initial="closed"
       variants={wrapperVariants}
+      onAnimationComplete={(definition) => {
+        if (definition === "closed") setListMounted(false);
+      }}
       style={
         portal
           ? {
-              originY: "top",
+              originY: portalPos.bottom !== undefined ? "bottom" : "top",
               pointerEvents: open ? "auto" : "none",
               position: "fixed",
               top: portalPos.top,
+              bottom: portalPos.bottom,
               left: portalPos.left,
               width: portalPos.width,
             }
           : { originY: "top", pointerEvents: open ? "auto" : "none" }
       }
       className={cn(
-        "z-50 flex flex-col gap-0.5 overflow-hidden rounded-[10px] border border-border-strong bg-card-bg p-1.5 shadow-xl",
-        !portal && "absolute mt-1 w-full"
+        "flex flex-col gap-0.5 overflow-hidden rounded-[10px] border border-border-strong bg-card-bg p-1.5 shadow-xl",
+        // Above modals (z-50), the command palette (z-[60]) and full-screen
+        // overlays (z-[100]); the list belongs to whatever opened it.
+        portal ? "z-[200]" : "absolute z-50 mt-1 w-full"
       )}
+      role="listbox"
     >
       {searchable && (
         <div className="px-1 pb-1.5 border-b border-border-strong mb-1">
@@ -237,7 +274,7 @@ export function StaggeredDropDown({
           </div>
         </div>
       )}
-      <div style={{ maxHeight }} className="overflow-y-auto">
+      <div style={{ maxHeight: portal ? portalPos.listMaxHeight : maxHeight }} className="overflow-y-auto">
         {filteredOptions.length === 0 && searchable && searchQuery ? (
           <li className="px-2.5 py-2 text-xs text-text-muted">No matches</li>
         ) : (
@@ -288,7 +325,11 @@ export function StaggeredDropDown({
       <button
         ref={buttonRef}
         type="button"
-        onClick={() => !disabled && setOpen((pv) => !pv)}
+        onClick={() => {
+          if (disabled) return;
+          setListMounted(true);
+          setOpen((pv) => !pv);
+        }}
         disabled={disabled}
         aria-label={ariaLabel}
         className={cn(
@@ -311,8 +352,7 @@ export function StaggeredDropDown({
       </button>
 
       {portal
-        ? typeof document !== "undefined" &&
-          createPortal(dropdownList, document.body)
+        ? listMounted && typeof document !== "undefined" && createPortal(dropdownList, document.body)
         : dropdownList}
     </motion.div>
   );
