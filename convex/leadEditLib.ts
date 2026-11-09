@@ -30,6 +30,7 @@ export interface LeadDetailsCurrent {
   source: string;
   sourceNeedsReview?: boolean;
   interestType: EditableInterest;
+  interestNeedsReview?: boolean;
   budgetCurrency?: string;
   budgetMin?: number;
   budgetMax?: number;
@@ -140,6 +141,12 @@ export function buildLeadDetailsPatch(
   if (input.interestType !== undefined && input.interestType !== current.interestType) {
     leadPatch.interestType = input.interestType;
     changed.push("interestType");
+  }
+  // An import that could not read the interest type flags the lead. Saving an
+  // interest type from the edit form — even the placeholder value — confirms it.
+  if (input.interestType !== undefined && current.interestNeedsReview) {
+    leadPatch.interestNeedsReview = undefined;
+    if (!changed.includes("interestType")) changed.push("interestType");
   }
 
   if (input.budgetCurrency !== undefined) {

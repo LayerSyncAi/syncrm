@@ -3,6 +3,11 @@
  * Prevents UI freezing during large file imports (10,000+ rows).
  */
 
+import {
+  INTEREST_HEADER_ALIASES,
+  PRIMARY_AGENT_HEADER_ALIASES,
+} from "../../convex/lib/leadImportMatching";
+
 /** Minimal CSV parser — handles quoted fields, newlines inside quotes, etc. */
 function parseCSV(text: string): string[][] {
   const rows: string[][] = [];
@@ -62,7 +67,17 @@ const LEAD_FIELDS: LeadField[] = [
   { key: "budgetMax", label: "Budget Max" },
   { key: "preferredAreas", label: "Preferred Areas" },
   { key: "notes", label: "Notes" },
+  { key: "primaryAgent", label: "Primary Agent" },
 ];
+
+// Other headers portals use for a field, compared in squashed form
+// (lower-case, no spaces/underscores/hyphens).
+const HEADER_ALIASES: Record<string, string[]> = {
+  primaryAgent: PRIMARY_AGENT_HEADER_ALIASES,
+  interestType: INTEREST_HEADER_ALIASES,
+};
+
+const squash = (h: string) => h.toLowerCase().replace(/[_\s\-./]/g, "");
 
 function autoMapColumns(headers: string[]): Record<string, string> {
   const autoMap: Record<string, string> = {};
@@ -80,7 +95,19 @@ function autoMapColumns(headers: string[]): Record<string, string> {
           h.toLowerCase().replace(/[_\s-]/g, "") ===
           field.label.toLowerCase().replace(/[_\s-]/g, "")
       );
-      if (labelMatch) autoMap[field.key] = labelMatch;
+      if (labelMatch) {
+        autoMap[field.key] = labelMatch;
+        continue;
+      }
+      // Aliases in priority order, skipping columns already claimed.
+      const claimed = new Set(Object.values(autoMap));
+      for (const alias of HEADER_ALIASES[field.key] ?? []) {
+        const aliasMatch = headers.find((h) => !claimed.has(h) && squash(h) === alias);
+        if (aliasMatch) {
+          autoMap[field.key] = aliasMatch;
+          break;
+        }
+      }
     }
   }
   return autoMap;

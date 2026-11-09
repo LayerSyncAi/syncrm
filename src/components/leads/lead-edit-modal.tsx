@@ -30,22 +30,33 @@ export interface EditableLead {
   budgetMin?: number;
   budgetMax?: number;
   preferredAreas: string[];
+  ownerUserId: Id<"users">;
+  isUnassigned?: boolean;
+  interestNeedsReview?: boolean;
 }
 
 interface LeadEditModalProps {
   open: boolean;
   lead: EditableLead;
+  /** Who is editing: admins may assign anyone, agents may take an unassigned lead. */
+  currentUser: { _id: Id<"users">; role: "admin" | "agent" };
   onClose: () => void;
 }
 
+const UNASSIGNED = "";
+
 /**
  * Edit a lead's details after creation: name, phone, email, interest, source,
- * budget and preferred areas. Name / phone / email also update the linked
- * contact (and any other leads for that contact) server-side.
+ * budget, preferred areas and assigned agent. Name / phone / email also update
+ * the linked contact (and any other leads for that contact) server-side.
  */
-export function LeadEditModal({ open, lead, onClose }: LeadEditModalProps) {
+export function LeadEditModal({ open, lead, currentUser, onClose }: LeadEditModalProps) {
   const updateDetails = useMutation(api.leads.updateDetails);
   const locations = useQuery(api.locations.list, open ? {} : "skip");
+  const isAdmin = currentUser.role === "admin";
+  const agents = useQuery(api.users.listForAssignment, open ? {} : "skip");
+  const currentOwner = lead.isUnassigned ? UNASSIGNED : (lead.ownerUserId as string);
+  const [ownerId, setOwnerId] = useState<string>(currentOwner);
   const createLocation = useMutation(api.locations.create);
 
   const [fullName, setFullName] = useState(lead.fullName);
@@ -75,6 +86,7 @@ export function LeadEditModal({ open, lead, onClose }: LeadEditModalProps) {
     setBudgetMin(lead.budgetMin !== undefined ? String(lead.budgetMin) : "");
     setBudgetMax(lead.budgetMax !== undefined ? String(lead.budgetMax) : "");
     setPreferredAreas(lead.preferredAreas);
+    setOwnerId(lead.isUnassigned ? UNASSIGNED : (lead.ownerUserId as string));
     setNewLocation("");
     setTouched({ name: false, phone: false, email: false });
     setFormError("");
@@ -150,6 +162,9 @@ export function LeadEditModal({ open, lead, onClose }: LeadEditModalProps) {
         budgetMin: minValue,
         budgetMax: maxValue,
         preferredAreas,
+        ...(ownerId !== currentOwner && ownerId !== UNASSIGNED
+          ? { ownerUserId: ownerId as Id<"users"> }
+          : {}),
       });
       leadToasts.detailsSaved();
       onClose();
@@ -230,15 +245,58 @@ export function LeadEditModal({ open, lead, onClose }: LeadEditModalProps) {
             </p>
           )}
 
+          <div className="space-y-2 md:col-span-2">
+            <Label>Assigned agent</Label>
+            {isAdmin ? (
+              <StaggeredDropDown
+                value={ownerId}
+                onChange={(val) => setOwnerId(val)}
+                portal
+                searchable
+                placeholder="Unassigned"
+                options={[
+                  ...(lead.isUnassigned ? [{ value: UNASSIGNED, label: "Unassigned" }] : []),
+                  ...(agents?.map((a) => ({ value: a._id as string, label: a.name })) ?? []),
+                ]}
+              />
+            ) : lead.isUnassigned ? (
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-sm text-text-muted">
+                  {ownerId === currentUser._id ? "You (on save)" : "Unassigned"}
+                </span>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="h-8 px-3 text-xs"
+                  onClick={() =>
+                    setOwnerId(ownerId === currentUser._id ? UNASSIGNED : (currentUser._id as string))
+                  }
+                >
+                  {ownerId === currentUser._id ? "Undo" : "Assign to me"}
+                </Button>
+              </div>
+            ) : (
+              <p className="text-sm text-text-muted">
+                {agents?.find((a) => a._id === lead.ownerUserId)?.name ?? "—"}
+                <span className="ml-2 text-xs">(only an admin can reassign)</span>
+              </p>
+            )}
+          </div>
+
           <div className="space-y-2">
-            <Label>Interest type</Label>
+            <Label>
+              Interest type
+              {lead.interestNeedsReview && (
+                <span className="ml-2 text-xs font-normal text-warning">needs review — confirm on save</span>
+              )}
+            </Label>
             <StaggeredDropDown
               value={interestType}
               onChange={(val) => setInterestType(val as InterestType)}
               portal
               options={[
-                { value: "rent", label: "Rent" },
-                { value: "buy", label: "Buy" },
+                { value: "rent", label: "Renting" },
+                { value: "buy", label: "Buying" },
               ]}
             />
           </div>

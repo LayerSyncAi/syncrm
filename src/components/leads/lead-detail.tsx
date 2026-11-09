@@ -639,7 +639,11 @@ export function LeadDetail({ leadId }: LeadDetailProps) {
           budgetMin: lead.budgetMin,
           budgetMax: lead.budgetMax,
           preferredAreas: lead.preferredAreas,
+          ownerUserId: lead.ownerUserId,
+          isUnassigned: lead.isUnassigned,
+          interestNeedsReview: lead.interestNeedsReview,
         }}
+        currentUser={{ _id: user._id, role: user.role }}
         onClose={() => setContactDetailsOpen(false)}
       />
 

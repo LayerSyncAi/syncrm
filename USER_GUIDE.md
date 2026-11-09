@@ -556,15 +556,19 @@ Reminders are delivered via email and are deduped to prevent spam.
 Bulk import leads from CSV files:
 
 1. **Upload** — drag and drop or browse for a CSV file. The system parses it using a Web Worker for large files.
-2. **Map columns** — the system auto-maps CSV headers to lead fields. You can manually adjust mappings.
+2. **Map columns** — the system auto-maps CSV headers to lead fields (including **Primary Agent**, detected from headers such as "Primary Agent", "Agent" or "Assigned To"). You can manually adjust mappings. The mapping you import with is remembered in your browser and re-applied to the next file with the same columns.
 3. **Choose the lead source for this batch** (required) — e.g. PropertyBook or Property.co.zw. Every lead in the upload is tagged with it, so imported lists are no longer filed under "Other". If the file has its own Source column you can tick *Use the mapped Source column*: rows that name a known source (value or label, e.g. "Property Book") keep it, and the rest fall back to the batch source.
 4. **Choose import mode:**
    - **Create only** — fails on duplicates
    - **Upsert by email/phone** — updates existing leads that match
    - **Skip duplicates** — silently skips matching rows
-5. **Preview** — see the first 20 rows with duplicate detection flags and the source each row will receive.
-6. **Run import** — a summary shows created/updated/skipped/failed counts.
-7. **Error report** — download a CSV of failed rows with error messages.
+5. **Preview** — see the first 20 rows with duplicate detection flags, the source, the interest type and the agent each row will receive, plus how many rows will be auto-assigned or left unassigned.
+6. **Run import** — a summary shows created/updated/skipped/failed counts, and auto-assigned vs unassigned counts when a Primary Agent column is mapped.
+7. **Issues report** — download a CSV of failed rows, unmatched agents and unreadable interest types.
+
+**Primary Agent → assigned agent.** Each row's Primary Agent is matched to an active member of your organisation by name, ignoring case, punctuation, extra spaces and word order, and accepting initials or a first/last name on its own ("J. Moyo", "John M", "Moyo John" and "john.moyo@…" all find John Moyo). If the name matches more than one agent, or nobody, the system does not guess: the lead is imported **Unassigned**. Unassigned leads are visible to every user in the organisation (filter the Leads list by *Assigned agent → Unassigned*); an admin can assign them, and any agent can take one with *Edit details → Assign to me*. Rows with an empty Primary Agent, or imports without the column, behave as before (you own the leads).
+
+**Interest type.** Portal wording is understood: *rent, renting, rental, to let, for rent, lease…* → Renting; *buy, buying, purchase, for sale, sale…* → Buying. Empty or unrecognised values are never defaulted to Buying: the preview lists them so you can say what each means, and anything left as *Flag for review* is imported with an **Interest type needs review** badge until an agent confirms it from the lead's profile.
 
 **Duplicate detection during import:** Each row is checked against existing leads using:
 - Normalized email (trimmed, lowercased)

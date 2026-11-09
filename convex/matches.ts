@@ -8,7 +8,8 @@ async function canAccessLead(ctx: any, leadId: any, userId: any, isAdmin: boolea
   const lead = await ctx.db.get(leadId);
   if (!lead) return null;
   if (lead.orgId && lead.orgId !== userOrgId) return null;
-  if (!isAdmin && lead.ownerUserId !== userId) {
+  // Unassigned leads (see leads.isUnassigned) are open to the whole org.
+  if (!isAdmin && lead.ownerUserId !== userId && !lead.isUnassigned) {
     return null;
   }
   return lead;
@@ -478,7 +479,7 @@ export const bulkMatchProperties = query({
         .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
         .collect();
       leads = allLeads.filter((lead) => {
-        if (user.role !== "admin" && lead.ownerUserId !== user._id) return false;
+        if (user.role !== "admin" && lead.ownerUserId !== user._id && !lead.isUnassigned) return false;
         if (lead.closedAt) return false;
         return true;
       });
