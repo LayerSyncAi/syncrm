@@ -30,6 +30,8 @@ interface LeadHeroCardProps {
     stageId: Id<"pipelineStages">;
     closedAt?: number;
     createdAt: number;
+    isUnassigned?: boolean;
+    interestNeedsReview?: boolean;
   };
   stage: { terminalOutcome: "won" | "lost" | null; isTerminal: boolean; order: number } | null;
   owner: { fullName?: string; name?: string; email?: string } | null;
@@ -96,9 +98,22 @@ export const LeadHeroCard = React.memo(function LeadHeroCard({
               <Badge variant={lead.interestType === "buy" ? "default" : "info"}>
                 {lead.interestType === "buy" ? "Buying" : "Renting"}
               </Badge>
+              {lead.interestNeedsReview && (
+                <Badge variant="warning" title="The import could not read this lead's interest type. Confirm it with Edit details.">
+                  Interest type needs review
+                </Badge>
+              )}
+              {lead.isUnassigned && (
+                <Badge variant="warning" title="No agent owns this lead yet. Assign one with Edit details.">
+                  Unassigned
+                </Badge>
+              )}
             </div>
             <div className="flex flex-wrap gap-4 text-sm text-text-muted">
-              <span>Owner: {owner?.fullName || owner?.name || owner?.email || "Unassigned"}</span>
+              <span>
+                Assigned agent:{" "}
+                {lead.isUnassigned ? "Unassigned" : owner?.fullName || owner?.name || owner?.email || "Unassigned"}
+              </span>
               {lead.phone && <span>Phone: {lead.phone}</span>}
               {lead.email && <span>Email: {lead.email}</span>}
               <span>Created: {formatDate(lead.createdAt)}</span>

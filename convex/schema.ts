@@ -140,8 +140,17 @@ export default defineSchema({
     budgetMax: v.optional(v.number()),
     preferredAreas: v.array(v.string()),
     notes: v.string(),
+    // Set by the lead import when the row's interest value was empty or not
+    // recognised. interestType then holds a placeholder that an agent must
+    // confirm; editing the interest type clears the flag.
+    interestNeedsReview: v.optional(v.boolean()),
     stageId: v.id("pipelineStages"),
     ownerUserId: v.id("users"),
+    // No agent owns this lead yet (the import's Primary Agent value matched
+    // nobody, or more than one agent). ownerUserId then holds the importing
+    // user for bookkeeping only; every member of the organisation can see and
+    // work the lead until someone is assigned, which clears the flag.
+    isUnassigned: v.optional(v.boolean()),
     closedAt: v.optional(v.number()),
     closeReason: v.optional(v.string()),
     // Deal value when closed
@@ -168,6 +177,7 @@ export default defineSchema({
     .index("by_name", ["fullName"])
     .index("by_email", ["email"])
     .index("by_org", ["orgId"])
+    .index("by_org_unassigned", ["orgId", "isUnassigned"])
     .searchIndex("search_leads", {
       searchField: "fullName",
       filterFields: ["orgId"],

@@ -29,7 +29,13 @@ The sidebar has two new sections:
    - **Skip duplicates** – silently skips matching rows
 5. Preview the first 20 rows with duplicate detection flags and the resolved source.
 6. Run the import. A summary shows created/updated/skipped/failed counts.
-7. Download an error CSV for failed rows.
+7. Download an issues CSV (failed rows, unmatched agents, unreadable interest types).
+
+**Primary Agent auto-assignment:** a mapped Primary Agent column assigns each lead to the org member whose name matches (case-insensitive, word order and extra spaces ignored, initials and partial names accepted — `convex/lib/leadImportMatching.ts`). Ambiguous or unknown names import as **Unassigned** (`leads.isUnassigned`), visible to everyone in the org until an admin assigns them or an agent takes one. The summary shows auto-assigned vs unassigned counts. No column / empty cell = previous behaviour.
+
+**Interest type:** portal wording (to let, for rent, for sale…) is parsed; empty or unrecognised values are flagged (`leads.interestNeedsReview`) instead of defaulting to Buying.
+
+**Editing:** *Edit details* on the lead profile covers every field, including assigned agent (admin: anyone; agent: take an unassigned lead) and interest type.
 
 **Duplicate detection during import:** rows are checked against existing leads using normalized email (trim + lowercase) and normalized phone (strip non-digit chars, keep leading `+`).
 

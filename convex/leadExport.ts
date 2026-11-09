@@ -23,7 +23,7 @@ export const getLeadsForExport = query({
     if (!isAdmin) {
       results = results.filter((l) => l.ownerUserId === user._id);
     } else if (args.ownerUserId) {
-      results = results.filter((l) => l.ownerUserId === args.ownerUserId);
+      results = results.filter((l) => l.ownerUserId === args.ownerUserId && !l.isUnassigned);
     }
 
     let filtered = results.filter((l) => !l.isArchived);
@@ -62,7 +62,9 @@ export const getLeadsForExport = query({
         preferredAreas: lead.preferredAreas.join(", "),
         notes: lead.notes,
         stageName: stage?.name || "Unknown",
-        ownerName: owner?.fullName || owner?.name || owner?.email || "Unknown",
+        ownerName: lead.isUnassigned
+          ? "Unassigned"
+          : owner?.fullName || owner?.name || owner?.email || "Unknown",
         score: lead.score ?? "",
         closedAt: lead.closedAt
           ? new Date(lead.closedAt).toISOString()

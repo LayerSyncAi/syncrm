@@ -1,8 +1,8 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, type QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { getCurrentUserWithOrg, assertOrgAccess, isEffectiveAdmin } from "./helpers";
 import { internal } from "./_generated/api";
-import { Id } from "./_generated/dataModel";
+import { Doc, Id } from "./_generated/dataModel";
 import { checkRateLimit } from "./rateLimit";
 import { computeAndStoreScore } from "./leadScoring";
 import { COMMISSION_RATE, computeCommissionSplit } from "./commissionLib";
@@ -37,10 +37,43 @@ async function assertLeadAccess(ctx: any, leadId: any, userId: any, isAdmin: boo
   if (lead.orgId && lead.orgId !== userOrgId) {
     return null;
   }
-  if (!isAdmin && lead.ownerUserId !== userId) {
+  // Unassigned leads are visible to (and workable by) everyone in the org so
+  // nothing imported without a clear owner gets lost.
+  if (!isAdmin && lead.ownerUserId !== userId && !lead.isUnassigned) {
     return null;
   }
   return lead;
+}
+
+/**
+ * Leads a non-admin can see: their own plus every unassigned lead in the org.
+ */
+async function ownAndUnassignedLeads(
+  ctx: QueryCtx,
+  userId: Id<"users">,
+  orgId: Id<"organizations">
+): Promise<Doc<"leads">[]> {
+  const [own, unassigned] = await Promise.all([
+    ctx.db
+      .query("leads")
+      .withIndex("by_owner", (q) => q.eq("ownerUserId", userId))
+      .collect(),
+    ctx.db
+      .query("leads")
+      .withIndex("by_org_unassigned", (q) => q.eq("orgId", orgId).eq("isUnassigned", true))
+      .collect(),
+  ]);
+  const seen = new Set(own.map((l) => l._id));
+  return [...own, ...unassigned.filter((l) => !seen.has(l._id))];
+}
+
+function ownerLabel(
+  lead: { isUnassigned?: boolean; ownerUserId: Id<"users"> },
+  userMap: Map<Id<"users">, { fullName?: string; name?: string; email?: string }>
+) {
+  if (lead.isUnassigned) return "Unassigned";
+  const owner = userMap.get(lead.ownerUserId);
+  return owner?.fullName || owner?.name || owner?.email || "Unknown";
 }
 
 export const create = mutation({
@@ -107,6 +140,8 @@ export const list = query({
     preferredAreaKeyword: v.optional(v.string()),
     q: v.optional(v.string()),
     ownerUserId: v.optional(v.id("users")),
+    // "unassigned" shows only leads no agent owns yet.
+    assignment: v.optional(v.literal("unassigned")),
     propertyId: v.optional(v.id("properties")),
     scoreMin: v.optional(v.number()),
     scoreMax: v.optional(v.number()),
@@ -132,10 +167,7 @@ export const list = query({
       // Fallback: search index only indexes fullName — miss phone/email/partial matches or empty FTS.
       if (results.length === 0) {
         const pool = !isAdmin
-          ? await ctx.db
-              .query("leads")
-              .withIndex("by_owner", (q) => q.eq("ownerUserId", user._id))
-              .collect()
+          ? await ownAndUnassignedLeads(ctx, user._id, user.orgId)
           : await ctx.db
               .query("leads")
               .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
@@ -145,7 +177,7 @@ export const list = query({
         results = pool.filter((lead) => {
           if (lead.isArchived) return false;
           if (lead.orgId && lead.orgId !== user.orgId) return false;
-          if (!isAdmin && lead.ownerUserId !== user._id) return false;
+          if (!isAdmin && lead.ownerUserId !== user._id && !lead.isUnassigned) return false;
           const nameMatch = lead.fullName.toLowerCase().includes(qLower);
           const emailMatch = lead.email?.toLowerCase().includes(qLower) ?? false;
           const phoneMatch =
@@ -156,11 +188,13 @@ export const list = query({
           return nameMatch || emailMatch || phoneMatch;
         });
       }
-    } else if (!isAdmin) {
+    } else if (args.assignment === "unassigned") {
       results = await ctx.db
         .query("leads")
-        .withIndex("by_owner", (q) => q.eq("ownerUserId", user._id))
+        .withIndex("by_org_unassigned", (q) => q.eq("orgId", user.orgId).eq("isUnassigned", true))
         .collect();
+    } else if (!isAdmin) {
+      results = await ownAndUnassignedLeads(ctx, user._id, user.orgId);
     } else if (args.ownerUserId) {
       const ownerUserId = args.ownerUserId;
       results = await ctx.db
@@ -185,8 +219,12 @@ export const list = query({
       if (lead.isArchived) return false;
       // Org scoping: legacy rows may omit orgId — only reject when org is set and mismatched
       if (lead.orgId && lead.orgId !== user.orgId) return false;
-      // Non-admin can only see their own leads
-      if (!isAdmin && lead.ownerUserId !== user._id) return false;
+      // Non-admin can only see their own leads, plus unassigned ones
+      if (!isAdmin && lead.ownerUserId !== user._id && !lead.isUnassigned) return false;
+      if (args.assignment === "unassigned" && !lead.isUnassigned) return false;
+      // An owner filter means "assigned to this agent" — an unassigned lead's
+      // ownerUserId is only the importer.
+      if (args.ownerUserId && (lead.isUnassigned || lead.ownerUserId !== args.ownerUserId)) return false;
       // Stage filter
       if (args.stageId && lead.stageId !== args.stageId) {
         return false;
@@ -258,13 +296,12 @@ export const list = query({
       : filtered;
 
     const enriched = afterPropertyFilter.map((lead) => {
-      const owner = userMap.get(lead.ownerUserId);
       const stage = stageMap.get(lead.stageId);
       const match = matchByLead.get(lead._id as string);
       const propertyTitle = match ? propertyTitleMap.get(match.propertyId as string) ?? null : null;
       return {
         ...lead,
-        ownerName: owner?.fullName || owner?.name || owner?.email || "Unknown",
+        ownerName: ownerLabel(lead, userMap),
         stageName: stage?.name || "Unknown",
         stageOrder: stage?.order ?? 0,
         propertyTitle,
@@ -300,6 +337,7 @@ export const listByStage = query({
     interestType: v.optional(v.union(v.literal("rent"), v.literal("buy"))),
     q: v.optional(v.string()),
     ownerUserId: v.optional(v.id("users")),
+    assignment: v.optional(v.literal("unassigned")),
     scoreMin: v.optional(v.number()),
     scoreMax: v.optional(v.number()),
   },
@@ -326,14 +364,14 @@ export const listByStage = query({
         .collect();
       if (results.length === 0) {
         const pool = !isAdmin
-          ? await ctx.db.query("leads").withIndex("by_owner", (q) => q.eq("ownerUserId", user._id)).collect()
+          ? await ownAndUnassignedLeads(ctx, user._id, user.orgId)
           : await ctx.db.query("leads").withIndex("by_org", (q) => q.eq("orgId", user.orgId)).collect();
         const qLower = qTrim.toLowerCase();
         const digits = qTrim.replace(/\D/g, "");
         results = pool.filter((lead) => {
           if (lead.isArchived) return false;
           if (lead.orgId && lead.orgId !== user.orgId) return false;
-          if (!isAdmin && lead.ownerUserId !== user._id) return false;
+          if (!isAdmin && lead.ownerUserId !== user._id && !lead.isUnassigned) return false;
           const nameMatch = lead.fullName.toLowerCase().includes(qLower);
           const emailMatch = lead.email?.toLowerCase().includes(qLower) ?? false;
           const phoneMatch =
@@ -342,8 +380,13 @@ export const listByStage = query({
           return nameMatch || emailMatch || phoneMatch;
         });
       }
+    } else if (args.assignment === "unassigned") {
+      results = await ctx.db
+        .query("leads")
+        .withIndex("by_org_unassigned", (q) => q.eq("orgId", user.orgId).eq("isUnassigned", true))
+        .collect();
     } else if (!isAdmin) {
-      results = await ctx.db.query("leads").withIndex("by_owner", (q) => q.eq("ownerUserId", user._id)).collect();
+      results = await ownAndUnassignedLeads(ctx, user._id, user.orgId);
     } else if (args.ownerUserId) {
       results = await ctx.db.query("leads").withIndex("by_owner", (q) => q.eq("ownerUserId", args.ownerUserId!)).collect();
     } else {
@@ -354,7 +397,9 @@ export const listByStage = query({
     const filtered = results.filter((lead) => {
       if (lead.isArchived) return false;
       if (lead.orgId && lead.orgId !== user.orgId) return false;
-      if (!isAdmin && lead.ownerUserId !== user._id) return false;
+      if (!isAdmin && lead.ownerUserId !== user._id && !lead.isUnassigned) return false;
+      if (args.assignment === "unassigned" && !lead.isUnassigned) return false;
+      if (args.ownerUserId && (lead.isUnassigned || lead.ownerUserId !== args.ownerUserId)) return false;
       if (args.interestType && lead.interestType !== args.interestType) return false;
       if (args.scoreMin !== undefined && (lead.score ?? 0) < args.scoreMin) return false;
       if (args.scoreMax !== undefined && (lead.score ?? 0) > args.scoreMax) return false;
@@ -366,7 +411,6 @@ export const listByStage = query({
     const userMap = new Map(users.map((u) => [u._id, u]));
 
     const enriched = filtered.map((lead) => {
-      const owner = userMap.get(lead.ownerUserId);
       return {
         _id: lead._id,
         contactId: lead.contactId,
@@ -377,7 +421,9 @@ export const listByStage = query({
         score: lead.score,
         stageId: lead.stageId,
         ownerUserId: lead.ownerUserId,
-        ownerName: owner?.fullName || owner?.name || owner?.email || "Unknown",
+        isUnassigned: lead.isUnassigned,
+        interestNeedsReview: lead.interestNeedsReview,
+        ownerName: ownerLabel(lead, userMap),
         budgetMin: lead.budgetMin,
         budgetMax: lead.budgetMax,
         budgetCurrency: lead.budgetCurrency,
@@ -430,7 +476,7 @@ export const getById = query({
     }
     const [stage, owner] = await Promise.all([
       ctx.db.get(lead.stageId),
-      ctx.db.get(lead.ownerUserId),
+      lead.isUnassigned ? null : ctx.db.get(lead.ownerUserId),
     ]);
     return { lead, stage, owner };
   },
@@ -459,7 +505,10 @@ export const update = mutation({
       // flagLegacyPortalLeads migration.
       if (args.source !== LEGACY_PORTAL_SOURCE) updated.sourceNeedsReview = undefined;
     }
-    if (args.interestType) updated.interestType = args.interestType;
+    if (args.interestType) {
+      updated.interestType = args.interestType;
+      updated.interestNeedsReview = undefined;
+    }
     if (args.budgetCurrency !== undefined) updated.budgetCurrency = args.budgetCurrency;
     if (args.budgetMin !== undefined) updated.budgetMin = args.budgetMin;
     if (args.budgetMax !== undefined) updated.budgetMax = args.budgetMax;
@@ -487,20 +536,40 @@ export const updateDetails = mutation({
     budgetMax: v.optional(v.union(v.number(), v.null())),
     preferredAreas: v.optional(v.array(v.string())),
     notes: v.optional(v.string()),
+    // Assigned agent. An admin may assign anyone active in the org; an agent
+    // may only take an unassigned lead for themselves.
+    ownerUserId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
     const user = await getCurrentUserWithOrg(ctx);
-    const lead = await assertLeadAccess(ctx, args.leadId, user._id, user.role === "admin", user.orgId);
+    const isAdmin = user.role === "admin";
+    const lead = await assertLeadAccess(ctx, args.leadId, user._id, isAdmin, user.orgId);
     if (!lead) {
       throw new Error("Lead not found");
+    }
+
+    // Resolve an assignment change before touching anything.
+    let newOwner: Doc<"users"> | null = null;
+    const ownerChanging =
+      args.ownerUserId !== undefined &&
+      (lead.isUnassigned || args.ownerUserId !== lead.ownerUserId);
+    if (ownerChanging) {
+      if (!isAdmin && !(lead.isUnassigned && args.ownerUserId === user._id)) {
+        throw new Error("Only an admin can reassign a lead. You can take an unassigned lead for yourself.");
+      }
+      newOwner = await ctx.db.get(args.ownerUserId!);
+      if (!newOwner || newOwner.orgId !== user.orgId || !newOwner.isActive) {
+        throw new Error("Choose an active agent in your organisation");
+      }
     }
 
     // Past the first stage a lead must stay contactable (see moveStage).
     const stage = (await ctx.db.get(lead.stageId as Id<"pipelineStages">)) as { order: number } | null;
     const requireContactInfo = !!stage && stage.order > 1;
 
-    const { leadId: _leadId, ...input } = args;
+    const { leadId: _leadId, ownerUserId: _owner, ...input } = args;
     void _leadId;
+    void _owner;
     const result = buildLeadDetailsPatch(lead, input, {
       canonicalizeAreas,
       requireContactInfo,
@@ -508,12 +577,39 @@ export const updateDetails = mutation({
     if (result.error) {
       throw new Error(result.error);
     }
-    if (result.changedFields.length === 0) {
+    if (newOwner) {
+      result.leadPatch.ownerUserId = newOwner._id;
+      result.leadPatch.isUnassigned = undefined;
+      result.changedFields.push("assignedAgent");
+    }
+    if (result.changedFields.length === 0 && Object.keys(result.leadPatch).length === 0) {
       return { changedFields: [] as string[] };
     }
 
     const now = Date.now();
     await ctx.db.patch(args.leadId, { ...result.leadPatch, updatedAt: now });
+
+    // The new agent also needs the contact behind the lead.
+    if (newOwner) {
+      const contact = await ctx.db.get(lead.contactId as Id<"contacts">);
+      if (contact && !contact.ownerUserIds.includes(newOwner._id)) {
+        await ctx.db.patch(contact._id, {
+          ownerUserIds: [...contact.ownerUserIds, newOwner._id],
+          updatedAt: now,
+        });
+      }
+    }
+
+    // Let the newly assigned agent know (never notify yourself).
+    if (newOwner && newOwner._id !== user._id) {
+      await ctx.scheduler.runAfter(0, internal.pushSender.sendToUser, {
+        userId: newOwner._id,
+        title: "Lead assigned to you",
+        body: `${(result.leadPatch.fullName as string | undefined) ?? lead.fullName} was assigned to you.`,
+        url: `/app/leads/${args.leadId}`,
+        tag: `lead-${args.leadId}`,
+      });
+    }
 
     // Keep the contact and the other leads for this contact in step.
     if (Object.keys(result.identityPatch).length > 0) {
@@ -552,7 +648,10 @@ export const updateDetails = mutation({
       targetType: "lead",
       targetId: args.leadId,
       targetLabel: (result.leadPatch.fullName as string | undefined) ?? lead.fullName,
-      metadata: { changedFields: result.changedFields },
+      metadata: {
+        changedFields: result.changedFields,
+        ...(newOwner ? { assignedTo: newOwner.fullName || newOwner.name || newOwner.email } : {}),
+      },
       orgId: user.orgId,
     });
 
@@ -1622,6 +1721,11 @@ export const deleteLead = mutation({
     const user = await getCurrentUserWithOrg(ctx);
     const lead = await assertLeadAccess(ctx, args.leadId, user._id, user.role === "admin", user.orgId);
     if (!lead) throw new Error("Lead not found");
+    // Unassigned leads are shared with the whole org for working, not for
+    // deleting: only an admin may remove one.
+    if (lead.isUnassigned && user.role !== "admin") {
+      throw new Error("Only an admin can delete an unassigned lead");
+    }
 
     // Delete all property matches for this lead and mark freed properties as available
     const matches = await ctx.db

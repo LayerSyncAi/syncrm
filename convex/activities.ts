@@ -8,7 +8,8 @@ async function canAccessLead(ctx: any, leadId: any, userId: any, isAdmin: boolea
   const lead = await ctx.db.get(leadId);
   if (!lead) return null;
   if (lead.orgId && lead.orgId !== userOrgId) return null;
-  if (!isAdmin && lead.ownerUserId !== userId) {
+  // Unassigned leads (see leads.isUnassigned) are open to the whole org.
+  if (!isAdmin && lead.ownerUserId !== userId && !lead.isUnassigned) {
     return null;
   }
   return lead;
@@ -29,7 +30,10 @@ export const createForLead = mutation({
     const user = await getCurrentUserWithOrg(ctx);
     const lead = await canAccessLead(ctx, args.leadId, user._id, user.role === "admin", user.orgId);
     if (!lead) throw new Error("Lead not found");
-    const assignedTo = args.assignedToUserId ?? lead.ownerUserId;
+    // An unassigned lead's ownerUserId is only the importer, so a task logged
+    // on it goes to whoever created it unless someone is named.
+    const assignedTo =
+      args.assignedToUserId ?? (lead.isUnassigned ? user._id : lead.ownerUserId);
     const now = Date.now();
 
     // Compute nextReminderAt: 1 hour before scheduledAt (for pre-reminder cron)

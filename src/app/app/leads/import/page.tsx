@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../../../../convex/_generated/api";
@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { generateCSV, downloadBlob } from "@/lib/csv";
-import { Upload, AlertTriangle, CheckCircle, XCircle, FileDown } from "lucide-react";
+import { Upload, AlertTriangle, CheckCircle, FileDown, UserCheck, UserX } from "lucide-react";
 import { importToasts } from "@/lib/toast";
 import type { CsvWorkerResult } from "@/workers/csv-parse.worker";
 import { LEAD_SOURCE_OPTIONS, leadSourceLabel, type LeadSource } from "@/lib/lead-sources";
@@ -27,6 +27,46 @@ import {
   resolveImportSource,
   type ImportSourceMode,
 } from "../../../../../convex/lib/leadSources";
+import {
+  parseInterestType,
+  type AgentMatch,
+  type ImportInterest,
+} from "../../../../../convex/lib/leadImportMatching";
+
+// The last mapping used is remembered per browser and re-applied to the next
+// file whose headers include the same columns (the "mapping template").
+const MAPPING_TEMPLATE_KEY = "syncrm.leadImport.mappingTemplate.v1";
+
+function loadMappingTemplate(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem(MAPPING_TEMPLATE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed && typeof parsed === "object" ? (parsed as Record<string, string>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveMappingTemplate(map: Record<string, string>) {
+  try {
+    localStorage.setItem(MAPPING_TEMPLATE_KEY, JSON.stringify(map));
+  } catch {
+    // Storage unavailable (private mode): the auto-detected mapping still works.
+  }
+}
+
+/** Template first (where its column exists in this file), then auto-detect. */
+function applyMappingTemplate(headers: string[], autoMap: Record<string, string>) {
+  const template = loadMappingTemplate();
+  const merged: Record<string, string> = { ...autoMap };
+  for (const [field, header] of Object.entries(template)) {
+    if (header && headers.includes(header)) merged[field] = header;
+  }
+  return merged;
+}
+
+const INTEREST_LABEL: Record<ImportInterest, string> = { rent: "Renting", buy: "Buying" };
+type InterestChoice = "flag" | ImportInterest;
 
 const resultCardVariants = {
   hidden: {},
@@ -56,6 +96,7 @@ const LEAD_FIELDS: Array<{ key: string; label: string; required?: boolean }> = [
   { key: "budgetMax", label: "Budget Max" },
   { key: "preferredAreas", label: "Preferred Areas" },
   { key: "notes", label: "Notes" },
+  { key: "primaryAgent", label: "Primary Agent" },
 ];
 
 type ImportMode = "create_only" | "upsert" | "skip_duplicates";
@@ -69,12 +110,31 @@ interface MappedRow {
   phone: string;
   email?: string;
   source?: string;
-  interestType: string;
+  interestType?: string;
   budgetCurrency?: string;
   budgetMin?: number;
   budgetMax?: number;
   preferredAreas?: string;
   notes?: string;
+  primaryAgent?: string;
+}
+
+interface ImportResults {
+  created: number;
+  updated: number;
+  skipped: number;
+  failed: number;
+  errors: Array<{ row: number; message: string }>;
+  autoAssigned: number;
+  unassigned: number;
+  assignmentIssues: Array<{
+    row: number;
+    value: string;
+    reason: "ambiguous" | "not_found";
+    candidates: string[];
+  }>;
+  interestFlagged: number;
+  interestIssues: Array<{ row: number; value: string }>;
 }
 
 interface DuplicateInfo {
@@ -103,13 +163,10 @@ export default function LeadImportPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState("");
   const [duplicates, setDuplicates] = useState<DuplicateInfo[]>([]);
-  const [importResults, setImportResults] = useState<{
-    created: number;
-    updated: number;
-    skipped: number;
-    failed: number;
-    errors: Array<{ row: number; message: string }>;
-  } | null>(null);
+  const [importResults, setImportResults] = useState<ImportResults | null>(null);
+  // How to treat interest values the parser can't read, keyed by the
+  // lower-cased cell value. Defaults to "flag" (import as needs-review).
+  const [interestChoices, setInterestChoices] = useState<Record<string, InterestChoice>>({});
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const workerRef = useRef<Worker | null>(null);
@@ -124,7 +181,7 @@ export default function LeadImportPage() {
       if (result.type === "parsed") {
         setCsvHeaders(result.headers);
         setCsvRows(result.rows);
-        setColumnMap(result.autoMap);
+        setColumnMap(applyMappingTemplate(result.headers, result.autoMap));
         setStep("mapping");
       } else if (result.type === "error") {
         setError(result.message);
@@ -148,6 +205,72 @@ export default function LeadImportPage() {
       ? { rows: duplicateCheckArgs }
       : "skip"
   );
+
+  // ── Primary Agent preview ──
+  const hasAgentColumn = !!columnMap.primaryAgent;
+  const allMappedRows = useMemo(
+    () => (step === "preview" ? getMappedRows(csvRows, csvHeaders, columnMap) : []),
+    [step, csvRows, csvHeaders, columnMap]
+  );
+  const agentNames = useMemo(
+    () =>
+      hasAgentColumn
+        ? Array.from(new Set(allMappedRows.map((r) => r.primaryAgent?.trim() ?? "").filter(Boolean)))
+        : [],
+    [allMappedRows, hasAgentColumn]
+  );
+  const agentPreview = useQuery(
+    api.leadImport.previewAgentMatches,
+    step === "preview" && agentNames.length > 0 ? { names: agentNames } : "skip"
+  );
+  const agentMatchFor = useMemo(() => {
+    const map = new Map<string, AgentMatch>();
+    for (const p of agentPreview ?? []) map.set(p.name, p.match as AgentMatch);
+    return (raw?: string): AgentMatch | undefined => {
+      const name = raw?.trim();
+      if (!name) return { status: "empty" };
+      return map.get(name);
+    };
+  }, [agentPreview]);
+  const assignmentSummary = useMemo(() => {
+    if (!hasAgentColumn || !agentPreview) return null;
+    let assigned = 0;
+    let unassigned = 0;
+    let blank = 0;
+    for (const r of allMappedRows) {
+      const m = agentMatchFor(r.primaryAgent);
+      if (!m || m.status === "empty") blank++;
+      else if (m.status === "matched") assigned++;
+      else unassigned++;
+    }
+    const unresolved = (agentPreview ?? []).filter(
+      (p) => p.match.status === "ambiguous" || p.match.status === "not_found"
+    );
+    return { assigned, unassigned, blank, unresolved };
+  }, [hasAgentColumn, agentPreview, allMappedRows, agentMatchFor]);
+
+  // ── Interest type preview ──
+  const unreadInterest = useMemo(() => {
+    const counts = new Map<string, { label: string; count: number }>();
+    for (const r of allMappedRows) {
+      if (parseInterestType(r.interestType)) continue;
+      const label = r.interestType?.trim() || "";
+      const key = label.toLowerCase();
+      const entry = counts.get(key) ?? { label, count: 0 };
+      entry.count++;
+      counts.set(key, entry);
+    }
+    return Array.from(counts.entries()).map(([key, v]) => ({ key, ...v }));
+  }, [allMappedRows]);
+  const interestFor = (raw?: string): ImportInterest | null => {
+    const parsed = parseInterestType(raw);
+    if (parsed) return parsed;
+    const choice = interestChoices[(raw?.trim() || "").toLowerCase()];
+    return choice && choice !== "flag" ? choice : null;
+  };
+  const flaggedInterestRows = unreadInterest
+    .filter((u) => (interestChoices[u.key] ?? "flag") === "flag")
+    .reduce((n, u) => n + u.count, 0);
 
   const handleFile = useCallback((file: File) => {
     setError("");
@@ -227,7 +350,14 @@ export default function LeadImportPage() {
       if (!batchSource) {
         throw new Error("Please choose the lead source for this batch");
       }
-      const allMapped = getMappedRows(csvRows, csvHeaders, columnMap);
+      saveMappingTemplate(columnMap);
+      // Apply the user's choices for unreadable interest values; anything
+      // left as "flag" goes through raw and the server flags it.
+      const allMapped = getMappedRows(csvRows, csvHeaders, columnMap).map((row) => {
+        if (parseInterestType(row.interestType)) return row;
+        const choice = interestChoices[(row.interestType?.trim() || "").toLowerCase()];
+        return choice && choice !== "flag" ? { ...row, interestType: choice } : row;
+      });
       const result = await bulkImport({
         mode: importMode,
         batchSource,
@@ -245,14 +375,26 @@ export default function LeadImportPage() {
   };
 
   const downloadErrorCSV = () => {
-    if (!importResults?.errors.length) return;
-    const headers = ["Row", "Error"];
-    const rows = importResults.errors.map((e) => [
-      String(e.row + 1),
-      e.message,
-    ]);
+    if (!importResults) return;
+    const headers = ["Row", "Issue"];
+    const rows = [
+      ...importResults.errors.map((e) => [String(e.row + 1), e.message]),
+      ...importResults.assignmentIssues.map((a) => [
+        String(a.row + 1),
+        a.reason === "ambiguous"
+          ? `Primary Agent "${a.value}" matches several agents (${a.candidates.join(", ")}) — imported unassigned`
+          : `Primary Agent "${a.value}" matches no agent — imported unassigned`,
+      ]),
+      ...importResults.interestIssues.map((x) => [
+        String(x.row + 1),
+        x.value
+          ? `Interest type "${x.value}" not recognised — flagged for review`
+          : "No interest type — flagged for review",
+      ]),
+    ].sort((a, b) => Number(a[0]) - Number(b[0]));
+    if (rows.length === 0) return;
     const csv = generateCSV(headers, rows);
-    downloadBlob(new Blob([csv], { type: "text/csv" }), "import-errors.csv");
+    downloadBlob(new Blob([csv], { type: "text/csv" }), "import-issues.csv");
   };
 
   const reset = () => {
@@ -263,6 +405,7 @@ export default function LeadImportPage() {
     setBatchSource("");
     setSourceMode("batch");
     setImportResults(null);
+    setInterestChoices({});
     setError("");
     setDuplicates([]);
   };
@@ -332,7 +475,14 @@ export default function LeadImportPage() {
               <p className="font-medium">Expected columns:</p>
               <p>
                 Full Name (required), Phone (required), Email, Interest Type,
-                Budget Currency, Budget Min, Budget Max, Preferred Areas, Notes
+                Budget Currency, Budget Min, Budget Max, Preferred Areas, Notes,
+                Primary Agent
+              </p>
+              <p className="mt-1">
+                Primary Agent assigns each lead to the matching agent by name
+                (&ldquo;J. Moyo&rdquo; and &ldquo;Moyo John&rdquo; both find John
+                Moyo). Interest Type accepts portal wording such as &ldquo;To
+                Let&rdquo;, &ldquo;For Rent&rdquo; or &ldquo;For Sale&rdquo;.
               </p>
               <p className="mt-1">
                 You choose the lead source for the whole batch on the next step
@@ -494,6 +644,84 @@ export default function LeadImportPage() {
                 )}
               </p>
             )}
+
+            {hasAgentColumn && (
+              <div className="mb-4 rounded-[10px] border border-border bg-surface-2 p-4 text-sm">
+                <p className="font-medium text-text">Agent assignment</p>
+                {!assignmentSummary ? (
+                  <Skeleton className="mt-2 h-4 w-64" />
+                ) : (
+                  <>
+                    <p className="mt-1 text-text-muted">
+                      <span className="font-medium text-text">{assignmentSummary.assigned}</span> rows will be
+                      assigned to the matching agent,{" "}
+                      <span className="font-medium text-text">{assignmentSummary.unassigned}</span> will come in
+                      unassigned (visible to everyone until someone takes them)
+                      {assignmentSummary.blank > 0 && (
+                        <>
+                          , and <span className="font-medium text-text">{assignmentSummary.blank}</span> with no
+                          Primary Agent will be owned by you as before
+                        </>
+                      )}
+                      .
+                    </p>
+                    {assignmentSummary.unresolved.length > 0 && (
+                      <ul className="mt-2 space-y-1 text-xs text-text-muted">
+                        {assignmentSummary.unresolved.slice(0, 10).map((u) => (
+                          <li key={u.name}>
+                            <AlertTriangle className="mr-1 inline h-3 w-3 text-amber-600" />
+                            &ldquo;{u.name}&rdquo;{" "}
+                            {u.match.status === "ambiguous"
+                              ? `matches more than one agent (${u.match.candidates.join(", ")})`
+                              : "matches no agent in your organisation"}
+                          </li>
+                        ))}
+                        {assignmentSummary.unresolved.length > 10 && (
+                          <li>…and {assignmentSummary.unresolved.length - 10} more</li>
+                        )}
+                      </ul>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
+            {unreadInterest.length > 0 && (
+              <div className="mb-4 rounded-[10px] border border-amber-200 bg-amber-50 p-4 text-sm">
+                <p className="font-medium text-amber-800">
+                  Interest type not recognised on{" "}
+                  {unreadInterest.reduce((n, u) => n + u.count, 0)} rows
+                </p>
+                <p className="mt-1 text-xs text-amber-700">
+                  These are not defaulted to Buying. Choose what each value means, or leave it
+                  flagged: the lead is imported marked &ldquo;Interest type needs review&rdquo; so an
+                  agent can set it from the lead&apos;s profile.
+                </p>
+                <div className="mt-3 space-y-2">
+                  {unreadInterest.slice(0, 15).map((u) => (
+                    <div key={u.key} className="flex flex-wrap items-center gap-3">
+                      <span className="w-48 truncate text-text">
+                        {u.label ? <>&ldquo;{u.label}&rdquo;</> : <em>(blank)</em>}{" "}
+                        <span className="text-text-muted">× {u.count}</span>
+                      </span>
+                      <StaggeredDropDown
+                        value={interestChoices[u.key] ?? "flag"}
+                        onChange={(val) =>
+                          setInterestChoices((c) => ({ ...c, [u.key]: val as InterestChoice }))
+                        }
+                        className="max-w-[220px]"
+                        options={[
+                          { value: "flag", label: "Flag for review" },
+                          { value: "rent", label: "Renting" },
+                          { value: "buy", label: "Buying" },
+                        ]}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -532,13 +760,54 @@ export default function LeadImportPage() {
                         <TableCell>{row.phone}</TableCell>
                         <TableCell>{row.email || ""}</TableCell>
                         <TableCell>{resolvedSourceFor(row)}</TableCell>
-                        <TableCell>{row.interestType}</TableCell>
+                        <TableCell>
+                          {(() => {
+                            const interest = interestFor(row.interestType);
+                            return interest ? (
+                              INTEREST_LABEL[interest]
+                            ) : (
+                              <Badge variant="warning" title={row.interestType || "No value"}>
+                                <AlertTriangle className="mr-1 h-3 w-3" />
+                                Review{row.interestType ? `: ${row.interestType}` : ""}
+                              </Badge>
+                            );
+                          })()}
+                        </TableCell>
                         <TableCell>{row.budgetCurrency || ""}</TableCell>
                         <TableCell>{row.budgetMin ?? ""}</TableCell>
                         <TableCell>{row.budgetMax ?? ""}</TableCell>
                         <TableCell>{row.preferredAreas || ""}</TableCell>
                         <TableCell className="max-w-[200px] truncate">
                           {row.notes || ""}
+                        </TableCell>
+                        <TableCell>
+                          {(() => {
+                            if (!hasAgentColumn) return "";
+                            const m = agentMatchFor(row.primaryAgent);
+                            if (!m) return <Skeleton className="h-5 w-20" />;
+                            if (m.status === "empty") return <span className="text-text-muted">You</span>;
+                            if (m.status === "matched") {
+                              return (
+                                <span title={`From "${row.primaryAgent}"`}>
+                                  <UserCheck className="mr-1 inline h-3 w-3 text-green-600" />
+                                  {m.agentName}
+                                </span>
+                              );
+                            }
+                            return (
+                              <Badge
+                                variant="warning"
+                                title={
+                                  m.status === "ambiguous"
+                                    ? `Matches ${m.candidates.join(", ")}`
+                                    : "No agent with this name"
+                                }
+                              >
+                                <UserX className="mr-1 h-3 w-3" />
+                                Unassigned ({row.primaryAgent})
+                              </Badge>
+                            );
+                          })()}
                         </TableCell>
                       </TableRow>
                     );
@@ -555,6 +824,12 @@ export default function LeadImportPage() {
                   : importMode === "upsert"
                     ? "They will be updated."
                     : "They will cause errors."}
+              </p>
+            )}
+            {flaggedInterestRows > 0 && (
+              <p className="mt-1 text-sm text-text-muted">
+                {flaggedInterestRows} lead{flaggedInterestRows === 1 ? "" : "s"} will be flagged for
+                interest type review.
               </p>
             )}
           </CardContent>
@@ -616,20 +891,71 @@ export default function LeadImportPage() {
               </motion.div>
             </motion.div>
 
+            {(importResults.autoAssigned > 0 || importResults.unassigned > 0) && (
+              <motion.div
+                variants={resultCardVariants}
+                initial="hidden"
+                animate="show"
+                className="mt-4 grid grid-cols-2 gap-4"
+              >
+                <motion.div variants={resultItemVariants} className="rounded-[10px] border border-border bg-surface-2 p-4 text-center">
+                  <p className="text-2xl font-bold text-text">{importResults.autoAssigned}</p>
+                  <p className="text-xs text-text-muted">Auto-assigned to an agent</p>
+                </motion.div>
+                <motion.div variants={resultItemVariants} className="rounded-[10px] border border-amber-200 bg-amber-50 p-4 text-center">
+                  <p className="text-2xl font-bold text-amber-700">{importResults.unassigned}</p>
+                  <p className="text-xs text-amber-600">Unassigned (visible to everyone)</p>
+                </motion.div>
+              </motion.div>
+            )}
+
+            {importResults.interestFlagged > 0 && (
+              <p className="mt-4 text-sm text-amber-700">
+                <AlertTriangle className="mr-1 inline h-4 w-4" />
+                {importResults.interestFlagged} lead{importResults.interestFlagged === 1 ? "" : "s"} had
+                no recognisable interest type and {importResults.interestFlagged === 1 ? "is" : "are"} flagged
+                &ldquo;Interest type needs review&rdquo;. Set it from the lead&apos;s profile.
+              </p>
+            )}
+
+            {importResults.assignmentIssues.length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-sm font-semibold text-text">
+                  Primary Agent not matched ({importResults.assignmentIssues.length})
+                </h3>
+                <div className="mt-2 max-h-48 overflow-y-auto rounded-[10px] border border-border-strong">
+                  {importResults.assignmentIssues.slice(0, 20).map((a, i) => (
+                    <div key={i} className="flex gap-3 border-b border-border px-3 py-2 text-sm last:border-0">
+                      <span className="font-medium text-text-muted">Row {a.row + 1}</span>
+                      <span className="text-amber-700">
+                        &ldquo;{a.value}&rdquo;{" "}
+                        {a.reason === "ambiguous"
+                          ? `matches ${a.candidates.join(", ")}`
+                          : "matches no agent"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {(importResults.errors.length > 0 ||
+              importResults.assignmentIssues.length > 0 ||
+              importResults.interestIssues.length > 0) && (
+              <div className="mt-4 flex justify-end">
+                <Button variant="secondary" size="sm" onClick={downloadErrorCSV}>
+                  <FileDown className="mr-1 h-4 w-4" />
+                  Download issues CSV
+                </Button>
+              </div>
+            )}
+
             {importResults.errors.length > 0 && (
               <div className="mt-6">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-text">
                     Errors ({importResults.errors.length})
                   </h3>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={downloadErrorCSV}
-                  >
-                    <FileDown className="mr-1 h-4 w-4" />
-                    Download Error CSV
-                  </Button>
                 </div>
                 <div className="mt-2 max-h-48 overflow-y-auto rounded-[10px] border border-border-strong">
                   {importResults.errors.slice(0, 20).map((err, i) => (
@@ -677,12 +1003,14 @@ function getMappedRows(
       phone: getVal("phone"),
       email: getVal("email") || undefined,
       source: getVal("source") || undefined,
-      interestType: getVal("interestType") || "buy",
+      // No default: an empty or unreadable value is flagged, not made "buy".
+      interestType: getVal("interestType") || undefined,
       budgetCurrency: getVal("budgetCurrency") || undefined,
       budgetMin: getVal("budgetMin") ? Number(getVal("budgetMin")) : undefined,
       budgetMax: getVal("budgetMax") ? Number(getVal("budgetMax")) : undefined,
       preferredAreas: getVal("preferredAreas") || undefined,
       notes: getVal("notes") || undefined,
+      primaryAgent: getVal("primaryAgent") || undefined,
     };
   });
 }
