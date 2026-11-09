@@ -15,6 +15,7 @@ import { Faq } from "./faq";
 import { noFlashScript, ROOT_ID } from "./theme";
 import { ButtonFX } from "./button-fx";
 import { EnquiryDialog } from "./enquiry-dialog";
+import { SyncSiteTracker } from "./syncsite";
 import { Vsl } from "./vsl";
 import { layerSyncUrl, salesPhoneE164, siteUrl } from "@/config/marketing";
 import { faq } from "./content";
@@ -101,6 +102,7 @@ export function Landing() {
       </main>
       <Footer />
       <EnquiryDialog />
+      <SyncSiteTracker />
     </div>
   );
 }
