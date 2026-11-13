@@ -11,7 +11,7 @@
       "android": {
         "buildType": "apk"
       },
-      "env": { "EXPO_PUBLIC_CONVEX_URL": "https://amiable-fox-488.convex.cloud", "EXPO_PUBLIC_WEB_URL": "https://app.syncrm.com" }
+      "env": { "EXPO_PUBLIC_CONVEX_URL": "https://amiable-fox-488.convex.cloud", "EXPO_PUBLIC_WEB_URL": "https://syncrm.vercel.app" }
     },
     "ios-simulator": {
       "extends": "preview",
@@ -19,7 +19,7 @@
     },
     "production": {
       "autoIncrement": true,
-      "env": { "EXPO_PUBLIC_CONVEX_URL": "https://amiable-fox-488.convex.cloud", "EXPO_PUBLIC_WEB_URL": "https://app.syncrm.com" }
+      "env": { "EXPO_PUBLIC_CONVEX_URL": "https://amiable-fox-488.convex.cloud", "EXPO_PUBLIC_WEB_URL": "https://syncrm.vercel.app" }
     }
   },
   "submit": { "production": {} }
