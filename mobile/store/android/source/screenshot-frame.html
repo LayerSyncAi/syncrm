@@ -1,0 +1,64 @@
+<!doctype html>
+<!--
+  Frames one phone screenshot for the Play Store at 1080x1920.
+  Rendered by render-screenshots.sh with ?img=...&title=...&accent=...&sub=...
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=block" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; }
+  body {
+    font-family: "Geist", "Segoe UI", sans-serif;
+    background:
+      radial-gradient(700px 520px at 85% 8%, rgba(155, 216, 61, 0.18), transparent 70%),
+      radial-gradient(600px 500px at 0% 100%, rgba(155, 216, 61, 0.08), transparent 70%),
+      #0f1419;
+    color: #eef2f3;
+    position: relative;
+  }
+  .grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 54px 54px;
+    mask-image: linear-gradient(180deg, #000 0%, transparent 45%);
+  }
+  header { position: relative; padding: 120px 96px 0; text-align: center; }
+  h1 { font-size: 76px; font-weight: 600; line-height: 1.08; letter-spacing: -2px; }
+  h1 em { display: block; font-style: normal; color: #9bd83d; }
+  p { margin-top: 26px; font-size: 34px; color: rgba(238, 242, 243, 0.66); line-height: 1.35; }
+  .screen {
+    position: absolute; left: 50%; top: 520px; transform: translateX(-50%);
+    width: 820px; bottom: 0;
+    border-radius: 56px 56px 0 0; overflow: hidden;
+    border: 10px solid #232a31; border-bottom: none;
+    box-shadow: 0 -10px 120px rgba(155, 216, 61, 0.18), 0 30px 80px rgba(0,0,0,0.6);
+    background: #f2f4f3;
+  }
+  /* Trim the phone's status bar: about 8.5% of the screenshot's width. */
+  .screen img { display: block; width: 100%; margin-top: -8.5%; }
+</style>
+</head>
+<body>
+  <div class="grid"></div>
+  <header>
+    <h1 id="title"></h1>
+    <p id="sub"></p>
+  </header>
+  <div class="screen"><img id="shot" alt=""></div>
+  <script>
+    const q = new URLSearchParams(location.search);
+    const h1 = document.getElementById("title");
+    h1.textContent = q.get("title") + " ";
+    const em = document.createElement("em");
+    em.textContent = q.get("accent") || "";
+    h1.appendChild(em);
+    document.getElementById("sub").textContent = q.get("sub") || "";
+    document.getElementById("shot").src = q.get("img");
+  </script>
+</body>
+</html>

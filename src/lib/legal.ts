@@ -6,6 +6,6 @@
 export type LegalDocumentType = "privacy" | "terms";
 
 export const LEGAL_VERSIONS: Record<LegalDocumentType, string> = {
-  privacy: "2026-06-23",
+  privacy: "2026-11-13",
   terms: "2026-06-23",
 };

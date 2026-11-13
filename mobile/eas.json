@@ -8,11 +8,18 @@
     },
     "preview": {
       "distribution": "internal",
-      "env": { "EXPO_PUBLIC_CONVEX_URL": "https://REPLACE-prod.convex.cloud", "EXPO_PUBLIC_WEB_URL": "https://app.syncrm.com" }
+      "android": {
+        "buildType": "apk"
+      },
+      "env": { "EXPO_PUBLIC_CONVEX_URL": "https://amiable-fox-488.convex.cloud", "EXPO_PUBLIC_WEB_URL": "https://syncrm.vercel.app" }
+    },
+    "ios-simulator": {
+      "extends": "preview",
+      "ios": { "simulator": true }
     },
     "production": {
       "autoIncrement": true,
-      "env": { "EXPO_PUBLIC_CONVEX_URL": "https://REPLACE-prod.convex.cloud", "EXPO_PUBLIC_WEB_URL": "https://app.syncrm.com" }
+      "env": { "EXPO_PUBLIC_CONVEX_URL": "https://amiable-fox-488.convex.cloud", "EXPO_PUBLIC_WEB_URL": "https://syncrm.vercel.app" }
     }
   },
   "submit": { "production": {} }
