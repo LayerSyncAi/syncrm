@@ -39,3 +39,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Firebase (Android push): never commit these
+google-services.json
+*firebase-adminsdk*.json

@@ -3,8 +3,8 @@ import { LegalDocument, LegalSection } from "@/components/legal/legal-document";
 import { LEGAL_VERSIONS } from "@/lib/legal";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy · SynCRM",
-  description: "How SynCRM collects, uses and protects personal information.",
+  title: "Privacy Policy · SyncEstate",
+  description: "How SyncEstate collects, uses and protects personal information.",
 };
 
 export default function PrivacyPolicyPage() {
@@ -12,14 +12,15 @@ export default function PrivacyPolicyPage() {
     <LegalDocument
       title="Privacy Policy"
       version={LEGAL_VERSIONS.privacy}
-      effectiveDate="23 June 2026"
+      effectiveDate="13 November 2026"
     >
       <p>
-        This Privacy Policy explains how SynCRM (&ldquo;SynCRM&rdquo;,
-        &ldquo;we&rdquo;, &ldquo;us&rdquo;) collects, uses, discloses and
-        safeguards personal information when an estate agency
-        (&ldquo;Customer&rdquo;) and its authorised users use the SynCRM real
-        estate customer relationship management platform (the
+        This Privacy Policy explains how SyncEstate, provided by LayerSync
+        (&ldquo;SyncEstate&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;),
+        collects, uses, discloses and safeguards personal information when an
+        estate agency (&ldquo;Customer&rdquo;) and its authorised users use the
+        SyncEstate real estate platform, through the website or the SyncEstate
+        mobile apps for Android and iOS (together, the
         &ldquo;Service&rdquo;). It is written with the Cyber and Data Protection
         Act [Chapter 11:12] of Zimbabwe in mind, alongside general good-practice
         data protection principles.
@@ -29,10 +30,10 @@ export default function PrivacyPolicyPage() {
         <p>
           The Customer (the estate agency that creates an account) is the data
           controller for the client, lead, contact and property information it
-          enters into the Service. SynCRM acts as a data processor, handling that
+          enters into the Service. SyncEstate acts as a data processor, handling that
           information on the Customer&rsquo;s behalf and in accordance with this
           policy and our agreement with the Customer. For account-level data
-          about the Customer&rsquo;s own users, SynCRM acts as controller.
+          about the Customer&rsquo;s own users, SyncEstate acts as controller.
         </p>
       </LegalSection>
 
@@ -52,6 +53,14 @@ export default function PrivacyPolicyPage() {
             <strong>Usage and technical data:</strong> log records such as sign-in
             events, device and browser information, and timestamps necessary to
             operate and secure the Service.
+          </li>
+          <li>
+            <strong>Mobile app:</strong> photos and files you choose to attach
+            (the app opens the camera or photo library only when you ask it
+            to), a push notification token for your device so we can send you
+            alerts, and your sign-in session, kept in your device&rsquo;s secure
+            storage. The app does not collect your location, the contacts on
+            your phone or advertising identifiers.
           </li>
           <li>
             <strong>Acceptance records:</strong> the version of this policy and
@@ -135,6 +144,16 @@ export default function PrivacyPolicyPage() {
           should be directed to the relevant agency; we will assist the Customer
           in responding.
         </p>
+        <p>
+          To delete your own SyncEstate account, email{" "}
+          <a href="mailto:support@layersyncai.com" className="underline">
+            support@layersyncai.com
+          </a>{" "}
+          from the address you sign in with, or ask your organisation
+          administrator. We will confirm the request and delete your account
+          and the personal information linked to it, except records we must
+          keep by law.
+        </p>
       </LegalSection>
 
       <LegalSection heading="10. International transfers">
@@ -156,7 +175,11 @@ export default function PrivacyPolicyPage() {
       <LegalSection heading="12. Contact">
         <p>
           For privacy questions, contact your organisation administrator or
-          SynCRM support at the address provided in your service agreement.
+          LayerSync at{" "}
+          <a href="mailto:support@layersyncai.com" className="underline">
+            support@layersyncai.com
+          </a>
+          .
         </p>
       </LegalSection>
     </LegalDocument>
