@@ -113,14 +113,14 @@ export function AppComingSoon() {
     <section id="app" aria-labelledby="app-title" className="py-12 sm:py-16">
       <Container>
         <div className="l-card grid overflow-hidden lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
-          <Reveal className="flex flex-col justify-center gap-6 p-8 sm:p-14">
+          <Reveal className="flex flex-col justify-center gap-6 p-6 min-[380px]:p-8 sm:p-14">
             <h2 id="app-title" className="l-h2">
               <Accent h={app.headline} />
             </h2>
             <p className="l-body-lg max-w-[46ch]">{app.body}</p>
             <div className="flex flex-col gap-3">
-              <p className="l-eyebrow flex items-center gap-2">
-                <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--l-accent)] shadow-[0_0_10px_var(--l-accent)]" />
+              <p className="l-eyebrow flex items-center gap-2 whitespace-nowrap">
+                <span className="inline-block h-1.5 w-1.5 flex-none animate-pulse rounded-full bg-[var(--l-accent)] shadow-[0_0_10px_var(--l-accent)]" />
                 Native apps · Coming soon
               </p>
               <ul className="grid max-w-[440px] grid-cols-1 gap-3 min-[420px]:grid-cols-2" aria-label="Native apps, coming soon">

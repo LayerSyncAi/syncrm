@@ -18,7 +18,7 @@ export function Hero() {
       <Container className="relative flex flex-col items-center text-center">
         <Reveal y={12}>
           <span className="inline-flex items-center gap-2 rounded-full border border-[var(--l-line-strong)] bg-[var(--l-bg-raised)]/60 px-3 py-1.5">
-            <Eyebrow dot className="!text-[11px]">
+            <Eyebrow dot className="whitespace-nowrap !text-[11px] max-[379px]:!text-[10px]">
               {hero.eyebrow}
             </Eyebrow>
           </span>

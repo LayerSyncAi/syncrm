@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useState } from "react";
 import { useReducedMotion } from "./motion";
 import { hub } from "./content";
 import { ThemedPhoneStage } from "./phone/phone-stage";
@@ -10,7 +11,8 @@ const EASE = [0.16, 1, 0.3, 1] as const;
 
 export function HubBentoPhone() {
   return (
-    <div className="relative -mt-4 sm:-mt-10">
+    // Never taller than the screen (landscape phones).
+    <div className="relative mx-auto -mt-4 w-full sm:-mt-10" style={{ maxWidth: "calc(95svh * 1.15)" }}>
       <ThemedPhoneStage
         photo="stageAlt"
         screens={["hub"]}
@@ -32,33 +34,79 @@ const MODULES = [
   { key: "media", name: "SyncMedia", on: true },
 ] as const;
 
+type ModuleKey = (typeof MODULES)[number]["key"];
+const DEFAULTS = Object.fromEntries(MODULES.map((m) => [m.key, m.on])) as Record<ModuleKey, boolean>;
+
+/**
+ * Real switches: visitors can flip any module on and off. The first time the
+ * card scrolls into view, the example agency's modules switch themselves on
+ * one by one; after that (or as soon as someone taps), the visitor is in charge.
+ */
 export function ModuleSwitches() {
   const reduce = useReducedMotion();
+  const [state, setState] = useState(DEFAULTS);
+  const [seen, setSeen] = useState(false);
+  const [touched, setTouched] = useState(false);
+  const intro = seen && !touched && !reduce;
+  const isOn = (k: ModuleKey) => seen && state[k];
+  const count = MODULES.filter((m) => isOn(m.key)).length;
+
+  const toggle = (k: ModuleKey) => {
+    setTouched(true);
+    setState((s) => ({ ...s, [k]: !(seen && s[k]) }));
+    setSeen(true);
+  };
+
   return (
-    <ul className="grid grid-cols-2 gap-2" aria-label="Example: modules switched on for one agency">
-      {MODULES.map((m, i) => {
-        return (
-          <li key={m.key} className="flex items-center justify-between gap-2 rounded-2xl border border-[var(--l-line)] px-3 py-2.5">
-            <span className="flex items-center gap-2 text-sm text-[var(--l-ink)]">
-              <ProductGlyph product={m.key} size={16} strokeWidth={1.6} className="text-[var(--l-ink-3)]" />
-              {m.name}
-            </span>
-            <span
-              aria-label={m.on ? "On" : "Off"}
-              className={`relative h-5 w-9 flex-none rounded-full transition-colors ${m.on ? "bg-[var(--l-accent)]" : "bg-[var(--l-line-strong)]"}`}
-            >
-              <motion.span
-                className="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow"
-                initial={{ left: 2 }}
-                whileInView={{ left: m.on ? 18 : 2 }}
-                viewport={{ once: true }}
-                transition={{ duration: reduce ? 0 : 0.5, delay: reduce ? 0 : 0.3 + i * 0.12, ease: EASE }}
-              />
-            </span>
-          </li>
-        );
-      })}
-    </ul>
+    // Two across only when the card itself is wide enough (container query),
+    // so names never truncate in the narrower desktop card.
+    <div className="@container flex flex-col gap-3">
+      <motion.ul
+        className="grid grid-cols-1 gap-2 @min-[364px]:grid-cols-2"
+        aria-label="Modules, try switching them"
+        onViewportEnter={() => setSeen(true)}
+        viewport={{ once: true, amount: 0.5 }}
+      >
+        {MODULES.map((m, i) => {
+          const on = isOn(m.key);
+          return (
+            <li key={m.key} className="min-w-0">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={on}
+                data-on={on || undefined}
+                onClick={() => toggle(m.key)}
+                className="l-switch-row flex w-full min-w-0 items-center justify-between gap-2 rounded-2xl border px-3 py-2.5 text-left"
+              >
+                <span className="flex min-w-0 items-center gap-2 text-sm text-[var(--l-ink)]">
+                  <ProductGlyph product={m.key} size={16} strokeWidth={1.6} className="l-switch-icon flex-none" />
+                  <span className="truncate">{m.name}</span>
+                </span>
+                <span aria-hidden className="l-switch-track">
+                  <motion.span
+                    className="l-switch-knob"
+                    initial={false}
+                    animate={{ x: on ? 16 : 0 }}
+                    transition={
+                      reduce
+                        ? { duration: 0 }
+                        : { type: "spring", stiffness: 560, damping: 34, mass: 0.9, delay: intro ? 0.25 + i * 0.12 : 0 }
+                    }
+                  />
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </motion.ul>
+      <p className="l-mono flex items-center justify-between gap-3 text-[11px] uppercase tracking-[0.14em] text-[var(--l-ink-3)]">
+        <span>Try it</span>
+        <span>
+          <span className="text-[var(--l-ink-2)]">{count}</span> of {MODULES.length} on
+        </span>
+      </p>
+    </div>
   );
 }
 

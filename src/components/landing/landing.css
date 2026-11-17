@@ -100,6 +100,11 @@ html:has(.landing:not([data-theme])) body {
   text-transform: uppercase;
   color: var(--l-ink-3);
 }
+@media (max-width: 379px) {
+  .l-eyebrow {
+    letter-spacing: 0.08em;
+  }
+}
 
 .l-h1 {
   font-size: clamp(42px, 6.6vw, 96px);
@@ -446,6 +451,94 @@ html:has(.landing:not([data-theme])) body {
   font-size: 17px;
 }
 
+/* Module switches (hub-bento-client.tsx). The whole row is the switch; the
+   track fills with the lime glass, the knob is a small white glass bead that
+   springs across (framer-motion) and stretches while pressed. */
+.l-switch-row {
+  border-color: var(--l-line);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 0.35s var(--l-ease), background-color 0.35s var(--l-ease), transform 0.2s var(--l-ease);
+}
+.l-switch-row:hover {
+  border-color: var(--l-line-strong);
+}
+.l-switch-row:active {
+  transform: scale(0.985);
+}
+.l-switch-row[data-on] {
+  border-color: color-mix(in srgb, var(--l-accent) 38%, var(--l-line));
+  background: color-mix(in srgb, var(--l-accent) 6%, transparent);
+}
+.l-switch-icon {
+  color: var(--l-ink-3);
+  transition: color 0.35s var(--l-ease);
+}
+.l-switch-row[data-on] .l-switch-icon {
+  color: var(--l-accent-ink);
+}
+.l-switch-track {
+  position: relative;
+  flex: none;
+  width: 40px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--l-line-strong);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.28);
+  isolation: isolate;
+}
+/* The lime glass fill fades in over the off track (gradients don't animate). */
+.l-switch-track::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0) 55%),
+    linear-gradient(180deg, #b5e46a 0%, #9bd83d 55%, #84c42c 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(78, 128, 18, 0.25),
+    inset 0 -4px 6px -3px rgba(38, 78, 0, 0.45),
+    0 4px 12px -4px rgba(155, 216, 61, 0.55);
+  opacity: 0;
+  transition: opacity 0.3s var(--l-ease);
+}
+.l-switch-row[data-on] .l-switch-track::before {
+  opacity: 1;
+}
+.l-switch-knob {
+  position: absolute;
+  z-index: 1;
+  left: 2px;
+  top: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffffff 0%, #eef2f0 100%);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    0 3px 8px -2px rgba(0, 0, 0, 0.35),
+    inset 0 -1px 1px rgba(15, 20, 25, 0.08);
+  transform-origin: left center;
+  transition: scale 0.2s var(--l-ease);
+}
+.l-switch-row[data-on] .l-switch-knob {
+  transform-origin: right center;
+}
+.l-switch-row:active .l-switch-knob {
+  scale: 1.22 1;
+}
+.landing[data-theme="light"] .l-switch-track {
+  background: rgba(15, 20, 25, 0.12);
+  box-shadow: inset 0 1px 2px rgba(15, 20, 25, 0.14);
+}
+.landing[data-theme="light"] .l-switch-knob {
+  box-shadow:
+    0 1px 2px rgba(15, 20, 25, 0.22),
+    0 3px 8px -2px rgba(15, 20, 25, 0.25),
+    inset 0 -1px 1px rgba(15, 20, 25, 0.06);
+}
+
 @keyframes l-sheen {
   0%, 74% { background-position: 0 0, 160% 0, 0 0, 0 0; }
   100% { background-position: 0 0, -60% 0, 0 0, 0 0; }
@@ -547,6 +640,9 @@ html:has(.landing:not([data-theme])) body {
   .l-orb.is-rippling::after {
     animation: none;
   }
+  .l-switch-row,
+  .l-switch-track::before,
+  .l-switch-knob,
   .l-tab-glass,
   .l-tab-ink,
   .l-chipbar[data-ready] .l-tab-glass,
@@ -569,13 +665,16 @@ html:has(.landing:not([data-theme])) body {
   overflow: hidden;
   width: 100%;
 }
-@media (max-width: 767px) {
+/* The tall phone crop is for portrait phones; landscape keeps the wide shot.
+   !important because the stage sets its default crop inline, and an inline
+   declaration otherwise beats any stylesheet rule. */
+@media (max-width: 767px) and (orientation: portrait) {
   .l-phone-stage[data-mcrop] {
-    --ar: var(--m-ar);
-    --cw: var(--m-cw);
-    --ch: var(--m-ch);
-    --cx0: var(--m-cx0);
-    --cy0: var(--m-cy0);
+    --ar: var(--m-ar) !important;
+    --cw: var(--m-cw) !important;
+    --ch: var(--m-ch) !important;
+    --cx0: var(--m-cx0) !important;
+    --cy0: var(--m-cy0) !important;
   }
 }
 .l-phone-stage-inner {

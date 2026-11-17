@@ -11,7 +11,8 @@ export function HeroPhoto() {
       initial={{ opacity: 0, scale: 1.04 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={reduce ? { duration: 0.2, scale: { duration: 0 } } : { duration: 1.4, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="l-stage l-stage-panel l-fade-edges relative overflow-hidden sm:rounded-[32px]"
+      // Landscape phones and small tablets: never taller than the screen.
+      className="l-stage l-stage-panel l-fade-edges relative overflow-hidden sm:rounded-[32px] max-lg:landscape:mx-auto max-lg:landscape:max-w-[calc(92svh*1.58)]"
     >
       <ThemedPhoneStage
         photo="hero"
@@ -29,7 +30,7 @@ export function HeroPhoto() {
 /** The hero hands again, cropped to the phone, under the final call to action. */
 export function CtaPhone() {
   return (
-    <div className="l-fade-bottom mx-auto w-full max-w-[520px]">
+    <div className="l-fade-bottom mx-auto w-full max-w-[520px] max-lg:landscape:max-w-[calc(80svh*1.16)]">
       <ThemedPhoneStage
         photo="hero"
         screens={["hub"]}
