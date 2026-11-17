@@ -14,6 +14,7 @@ import { useMutation } from "convex/react";
 import { X } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { cleanEnquiry } from "../../../convex/lib/websiteEnquiries";
+import { copyEnquiryToSyncSite } from "./syncsite";
 import { enquiryWhatsAppMessage, salesPhoneDisplay, salesPhoneE164, whatsAppLink } from "@/config/marketing";
 import { Roll, WhatsAppGlyph } from "./bits";
 
@@ -111,6 +112,7 @@ export function EnquiryDialog() {
     const link = whatsAppLink(enquiryWhatsAppMessage({ name: v.name, phone: v.phone, interest: context.interest }));
 
     // Save in the background; WhatsApp opens whether or not this succeeds.
+    copyEnquiryToSyncSite({ name: v.name, phone: v.phone, interest: context.interest, button: context.cta });
     const saving = submit({
       name: v.name,
       phone: v.phone,
