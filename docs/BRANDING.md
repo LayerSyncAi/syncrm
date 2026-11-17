@@ -3,6 +3,13 @@
 Every client-specific value lives in **one place** so the app can be rebranded
 with environment variables and a few asset files — no code edits.
 
+> **Two kinds of white label.** This page covers rebranding a whole
+> *deployment* with env vars (every user, the sign-in page and the marketing
+> site). A single *organisation* on a shared deployment can also be
+> white-labelled from the Platform page, with no redeploy: its logo and
+> colours then replace the SyncEstate look once its people sign in. See
+> [platform-admin.md](platform-admin.md#white-label).
+
 ## Single source of truth
 
 | Concern | Where |

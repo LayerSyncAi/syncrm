@@ -2,6 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getCurrentUserWithOrg, requireAdmin, assertOrgAccess, isEffectiveAdmin } from "./helpers";
 import { Id } from "./_generated/dataModel";
+import { seedDefaultCommissionConfigs } from "./lib/orgDefaults";
 
 const scenarioValidator = v.union(
   v.literal("shared_deal"),
@@ -293,53 +294,6 @@ export const updateCommissionStatus = mutation({
 export const seedDefaultConfigs = mutation({
   handler: async (ctx) => {
     const admin = await requireAdmin(ctx);
-
-    const existing = await ctx.db
-      .query("commissionConfigs")
-      .withIndex("by_org", (q) => q.eq("orgId", admin.orgId))
-      .collect();
-
-    if (existing.length > 0) return;
-
-    const timestamp = Date.now();
-    const defaults = [
-      {
-        name: "Shared Deal (Default)",
-        description: "Property shared between two agents. Agent A holds the property, Agent B closes the deal with their lead.",
-        scenario: "shared_deal" as const,
-        propertyAgentPercent: 40,
-        leadAgentPercent: 40,
-        companyPercent: 20,
-        isDefault: true,
-      },
-      {
-        name: "Own Property & Own Lead",
-        description: "Agent closes a deal using their own property listing and their own lead.",
-        scenario: "own_property_own_lead" as const,
-        propertyAgentPercent: 0,
-        leadAgentPercent: 70,
-        companyPercent: 30,
-        isDefault: true,
-      },
-      {
-        name: "Company Property",
-        description: "Agent brings a lead to a company-listed property (no specific property agent).",
-        scenario: "company_property" as const,
-        propertyAgentPercent: 0,
-        leadAgentPercent: 50,
-        companyPercent: 50,
-        isDefault: true,
-      },
-    ];
-
-    for (const config of defaults) {
-      await ctx.db.insert("commissionConfigs", {
-        ...config,
-        orgId: admin.orgId,
-        createdByUserId: admin._id,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-      });
-    }
+    await seedDefaultCommissionConfigs(ctx, admin.orgId, admin._id);
   },
 });

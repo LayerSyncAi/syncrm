@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useQuery } from "convex/react";
-import { LayoutDashboard, Waypoints, Building2, ClipboardList } from "lucide-react";
+import { LayoutDashboard, LayoutGrid, Waypoints, Building2, ClipboardList } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "../../../convex/_generated/api";
 import { MODULES, moduleForPath } from "@/config/modules";
 import { SyncEstateIcon } from "@/components/brand/product-icons";
+import { useOrgBrand } from "@/components/providers/org-brand-provider";
 
 type Tab = { label: string; href: string; icon: LucideIcon; exact?: boolean };
 
@@ -31,10 +32,13 @@ export function BottomTabBar() {
   const pathname = usePathname();
   const current = moduleForPath(pathname);
   const hub = useQuery(api.hub.getContext);
+  // A white-label agency's Hub tab drops the SyncEstate mark.
+  const { isWhiteLabel } = useOrgBrand();
+  const hubTabFor = isWhiteLabel ? { ...hubTab, icon: LayoutGrid } : hubTab;
 
   let tabs: Tab[];
   if (current === "crm") {
-    tabs = [...crmTabs, hubTab];
+    tabs = [...crmTabs, hubTabFor];
   } else if (current === "hub") {
     // "SyncStay" -> "Stay", "SyncWorth" -> "Worth": short enough for a tab.
     const mods = (hub?.myModules ?? []).map((k) => ({
@@ -42,12 +46,12 @@ export function BottomTabBar() {
       href: MODULES[k].homeHref,
       icon: MODULES[k].icon,
     }));
-    tabs = [hubTab, ...mods.slice(0, 4)];
+    tabs = [hubTabFor, ...mods.slice(0, 4)];
   } else {
     const home = MODULES[current].homeHref;
     tabs = [
       ...MODULES[current].nav.slice(0, 4).map((n) => ({ ...n, exact: n.href === home })),
-      hubTab,
+      hubTabFor,
     ];
   }
 

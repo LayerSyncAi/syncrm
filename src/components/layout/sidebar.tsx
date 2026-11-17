@@ -12,6 +12,7 @@ import {
   ChevronRight,
   DollarSign,
   Download,
+  LayoutGrid,
   ScrollText,
   Search,
   Send,
@@ -30,6 +31,8 @@ import { brand } from "@/config/brand";
 import { api } from "../../../convex/_generated/api";
 import { MODULES, moduleForPath, type ModuleKey } from "@/config/modules";
 import { SyncEstateIcon } from "@/components/brand/product-icons";
+import { useOrgBrand } from "@/components/providers/org-brand-provider";
+import { orgInitials } from "@/lib/org-theme";
 
 // CRM main nav comes from the module registry (SyncMedia is its own module).
 const navItems = MODULES.crm.nav;
@@ -177,9 +180,12 @@ function ModuleSwitcher({
   collapsed?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const { isWhiteLabel, productName } = useOrgBrand();
+  // A white-label agency's Hub carries its own name, not the SyncEstate mark.
+  const HubIcon = isWhiteLabel ? LayoutGrid : SyncEstateIcon;
   const def = current === "hub" ? null : MODULES[current];
-  const Icon = def ? def.icon : SyncEstateIcon;
-  const name = def ? def.name : "SyncEstate";
+  const Icon = def ? def.icon : HubIcon;
+  const name = def ? def.name : productName;
 
   useEffect(() => {
     if (!open) return;
@@ -224,7 +230,7 @@ function ModuleSwitcher({
             className="absolute left-2 top-full z-50 mt-2 w-60 rounded-[16px] border border-white/10 bg-sidebar-bg p-1.5 shadow-[var(--shadow-pop)]"
           >
             {[
-              { key: "hub" as const, label: "Hub", href: "/app/hub", icon: SyncEstateIcon },
+              { key: "hub" as const, label: "Hub", href: "/app/hub", icon: HubIcon },
               ...myModules.map((k) => ({ key: k, label: MODULES[k].name, href: MODULES[k].homeHref, icon: MODULES[k].icon })),
             ].map((m) => {
               const MIcon = m.icon;
@@ -251,12 +257,52 @@ function ModuleSwitcher({
   );
 }
 
+/**
+ * A white-label agency's logo in the (dark or custom) sidebar: the
+ * dark-background logo as is; otherwise the normal logo on a light chip so a
+ * dark logo stays visible; otherwise the agency's name. Collapsed, the
+ * initials stand in for an app icon.
+ */
+function OrgLogo({
+  name,
+  logoUrl,
+  logoOnDarkUrl,
+  collapsed,
+}: {
+  name: string;
+  logoUrl: string | null;
+  logoOnDarkUrl: string | null;
+  collapsed: boolean;
+}) {
+  if (collapsed) {
+    return (
+      <span className="flex h-9 w-9 items-center justify-center rounded-[11px] bg-primary text-xs font-bold text-primary-foreground">
+        {orgInitials(name)}
+      </span>
+    );
+  }
+  if (logoOnDarkUrl) {
+    // eslint-disable-next-line @next/next/no-img-element -- per-agency logo from Convex storage
+    return <img src={logoOnDarkUrl} alt={name} className="h-8 max-w-[180px] object-contain object-left" />;
+  }
+  if (logoUrl) {
+    return (
+      <span className="flex h-9 max-w-[190px] items-center rounded-[10px] bg-white px-2.5">
+        {/* eslint-disable-next-line @next/next/no-img-element -- per-agency logo from Convex storage */}
+        <img src={logoUrl} alt={name} className="h-6 max-w-full object-contain" />
+      </span>
+    );
+  }
+  return <span className="truncate text-base font-semibold text-sidebar-fg">{name}</span>;
+}
+
 export const Sidebar = memo(function Sidebar({ isAdmin, isPlatformAdmin, collapsed, onToggle, orgName, mobileOpen, onMobileClose }: SidebarProps) {
   const pathname = usePathname();
   const current = moduleForPath(pathname);
   // Null for platform staff with no organisation open.
   const hub = useQuery(api.hub.getContext);
   const myModules = hub?.myModules ?? [];
+  const orgBrand = useOrgBrand();
   const [ioExpanded, setIoExpanded] = useState(false);
   const [contactToolsExpanded, setContactToolsExpanded] = useState(false);
   const [adminExpanded, setAdminExpanded] = useState(false);
@@ -325,18 +371,28 @@ export const Sidebar = memo(function Sidebar({ isAdmin, isPlatformAdmin, collaps
         >
         {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
       </button>
-      {/* Logo: the reversed lockup, or just the app icon when collapsed. */}
+      {/* Logo: the reversed lockup, or just the app icon when collapsed. A
+          white-label agency shows its own logo (or initials) instead. */}
       <Link
         href="/app/hub"
-        aria-label={`${brand.name} hub`}
+        aria-label={`${orgBrand.productName} hub`}
         className={cn("mb-5 flex h-9 items-center px-2.5", collapsed && "justify-center px-0")}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element -- SVG logo, swappable per client */}
-        <img
-          src={collapsed ? brand.logos.appIcon : brand.logos.lockupReversed}
-          alt={brand.name}
-          className={collapsed ? "h-9 w-9" : "h-8 w-auto"}
-        />
+        {orgBrand.isWhiteLabel ? (
+          <OrgLogo
+            name={orgBrand.productName}
+            logoUrl={orgBrand.logoUrl}
+            logoOnDarkUrl={orgBrand.logoOnDarkUrl}
+            collapsed={!!collapsed}
+          />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element -- SVG logo, swappable per client
+          <img
+            src={collapsed ? brand.logos.appIcon : brand.logos.lockupReversed}
+            alt={brand.name}
+            className={collapsed ? "h-9 w-9" : "h-8 w-auto"}
+          />
+        )}
       </Link>
       {hub ? (
         <ModuleSwitcher current={current} myModules={myModules} orgName={hub.orgName} collapsed={collapsed} />
@@ -377,7 +433,7 @@ export const Sidebar = memo(function Sidebar({ isAdmin, isPlatformAdmin, collaps
           ? navItems
           : current === "hub"
             ? [
-                hubItem,
+                orgBrand.isWhiteLabel ? { ...hubItem, icon: LayoutGrid } : hubItem,
                 ...(hub?.canNotify ? [notifyItem] : []),
                 ...myModules.map((k) => ({ label: MODULES[k].name, href: MODULES[k].homeHref, icon: MODULES[k].icon })),
               ]

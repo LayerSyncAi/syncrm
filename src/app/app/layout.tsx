@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { ErrorBoundary } from "@/components/common/error-boundary";
 import { StaticDataProvider } from "@/components/providers/static-data-provider";
 import { PlatformViewBanner } from "@/components/layout/platform-view-banner";
+import { OrgBrandProvider } from "@/components/providers/org-brand-provider";
 
 const OnboardingTour = dynamic(
   () => import("@/components/onboarding/onboarding-tour").then((m) => m.OnboardingTour),
@@ -60,6 +61,12 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     !isLoading && isSessionAuthenticated && user === null ? {} : "skip"
   );
 
+  // A white-label organisation's own colours and logo (null keeps SyncEstate).
+  // Waited for below so the app never flashes the SyncEstate colours first.
+  const themeQueryActive = !isLoading && isSessionAuthenticated && !!user && !user.portalKind;
+  const appTheme = useQuery(api.branding.getAppTheme, themeQueryActive ? {} : "skip");
+  const themeLoading = themeQueryActive && appTheme === undefined;
+
   useIdleSignOut(isSessionAuthenticated, async () => {
     await signOut();
     router.replace("/login");
@@ -102,8 +109,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     }
   }, [isLoading, inPlatformView, org, exitViewOrg]);
 
-  // Show loading state while auth session or user data is loading
-  if (isLoading) {
+  // Show loading state while auth session, user data or the org's theme is loading
+  if (isLoading || themeLoading) {
     return (
       <div className="min-h-screen bg-content-bg flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -187,7 +194,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   // If user must reset password, only allow the force-change-password page (no sidebar/topbar)
   if (user.resetPasswordOnNextLogin) {
     if (isForceChangePasswordPage) {
-      return <>{children}</>;
+      return <OrgBrandProvider theme={appTheme ?? null}>{children}</OrgBrandProvider>;
     }
     // Redirect happens in useEffect above, show loading in the meantime
     return (
@@ -258,6 +265,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   }
 
   return (
+    <OrgBrandProvider theme={appTheme ?? null}>
     <StaticDataProvider>
     <div className="min-h-screen bg-content-bg">
       {showOnboarding && !tourDismissed && (
@@ -295,5 +303,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       {!inPlatformView && <CopilotPanel />}
     </div>
     </StaticDataProvider>
+    </OrgBrandProvider>
   );
 }

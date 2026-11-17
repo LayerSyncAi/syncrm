@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
-import { ImagePlus, Loader2, Palette, Trash2 } from "lucide-react";
+import { Loader2, Palette } from "lucide-react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
@@ -11,6 +11,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BrochureStage } from "@/components/syncmedia/BrochureStage";
+import { ColorField } from "@/components/branding/color-field";
+import { LogoSlot } from "@/components/branding/logo-slot";
+import { useOrgBrand } from "@/components/providers/org-brand-provider";
 import {
   ACCENT_SUGGESTIONS,
   PAGE_STYLES,
@@ -40,6 +43,7 @@ const PREVIEW_DOC: BrochureDoc = {
 export default function BrandingPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
+  const { isWhiteLabel } = useOrgBrand();
 
   const branding = useQuery(api.branding.get, {});
   const saveBranding = useMutation(api.branding.save);
@@ -190,6 +194,12 @@ export default function BrandingPage() {
           The logo and colours every SyncMedia brochure is built from. Changing these
           affects new brochures across the organisation.
         </p>
+        {isWhiteLabel ? (
+          <p className="mt-2 rounded-[10px] border border-border bg-surface-2 px-3 py-2 text-xs text-text-muted">
+            Your agency is white-labelled, so this logo and accent colour are also the
+            app&apos;s own look for everyone in the organisation.
+          </p>
+        ) : null}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
@@ -252,45 +262,14 @@ export default function BrandingPage() {
               </p>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="accent">Accent colour</Label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  aria-label="Accent colour picker"
-                  value={HEX.test(accent) ? accent : "#000000"}
-                  onChange={(e) => setAccent(e.target.value)}
-                  className="h-10 w-12 cursor-pointer rounded-[10px] border border-border-strong bg-transparent p-1"
-                />
-                <Input
-                  id="accent"
-                  value={accent}
-                  onChange={(e) => setAccent(e.target.value)}
-                  placeholder="#2a5925"
-                  maxLength={7}
-                  error={accent.length > 0 && !HEX.test(accent)}
-                  className="max-w-[140px] font-mono"
-                />
-                <div className="flex flex-wrap gap-1.5">
-                  {ACCENT_SUGGESTIONS.map((colour) => (
-                    <button
-                      key={colour}
-                      type="button"
-                      onClick={() => setAccent(colour)}
-                      aria-label={colour}
-                      title={colour}
-                      className={cn(
-                        "h-7 w-7 cursor-pointer rounded-full border-2 transition",
-                        accent.toLowerCase() === colour.toLowerCase()
-                          ? "border-text"
-                          : "border-border"
-                      )}
-                      style={{ backgroundColor: colour }}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
+            <ColorField
+              id="accent"
+              label="Accent colour"
+              value={accent}
+              onChange={setAccent}
+              suggestions={ACCENT_SUGGESTIONS}
+              placeholder="#2a5925"
+            />
 
             <div className="space-y-2">
               <Label>Paper</Label>
@@ -382,55 +361,6 @@ export default function BrandingPage() {
             Unsaved changes show here immediately.
           </p>
         </aside>
-      </div>
-    </div>
-  );
-}
-
-function LogoSlot({
-  label,
-  hint,
-  url,
-  busy,
-  background,
-  onPick,
-  onClear,
-}: {
-  label: string;
-  hint: string;
-  url?: string;
-  busy: boolean;
-  background: string;
-  onPick: () => void;
-  onClear: () => void;
-}) {
-  return (
-    <div className="space-y-2">
-      <div>
-        <p className="text-xs font-medium text-text">{label}</p>
-        <p className="text-xs text-text-muted">{hint}</p>
-      </div>
-      <div
-        className="flex h-24 items-center justify-center rounded-[10px] border border-border"
-        style={{ backgroundColor: background }}
-      >
-        {url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={url} alt={label} className="max-h-16 max-w-[80%] object-contain" />
-        ) : (
-          <span className="text-xs text-text-muted">Nothing uploaded</span>
-        )}
-      </div>
-      <div className="flex gap-2">
-        <Button variant="secondary" size="sm" onClick={onPick} disabled={busy}>
-          <ImagePlus className="h-3.5 w-3.5" />
-          {busy ? "Uploading…" : url ? "Replace" : "Upload"}
-        </Button>
-        {url ? (
-          <Button variant="ghost" size="sm" onClick={onClear} disabled={busy}>
-            <Trash2 className="h-3.5 w-3.5" /> Remove
-          </Button>
-        ) : null}
       </div>
     </div>
   );

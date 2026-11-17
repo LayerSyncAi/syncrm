@@ -26,6 +26,7 @@ import {
   UserCircle,
 } from "lucide-react";
 import { brand } from "@/config/brand";
+import { useOrgBrand } from "@/components/providers/org-brand-provider";
 
 const tourSteps: Step[] = [
   {
@@ -272,10 +273,15 @@ export function OnboardingTour({ isAdmin, onComplete }: OnboardingTourProps) {
   const [showCompletion, setShowCompletion] = useState(false);
   const completeOnboarding = useMutation(api.users.completeOnboarding);
 
-  // Filter out admin step for non-admin users
-  const steps = isAdmin
+  // Filter out admin step for non-admin users; welcome a white-label agency by its own name.
+  const { productName } = useOrgBrand();
+  const steps = (isAdmin
     ? tourSteps
-    : tourSteps.filter((s) => (s as Step & { data?: { icon: string } }).data?.icon !== "admin");
+    : tourSteps.filter((s) => (s as Step & { data?: { icon: string } }).data?.icon !== "admin")
+  ).map((s) => {
+    const data = (s as Step & { data?: { icon: string; title: string } }).data;
+    return data?.icon === "welcome" ? { ...s, data: { ...data, title: `Welcome to ${productName}!` } } : s;
+  });
 
   const handleCallback = useCallback(
     async (data: CallBackProps) => {

@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { TIMEZONES, detectBrowserTimezone } from "@/lib/timezones";
 import { viewingToasts } from "@/lib/toast";
-import { brand } from "@/config/brand";
+import { useOrgBrand } from "@/components/providers/org-brand-provider";
 import { NotificationBell } from "@/components/hub/notification-bell";
 
 interface TopbarProps {
@@ -76,10 +76,14 @@ export function Topbar({ userName, userEmail, orgName, userTimezone, isRealAdmin
     }
   };
 
+  const { productName } = useOrgBrand();
   const title = useMemo(() => {
     const match = Object.keys(titleMap).find((key) => pathname.startsWith(key));
-    return match ? titleMap[match] : brand.name;
-  }, [pathname]);
+    // The Hub (and any unmapped page) carries the product name: SyncEstate,
+    // or the agency's own name when it is white-labelled.
+    if (!match || match === "/app/hub") return productName;
+    return titleMap[match];
+  }, [pathname, productName]);
 
   // Recommendation #4: Progressive scroll shadow + backdrop blur
   useEffect(() => {

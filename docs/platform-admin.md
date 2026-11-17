@@ -44,7 +44,66 @@ Rules:
 - Further admins can be granted from the Platform page ("Platform admins" card),
   or with the same command.
 
-## 2. Opening an organisation (read-only)
+## 2. Onboarding a new organisation
+
+Platform → **New organisation** opens a five-step wizard
+(`/app/platform/organizations/new`). Nothing is saved or uploaded until
+**Create organisation** on the last step.
+
+1. **Organisation**: name, web address (slug, checked live), currency, optional
+   agency email/phone, and a *demo organisation* switch.
+2. **Modules**: which of CRM, SyncStay, SyncWorth, SyncFinance, SyncDev and
+   SyncMedia the agency can use.
+3. **Branding**: logo, optional logo for dark backgrounds, primary colour,
+   optional (dark) sidebar colour, and **White label** (see below). A live
+   preview shows what their people will see.
+4. **Owner**: full name, email (their sign-in) and a temporary password
+   (pre-generated; type your own if you prefer). Tick *Email these login
+   details* to send them through Resend.
+5. **Review**: then create.
+
+The done screen shows the sign-in link, email and temporary password with a
+**Copy login details** button. **Open organisation** opens it in the usual
+read-only view, in its own colours if it is white-labelled.
+
+What gets created, in one transaction (`onboarding.createOrganization`):
+
+- the organisation, with its modules, flags and `onboardedBy`;
+- its brand kit row (`orgBranding`), shared with SyncMedia brochures and PDFs;
+- the owner: an **admin** with `resetPasswordOnNextLogin` and the onboarding
+  tour on;
+- the defaults every agency starts with (`convex/lib/orgDefaults.ts`):
+  pipeline stages, curated areas, commission scenarios and, with SyncFinance,
+  its settings and categories;
+- `org.create` and `user.create` entries in the agency's own Logs page.
+
+The owner signs in on the normal sign-in page, must choose a new password,
+then lands on the Hub with only their modules.
+
+**Demo organisations.** **New demo org** opens the same wizard pre-filled: demo
+on, every module, white label on, owner `admin@<slug>.demo` with a generated
+password and no email. Demo orgs carry a **Demo** badge (filter with
+*Customers / Demos*) and are deleted like any other (section 4).
+
+**Edit.** The **Edit** button on a row (`/app/platform/organizations/<id>`)
+changes the name, currency and demo flag, turns white label on or off
+(live for everyone in the org), replaces logos and colours, switches
+modules, and issues any of the org's admins a new temporary password.
+
+### White label
+
+White label is per organisation (`organizations.whiteLabel`, set only here).
+When on, the agency's logo, primary colour, sidebar colour and name replace
+the SyncEstate look in the app once its people sign in: sidebar logo (or
+initials), Hub name, page title, tour and colours (`branding.getAppTheme` →
+`OrgBrandProvider` → `--brand-*` overrides). When off, the app looks exactly
+like SyncEstate; the logo and colour are still used for brochures and PDFs.
+
+Not covered yet: the sign-in page (it can't know the org before sign-in),
+emails, the PWA icon/favicon, the tenant portal, the mobile app, chart
+colours on report pages, and module names (SyncStay etc.).
+
+## 3. Opening an organisation (read-only)
 
 Platform → **Open** on a row. You are redirected to that organisation's
 dashboard with a yellow *Platform view* banner. Everything renders as an admin
@@ -52,7 +111,7 @@ of that organisation sees it; every write returns "Platform view is read-only".
 The client's Admin → Logs page shows a `platform.view_org` entry so the access is
 transparent. **Exit organisation** returns you to the overview.
 
-## 3. Deleting an organisation
+## 4. Deleting an organisation
 
 Platform → trash icon on the row → type the organisation **slug** → **Delete
 organisation**. The purge runs in the background in batches of 200 documents

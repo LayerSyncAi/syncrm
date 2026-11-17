@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAction, useMutation, useQuery } from "convex/react";
-import { Building2, Eye, Loader2, ShieldCheck, Trash2, UserPlus } from "lucide-react";
+import { Building2, Eye, FlaskConical, Loader2, Pencil, Plus, ShieldCheck, Trash2, UserPlus } from "lucide-react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
@@ -43,7 +43,22 @@ type OrgRow = {
   lastActivityAt: number | null;
   isViewing: boolean;
   enabledModules: ModuleKey[];
+  isDemo: boolean;
+  whiteLabel: boolean;
 };
+
+/** Status badges for an organisation row: deleting, viewing, demo, white label. */
+function OrgBadges({ org, className }: { org: OrgRow; className?: string }) {
+  if (!org.deletingAt && !org.isViewing && !org.isDemo && !org.whiteLabel) return null;
+  return (
+    <div className={`flex flex-wrap gap-1 ${className ?? ""}`}>
+      {org.deletingAt && <Badge variant="danger">Deleting…</Badge>}
+      {org.isViewing && !org.deletingAt && <Badge variant="warning">Viewing</Badge>}
+      {org.isDemo && <Badge variant="info">Demo</Badge>}
+      {org.whiteLabel && <Badge variant="default">White label</Badge>}
+    </div>
+  );
+}
 
 /**
  * Platform (LayerSync staff) overview: every organisation on this deployment,
@@ -66,6 +81,7 @@ export default function PlatformPage() {
   const setOrgModules = useMutation(api.hub.setOrgModules);
 
   const [search, setSearch] = useState("");
+  const [kind, setKind] = useState<"all" | "customers" | "demos">("all");
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<OrgRow | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState("");
@@ -103,9 +119,12 @@ export default function PlatformPage() {
   const filteredOrgs = useMemo(() => {
     if (!orgs) return undefined;
     const q = search.trim().toLowerCase();
-    if (!q) return orgs;
-    return orgs.filter((o) => o.name.toLowerCase().includes(q) || o.slug.toLowerCase().includes(q));
-  }, [orgs, search]);
+    return orgs.filter(
+      (o) =>
+        (kind === "all" || (kind === "demos" ? o.isDemo : !o.isDemo)) &&
+        (!q || o.name.toLowerCase().includes(q) || o.slug.toLowerCase().includes(q))
+    );
+  }, [orgs, search, kind]);
 
   const viewingOrg = orgs?.find((o) => o.isViewing) ?? null;
 
@@ -214,6 +233,14 @@ export default function PlatformPage() {
             account inside it.
           </p>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="secondary" onClick={() => router.push("/app/platform/organizations/new?demo=1")}>
+            <FlaskConical className="h-4 w-4" /> New demo org
+          </Button>
+          <Button onClick={() => router.push("/app/platform/organizations/new")}>
+            <Plus className="h-4 w-4" /> New organisation
+          </Button>
+        </div>
         {viewingOrg && (
           <div className="flex items-center gap-3 rounded-[10px] border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
             <Eye className="h-4 w-4" />
@@ -241,12 +268,27 @@ export default function PlatformPage() {
               <Building2 className="h-4 w-4 text-text-muted" />
               Organisations {orgs ? `(${orgs.length})` : ""}
             </h2>
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name or slug..."
-              className="max-w-xs"
-            />
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex rounded-full border border-border p-0.5 text-xs" role="group" aria-label="Show">
+                {(["all", "customers", "demos"] as const).map((k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => setKind(k)}
+                    aria-pressed={kind === k}
+                    className={`rounded-full px-3 py-1 capitalize transition-colors ${kind === k ? "bg-primary-soft font-medium text-primary-ink" : "text-text-muted hover:text-text"}`}
+                  >
+                    {k}
+                  </button>
+                ))}
+              </div>
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by name or slug..."
+                className="max-w-xs"
+              />
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -257,7 +299,77 @@ export default function PlatformPage() {
           ) : filteredOrgs.length === 0 ? (
             <p className="py-8 text-center text-sm text-text-muted">No organisations match.</p>
           ) : (
-            <div className="overflow-x-auto rounded-lg border border-border">
+            <>
+            {/* Below wide screens: one card per organisation, actions always in reach */}
+            <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:hidden">
+              {filteredOrgs.map((org) => (
+                <li
+                  key={org._id}
+                  className={`rounded-[12px] border border-border p-3 ${org.deletingAt ? "opacity-60" : ""}`}
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium text-text">{org.name}</p>
+                    <p className="truncate text-xs text-text-muted">{org.slug}</p>
+                  </div>
+                  <OrgBadges org={org} className="mt-2" />
+                  <button
+                    type="button"
+                    disabled={!!org.deletingAt}
+                    onClick={() => {
+                      setModulesTarget(org);
+                      setModulesDraft(org.enabledModules);
+                    }}
+                    className="mt-2 flex flex-wrap gap-1 text-left"
+                    title="Change modules"
+                  >
+                    {org.enabledModules.length === 0 ? (
+                      <Badge variant="neutral">No modules</Badge>
+                    ) : (
+                      org.enabledModules.map((k) => (
+                        <Badge key={k} variant="secondary">{MODULES[k].name}</Badge>
+                      ))
+                    )}
+                  </button>
+                  <p className="mt-2 text-xs text-text-muted">
+                    {formatCount(org.counts.users, org.countCap)} users · {formatCount(org.counts.leads, org.countCap)} leads ·{" "}
+                    {formatCount(org.counts.properties, org.countCap)} properties · last active {formatDate(org.lastActivityAt)}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={!!org.deletingAt}
+                      onClick={() => router.push(`/app/platform/organizations/${org._id}`)}
+                    >
+                      <Pencil className="mr-1 h-3.5 w-3.5" />
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={!!org.deletingAt || openingId === org._id}
+                      onClick={() => handleOpen(org)}
+                    >
+                      <Eye className="mr-1 h-3.5 w-3.5" />
+                      {openingId === org._id ? "Opening..." : "Open"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      disabled={!!org.deletingAt || org.isViewing}
+                      aria-label={`Delete ${org.name}`}
+                      onClick={() => {
+                        setDeleteTarget(org);
+                        setDeleteConfirm("");
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <div className="hidden overflow-x-auto rounded-lg border border-border xl:block">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -276,13 +388,10 @@ export default function PlatformPage() {
                   {filteredOrgs.map((org) => (
                     <TableRow key={org._id} className={org.deletingAt ? "opacity-60" : undefined}>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div>
-                            <p className="font-medium text-text">{org.name}</p>
-                            <p className="text-xs text-text-muted">{org.slug}</p>
-                          </div>
-                          {org.deletingAt && <Badge variant="danger">Deleting…</Badge>}
-                          {org.isViewing && !org.deletingAt && <Badge variant="warning">Viewing</Badge>}
+                        <div className="min-w-[180px]">
+                          <p className="font-medium text-text">{org.name}</p>
+                          <p className="text-xs text-text-muted">{org.slug}</p>
+                          <OrgBadges org={org} className="mt-1" />
                         </div>
                       </TableCell>
                       <TableCell>
@@ -316,6 +425,16 @@ export default function PlatformPage() {
                           <Button
                             size="sm"
                             variant="secondary"
+                            disabled={!!org.deletingAt}
+                            title="Edit name, branding, white label and the owner's login"
+                            onClick={() => router.push(`/app/platform/organizations/${org._id}`)}
+                          >
+                            <Pencil className="mr-1 h-3.5 w-3.5" />
+                            Edit
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
                             disabled={!!org.deletingAt || openingId === org._id}
                             onClick={() => handleOpen(org)}
                           >
@@ -341,6 +460,7 @@ export default function PlatformPage() {
                 </TableBody>
               </Table>
             </div>
+            </>
           )}
         </CardContent>
       </Card>
