@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { animatedToast } from "@/components/ui/animated-toaster";
 import { notificationModuleName } from "@/components/hub/format";
+import { useOrgBrand } from "@/components/providers/org-brand-provider";
 import { getErrorMessage } from "@/lib/errors";
 
 /**
@@ -16,6 +17,7 @@ import { getErrorMessage } from "@/lib/errors";
  * notification centre always shows every alert; this only adds the email.
  */
 export default function EmailAlertsPage() {
+  const { productName } = useOrgBrand();
   const prefs = useQuery(api.notifications.myEmailAlerts);
   const save = useMutation(api.notifications.setMyEmailAlerts);
   const [draft, setDraft] = useState<NotificationModule[] | null>(null);
@@ -82,7 +84,7 @@ export default function EmailAlertsPage() {
                   disabled={saving}
                   className="h-4 w-4 rounded border-border"
                 />
-                {notificationModuleName(m)} alerts
+                {notificationModuleName(m, productName)} alerts
               </label>
             ))}
           </div>

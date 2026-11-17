@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatusPill } from "@/components/ui/status-pill";
 import { ModuleCards } from "@/components/hub/module-cards";
 import { notificationModuleName, relativeTime } from "@/components/hub/format";
+import { useOrgBrand } from "@/components/providers/org-brand-provider";
 import { MODULES, type ModuleKey } from "@/config/modules";
 import { cn } from "@/lib/utils";
 import type { HubFigure } from "../../../../convex/lib/modules";
@@ -26,6 +27,7 @@ function greeting(): string {
 type Attention = HubFigure & { module: ModuleKey };
 
 export default function HubPage() {
+  const { productName } = useOrgBrand();
   const router = useRouter();
   const { user } = useAuth();
   const hub = useQuery(api.hub.getContext);
@@ -195,7 +197,7 @@ export default function HubPage() {
                       {n.body && <p className="truncate text-xs text-text-muted">{n.body}</p>}
                     </div>
                     <p className="shrink-0 text-xs text-text-dim">
-                      {notificationModuleName(n.module)} · {relativeTime(n.createdAt)}
+                      {notificationModuleName(n.module, productName)} · {relativeTime(n.createdAt)}
                     </p>
                   </div>
                 );

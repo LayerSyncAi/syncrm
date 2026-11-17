@@ -32,6 +32,14 @@ export default defineSchema({
     // Agency branches (HB-02). `id` is stable so a rename keeps every user
     // assigned to the branch; users.branchId points at it.
     branches: v.optional(v.array(v.object({ id: v.string(), name: v.string() }))),
+    // White label (set by LayerSync only): the agency's own logo and colours
+    // (orgBranding) replace the SyncEstate look once their users sign in.
+    // Absent or false shows the normal SyncEstate brand.
+    whiteLabel: v.optional(v.boolean()),
+    // A sales-demo / test organisation, created from the Platform page.
+    isDemo: v.optional(v.boolean()),
+    // The platform admin who onboarded the org (absent for self sign-up).
+    onboardedBy: v.optional(v.id("users")),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -806,7 +814,11 @@ export default defineSchema({
     // The admin picks an accent and a paper style; the remaining six theme
     // tokens are derived from those two (see src/lib/syncmedia/theme.ts).
     // Asking anyone for eight hex codes is a form nobody completes.
+    // The accent doubles as the app's primary colour for white-label orgs.
     accent: v.optional(v.string()),
+    // White-label orgs only: the app sidebar colour (SyncEstate's dark
+    // sidebar when absent).
+    sidebarColor: v.optional(v.string()),
     pageStyle: v.optional(
       v.union(v.literal("light"), v.literal("cream"), v.literal("dark"))
     ),

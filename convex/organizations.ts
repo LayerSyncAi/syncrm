@@ -7,6 +7,8 @@ import {
   getEffectiveOrgId,
 } from "./helpers";
 import { generateSlug } from "./platformLib";
+import { seedOrgDefaults } from "./lib/orgDefaults";
+import { LEGACY_DEFAULT_MODULES } from "./lib/modules";
 
 // Called after signup to create an org and assign it to the new user. Legal
 // acceptance is recorded in the same mutation so it is atomic with org creation
@@ -92,6 +94,10 @@ export const setupOrganization = mutation({
         orgId,
       });
     }
+
+    // Same starting data as a platform-onboarded agency (pipeline stages,
+    // areas, commission scenarios), so the first lead can be added at once.
+    await seedOrgDefaults(ctx, { orgId, ownerId: user._id, modules: LEGACY_DEFAULT_MODULES });
 
     return { orgId, orgName: trimmedName };
   },

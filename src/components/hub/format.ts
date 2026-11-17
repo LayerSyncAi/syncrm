@@ -13,7 +13,10 @@ export function relativeTime(ts: number, now = Date.now()): string {
   return new Date(ts).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
 
-/** Display name for a notification's module ("hub" is the Hub itself). */
-export function notificationModuleName(module: ModuleKey | "hub"): string {
-  return module === "hub" ? "SyncEstate" : MODULES[module].name;
+/**
+ * Display name for a notification's module ("hub" is the Hub itself, shown
+ * as the product name — the agency's own name when white-labelled).
+ */
+export function notificationModuleName(module: ModuleKey | "hub", hubName = "SyncEstate"): string {
+  return module === "hub" ? hubName : MODULES[module].name;
 }

@@ -9,13 +9,14 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { KeyRound, Loader2 } from "lucide-react";
 import { authToasts } from "@/lib/toast";
-import { brand } from "@/config/brand";
+import { useOrgBrand } from "@/components/providers/org-brand-provider";
 
 /**
  * The "choose your own password" card shown after an admin-created account
  * or a portal invite signs in with a temporary password.
  */
 export function ForceChangePasswordCard({ onChanged }: { onChanged: () => void }) {
+  const { productName } = useOrgBrand();
   const forceChangePassword = useAction(api.users.forceChangePassword);
 
   const [password, setPassword] = useState("");
@@ -73,7 +74,7 @@ export function ForceChangePasswordCard({ onChanged }: { onChanged: () => void }
             </div>
             <div className="text-center space-y-1">
               <p className="text-xs uppercase tracking-[0.2em] text-text-dim">
-                {brand.name}
+                {productName}
               </p>
               <h1 className="text-xl font-semibold">Change your password</h1>
               <p className="text-sm text-text-muted">

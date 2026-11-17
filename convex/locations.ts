@@ -2,6 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getCurrentUserWithOrg, assertOrgAccess } from "./helpers";
 import { CURATED_AREA_NAMES, canonicalizeArea } from "./lib/locations";
+import { seedDefaultLocations } from "./lib/orgDefaults";
 
 // Curated default areas from the configured white-label seed (empty upstream;
 // see convex/lib/areaSeed.ts). syncDefaults tops up orgs from this list.
@@ -103,22 +104,7 @@ export const remove = mutation({
 export const seedDefaultsIfEmpty = mutation({
   handler: async (ctx) => {
     const user = await getCurrentUserWithOrg(ctx);
-    // Check if org already has locations
-    const existing = await ctx.db
-      .query("locations")
-      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
-      .first();
-    if (existing) return;
-
-    const timestamp = Date.now();
-    for (const name of defaultLocations) {
-      await ctx.db.insert("locations", {
-        name,
-        createdByUserId: user._id,
-        orgId: user.orgId,
-        createdAt: timestamp,
-      });
-    }
+    await seedDefaultLocations(ctx, user.orgId, user._id);
   },
 });
 

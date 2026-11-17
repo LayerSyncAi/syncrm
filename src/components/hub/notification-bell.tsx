@@ -7,9 +7,11 @@ import { Bell } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { cn } from "@/lib/utils";
 import { notificationModuleName, relativeTime } from "@/components/hub/format";
+import { useOrgBrand } from "@/components/providers/org-brand-provider";
 
 /** In-app notification centre. Separate from the browser push toggle. */
 export function NotificationBell() {
+  const { productName } = useOrgBrand();
   const router = useRouter();
   const unread = useQuery(api.notifications.unreadCount) ?? 0;
   const [open, setOpen] = useState(false);
@@ -102,7 +104,7 @@ export function NotificationBell() {
                     <p className={cn("text-sm", !n.readAt && "font-medium")}>{n.title}</p>
                     {n.body && <p className="line-clamp-2 text-xs text-text-muted">{n.body}</p>}
                     <p className="mt-0.5 text-xs text-text-dim">
-                      {notificationModuleName(n.module)} · {relativeTime(n.createdAt)}
+                      {notificationModuleName(n.module, productName)} · {relativeTime(n.createdAt)}
                     </p>
                   </div>
                 </button>

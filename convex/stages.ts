@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireAdmin, getCurrentUserWithOrg, assertOrgAccess } from "./helpers";
+import { insertDefaultStages, seedDefaultStages } from "./lib/orgDefaults";
 
 // Normalize an optional win-probability into the 0–100 range (undefined stays undefined).
 function clampProbability(value: number | undefined): number | undefined {
@@ -8,81 +9,6 @@ function clampProbability(value: number | undefined): number | undefined {
   if (Number.isNaN(value)) return undefined;
   return Math.max(0, Math.min(100, value));
 }
-
-const defaultStages = [
-  {
-    name: "New Lead",
-    description: "Just entered system, no contact made",
-    action: "Call/text/email immediately",
-    order: 1,
-    isTerminal: false,
-    terminalOutcome: null,
-    winProbability: 10,
-  },
-  {
-    name: "Contacted",
-    description: "Had some communication",
-    action: "Attempt further contact",
-    order: 2,
-    isTerminal: false,
-    terminalOutcome: null,
-    winProbability: 20,
-  },
-  {
-    name: "Qualified",
-    description: "Has motivation, timeline, expectations",
-    action: "Schedule appointment or offer",
-    order: 3,
-    isTerminal: false,
-    terminalOutcome: null,
-    winProbability: 40,
-  },
-  {
-    name: "Follow-Up",
-    description: "Not ready but could convert",
-    action: "Drip campaign or reminders",
-    order: 4,
-    isTerminal: false,
-    terminalOutcome: null,
-    winProbability: 30,
-  },
-  {
-    name: "Offer Made",
-    description: "Waiting for response/counter",
-    action: "Track and follow up",
-    order: 5,
-    isTerminal: false,
-    terminalOutcome: null,
-    winProbability: 60,
-  },
-  {
-    name: "Under Contract",
-    description: "Accepted, in escrow",
-    action: "Coordinate with title company",
-    order: 6,
-    isTerminal: false,
-    terminalOutcome: null,
-    winProbability: 85,
-  },
-  {
-    name: "Closed",
-    description: "Deal done",
-    action: "Request testimonials",
-    order: 7,
-    isTerminal: true,
-    terminalOutcome: "won" as const,
-    winProbability: 100,
-  },
-  {
-    name: "Lost",
-    description: "Did not convert",
-    action: "Log reason, consider re-engaging",
-    order: 8,
-    isTerminal: true,
-    terminalOutcome: "lost" as const,
-    winProbability: 0,
-  },
-];
 
 export const list = query({
   handler: async (ctx) => {
@@ -98,22 +24,7 @@ export const list = query({
 export const seedDefaultsIfEmpty = mutation({
   handler: async (ctx) => {
     const user = await getCurrentUserWithOrg(ctx);
-    // Check if org already has stages
-    const existing = await ctx.db
-      .query("pipelineStages")
-      .withIndex("by_org", (q) => q.eq("orgId", user.orgId))
-      .first();
-    if (existing) return;
-
-    const timestamp = Date.now();
-    for (const stage of defaultStages) {
-      await ctx.db.insert("pipelineStages", {
-        ...stage,
-        orgId: user.orgId,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-      });
-    }
+    await seedDefaultStages(ctx, user.orgId);
   },
 });
 
@@ -130,15 +41,7 @@ export const adminReseedStages = mutation({
       await ctx.db.delete(stage._id);
     }
 
-    const timestamp = Date.now();
-    for (const stage of defaultStages) {
-      await ctx.db.insert("pipelineStages", {
-        ...stage,
-        orgId: user.orgId,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-      });
-    }
+    await insertDefaultStages(ctx, user.orgId);
   },
 });
 

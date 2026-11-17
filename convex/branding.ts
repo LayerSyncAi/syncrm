@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { ConvexError } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
-import { getCurrentUserWithOrg, requireAdmin } from "./helpers";
+import { getCurrentUserOptional, getCurrentUserWithOrg, getEffectiveOrgId, requireAdmin } from "./helpers";
 import { resolveRefs } from "./syncmedia";
 
 /**
@@ -58,6 +58,37 @@ export const get = query({
       contactPhone: row?.contactPhone ?? "",
       contactEmail: row?.contactEmail ?? "",
       website: row?.website ?? "",
+    };
+  },
+});
+
+/**
+ * The app's own look for a white-label organisation: its name, logos and
+ * colours, which replace the SyncEstate brand once its people sign in.
+ * Null when the org is not white-labelled (or there is no org), in which case
+ * the app keeps the SyncEstate brand. Platform admins viewing a white-label
+ * org see its look too.
+ */
+export const getAppTheme = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUserOptional(ctx);
+    if (!user || user.portalKind) return null;
+    const orgId = getEffectiveOrgId(user);
+    if (!orgId) return null;
+    const org = await ctx.db.get(orgId);
+    if (!org?.whiteLabel) return null;
+    const row = await ctx.db
+      .query("orgBranding")
+      .withIndex("by_org", (q) => q.eq("orgId", orgId))
+      .unique();
+    return {
+      orgId,
+      orgName: org.name,
+      primary: row?.accent && HEX.test(row.accent) ? row.accent : null,
+      sidebar: row?.sidebarColor && HEX.test(row.sidebarColor) ? row.sidebarColor : null,
+      logoUrl: (await resolveOne(ctx, row?.logoRef)) ?? null,
+      logoOnDarkUrl: (await resolveOne(ctx, row?.logoOnDarkRef)) ?? null,
     };
   },
 });

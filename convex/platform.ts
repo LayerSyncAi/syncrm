@@ -86,6 +86,8 @@ export const listOrganizations = query({
         createdAt: org.createdAt,
         deletingAt: org.deletingAt,
         enabledModules: orgModules(org),
+        isDemo: !!org.isDemo,
+        whiteLabel: !!org.whiteLabel,
         counts: { users, leads, contacts, properties },
         countCap: COUNT_CAP,
         lastActivityAt: lastAudit?.createdAt ?? null,

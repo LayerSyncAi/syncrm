@@ -6,6 +6,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { Scrypt } from "lucia";
 import { recordAudit } from "./logs";
 import { rebuildPasswordAccount, randomPassword } from "./lib/authReconcile";
+import { assertEmailAvailable } from "./lib/accountChecks";
 import { sendStaffSignInEmail } from "./email";
 import { ESTATE_ROLE_LABELS, estateRoleValidator } from "./lib/modules";
 import { Doc, Id } from "./_generated/dataModel";
@@ -102,23 +103,7 @@ export const adminCreateUserInternal = internalMutation({
     passwordHash: v.string(),
   },
   handler: async (ctx, args) => {
-    // Check for existing user
-    const existing = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", args.email))
-      .unique();
-    if (existing) {
-      if (existing.isPlatformAdmin) {
-        throw new ConvexError("This email belongs to a platform (LayerSync) account and cannot join an organization");
-      }
-      if (existing.orgId && existing.orgId !== args.orgId) {
-        throw new ConvexError("A user with this email already belongs to another organization");
-      }
-      if (existing.portalKind) {
-        throw new ConvexError("This email is already used for a landlord or tenant portal login");
-      }
-      throw new ConvexError("This email already has a login in your agency. Reset their password instead.");
-    }
+    await assertEmailAvailable(ctx, args.email, args.orgId);
 
     const org = await ctx.db.get(args.orgId);
     if (args.branchId && !branchExists(org, args.branchId)) {
