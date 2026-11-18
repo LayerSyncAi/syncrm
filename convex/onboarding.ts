@@ -29,10 +29,29 @@ import {
   SIDEBAR_TOO_LIGHT,
 } from "./lib/onboardingRules";
 import { isStorageRef, normalizeEmail } from "./platformLib";
+import {
+  DAY_MS,
+  MAX_TRIAL_EXTENSION_DAYS,
+  PLAN_LABELS,
+  extendTrialEnd,
+  isPaidPlan,
+  whiteLabelForPlan,
+  type PlanKey,
+} from "./lib/plans";
 import { sendStaffSignInEmail } from "./email";
 import { resolveOne } from "./branding";
 
 const currencyValidator = v.union(v.literal("USD"), v.literal("ZiG"));
+const planValidator = v.union(
+  v.literal("trial"),
+  v.literal("beta"),
+  v.literal("standard"),
+  v.literal("white_label")
+);
+
+function trialDaysValid(days: number): boolean {
+  return Number.isInteger(days) && days >= 1 && days <= MAX_TRIAL_EXTENSION_DAYS;
+}
 
 function actorLabel(user: Pick<Doc<"users">, "fullName" | "name" | "email"> | null): string | undefined {
   return user ? user.fullName || user.name || user.email : undefined;
@@ -102,6 +121,8 @@ export const createOrganizationInternal = internalMutation({
     isDemo: v.boolean(),
     modules: v.array(moduleKeyValidator),
     whiteLabel: v.boolean(),
+    plan: planValidator,
+    trialEndsAt: v.optional(v.number()),
     logoRef: v.optional(v.string()),
     logoOnDarkRef: v.optional(v.string()),
     primaryColor: v.optional(v.string()),
@@ -120,6 +141,7 @@ export const createOrganizationInternal = internalMutation({
 
     const now = Date.now();
     const modules = [...new Set(args.modules)];
+    const whiteLabel = whiteLabelForPlan(args.plan, args.whiteLabel);
     const orgId = await ctx.db.insert("organizations", {
       name: args.name,
       slug: args.slug,
@@ -127,8 +149,10 @@ export const createOrganizationInternal = internalMutation({
       defaultCurrency: args.defaultCurrency,
       email: args.contactEmail || undefined,
       phone: args.contactPhone || undefined,
-      whiteLabel: args.whiteLabel,
+      whiteLabel,
       isDemo: args.isDemo || undefined,
+      plan: args.plan,
+      trialEndsAt: args.plan === "trial" ? args.trialEndsAt : undefined,
       onboardedBy: args.actorUserId,
       createdAt: now,
       updatedAt: now,
@@ -170,11 +194,11 @@ export const createOrganizationInternal = internalMutation({
       actorLabel: label,
       action: "org.create",
       category: "system",
-      description: `LayerSync (${actor?.email ?? "platform"}) set up ${args.name}${args.isDemo ? " as a demo organisation" : ""}`,
+      description: `LayerSync (${actor?.email ?? "platform"}) set up ${args.name}${args.isDemo ? " as a demo organisation" : ""} on the ${PLAN_LABELS[args.plan]} plan`,
       targetType: "organization",
       targetId: orgId,
       targetLabel: args.name,
-      metadata: { modules, whiteLabel: args.whiteLabel, isDemo: args.isDemo },
+      metadata: { modules, whiteLabel, isDemo: args.isDemo, plan: args.plan, trialEndsAt: args.trialEndsAt },
       orgId,
     });
     await recordAudit(ctx, {
@@ -212,6 +236,9 @@ export const createOrganization = action({
     isDemo: v.boolean(),
     modules: v.array(moduleKeyValidator),
     whiteLabel: v.boolean(),
+    plan: planValidator,
+    /** Free trials only: how long the trial runs. */
+    trialDays: v.optional(v.number()),
     logoStorageId: v.optional(v.id("_storage")),
     logoOnDarkStorageId: v.optional(v.id("_storage")),
     primaryColor: v.optional(v.string()),
@@ -264,6 +291,9 @@ export const createOrganization = action({
       ownerEmail,
       password,
     });
+    if (args.plan === "trial" && !trialDaysValid(args.trialDays ?? 0)) {
+      errors.name = errors.name ?? `A free trial needs between 1 and ${MAX_TRIAL_EXTENSION_DAYS} days`;
+    }
     const firstError = Object.values(errors)[0];
     if (firstError) {
       await cleanUp();
@@ -285,6 +315,8 @@ export const createOrganization = action({
         isDemo: args.isDemo,
         modules: args.modules,
         whiteLabel: args.whiteLabel,
+        plan: args.plan,
+        trialEndsAt: args.plan === "trial" ? Date.now() + (args.trialDays ?? 0) * DAY_MS : undefined,
         logoRef: args.logoStorageId,
         logoOnDarkRef: args.logoOnDarkStorageId,
         primaryColor,
@@ -342,16 +374,35 @@ export const getOrganization = query({
       }))
       .sort((a, b) => a.createdAt - b.createdAt);
 
+    const countCap = 1000;
+    const count = async (table: "users" | "leads" | "contacts" | "properties") =>
+      (
+        await ctx.db
+          .query(table)
+          .withIndex("by_org", (q) => q.eq("orgId", org._id))
+          .take(countCap + 1)
+      ).length;
+    const [users, leads, contacts, properties] = await Promise.all([
+      count("users"),
+      count("leads"),
+      count("contacts"),
+      count("properties"),
+    ]);
+
     return {
       _id: org._id,
       name: org.name,
       slug: org.slug,
       createdAt: org.createdAt,
+      counts: { users, leads, contacts, properties },
+      countCap,
       deletingAt: org.deletingAt,
       defaultCurrency: org.defaultCurrency,
       enabledModules: orgModules(org),
       whiteLabel: !!org.whiteLabel,
       isDemo: !!org.isDemo,
+      plan: org.plan ?? null,
+      trialEndsAt: org.trialEndsAt ?? null,
       primaryColor: branding?.accent,
       sidebarColor: branding?.sidebarColor,
       logoUrl: await resolveOne(ctx, branding?.logoRef),
@@ -398,6 +449,11 @@ export const updateOrganization = mutation({
     if (args.isDemo !== undefined && args.isDemo !== !!org.isDemo) {
       orgPatch.isDemo = args.isDemo;
       changes.push(args.isDemo ? "marked as demo" : "no longer a demo");
+    }
+    if (args.whiteLabel !== undefined && isPaidPlan(org.plan) && args.whiteLabel !== (org.plan === "white_label")) {
+      throw new ConvexError(
+        `The ${PLAN_LABELS[org.plan!]} plan decides the look. Change the plan to switch between their branding and SyncEstate.`
+      );
     }
     if (args.whiteLabel !== undefined && args.whiteLabel !== !!org.whiteLabel) {
       orgPatch.whiteLabel = args.whiteLabel;
@@ -470,6 +526,92 @@ export const updateOrganization = mutation({
       });
     }
     return { changed: changes.length };
+  },
+});
+
+// =====================
+// Plan and trial
+// =====================
+
+async function recordPlanAudit(
+  ctx: MutationCtx,
+  me: Doc<"users">,
+  org: Doc<"organizations">,
+  description: string,
+  metadata: Record<string, unknown>
+) {
+  await recordAudit(ctx, {
+    actorUserId: me._id,
+    actorLabel: actorLabel(me),
+    action: "org.plan_change",
+    category: "system",
+    description: `LayerSync (${me.email ?? "platform"}) ${description}`,
+    targetType: "organization",
+    targetId: org._id,
+    targetLabel: org.name,
+    metadata,
+    orgId: org._id,
+  });
+}
+
+/**
+ * Move an organisation to another plan. A free trial needs an end date in
+ * the future; paid plans also set the look (White label on, Standard off).
+ */
+export const setPlan = mutation({
+  args: { orgId: v.id("organizations"), plan: planValidator, trialEndsAt: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const me = await requirePlatformAdmin(ctx);
+    const org = await ctx.db.get(args.orgId);
+    if (!org) throw new ConvexError("Organisation not found");
+    if (org.deletingAt) throw new ConvexError("This organisation is being deleted");
+
+    const now = Date.now();
+    let trialEndsAt: number | undefined;
+    if (args.plan === "trial") {
+      trialEndsAt = args.trialEndsAt ?? (org.plan === "trial" ? org.trialEndsAt : undefined);
+      if (!trialEndsAt || trialEndsAt <= now) throw new ConvexError("Pick a trial end date in the future");
+      if (trialEndsAt > now + MAX_TRIAL_EXTENSION_DAYS * DAY_MS) {
+        throw new ConvexError("A trial can run for at most a year from today");
+      }
+    }
+    const whiteLabel = whiteLabelForPlan(args.plan, !!org.whiteLabel);
+    await ctx.db.patch(org._id, { plan: args.plan, trialEndsAt, whiteLabel, updatedAt: now });
+
+    const from = org.plan ? PLAN_LABELS[org.plan as PlanKey] : "no plan";
+    const until = trialEndsAt ? ` until ${new Date(trialEndsAt).toISOString().slice(0, 10)}` : "";
+    await recordPlanAudit(ctx, me, org, `moved the organisation from ${from} to ${PLAN_LABELS[args.plan]}${until}`, {
+      from: org.plan ?? null,
+      to: args.plan,
+      trialEndsAt,
+      whiteLabel,
+    });
+    return { plan: args.plan, trialEndsAt: trialEndsAt ?? null, whiteLabel };
+  },
+});
+
+/** Add days to a free trial (counted from today if it has already ended). */
+export const extendTrial = mutation({
+  args: { orgId: v.id("organizations"), days: v.number() },
+  handler: async (ctx, args) => {
+    const me = await requirePlatformAdmin(ctx);
+    const org = await ctx.db.get(args.orgId);
+    if (!org) throw new ConvexError("Organisation not found");
+    if (org.plan !== "trial") throw new ConvexError("Only a free trial can be extended");
+    if (!trialDaysValid(args.days)) {
+      throw new ConvexError(`Add between 1 and ${MAX_TRIAL_EXTENSION_DAYS} days`);
+    }
+    const now = Date.now();
+    const trialEndsAt = extendTrialEnd(org.trialEndsAt, args.days, now);
+    await ctx.db.patch(org._id, { trialEndsAt, updatedAt: now });
+    await recordPlanAudit(
+      ctx,
+      me,
+      org,
+      `added ${args.days} ${args.days === 1 ? "day" : "days"} to the free trial (now ends ${new Date(trialEndsAt).toISOString().slice(0, 10)})`,
+      { days: args.days, trialEndsAt }
+    );
+    return { trialEndsAt };
   },
 });
 

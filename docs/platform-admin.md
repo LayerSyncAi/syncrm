@@ -46,7 +46,7 @@ Rules:
 
 ## 2. Onboarding a new organisation
 
-Platform → **New organisation** opens a five-step wizard
+Platform → **New organisation** opens a five-step wizard (the first step also picks the plan)
 (`/app/platform/organizations/new`). Nothing is saved or uploaded until
 **Create organisation** on the last step.
 
@@ -89,6 +89,24 @@ password and no email. Demo orgs carry a **Demo** badge (filter with
 changes the name, currency and demo flag, turns white label on or off
 (live for everyone in the org), replaces logos and colours, switches
 modules, and issues any of the org's admins a new temporary password.
+
+### Plans (pilot)
+
+Every organisation has one plan (`organizations.plan`, rules in `convex/lib/plans.ts`):
+
+| Plan | What it means |
+|------|---------------|
+| Free trial | Runs until `trialEndsAt`. Add days from the organisation's page (+7 / +14 / +30, or pick an end date). |
+| Beta tester | Helping test during the pilot, no end date. |
+| Standard | Paid, SyncEstate look. |
+| White label | Paid, the agency's own logo and colours. |
+
+Paid plans decide the look (White label on, Standard off); trial and beta
+organisations can be shown either way. Organisations set up before plans show
+"No plan set" until one is picked. When a trial is in its last 7 days or has
+ended, the agency's admins see a reminder bar with LayerSync's contact email;
+nothing is locked. Every plan change and extension is written to the
+organisation's Logs page (`org.plan_change`).
 
 ### White label
 

@@ -40,6 +40,15 @@ import { brand } from "@/config/brand";
 import { getErrorMessage } from "@/lib/errors";
 import { cn } from "@/lib/utils";
 import { BrandPreview } from "./brand-preview";
+import { PlanPicker } from "./plan-picker";
+import {
+  DEFAULT_TRIAL_DAYS,
+  PLAN_LABELS,
+  TRIAL_LENGTHS,
+  isPaidPlan,
+  whiteLabelForPlan,
+  type PlanKey,
+} from "../../../../convex/lib/plans";
 import {
   PRIMARY_SUGGESTIONS,
   SIDEBAR_SUGGESTIONS,
@@ -75,6 +84,8 @@ interface Draft {
   contactEmail: string;
   contactPhone: string;
   isDemo: boolean;
+  plan: PlanKey;
+  trialDays: number;
   modules: ModuleKey[];
   whiteLabel: boolean;
   primaryColor: string;
@@ -97,6 +108,8 @@ function initialDraft(demo: boolean): Draft {
     contactEmail: "",
     contactPhone: "",
     isDemo: demo,
+    plan: demo ? "beta" : "trial",
+    trialDays: DEFAULT_TRIAL_DAYS,
     modules: demo ? [...MODULE_ORDER] : ["crm"],
     whiteLabel: demo,
     primaryColor: "",
@@ -257,7 +270,9 @@ export function OrganizationWizard({ demo }: { demo: boolean }) {
         contactPhone: draft.contactPhone.trim() || undefined,
         isDemo: draft.isDemo,
         modules: draft.modules,
-        whiteLabel: draft.whiteLabel,
+        whiteLabel: whiteLabelForPlan(draft.plan, draft.whiteLabel),
+        plan: draft.plan,
+        trialDays: draft.plan === "trial" ? draft.trialDays : undefined,
         logoStorageId,
         logoOnDarkStorageId,
         primaryColor: draft.primaryColor || undefined,
@@ -392,9 +407,9 @@ export function OrganizationWizard({ demo }: { demo: boolean }) {
                   />
                 </Field>
                 <Field
-                  label="Web address (slug)"
+                  label="Web address"
                   htmlFor="org-slug"
-                  hint="Identifies the organisation on the Platform page."
+                  hint="A short name for this organisation. Filled in for you."
                   error={errorFor("slug") ?? (availability?.slugTaken && debouncedSlug === draft.slug ? "That web address is already taken" : undefined)}
                 >
                   <Input
@@ -433,6 +448,36 @@ export function OrganizationWizard({ demo }: { demo: boolean }) {
                     placeholder="+263 77 000 0000"
                   />
                 </Field>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>Plan</Label>
+                  <PlanPicker
+                    value={draft.plan}
+                    onChange={(plan) =>
+                      setDraft((d) => ({ ...d, plan, whiteLabel: whiteLabelForPlan(plan, d.whiteLabel) }))
+                    }
+                  />
+                  {draft.plan === "trial" && (
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <span className="text-sm text-text-muted">Trial length</span>
+                      {TRIAL_LENGTHS.map((days) => (
+                        <button
+                          key={days}
+                          type="button"
+                          onClick={() => update({ trialDays: days })}
+                          aria-pressed={draft.trialDays === days}
+                          className={cn(
+                            "rounded-full border px-3 py-1 text-sm transition-colors",
+                            draft.trialDays === days
+                              ? "border-primary-600 bg-primary-soft font-medium text-primary-ink"
+                              : "border-border text-text-muted hover:text-text"
+                          )}
+                        >
+                          {days} days
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <label className="flex cursor-pointer items-start gap-3 rounded-[10px] border border-border p-3 sm:col-span-2">
                   <input
                     type="checkbox"
@@ -490,18 +535,25 @@ export function OrganizationWizard({ demo }: { demo: boolean }) {
                   </p>
                 </CardHeader>
                 <CardContent className="space-y-5">
-                  <label className="flex cursor-pointer items-start gap-3 rounded-[10px] border border-border p-3">
+                  <label
+                    className={cn(
+                      "flex items-start gap-3 rounded-[10px] border border-border p-3",
+                      isPaidPlan(draft.plan) ? "cursor-default bg-surface-2" : "cursor-pointer"
+                    )}
+                  >
                     <input
                       type="checkbox"
                       className="mt-0.5 h-4 w-4 rounded border-border"
-                      checked={draft.whiteLabel}
+                      checked={whiteLabelForPlan(draft.plan, draft.whiteLabel)}
+                      disabled={isPaidPlan(draft.plan)}
                       onChange={(e) => update({ whiteLabel: e.target.checked })}
                     />
                     <span>
-                      <span className="block text-sm font-medium text-text">White label</span>
+                      <span className="block text-sm font-medium text-text">Show their own branding</span>
                       <span className="block text-xs text-text-muted">
-                        When ticked, their logo, colours and name replace the SyncEstate look once their people sign in.
-                        Untick to keep the normal SyncEstate look.
+                        {isPaidPlan(draft.plan)
+                          ? `Set by the ${PLAN_LABELS[draft.plan]} plan. Change the plan on the first step to switch.`
+                          : "Their logo, colours and name replace the SyncEstate look once their people sign in. Untick to keep the SyncEstate look."}
                       </span>
                     </span>
                   </label>
@@ -571,17 +623,17 @@ export function OrganizationWizard({ demo }: { demo: boolean }) {
               </Card>
               <aside className="min-w-0 space-y-2 xl:sticky xl:top-20 xl:self-start">
                 <p className="text-xs font-medium uppercase tracking-wide text-text-dim">
-                  What they&apos;ll see{draft.whiteLabel ? "" : " (SyncEstate look)"}
+                  What they&apos;ll see{whiteLabelForPlan(draft.plan, draft.whiteLabel) ? "" : " (SyncEstate look)"}
                 </p>
                 <BrandPreview
                   name={draft.name}
-                  whiteLabel={draft.whiteLabel}
+                  whiteLabel={whiteLabelForPlan(draft.plan, draft.whiteLabel)}
                   primary={draft.primaryColor || undefined}
                   sidebar={draft.sidebarColor || undefined}
                   logoUrl={draft.logo?.previewUrl}
                   logoOnDarkUrl={draft.logoOnDark?.previewUrl}
                 />
-                {!draft.whiteLabel && (
+                {!whiteLabelForPlan(draft.plan, draft.whiteLabel) && (
                   <p className="text-xs text-text-muted">
                     Not white-labelled: the logo and colour are still saved for brochures and PDFs.
                   </p>
@@ -692,6 +744,10 @@ export function OrganizationWizard({ demo }: { demo: boolean }) {
                   </p>
                   <p className="break-all font-mono text-xs text-text-muted">{draft.slug}</p>
                   <p className="text-xs text-text-muted">
+                    {PLAN_LABELS[draft.plan]}
+                    {draft.plan === "trial" ? ` for ${draft.trialDays} days` : ""}
+                  </p>
+                  <p className="text-xs text-text-muted">
                     {draft.currency}
                     {draft.contactEmail ? ` · ${draft.contactEmail}` : ""}
                     {draft.contactPhone ? ` · ${draft.contactPhone}` : ""}
@@ -706,7 +762,9 @@ export function OrganizationWizard({ demo }: { demo: boolean }) {
                 </ReviewRow>
                 <ReviewRow title="Branding" onEdit={() => setStepIndex(2)}>
                   <p className="text-sm text-text">
-                    {draft.whiteLabel ? "White label: their logo and colours in the app" : "SyncEstate look in the app"}
+                    {whiteLabelForPlan(draft.plan, draft.whiteLabel)
+                      ? "Their own logo and colours in the app"
+                      : "SyncEstate look in the app"}
                   </p>
                   <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-text-muted">
                     <Swatch label="Primary" value={draft.primaryColor} />
@@ -857,7 +915,7 @@ function DoneScreen({
       <div className="flex flex-wrap justify-center gap-2">
         <Button onClick={onOpen} disabled={opening}>
           {opening ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
-          Open organisation
+          View as them
         </Button>
         <Button variant="secondary" onClick={onAnother}>
           Create another

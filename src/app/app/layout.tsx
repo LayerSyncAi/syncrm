@@ -17,6 +17,7 @@ import { ErrorBoundary } from "@/components/common/error-boundary";
 import { StaticDataProvider } from "@/components/providers/static-data-provider";
 import { PlatformViewBanner } from "@/components/layout/platform-view-banner";
 import { OrgBrandProvider } from "@/components/providers/org-brand-provider";
+import { TrialNotice } from "@/components/layout/trial-notice";
 
 const OnboardingTour = dynamic(
   () => import("@/components/onboarding/onboarding-tour").then((m) => m.OnboardingTour),
@@ -291,6 +292,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         }}
       >
         {inPlatformView && <PlatformViewBanner orgName={org?.name} />}
+        {isRealAdmin && <TrialNotice plan={org?.plan} trialEndsAt={org?.trialEndsAt} />}
         <Topbar userName={userName} userEmail={user.email || undefined} orgName={org?.name} userTimezone={user.timezone || undefined} isRealAdmin={isRealAdmin && !inPlatformView} agentMode={agentMode} onMobileMenuOpen={() => setMobileOpen(true)} />
         <div className="px-3 py-4 pb-36 sm:px-6 sm:py-6 md:pb-6">
           <ErrorBoundary sectionName="Page Content">

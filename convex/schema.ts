@@ -38,6 +38,13 @@ export default defineSchema({
     whiteLabel: v.optional(v.boolean()),
     // A sales-demo / test organisation, created from the Platform page.
     isDemo: v.optional(v.boolean()),
+    // Pilot plan (convex/lib/plans.ts): free trial, beta tester, or a paid
+    // Standard / White label subscription. Absent on orgs set up before plans.
+    plan: v.optional(
+      v.union(v.literal("trial"), v.literal("beta"), v.literal("standard"), v.literal("white_label"))
+    ),
+    // Free trials only: when the trial ends (LayerSync can add days).
+    trialEndsAt: v.optional(v.number()),
     // The platform admin who onboarded the org (absent for self sign-up).
     onboardedBy: v.optional(v.id("users")),
     createdAt: v.number(),

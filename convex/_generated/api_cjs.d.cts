@@ -67,6 +67,7 @@ import type * as lib_modules from "../lib/modules.js";
 import type * as lib_notify from "../lib/notify.js";
 import type * as lib_onboardingRules from "../lib/onboardingRules.js";
 import type * as lib_orgDefaults from "../lib/orgDefaults.js";
+import type * as lib_plans from "../lib/plans.js";
 import type * as lib_secretBox from "../lib/secretBox.js";
 import type * as lib_websiteEnquiries from "../lib/websiteEnquiries.js";
 import type * as lib_whatsappLeads from "../lib/whatsappLeads.js";
@@ -220,6 +221,7 @@ declare const fullApi: ApiFromModules<{
   "lib/notify": typeof lib_notify;
   "lib/onboardingRules": typeof lib_onboardingRules;
   "lib/orgDefaults": typeof lib_orgDefaults;
+  "lib/plans": typeof lib_plans;
   "lib/secretBox": typeof lib_secretBox;
   "lib/websiteEnquiries": typeof lib_websiteEnquiries;
   "lib/whatsappLeads": typeof lib_whatsappLeads;

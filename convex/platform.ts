@@ -28,6 +28,7 @@ import { Doc, Id, TableNames } from "./_generated/dataModel";
 import { requirePlatformAdmin } from "./helpers";
 import { recordAudit } from "./logs";
 import { orgModules } from "./lib/modules";
+import { resolveOne } from "./branding";
 import { rebuildPasswordAccount, randomPassword } from "./lib/authReconcile";
 import { RATE_LIMITS } from "./rateLimit";
 import {
@@ -68,7 +69,7 @@ export const listOrganizations = query({
 
     const result = [];
     for (const org of orgs) {
-      const [users, leads, contacts, properties, lastAudit] = await Promise.all([
+      const [users, leads, contacts, properties, lastAudit, branding] = await Promise.all([
         countByOrg(ctx, "users", org._id),
         countByOrg(ctx, "leads", org._id),
         countByOrg(ctx, "contacts", org._id),
@@ -78,6 +79,10 @@ export const listOrganizations = query({
           .withIndex("by_org_created", (q) => q.eq("orgId", org._id))
           .order("desc")
           .first(),
+        ctx.db
+          .query("orgBranding")
+          .withIndex("by_org", (q) => q.eq("orgId", org._id))
+          .unique(),
       ]);
       result.push({
         _id: org._id,
@@ -88,6 +93,11 @@ export const listOrganizations = query({
         enabledModules: orgModules(org),
         isDemo: !!org.isDemo,
         whiteLabel: !!org.whiteLabel,
+        plan: org.plan ?? null,
+        trialEndsAt: org.trialEndsAt ?? null,
+        // For the card's avatar: the agency's own logo or colour when it has one.
+        primaryColor: branding?.accent ?? null,
+        logoUrl: (await resolveOne(ctx, branding?.logoRef)) ?? null,
         counts: { users, leads, contacts, properties },
         countCap: COUNT_CAP,
         lastActivityAt: lastAudit?.createdAt ?? null,
