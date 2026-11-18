@@ -4,10 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useAction, useMutation, useQuery } from "convex/react";
-import { ArrowLeft, Check, Copy, Eye, KeyRound, Loader2, Save } from "lucide-react";
+import { ArrowLeft, Check, Copy, Eye, KeyRound, Loader2, Save, Trash2 } from "lucide-react";
 import { api } from "../../../../../../convex/_generated/api";
 import type { Id } from "../../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
+import { useNow } from "@/hooks/useNow";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,14 @@ import { ModuleChecklist } from "@/components/hub/module-checklist";
 import { ColorField } from "@/components/branding/color-field";
 import { LogoSlot } from "@/components/branding/logo-slot";
 import { BrandPreview } from "@/components/platform/onboarding/brand-preview";
+import { PlanBadge, PlanPicker } from "@/components/platform/onboarding/plan-picker";
+import {
+  DAY_MS,
+  DEFAULT_TRIAL_DAYS,
+  PLAN_LABELS,
+  isPaidPlan,
+  type PlanKey,
+} from "../../../../../../convex/lib/plans";
 import {
   PRIMARY_SUGGESTIONS,
   SIDEBAR_SUGGESTIONS,
@@ -31,6 +40,23 @@ import { isDarkEnoughForSidebar, isHexColor, SIDEBAR_TOO_LIGHT } from "../../../
 import type { ModuleKey } from "@/config/modules";
 import { brand } from "@/config/brand";
 import { getErrorMessage } from "@/lib/errors";
+
+/** yyyy-mm-dd for <input type="date">, in local time. */
+function toDateInput(ts: number): string {
+  const d = new Date(ts);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** End of that day, local time, so "ends 28 Nov" lasts all of the 28th. */
+function fromDateInput(value: string): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!m) return null;
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 23, 59, 59).getTime();
+}
+
+const formatLongDate = (ts: number) =>
+  new Date(ts).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
 
 const formatDate = (ts: number) =>
   new Date(ts).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
@@ -52,6 +78,9 @@ export default function EditOrganizationPage() {
   const setOrgModules = useMutation(api.hub.setOrgModules);
   const setViewOrg = useMutation(api.platform.setViewOrg);
   const resetMemberPassword = useAction(api.onboarding.resetMemberPassword);
+  const setPlan = useMutation(api.onboarding.setPlan);
+  const extendTrial = useMutation(api.onboarding.extendTrial);
+  const purgeOrganization = useMutation(api.platform.purgeOrganization);
 
   const [name, setName] = useState("");
   const [currency, setCurrency] = useState<"USD" | "ZiG">("USD");
@@ -59,7 +88,10 @@ export default function EditOrganizationPage() {
   const [primaryColor, setPrimaryColor] = useState("");
   const [sidebarColor, setSidebarColor] = useState("");
   const [modules, setModules] = useState<ModuleKey[]>([]);
-  const [saving, setSaving] = useState<null | "details" | "colours" | "modules" | "whiteLabel">(null);
+  const [saving, setSaving] = useState<null | "details" | "colours" | "modules" | "whiteLabel" | "plan" | "extend">(null);
+  const [planDraft, setPlanDraft] = useState<PlanKey | null>(null);
+  const now = useNow();
+  const [trialEndDraft, setTrialEndDraft] = useState("");
   const [uploading, setUploading] = useState<null | "logo" | "logoOnDark">(null);
   const [opening, setOpening] = useState(false);
   const [resetTarget, setResetTarget] = useState<{ _id: Id<"users">; email: string; fullName: string } | null>(null);
@@ -67,6 +99,9 @@ export default function EditOrganizationPage() {
   const [resetting, setResetting] = useState(false);
   const [issued, setIssued] = useState<{ email: string; tempPassword: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   const logoInput = useRef<HTMLInputElement>(null);
   const logoOnDarkInput = useRef<HTMLInputElement>(null);
@@ -86,6 +121,8 @@ export default function EditOrganizationPage() {
     setPrimaryColor(org.primaryColor ?? "");
     setSidebarColor(org.sidebarColor ?? "");
     setModules(org.enabledModules);
+    setPlanDraft(org.plan);
+    setTrialEndDraft(toDateInput(org.trialEndsAt ?? Date.now() + DEFAULT_TRIAL_DAYS * DAY_MS));
   }, [org]);
 
   if (authLoading || org === undefined) {
@@ -162,6 +199,20 @@ export default function EditOrganizationPage() {
 
   const signInUrl = typeof window !== "undefined" ? `${window.location.origin}/login` : "/login";
 
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await purgeOrganization({ orgId, confirmSlug: deleteConfirm.trim() });
+      animatedToast.success("Deleting the organisation", {
+        description: `${org.name} and all of its data are being removed in the background.`,
+      });
+      router.push("/app/platform");
+    } catch (err) {
+      animatedToast.error("Could not delete the organisation", { description: getErrorMessage(err) });
+      setDeleting(false);
+    }
+  };
+
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -172,10 +223,10 @@ export default function EditOrganizationPage() {
           <h1 className="mt-1 flex flex-wrap items-center gap-2 text-h1 text-text">
             {org.name}
             {org.isDemo && <Badge variant="info">Demo</Badge>}
-            {org.whiteLabel && <Badge variant="default">White label</Badge>}
+            <PlanBadge plan={org.plan} trialEndsAt={org.trialEndsAt} />
           </h1>
           <p className="mt-1 text-sm text-text-muted">
-            <span className="font-mono">{org.slug}</span> · created {formatDate(org.createdAt)}
+            Set up {formatDate(org.createdAt)} · web address <span className="font-mono">{org.slug}</span>
           </p>
         </div>
         <Button
@@ -193,9 +244,106 @@ export default function EditOrganizationPage() {
           }}
         >
           {opening ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
-          Open organisation
+          View as them
         </Button>
       </div>
+
+      {/* Plan & access */}
+      <Card>
+        <CardHeader>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-base font-semibold">Plan &amp; access</h2>
+            <PlanBadge plan={org.plan} trialEndsAt={org.trialEndsAt} />
+          </div>
+          {org.plan === "trial" && org.trialEndsAt && (
+            <p className="text-sm text-text-muted">Free trial ends {formatLongDate(org.trialEndsAt)}.</p>
+          )}
+          {!org.plan && (
+            <p className="text-sm text-text-muted">This organisation was set up before plans. Pick one below.</p>
+          )}
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {org.plan === "trial" && (
+            <div className="flex flex-wrap items-center gap-2 rounded-[12px] bg-surface-2 p-3">
+              <span className="mr-1 text-sm font-medium text-text">Give them more time</span>
+              {[7, 14, 30].map((days) => (
+                <Button
+                  key={days}
+                  size="sm"
+                  variant="secondary"
+                  disabled={saving === "extend"}
+                  onClick={() =>
+                    run("extend", async () => {
+                      const r = await extendTrial({ orgId, days });
+                      setTrialEndDraft(toDateInput(r.trialEndsAt));
+                    }, `Added ${days} days to the trial`)
+                  }
+                >
+                  + {days} days
+                </Button>
+              ))}
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label>Change plan</Label>
+            <PlanPicker value={planDraft} onChange={setPlanDraft} disabled={saving === "plan"} />
+          </div>
+
+          {planDraft === "trial" && (
+            <div className="max-w-xs space-y-1.5">
+              <Label htmlFor="trial-end">Trial ends on</Label>
+              <Input
+                id="trial-end"
+                type="date"
+                value={trialEndDraft}
+                min={toDateInput(now + DAY_MS)}
+                onChange={(e) => setTrialEndDraft(e.target.value)}
+              />
+            </div>
+          )}
+
+          {(() => {
+            const draftEnd = planDraft === "trial" ? fromDateInput(trialEndDraft) : null;
+            const currentEnd = org.trialEndsAt ? toDateInput(org.trialEndsAt) : "";
+            const changed =
+              !!planDraft &&
+              (planDraft !== org.plan || (planDraft === "trial" && trialEndDraft !== currentEnd));
+            const dateInvalid = planDraft === "trial" && (!draftEnd || draftEnd <= now);
+            return (
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  size="sm"
+                  disabled={!changed || dateInvalid || saving === "plan"}
+                  onClick={() =>
+                    run(
+                      "plan",
+                      () =>
+                        setPlan({
+                          orgId,
+                          plan: planDraft!,
+                          trialEndsAt: planDraft === "trial" ? draftEnd ?? undefined : undefined,
+                        }),
+                      `Plan changed to ${PLAN_LABELS[planDraft!]}`
+                    )
+                  }
+                >
+                  {saving === "plan" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                  Save plan
+                </Button>
+                {changed && isPaidPlan(planDraft) && (
+                  <span className="text-xs text-text-muted">
+                    {planDraft === "white_label"
+                      ? "Their own branding will switch on for everyone."
+                      : "They'll see the SyncEstate look."}
+                  </span>
+                )}
+                {dateInvalid && changed && <span className="text-xs text-danger">Pick a date after today</span>}
+              </div>
+            );
+          })()}
+        </CardContent>
+      </Card>
 
       {/* Details */}
       <Card>
@@ -248,12 +396,14 @@ export default function EditOrganizationPage() {
             </p>
           </CardHeader>
           <CardContent className="space-y-5">
-            <label className="flex cursor-pointer items-start gap-3 rounded-[10px] border border-border p-3">
+            <label
+              className={`flex items-start gap-3 rounded-[10px] border border-border p-3 ${isPaidPlan(org.plan) ? "cursor-default bg-surface-2" : "cursor-pointer"}`}
+            >
               <input
                 type="checkbox"
                 className="mt-0.5 h-4 w-4 rounded border-border"
                 checked={org.whiteLabel}
-                disabled={saving === "whiteLabel"}
+                disabled={saving === "whiteLabel" || isPaidPlan(org.plan)}
                 onChange={(e) =>
                   run(
                     "whiteLabel",
@@ -263,10 +413,11 @@ export default function EditOrganizationPage() {
                 }
               />
               <span>
-                <span className="block text-sm font-medium text-text">White label</span>
+                <span className="block text-sm font-medium text-text">Show their own branding</span>
                 <span className="block text-xs text-text-muted">
-                  Their logo, colours and name replace the SyncEstate look for everyone in the organisation. Takes
-                  effect immediately.
+                  {isPaidPlan(org.plan)
+                    ? `Set by the ${PLAN_LABELS[org.plan!]} plan. Change the plan above to switch.`
+                    : "Their logo, colours and name replace the SyncEstate look for everyone in the organisation. Takes effect immediately."}
                 </span>
               </span>
             </label>
@@ -422,6 +573,75 @@ export default function EditOrganizationPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Delete */}
+      <Card className="border-[var(--status-danger-bg)]">
+        <CardContent className="flex flex-wrap items-center justify-between gap-4 pt-5">
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold text-text">Delete this organisation</h2>
+            <p className="mt-1 max-w-xl text-sm text-text-muted">
+              Removes the organisation, everyone&apos;s logins and all of its data. This can&apos;t be undone.
+            </p>
+          </div>
+          <Button
+            variant="destructive"
+            disabled={!!org.deletingAt}
+            onClick={() => {
+              setDeleteConfirm("");
+              setDeleteOpen(true);
+            }}
+          >
+            <Trash2 className="h-4 w-4" /> Delete organisation
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Modal
+        open={deleteOpen}
+        onClose={() => {
+          if (!deleting) setDeleteOpen(false);
+        }}
+        title={`Delete ${org.name}?`}
+        description="Everything goes: logins, leads, contacts, properties, documents and settings. There is no undo."
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setDeleteOpen(false)} disabled={deleting}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleting || deleteConfirm.trim() !== org.slug}
+            >
+              {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              {deleting ? "Deleting…" : "Delete for good"}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <p className="text-sm text-text-muted">
+            This removes{" "}
+            <strong className="text-text">
+              {org.counts.users} {org.counts.users === 1 ? "login" : "logins"}, {org.counts.leads} leads,{" "}
+              {org.counts.contacts} contacts and {org.counts.properties} properties
+            </strong>
+            . Nothing is exported first.
+          </p>
+          <div className="space-y-1.5">
+            <Label htmlFor="delete-confirm">
+              To confirm, type <code className="rounded bg-surface-2 px-1">{org.slug}</code>
+            </Label>
+            <Input
+              id="delete-confirm"
+              value={deleteConfirm}
+              onChange={(e) => setDeleteConfirm(e.target.value)}
+              placeholder={org.slug}
+              autoComplete="off"
+            />
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         open={!!resetTarget}

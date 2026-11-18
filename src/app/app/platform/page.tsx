@@ -1,36 +1,56 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAction, useMutation, useQuery } from "convex/react";
-import { Building2, Eye, FlaskConical, Loader2, Pencil, Plus, ShieldCheck, Trash2, UserPlus } from "lucide-react";
+import {
+  Building2,
+  Clock,
+  CreditCard,
+  Eye,
+  FlaskConical,
+  Inbox,
+  Loader2,
+  LogOut,
+  Plus,
+  Search,
+  Settings2,
+  ShieldCheck,
+  UserPlus,
+} from "lucide-react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
+import { useNow } from "@/hooks/useNow";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableHead,
-  TableRow,
-  TableCell,
-} from "@/components/ui/table";
 import { animatedToast } from "@/components/ui/animated-toaster";
 import { getErrorMessage } from "@/lib/errors";
-import { ModuleChecklist } from "@/components/hub/module-checklist";
 import { MODULES, type ModuleKey } from "@/config/modules";
 import { WebsiteEnquiries } from "@/components/platform/website-enquiries";
+import { relativeTime } from "@/components/hub/format";
+import { orgInitials } from "@/lib/org-theme";
+import { readableOn } from "@/lib/color";
+import { brand } from "@/config/brand";
+import { cn } from "@/lib/utils";
+import { PlanBadge } from "@/components/platform/onboarding/plan-picker";
+import { isPaidPlan, planStatus, type PlanKey } from "../../../../convex/lib/plans";
 
 const formatDate = (ts: number | null | undefined) =>
   ts ? new Date(ts).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—";
 
-const formatCount = (n: number, cap: number) => (n > cap ? `${cap}+` : String(n));
+/** "just now", "5 min ago", "2 d ago" or "2 Nov". */
+function activeLabel(ts: number): string {
+  const label = relativeTime(ts);
+  return label === "Just now" ? "just now" : label;
+}
+
+const formatCount = (n: number, cap: number) => (n > cap ? `${cap}+` : n.toLocaleString("en-GB"));
 
 type OrgRow = {
   _id: Id<"organizations">;
@@ -45,70 +65,53 @@ type OrgRow = {
   enabledModules: ModuleKey[];
   isDemo: boolean;
   whiteLabel: boolean;
+  primaryColor: string | null;
+  logoUrl: string | null;
+  plan: PlanKey | null;
+  trialEndsAt: number | null;
 };
 
-/** Status badges for an organisation row: deleting, viewing, demo, white label. */
-function OrgBadges({ org, className }: { org: OrgRow; className?: string }) {
-  if (!org.deletingAt && !org.isViewing && !org.isDemo && !org.whiteLabel) return null;
-  return (
-    <div className={`flex flex-wrap gap-1 ${className ?? ""}`}>
-      {org.deletingAt && <Badge variant="danger">Deleting…</Badge>}
-      {org.isViewing && !org.deletingAt && <Badge variant="warning">Viewing</Badge>}
-      {org.isDemo && <Badge variant="info">Demo</Badge>}
-      {org.whiteLabel && <Badge variant="default">White label</Badge>}
-    </div>
-  );
+type Tab = "organisations" | "enquiries" | "team";
+type Kind = "all" | "trial" | "beta" | "paying" | "demos";
+
+function matchesKind(o: OrgRow, kind: Kind): boolean {
+  switch (kind) {
+    case "all":
+      return true;
+    case "demos":
+      return o.isDemo;
+    case "trial":
+      return !o.isDemo && o.plan === "trial";
+    case "beta":
+      return !o.isDemo && o.plan === "beta";
+    case "paying":
+      return !o.isDemo && isPaidPlan(o.plan);
+  }
 }
 
 /**
- * Platform (LayerSync staff) overview: every organisation on this deployment,
- * read-only access into any of them, platform admin management and
- * organisation deletion. Only renders for `isPlatformAdmin` accounts.
+ * Platform (LayerSync staff) home: every organisation on this deployment as a
+ * card, the website enquiries inbox, and the LayerSync team. Built to read at
+ * a glance: one main action (New organisation), one primary action per
+ * organisation (Manage), and nothing destructive on the overview — deleting
+ * lives on the organisation's own page.
  */
 export default function PlatformPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
   const isPlatformAdmin = !!user?.isPlatformAdmin;
 
-  const orgs = useQuery(api.platform.listOrganizations, isPlatformAdmin ? {} : "skip");
-  const admins = useQuery(api.platform.listPlatformAdmins, isPlatformAdmin ? {} : "skip");
+  const orgs = useQuery(api.platform.listOrganizations, isPlatformAdmin ? {} : "skip") as OrgRow[] | undefined;
+  const newEnquiries = useQuery(api.websiteEnquiries.countNew, isPlatformAdmin ? {} : "skip");
 
   const setViewOrg = useMutation(api.platform.setViewOrg);
   const exitViewOrg = useMutation(api.platform.exitViewOrg);
-  const grantPlatformAdmin = useAction(api.platform.grantPlatformAdmin);
-  const revokePlatformAdmin = useMutation(api.platform.revokePlatformAdmin);
-  const purgeOrganization = useMutation(api.platform.purgeOrganization);
-  const setOrgModules = useMutation(api.hub.setOrgModules);
 
+  const [tab, setTab] = useState<Tab>("organisations");
   const [search, setSearch] = useState("");
-  const [kind, setKind] = useState<"all" | "customers" | "demos">("all");
+  const [kind, setKind] = useState<Kind>("all");
   const [openingId, setOpeningId] = useState<string | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<OrgRow | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState("");
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [modulesTarget, setModulesTarget] = useState<OrgRow | null>(null);
-  const [modulesDraft, setModulesDraft] = useState<ModuleKey[]>([]);
-  const [isSavingModules, setIsSavingModules] = useState(false);
-  const [grantEmail, setGrantEmail] = useState("");
-  const [grantName, setGrantName] = useState("");
-  const [isGranting, setIsGranting] = useState(false);
-  const [grantResult, setGrantResult] = useState<string | null>(null);
-  const [revokeTarget, setRevokeTarget] = useState<{ _id: Id<"users">; email: string } | null>(null);
-  const [isRevoking, setIsRevoking] = useState(false);
-
-  const handleSaveModules = async () => {
-    if (!modulesTarget) return;
-    setIsSavingModules(true);
-    try {
-      await setOrgModules({ orgId: modulesTarget._id, modules: modulesDraft });
-      animatedToast.success(`Modules updated for ${modulesTarget.name}`);
-      setModulesTarget(null);
-    } catch (err) {
-      animatedToast.error("Could not update modules", { description: getErrorMessage(err) });
-    } finally {
-      setIsSavingModules(false);
-    }
-  };
+  const now = useNow();
 
   useEffect(() => {
     if (!authLoading && user && !user.isPlatformAdmin) {
@@ -121,10 +124,22 @@ export default function PlatformPage() {
     const q = search.trim().toLowerCase();
     return orgs.filter(
       (o) =>
-        (kind === "all" || (kind === "demos" ? o.isDemo : !o.isDemo)) &&
+        matchesKind(o, kind) &&
         (!q || o.name.toLowerCase().includes(q) || o.slug.toLowerCase().includes(q))
     );
   }, [orgs, search, kind]);
+
+  const totals = useMemo(() => {
+    if (!orgs) return null;
+    const live = orgs.filter((o) => !o.deletingAt && !o.isDemo);
+    const trials = live.filter((o) => o.plan === "trial");
+    return {
+      paying: live.filter((o) => isPaidPlan(o.plan)).length,
+      trials: trials.length,
+      trialsEnding: trials.filter((o) => planStatus(o, now).endingSoon).length,
+      beta: live.filter((o) => o.plan === "beta").length,
+    };
+  }, [orgs, now]);
 
   const viewingOrg = orgs?.find((o) => o.isViewing) ?? null;
 
@@ -148,7 +163,7 @@ export default function PlatformPage() {
     setOpeningId(org._id);
     try {
       await setViewOrg({ orgId: org._id });
-      router.push("/app/dashboard");
+      router.push("/app/hub");
     } catch (error) {
       animatedToast.error("Could not open organisation", { description: getErrorMessage(error) });
       setOpeningId(null);
@@ -158,480 +173,472 @@ export default function PlatformPage() {
   const handleExit = async () => {
     try {
       await exitViewOrg();
-      animatedToast.success("Left organisation view");
+      animatedToast.success("Back to your LayerSync view");
     } catch (error) {
-      animatedToast.error("Could not exit organisation view", { description: getErrorMessage(error) });
+      animatedToast.error("Could not leave the organisation", { description: getErrorMessage(error) });
     }
   };
 
-  const handleDelete = async () => {
-    if (!deleteTarget) return;
-    setIsDeleting(true);
-    try {
-      await purgeOrganization({ orgId: deleteTarget._id, confirmSlug: deleteConfirm.trim() });
-      animatedToast.success("Deletion started", {
-        description: `"${deleteTarget.name}" and all of its data are being removed in the background.`,
-      });
-      setDeleteTarget(null);
-      setDeleteConfirm("");
-    } catch (error) {
-      animatedToast.error("Could not delete organisation", { description: getErrorMessage(error) });
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const handleGrant = async () => {
-    if (!grantEmail.trim()) return;
-    setIsGranting(true);
-    setGrantResult(null);
-    try {
-      const result = await grantPlatformAdmin({
-        email: grantEmail.trim(),
-        fullName: grantName.trim() || undefined,
-      });
-      if (result.alreadyAdmin) {
-        setGrantResult(`${grantEmail.trim()} is already a platform admin.`);
-      } else if (result.created) {
-        setGrantResult(
-          `Account created for ${grantEmail.trim()}. Temporary password: ${result.tempPasswordHint} — they must change it on first sign-in.`
-        );
-      } else {
-        setGrantResult(`${grantEmail.trim()} now has platform access.`);
-      }
-      animatedToast.success("Platform admin granted");
-      setGrantEmail("");
-      setGrantName("");
-    } catch (error) {
-      animatedToast.error("Could not grant platform access", { description: getErrorMessage(error) });
-    } finally {
-      setIsGranting(false);
-    }
-  };
-
-  const handleRevoke = async () => {
-    if (!revokeTarget) return;
-    setIsRevoking(true);
-    try {
-      await revokePlatformAdmin({ userId: revokeTarget._id });
-      animatedToast.success("Platform access revoked", { description: revokeTarget.email });
-      setRevokeTarget(null);
-    } catch (error) {
-      animatedToast.error("Could not revoke platform access", { description: getErrorMessage(error) });
-    } finally {
-      setIsRevoking(false);
-    }
-  };
+  const tabs: { key: Tab; label: string; icon: typeof Building2; count?: number }[] = [
+    { key: "organisations", label: "Organisations", icon: Building2 },
+    { key: "enquiries", label: "Enquiries", icon: Inbox, count: newEnquiries ?? 0 },
+    { key: "team", label: "LayerSync team", icon: ShieldCheck },
+  ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-h1 text-text">Platform</h1>
-          <p className="mt-1 text-sm text-text-muted">
-            Every organisation on this deployment. Open one to inspect it read-only, without a user
-            account inside it.
+    <div className="mx-auto max-w-6xl space-y-6">
+      {/* Header */}
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-h1 text-text">Organisations</h1>
+          <p className="mt-1 max-w-xl text-sm text-text-muted">
+            Every agency using {brand.name}. Set up a new one, change how it looks, or see the app exactly as its
+            people do.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="secondary" onClick={() => router.push("/app/platform/organizations/new?demo=1")}>
-            <FlaskConical className="h-4 w-4" /> New demo org
+            <FlaskConical className="h-4 w-4" /> New demo
           </Button>
           <Button onClick={() => router.push("/app/platform/organizations/new")}>
             <Plus className="h-4 w-4" /> New organisation
           </Button>
         </div>
-        {viewingOrg && (
-          <div className="flex items-center gap-3 rounded-[10px] border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-            <Eye className="h-4 w-4" />
-            <span>
-              Viewing <strong>{viewingOrg.name}</strong>
-            </span>
-            <Button variant="secondary" size="sm" onClick={() => router.push("/app/dashboard")}>
-              Go to it
-            </Button>
-            <Button variant="secondary" size="sm" onClick={handleExit}>
-              Exit
-            </Button>
-          </div>
-        )}
       </div>
 
-      {/* "Get in touch" enquiries from the marketing sites */}
-      <WebsiteEnquiries />
+      {viewingOrg && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <span className="flex items-center gap-2">
+            <Eye className="h-4 w-4 shrink-0" />
+            You&apos;re looking at <strong>{viewingOrg.name}</strong> as its people see it.
+          </span>
+          <span className="flex gap-2">
+            <Button variant="secondary" size="sm" onClick={() => router.push("/app/hub")}>
+              Go back to it
+            </Button>
+            <Button variant="secondary" size="sm" onClick={handleExit}>
+              <LogOut className="h-3.5 w-3.5" /> Leave
+            </Button>
+          </span>
+        </div>
+      )}
 
-      {/* Organisations */}
-      <Card>
-        <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="flex items-center gap-2 text-base font-semibold">
-              <Building2 className="h-4 w-4 text-text-muted" />
-              Organisations {orgs ? `(${orgs.length})` : ""}
-            </h2>
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex rounded-full border border-border p-0.5 text-xs" role="group" aria-label="Show">
-                {(["all", "customers", "demos"] as const).map((k) => (
-                  <button
-                    key={k}
-                    type="button"
-                    onClick={() => setKind(k)}
-                    aria-pressed={kind === k}
-                    className={`rounded-full px-3 py-1 capitalize transition-colors ${kind === k ? "bg-primary-soft font-medium text-primary-ink" : "text-text-muted hover:text-text"}`}
-                  >
-                    {k}
-                  </button>
-                ))}
-              </div>
+      {/* At a glance */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatTile label="Paying" value={totals?.paying} icon={CreditCard} onClick={() => { setTab("organisations"); setKind("paying"); }} />
+        <StatTile
+          label={totals?.trialsEnding ? `On free trial · ${totals.trialsEnding} ending soon` : "On free trial"}
+          value={totals?.trials}
+          icon={Clock}
+          highlight={!!totals?.trialsEnding}
+          onClick={() => { setTab("organisations"); setKind("trial"); }}
+        />
+        <StatTile label="Beta testers" value={totals?.beta} icon={FlaskConical} onClick={() => { setTab("organisations"); setKind("beta"); }} />
+        <StatTile
+          label="New enquiries"
+          value={newEnquiries}
+          icon={Inbox}
+          highlight={!!newEnquiries}
+          onClick={() => setTab("enquiries")}
+        />
+      </div>
+
+      {/* Tabs */}
+      <div role="tablist" aria-label="Platform sections" className="flex gap-1 overflow-x-auto overflow-y-hidden border-b border-border">
+        {tabs.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.key}
+            onClick={() => setTab(t.key)}
+            className={cn(
+              "-mb-px flex shrink-0 items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors",
+              tab === t.key ? "border-primary text-text" : "border-transparent text-text-muted hover:text-text"
+            )}
+          >
+            <t.icon className="h-4 w-4" aria-hidden="true" />
+            {t.label}
+            {t.count ? (
+              <span className="rounded-full bg-[var(--status-warning-bg)] px-2 py-0.5 text-xs text-[var(--status-warning-fg)]">
+                {t.count}
+              </span>
+            ) : null}
+          </button>
+        ))}
+      </div>
+
+      {tab === "organisations" && (
+        <section className="space-y-4" aria-label="Organisations">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative min-w-[200px] flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by name or slug..."
-                className="max-w-xs"
+                placeholder="Search organisations"
+                className="pl-9"
+                aria-label="Search organisations"
               />
             </div>
+            <div className="flex max-w-full overflow-x-auto rounded-full border border-border bg-card-bg p-1 text-sm" role="group" aria-label="Show">
+              {(
+                [
+                  ["all", "All"],
+                  ["trial", "Free trial"],
+                  ["beta", "Beta"],
+                  ["paying", "Paying"],
+                  ["demos", "Demos"],
+                ] as const
+              ).map(([k, label]) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => setKind(k)}
+                  aria-pressed={kind === k}
+                  className={cn(
+                    "shrink-0 rounded-full px-3.5 py-1.5 transition-colors",
+                    kind === k ? "bg-primary font-medium text-primary-foreground" : "text-text-muted hover:text-text"
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
-        </CardHeader>
-        <CardContent>
+
           {filteredOrgs === undefined ? (
-            <div className="flex items-center justify-center py-8">
+            <div className="flex items-center justify-center py-16">
               <Loader2 className="h-6 w-6 animate-spin text-primary-ink" />
             </div>
           ) : filteredOrgs.length === 0 ? (
-            <p className="py-8 text-center text-sm text-text-muted">No organisations match.</p>
+            <Card>
+              <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
+                <Building2 className="h-8 w-8 text-text-muted" />
+                <p className="font-medium text-text">
+                  {orgs && orgs.length > 0 ? "No organisations match" : "No organisations yet"}
+                </p>
+                <p className="max-w-sm text-sm text-text-muted">
+                  {orgs && orgs.length > 0
+                    ? "Try another name, or show all organisations."
+                    : "Set up your first agency. It takes about two minutes."}
+                </p>
+                {orgs && orgs.length === 0 && (
+                  <Button onClick={() => router.push("/app/platform/organizations/new")}>
+                    <Plus className="h-4 w-4" /> New organisation
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
           ) : (
-            <>
-            {/* Below wide screens: one card per organisation, actions always in reach */}
-            <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:hidden">
+            <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3">
               {filteredOrgs.map((org) => (
-                <li
-                  key={org._id}
-                  className={`rounded-[12px] border border-border p-3 ${org.deletingAt ? "opacity-60" : ""}`}
-                >
-                  <div className="min-w-0">
-                    <p className="font-medium text-text">{org.name}</p>
-                    <p className="truncate text-xs text-text-muted">{org.slug}</p>
-                  </div>
-                  <OrgBadges org={org} className="mt-2" />
-                  <button
-                    type="button"
-                    disabled={!!org.deletingAt}
-                    onClick={() => {
-                      setModulesTarget(org);
-                      setModulesDraft(org.enabledModules);
-                    }}
-                    className="mt-2 flex flex-wrap gap-1 text-left"
-                    title="Change modules"
-                  >
-                    {org.enabledModules.length === 0 ? (
-                      <Badge variant="neutral">No modules</Badge>
-                    ) : (
-                      org.enabledModules.map((k) => (
-                        <Badge key={k} variant="secondary">{MODULES[k].name}</Badge>
-                      ))
-                    )}
-                  </button>
-                  <p className="mt-2 text-xs text-text-muted">
-                    {formatCount(org.counts.users, org.countCap)} users · {formatCount(org.counts.leads, org.countCap)} leads ·{" "}
-                    {formatCount(org.counts.properties, org.countCap)} properties · last active {formatDate(org.lastActivityAt)}
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      disabled={!!org.deletingAt}
-                      onClick={() => router.push(`/app/platform/organizations/${org._id}`)}
-                    >
-                      <Pencil className="mr-1 h-3.5 w-3.5" />
-                      Edit
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      disabled={!!org.deletingAt || openingId === org._id}
-                      onClick={() => handleOpen(org)}
-                    >
-                      <Eye className="mr-1 h-3.5 w-3.5" />
-                      {openingId === org._id ? "Opening..." : "Open"}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      disabled={!!org.deletingAt || org.isViewing}
-                      aria-label={`Delete ${org.name}`}
-                      onClick={() => {
-                        setDeleteTarget(org);
-                        setDeleteConfirm("");
-                      }}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </li>
+                <OrgCard key={org._id} org={org} opening={openingId === org._id} onOpen={() => handleOpen(org)} />
               ))}
             </ul>
-            <div className="hidden overflow-x-auto rounded-lg border border-border xl:block">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Organisation</TableHead>
-                    <TableHead>Modules</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead className="text-right">Users</TableHead>
-                    <TableHead className="text-right">Leads</TableHead>
-                    <TableHead className="text-right">Contacts</TableHead>
-                    <TableHead className="text-right">Properties</TableHead>
-                    <TableHead>Last activity</TableHead>
-                    <TableHead className="text-right" />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredOrgs.map((org) => (
-                    <TableRow key={org._id} className={org.deletingAt ? "opacity-60" : undefined}>
-                      <TableCell>
-                        <div className="min-w-[180px]">
-                          <p className="font-medium text-text">{org.name}</p>
-                          <p className="text-xs text-text-muted">{org.slug}</p>
-                          <OrgBadges org={org} className="mt-1" />
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <button
-                          type="button"
-                          disabled={!!org.deletingAt}
-                          onClick={() => {
-                            setModulesTarget(org);
-                            setModulesDraft(org.enabledModules);
-                          }}
-                          className="flex max-w-[220px] flex-wrap gap-1 text-left"
-                          title="Change modules"
-                        >
-                          {org.enabledModules.length === 0 ? (
-                            <Badge variant="neutral">None</Badge>
-                          ) : (
-                            org.enabledModules.map((k) => (
-                              <Badge key={k} variant="secondary">{MODULES[k].name}</Badge>
-                            ))
-                          )}
-                        </button>
-                      </TableCell>
-                      <TableCell>{formatDate(org.createdAt)}</TableCell>
-                      <TableCell className="text-right">{formatCount(org.counts.users, org.countCap)}</TableCell>
-                      <TableCell className="text-right">{formatCount(org.counts.leads, org.countCap)}</TableCell>
-                      <TableCell className="text-right">{formatCount(org.counts.contacts, org.countCap)}</TableCell>
-                      <TableCell className="text-right">{formatCount(org.counts.properties, org.countCap)}</TableCell>
-                      <TableCell>{formatDate(org.lastActivityAt)}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            disabled={!!org.deletingAt}
-                            title="Edit name, branding, white label and the owner's login"
-                            onClick={() => router.push(`/app/platform/organizations/${org._id}`)}
-                          >
-                            <Pencil className="mr-1 h-3.5 w-3.5" />
-                            Edit
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            disabled={!!org.deletingAt || openingId === org._id}
-                            onClick={() => handleOpen(org)}
-                          >
-                            <Eye className="mr-1 h-3.5 w-3.5" />
-                            {openingId === org._id ? "Opening..." : "Open"}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            disabled={!!org.deletingAt || org.isViewing}
-                            title={org.isViewing ? "Exit the organisation view first" : "Delete this organisation and all of its data"}
-                            onClick={() => {
-                              setDeleteTarget(org);
-                              setDeleteConfirm("");
-                            }}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-            </>
           )}
-        </CardContent>
-      </Card>
+        </section>
+      )}
 
-      {/* Platform admins */}
-      <Card>
-        <CardHeader>
-          <h2 className="flex items-center gap-2 text-base font-semibold">
-            <ShieldCheck className="h-4 w-4 text-text-muted" />
-            Platform admins
-          </h2>
-          <p className="mt-1 text-sm text-text-muted">
-            Separate accounts for LayerSync staff. They are not members of any organisation and never
-            appear in a client&apos;s user list.
+      {tab === "enquiries" && <WebsiteEnquiries />}
+
+      {tab === "team" && <TeamSection />}
+    </div>
+  );
+}
+
+function StatTile({
+  label,
+  value,
+  icon: Icon,
+  highlight,
+  onClick,
+}: {
+  label: string;
+  value: number | null | undefined;
+  icon: typeof Building2;
+  highlight?: boolean;
+  onClick?: () => void;
+}) {
+  const body = (
+    <>
+      <span
+        className={cn(
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px]",
+          highlight ? "bg-[var(--status-warning-bg)] text-[var(--status-warning-fg)]" : "bg-surface-2 text-text-muted"
+        )}
+      >
+        <Icon className="h-4 w-4" aria-hidden="true" />
+      </span>
+      <span className="min-w-0 text-left">
+        <span className="block text-xl font-semibold leading-tight text-text">
+          {value === undefined || value === null ? "–" : value.toLocaleString("en-GB")}
+        </span>
+        <span className="block text-xs leading-snug text-text-muted">{label}</span>
+      </span>
+    </>
+  );
+  const className = "flex items-center gap-3 rounded-[14px] border border-border bg-card-bg px-4 py-3 text-left";
+  return onClick ? (
+    <button type="button" onClick={onClick} className={cn(className, "transition-colors hover:bg-surface-2")}>
+      {body}
+    </button>
+  ) : (
+    <div className={className}>{body}</div>
+  );
+}
+
+function OrgAvatar({ org }: { org: OrgRow }) {
+  if (org.logoUrl) {
+    return (
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-[12px] border border-border bg-white p-1">
+        {/* eslint-disable-next-line @next/next/no-img-element -- agency logo from Convex storage */}
+        <img src={org.logoUrl} alt="" className="max-h-full max-w-full object-contain" />
+      </span>
+    );
+  }
+  const bg = org.primaryColor || brand.colors.sidebar;
+  return (
+    <span
+      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[12px] text-sm font-bold"
+      style={{ backgroundColor: bg, color: readableOn(bg) }}
+      aria-hidden="true"
+    >
+      {orgInitials(org.name)}
+    </span>
+  );
+}
+
+function OrgCard({ org, opening, onOpen }: { org: OrgRow; opening: boolean; onOpen: () => void }) {
+  const router = useRouter();
+  const deleting = !!org.deletingAt;
+  const manageHref = `/app/platform/organizations/${org._id}`;
+  const stats = [
+    { label: org.counts.users === 1 ? "person" : "people", value: formatCount(org.counts.users, org.countCap) },
+    { label: "leads", value: formatCount(org.counts.leads, org.countCap) },
+    { label: "properties", value: formatCount(org.counts.properties, org.countCap) },
+  ];
+
+  return (
+    <li
+      className={cn(
+        "flex flex-col rounded-[16px] border border-border bg-card-bg p-4 transition-shadow hover:shadow-md",
+        deleting && "opacity-60"
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <OrgAvatar org={org} />
+        <div className="min-w-0 flex-1">
+          {deleting ? (
+            <p className="truncate text-base font-semibold text-text">{org.name}</p>
+          ) : (
+            <Link href={manageHref} className="block truncate text-base font-semibold text-text hover:underline">
+              {org.name}
+            </Link>
+          )}
+          <p className="text-xs text-text-muted">
+            {org.lastActivityAt ? `Active ${activeLabel(org.lastActivityAt)}` : "No activity yet"} ·
+            joined {formatDate(org.createdAt)}
           </p>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end">
-            <div className="space-y-2">
-              <Label>Email</Label>
+        </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {deleting && <Badge variant="danger">Being deleted…</Badge>}
+        {org.isViewing && !deleting && <Badge variant="warning">You&apos;re viewing this</Badge>}
+        {org.isDemo ? <Badge variant="info">Demo</Badge> : <PlanBadge plan={org.plan} trialEndsAt={org.trialEndsAt} />}
+        {org.whiteLabel && org.plan !== "white_label" && <Badge variant="default">Own branding</Badge>}
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {org.enabledModules.length === 0 ? (
+          <span className="text-xs text-text-muted">No modules switched on</span>
+        ) : (
+          org.enabledModules.map((k) => (
+            <span key={k} className="rounded-full bg-surface-2 px-2.5 py-0.5 text-xs font-medium text-text-muted">
+              {MODULES[k].name}
+            </span>
+          ))
+        )}
+      </div>
+
+      <dl className="mt-4 grid grid-cols-3 gap-2 rounded-[12px] bg-surface-2 px-3 py-2.5">
+        {stats.map((s) => (
+          <div key={s.label} className="flex min-w-0 flex-col-reverse">
+            <dt className="truncate text-xs text-text-muted">{s.label}</dt>
+            <dd className="text-base font-semibold text-text">{s.value}</dd>
+          </div>
+        ))}
+      </dl>
+
+      <div className="mt-auto flex flex-wrap gap-2 pt-4">
+        <Button
+          size="sm"
+          variant="secondary"
+          className="flex-1"
+          disabled={deleting}
+          onClick={() => router.push(manageHref)}
+        >
+          <Settings2 className="h-3.5 w-3.5" /> Manage
+        </Button>
+        <Button size="sm" variant="secondary" className="flex-1" disabled={deleting || opening} onClick={onOpen}>
+          {opening ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Eye className="h-3.5 w-3.5" />}
+          {opening ? "Opening…" : "View as them"}
+        </Button>
+      </div>
+    </li>
+  );
+}
+
+/** LayerSync staff accounts: add someone, see who has access, remove access. */
+function TeamSection() {
+  const admins = useQuery(api.platform.listPlatformAdmins, {});
+  const grantPlatformAdmin = useAction(api.platform.grantPlatformAdmin);
+  const revokePlatformAdmin = useMutation(api.platform.revokePlatformAdmin);
+
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [granting, setGranting] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+  const [revokeTarget, setRevokeTarget] = useState<{ _id: Id<"users">; email: string } | null>(null);
+  const [revoking, setRevoking] = useState(false);
+
+  const handleGrant = async () => {
+    if (!email.trim()) return;
+    setGranting(true);
+    setResult(null);
+    try {
+      const r = await grantPlatformAdmin({ email: email.trim(), fullName: name.trim() || undefined });
+      if (r.alreadyAdmin) setResult(`${email.trim()} is already on the LayerSync team.`);
+      else if (r.created)
+        setResult(
+          `Account created for ${email.trim()}. Temporary password: ${r.tempPasswordHint}. They'll choose their own when they first sign in.`
+        );
+      else setResult(`${email.trim()} now has LayerSync access.`);
+      animatedToast.success("Team member added");
+      setEmail("");
+      setName("");
+    } catch (error) {
+      animatedToast.error("Could not add them", { description: getErrorMessage(error) });
+    } finally {
+      setGranting(false);
+    }
+  };
+
+  const handleRevoke = async () => {
+    if (!revokeTarget) return;
+    setRevoking(true);
+    try {
+      await revokePlatformAdmin({ userId: revokeTarget._id });
+      animatedToast.success("Access removed", { description: revokeTarget.email });
+      setRevokeTarget(null);
+    } catch (error) {
+      animatedToast.error("Could not remove access", { description: getErrorMessage(error) });
+    } finally {
+      setRevoking(false);
+    }
+  };
+
+  return (
+    <section className="space-y-4" aria-label="LayerSync team">
+      <Card>
+        <CardContent className="space-y-4 pt-5">
+          <div>
+            <h2 className="flex items-center gap-2 text-base font-semibold text-text">
+              <UserPlus className="h-4 w-4 text-text-muted" /> Add a LayerSync team member
+            </h2>
+            <p className="mt-1 text-sm text-text-muted">
+              Team members can set up and manage every organisation. They&apos;re never shown in an agency&apos;s own
+              user list.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end">
+            <div className="space-y-1.5">
+              <Label htmlFor="team-email">Email</Label>
               <Input
-                value={grantEmail}
-                onChange={(e) => setGrantEmail(e.target.value)}
-                placeholder="person@layersync.ai"
+                id="team-email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="name@layersyncai.com"
                 inputMode="email"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Name (new accounts)</Label>
-              <Input value={grantName} onChange={(e) => setGrantName(e.target.value)} placeholder="Full name" />
+            <div className="space-y-1.5">
+              <Label htmlFor="team-name">Full name</Label>
+              <Input id="team-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Their name" />
             </div>
-            <Button onClick={handleGrant} disabled={isGranting || !grantEmail.trim()}>
-              <UserPlus className="mr-2 h-4 w-4" />
-              {isGranting ? "Granting..." : "Grant access"}
+            <Button onClick={handleGrant} disabled={granting || !email.trim()}>
+              {granting ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+              {granting ? "Adding…" : "Add to team"}
             </Button>
           </div>
-          {grantResult && (
+          {result && (
             <div className="rounded-[10px] border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-              {grantResult}
+              {result}
             </div>
           )}
-          <div className="rounded-lg border border-border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Since</TableHead>
-                  <TableHead className="text-right" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(admins ?? []).map((a) => (
-                  <TableRow key={a._id}>
-                    <TableCell>
-                      {a.fullName || "—"} {a.isMe && <span className="text-xs text-text-muted">(you)</span>}
-                    </TableCell>
-                    <TableCell>{a.email}</TableCell>
-                    <TableCell>
-                      <Badge variant={a.isActive ? "success" : "neutral"}>{a.isActive ? "Active" : "Inactive"}</Badge>
-                    </TableCell>
-                    <TableCell>{formatDate(a.createdAt)}</TableCell>
-                    <TableCell className="text-right">
-                      {!a.isMe && a.isActive && (
-                        <Button size="sm" variant="secondary" onClick={() => setRevokeTarget({ _id: a._id, email: a.email })}>
-                          Revoke
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
         </CardContent>
       </Card>
 
-      {/* Delete organisation modal */}
-      <Modal
-        open={!!deleteTarget}
-        title={deleteTarget ? `Delete ${deleteTarget.name}?` : "Delete organisation"}
-        description="This permanently removes the organisation, every user login in it, and all of its leads, contacts, properties, documents, activities and settings. There is no undo."
-        onClose={() => {
-          if (!isDeleting) setDeleteTarget(null);
-        }}
-        footer={
-          <div className="flex justify-end gap-3">
-            <Button variant="secondary" onClick={() => setDeleteTarget(null)} disabled={isDeleting}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={isDeleting || !deleteTarget || deleteConfirm.trim() !== deleteTarget.slug}
-            >
-              {isDeleting ? "Starting..." : "Delete organisation"}
-            </Button>
-          </div>
-        }
-      >
-        {deleteTarget && (
-          <div className="space-y-3">
-            <p className="text-sm text-text-muted">
-              This will delete{" "}
-              <strong>
-                {formatCount(deleteTarget.counts.users, deleteTarget.countCap)} users,{" "}
-                {formatCount(deleteTarget.counts.leads, deleteTarget.countCap)} leads,{" "}
-                {formatCount(deleteTarget.counts.contacts, deleteTarget.countCap)} contacts and{" "}
-                {formatCount(deleteTarget.counts.properties, deleteTarget.countCap)} properties
-              </strong>
-              . Nothing is exported first.
-            </p>
-            <div className="space-y-2">
-              <Label>
-                Type <code className="rounded bg-surface-2 px-1">{deleteTarget.slug}</code> to confirm
-              </Label>
-              <Input
-                value={deleteConfirm}
-                onChange={(e) => setDeleteConfirm(e.target.value)}
-                placeholder={deleteTarget.slug}
-                autoFocus
-              />
+      <Card>
+        <CardContent className="pt-5">
+          <h2 className="mb-1 text-base font-semibold text-text">Who has access</h2>
+          {admins === undefined ? (
+            <div className="flex justify-center py-6">
+              <Loader2 className="h-5 w-5 animate-spin text-primary-ink" />
             </div>
-          </div>
-        )}
-      </Modal>
+          ) : (
+            <ul className="divide-y divide-border">
+              {admins.map((a) => (
+                <li key={a._id} className="flex flex-wrap items-center gap-3 py-3">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-2 text-xs font-semibold text-text-muted">
+                    {orgInitials(a.fullName || a.email)}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium text-text">
+                      {a.fullName || a.email}{" "}
+                      {a.isMe && <span className="text-xs font-normal text-text-muted">(you)</span>}
+                    </p>
+                    <p className="truncate text-xs text-text-muted">
+                      {a.email} · since {formatDate(a.createdAt)}
+                    </p>
+                  </div>
+                  {!a.isActive ? (
+                    <Badge variant="neutral">Removed</Badge>
+                  ) : !a.isMe ? (
+                    <Button size="sm" variant="ghost" onClick={() => setRevokeTarget({ _id: a._id, email: a.email })}>
+                      Remove access
+                    </Button>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Modules modal */}
-      <Modal
-        open={!!modulesTarget}
-        title="Modules"
-        description={modulesTarget ? `Choose what ${modulesTarget.name} can open.` : undefined}
-        onClose={() => {
-          if (!isSavingModules) setModulesTarget(null);
-        }}
-        footer={
-          <div className="flex justify-end gap-3">
-            <Button variant="secondary" onClick={() => setModulesTarget(null)} disabled={isSavingModules}>
-              Cancel
-            </Button>
-            <Button onClick={handleSaveModules} disabled={isSavingModules}>
-              {isSavingModules ? "Saving..." : "Save"}
-            </Button>
-          </div>
-        }
-      >
-        <ModuleChecklist value={modulesDraft} onChange={setModulesDraft} />
-      </Modal>
-
-      {/* Revoke modal */}
       <Modal
         open={!!revokeTarget}
-        title="Revoke platform access?"
-        description={revokeTarget ? `${revokeTarget.email} will lose platform access and be signed out. The account is deactivated.` : undefined}
+        title="Remove their access?"
+        description={
+          revokeTarget ? `${revokeTarget.email} will be signed out and can no longer manage organisations.` : undefined
+        }
         onClose={() => {
-          if (!isRevoking) setRevokeTarget(null);
+          if (!revoking) setRevokeTarget(null);
         }}
         footer={
           <div className="flex justify-end gap-3">
-            <Button variant="secondary" onClick={() => setRevokeTarget(null)} disabled={isRevoking}>
+            <Button variant="secondary" onClick={() => setRevokeTarget(null)} disabled={revoking}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleRevoke} disabled={isRevoking}>
-              {isRevoking ? "Revoking..." : "Revoke"}
+            <Button variant="destructive" onClick={handleRevoke} disabled={revoking}>
+              {revoking ? "Removing…" : "Remove access"}
             </Button>
           </div>
         }
       >
-        <p className="text-sm text-text-muted">You can grant access again later by email.</p>
+        <p className="text-sm text-text-muted">You can add them again later with the same email.</p>
       </Modal>
-    </div>
+    </section>
   );
 }
