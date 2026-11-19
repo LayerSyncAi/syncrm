@@ -7,18 +7,21 @@ import { useQuery } from "convex/react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
 import {
+  Building2,
   ChevronLeft,
   ChevronDown,
   ChevronRight,
   DollarSign,
   Download,
+  Inbox,
   LayoutGrid,
+  Plus,
   ScrollText,
   Search,
   Send,
-  Server,
   Settings,
   Shield,
+  ShieldCheck,
   SlidersHorizontal,
   Star,
   Upload,
@@ -33,6 +36,7 @@ import { MODULES, moduleForPath, type ModuleKey } from "@/config/modules";
 import { SyncEstateIcon } from "@/components/brand/product-icons";
 import { useOrgBrand } from "@/components/providers/org-brand-provider";
 import { orgInitials } from "@/lib/org-theme";
+import { PLATFORM_NEW_ORG_HREF, PLATFORM_SECTION_HREFS } from "@/config/platform";
 
 // CRM main nav comes from the module registry (SyncMedia is its own module).
 const navItems = MODULES.crm.nav;
@@ -64,7 +68,13 @@ const hubItem = { label: "Hub", href: "/app/hub", icon: SyncEstateIcon };
 
 const notifyItem = { label: "SyncNotify", href: "/app/notify", icon: Send };
 
-const platformItem = { label: "Platform", href: "/app/platform", icon: Server };
+// LayerSync staff: the Platform sections, each with its own address.
+const platformItems = {
+  organisations: { label: "Organisations", href: PLATFORM_SECTION_HREFS.organisations, icon: Building2 },
+  newOrg: { label: "New organisation", href: PLATFORM_NEW_ORG_HREF, icon: Plus },
+  enquiries: { label: "Enquiries", href: PLATFORM_SECTION_HREFS.enquiries, icon: Inbox },
+  team: { label: "LayerSync team", href: PLATFORM_SECTION_HREFS.team, icon: ShieldCheck },
+};
 
 interface SidebarProps {
   isAdmin?: boolean;
@@ -88,11 +98,14 @@ function NavItem({
   active,
   collapsed,
   pillId,
+  badge,
 }: {
   item: { label: string; href: string; icon: LucideIcon };
   active: boolean;
   collapsed?: boolean;
   pillId: string;
+  /** A count shown beside the label (a dot when collapsed); hidden at 0. */
+  badge?: number;
 }) {
   const Icon = item.icon;
   const textColor = active ? "text-primary-foreground" : "text-sidebar-fg/80 group-hover:text-sidebar-fg";
@@ -141,6 +154,16 @@ function NavItem({
           </motion.span>
         )}
       </AnimatePresence>
+
+      {badge ? (
+        collapsed ? (
+          <span className="absolute right-1.5 top-1.5 z-10 h-2 w-2 rounded-full bg-amber-400" aria-label={`${badge} new`} />
+        ) : (
+          <span className="relative z-10 ml-auto rounded-full bg-amber-400 px-2 py-0.5 text-[11px] font-semibold leading-none text-[#3d2a00]">
+            {badge}
+          </span>
+        )
+      ) : null}
 
       {/* Recommendation #3: Hover peek tooltip when collapsed */}
       <AnimatePresence>
@@ -303,6 +326,9 @@ export const Sidebar = memo(function Sidebar({ isAdmin, isPlatformAdmin, collaps
   const hub = useQuery(api.hub.getContext);
   const myModules = hub?.myModules ?? [];
   const orgBrand = useOrgBrand();
+  const newEnquiries = useQuery(api.websiteEnquiries.countNew, isPlatformAdmin ? {} : "skip");
+  // LayerSync staff with no organisation open have no Hub or modules: only the LayerSync section.
+  const platformOnly = !!isPlatformAdmin && hub === null;
   const [ioExpanded, setIoExpanded] = useState(false);
   const [contactToolsExpanded, setContactToolsExpanded] = useState(false);
   const [adminExpanded, setAdminExpanded] = useState(false);
@@ -428,6 +454,7 @@ export const Sidebar = memo(function Sidebar({ isAdmin, isPlatformAdmin, collaps
           {!collapsed && "Back to Hub"}
         </Link>
       )}
+      {!platformOnly && (
       <nav className="flex-1 space-y-1" data-tour={current === "crm" ? "sidebar-nav" : undefined}>
         {(current === "crm"
           ? navItems
@@ -452,6 +479,7 @@ export const Sidebar = memo(function Sidebar({ isAdmin, isPlatformAdmin, collaps
           />
         ))}
       </nav>
+      )}
       {current === "crm" && (
       <>
       <div className="mt-4 space-y-1 border-t border-white/10 pt-4" data-tour="sidebar-import-export">
@@ -658,15 +686,37 @@ export const Sidebar = memo(function Sidebar({ isAdmin, isPlatformAdmin, collaps
         </div>
       ) : null}
       {isPlatformAdmin ? (
-        <div className="mt-4 space-y-1 border-t border-white/10 pt-4">
+        <div className={cn("space-y-1", !platformOnly && "mt-4 border-t border-white/10 pt-4")}>
           {!collapsed && (
             <span className="block px-3 pb-1 text-[11px] font-medium uppercase tracking-[0.12em] text-white/50">
               LayerSync
             </span>
           )}
           <NavItem
-            item={platformItem}
-            active={pathname.startsWith(platformItem.href)}
+            item={platformItems.organisations}
+            active={
+              pathname === PLATFORM_SECTION_HREFS.organisations ||
+              (pathname.startsWith("/app/platform/organizations/") && pathname !== PLATFORM_NEW_ORG_HREF)
+            }
+            collapsed={collapsed}
+            pillId="nav-pill-platform"
+          />
+          <NavItem
+            item={platformItems.newOrg}
+            active={pathname === PLATFORM_NEW_ORG_HREF}
+            collapsed={collapsed}
+            pillId="nav-pill-platform"
+          />
+          <NavItem
+            item={platformItems.enquiries}
+            active={isActivePath(pathname, PLATFORM_SECTION_HREFS.enquiries)}
+            collapsed={collapsed}
+            pillId="nav-pill-platform"
+            badge={newEnquiries ?? 0}
+          />
+          <NavItem
+            item={platformItems.team}
+            active={isActivePath(pathname, PLATFORM_SECTION_HREFS.team)}
             collapsed={collapsed}
             pillId="nav-pill-platform"
           />
