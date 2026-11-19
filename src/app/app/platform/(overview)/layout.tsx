@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { ReactNode, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAction, useMutation, useQuery } from "convex/react";
 import {
   Building2,
@@ -19,8 +19,8 @@ import {
   ShieldCheck,
   UserPlus,
 } from "lucide-react";
-import { api } from "../../../../convex/_generated/api";
-import { Id } from "../../../../convex/_generated/dataModel";
+import { api } from "../../../../../convex/_generated/api";
+import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
 import { useNow } from "@/hooks/useNow";
 import { Button } from "@/components/ui/button";
@@ -38,8 +38,9 @@ import { orgInitials } from "@/lib/org-theme";
 import { readableOn } from "@/lib/color";
 import { brand } from "@/config/brand";
 import { cn } from "@/lib/utils";
+import { PLATFORM_SECTION_HREFS, platformSectionForPath, type PlatformSection, PLATFORM_NEW_ORG_HREF } from "@/config/platform";
 import { PlanBadge } from "@/components/platform/onboarding/plan-picker";
-import { isPaidPlan, planStatus, type PlanKey } from "../../../../convex/lib/plans";
+import { isPaidPlan, planStatus, type PlanKey } from "../../../../../convex/lib/plans";
 
 const formatDate = (ts: number | null | undefined) =>
   ts ? new Date(ts).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "—";
@@ -71,7 +72,7 @@ type OrgRow = {
   trialEndsAt: number | null;
 };
 
-type Tab = "organisations" | "enquiries" | "team";
+type Tab = PlatformSection;
 type Kind = "all" | "trial" | "beta" | "paying" | "demos";
 
 function matchesKind(o: OrgRow, kind: Kind): boolean {
@@ -96,8 +97,28 @@ function matchesKind(o: OrgRow, kind: Kind): boolean {
  * organisation (Manage), and nothing destructive on the overview — deleting
  * lives on the organisation's own page.
  */
-export default function PlatformPage() {
+const SECTION_TITLES: Record<Tab, { title: string; intro: string }> = {
+  organisations: {
+    title: "Organisations",
+    intro: `Every agency using ${brand.name}. Set up a new one, change how it looks, or see the app exactly as its people do.`,
+  },
+  enquiries: {
+    title: "Enquiries",
+    intro: "People who asked to hear from us on the website. Mark them contacted as you follow up.",
+  },
+  team: {
+    title: "LayerSync team",
+    intro: "The LayerSync staff who can set up and manage organisations.",
+  },
+};
+
+/**
+ * Shared by /app/platform, /app/platform/enquiries and /app/platform/team (a
+ * layout, so search and filters survive moving between sections).
+ */
+export default function PlatformOverviewLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, isLoading: authLoading } = useAuth();
   const isPlatformAdmin = !!user?.isPlatformAdmin;
 
@@ -107,7 +128,10 @@ export default function PlatformPage() {
   const setViewOrg = useMutation(api.platform.setViewOrg);
   const exitViewOrg = useMutation(api.platform.exitViewOrg);
 
-  const [tab, setTab] = useState<Tab>("organisations");
+  const tab = platformSectionForPath(pathname);
+  const setTab = (next: Tab) => {
+    if (next !== tab) router.push(PLATFORM_SECTION_HREFS[next]);
+  };
   const [search, setSearch] = useState("");
   const [kind, setKind] = useState<Kind>("all");
   const [openingId, setOpeningId] = useState<string | null>(null);
@@ -190,17 +214,14 @@ export default function PlatformPage() {
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-h1 text-text">Organisations</h1>
-          <p className="mt-1 max-w-xl text-sm text-text-muted">
-            Every agency using {brand.name}. Set up a new one, change how it looks, or see the app exactly as its
-            people do.
-          </p>
+          <h1 className="text-h1 text-text">{SECTION_TITLES[tab].title}</h1>
+          <p className="mt-1 max-w-xl text-sm text-text-muted">{SECTION_TITLES[tab].intro}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={() => router.push("/app/platform/organizations/new?demo=1")}>
+          <Button variant="secondary" onClick={() => router.push(`${PLATFORM_NEW_ORG_HREF}?demo=1`)}>
             <FlaskConical className="h-4 w-4" /> New demo
           </Button>
-          <Button onClick={() => router.push("/app/platform/organizations/new")}>
+          <Button onClick={() => router.push(PLATFORM_NEW_ORG_HREF)}>
             <Plus className="h-4 w-4" /> New organisation
           </Button>
         </div>
@@ -324,7 +345,7 @@ export default function PlatformPage() {
                     : "Set up your first agency. It takes about two minutes."}
                 </p>
                 {orgs && orgs.length === 0 && (
-                  <Button onClick={() => router.push("/app/platform/organizations/new")}>
+                  <Button onClick={() => router.push(PLATFORM_NEW_ORG_HREF)}>
                     <Plus className="h-4 w-4" /> New organisation
                   </Button>
                 )}
@@ -343,6 +364,7 @@ export default function PlatformPage() {
       {tab === "enquiries" && <WebsiteEnquiries />}
 
       {tab === "team" && <TeamSection />}
+      {children}
     </div>
   );
 }
